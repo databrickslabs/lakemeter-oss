@@ -22,7 +22,17 @@ export default function Home() {
 
   const addRow = async () => {
     setIsLoading(true);
-    let workloadValue = "Ingestion"; // default value
+    
+    // Default row structure
+    let newRow = [
+      { type: "dropdown", value: "Ingestion" },
+      { type: "dropdown", value: "All-Purpose" },
+      { type: "dropdown", value: "i3.xlarge" },
+      { type: "dropdown", value: "i3.xlarge" },
+      { type: "dropdown", value: "1" },
+      { type: "text", value: "" },
+      { type: "text", value: "" },
+    ];
 
     try {
       // Call Anthropic API if prompt text exists and API key is configured
@@ -34,7 +44,7 @@ export default function Home() {
 
         const message = await anthropic.messages.create({
           model: "claude-haiku-4-5-20251001",
-          max_tokens: 100,
+          max_tokens: 500,
           system: config.systemPrompt,
           messages: [
             {
@@ -44,34 +54,38 @@ export default function Home() {
           ],
         });
 
-        // Extract the workload classification from the response
-        const responseText = message.content[0].type === "text" 
+        // Extract the JSON response from the LLM
+        let responseText = message.content[0].type === "text" 
           ? message.content[0].text.trim() 
-          : "Ingestion";
+          : "";
         
-        // Validate that the response is one of the valid workload types
-        const validWorkloads = ["Ingestion", "Transformation", "Analysis", "Exploration", "ML Inference"];
-        if (validWorkloads.includes(responseText)) {
-          workloadValue = responseText;
+        // Remove markdown code blocks if present
+        responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        try {
+          // Parse the JSON response
+          const jsonResponse = JSON.parse(responseText);
+          
+          if (jsonResponse.tableStructure && Array.isArray(jsonResponse.tableStructure)) {
+            // Build the row based on the JSON structure
+            newRow = jsonResponse.tableStructure.map((column: any) => ({
+              type: column.inputType || "text",
+              value: column.defaultValue || ""
+            }));
+          }
+        } catch (parseError) {
+          console.error("Error parsing JSON response:", parseError);
+          console.log("Response text:", responseText);
+          // Use default row structure on parse error
         }
       }
     } catch (error) {
       console.error("Error calling Anthropic API:", error);
-      // Use default value on error
+      // Use default row structure on error
     } finally {
       setIsLoading(false);
     }
 
-    const newRow = [
-      { type: "dropdown", value: workloadValue },
-      { type: "dropdown", value: "All-Purpose" },
-      { type: "dropdown", value: "i3.xlarge" },
-      { type: "dropdown", value: "1" },
-      { type: "dropdown", value: "i3.xlarge" },
-      { type: "dropdown", value: "1" },
-      { type: "text", value: "" },
-      { type: "text", value: "" },
-    ];
     setTableData([...tableData, newRow]);
   };
 
@@ -86,7 +100,6 @@ export default function Home() {
   const workloadOptions = ["Ingestion", "Transformation", "Analysis", "Exploration", "ML Inference"];
   const skuOptions = ["All-Purpose", "SQL Pro", "Jobs", "Serverless"];
   const driverInstanceOptions = ["i3.xlarge", "i3.2xlarge", "i3.4xlarge"];
-  const driverCountOptions = ["1"];
   const workerInstanceOptions = ["i3.xlarge", "i3.2xlarge", "i3.4xlarge"];
   const workerCountOptions = Array.from({ length: 20 }, (_, i) => String(i + 1));
 
@@ -100,10 +113,8 @@ export default function Home() {
       case 2:
         return driverInstanceOptions;
       case 3:
-        return driverCountOptions;
-      case 4:
         return workerInstanceOptions;
-      case 5:
+      case 4:
         return workerCountOptions;
       default:
         return [];
@@ -151,22 +162,19 @@ export default function Home() {
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-40">
                     SKU
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-40">
                     Driver Instance
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600">
-                    Driver Count
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-40">
                     Worker Instance
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-40">
                     Worker Count
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-24">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-30">
                     Run Duration
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-24">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-30">
                     Run Freq.
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600">
