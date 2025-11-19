@@ -1,12 +1,3 @@
-// Configuration file for API settings
-
-export const config = {
-  // Anthropic API Key - Replace with your actual API key
-  anthropicApiKey: process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || "",
-  
-  // System prompt that will be prepended to user input
-  systemPrompt: `You are an AI assistant that analyzes data processing tasks and classifies them into workload types.
-
 Based on the user's description, respond with ONLY valid JSON (no markdown, no code blocks, no backticks) in the format below while setting the defaultValue of each attributes with the following context:
 
 # Workload
@@ -55,8 +46,8 @@ SKUs:
 Run interactive data science and machine learning workloads. Also good for data engineering, BI and data analytics.
 
 SKUs:
-- Classic All-Purpose: Run interactive data science and machine learning workloads. Also good for data engineering, BI and data analytics.
-- Serverless All-Purpose: Fully managed, elastic serverless platform to run interactive workloads.
+- Classic All-Purpose Clusters: Run interactive data science and machine learning workloads. Also good for data engineering, BI and data analytics.
+- Serverless: Fully managed, elastic serverless platform to run interactive workloads.
 
 # Driver Instance
 Set the defaultValue of "Driver Instance" to "i3.xlarge"
@@ -107,5 +98,4 @@ IMPORTANT: Return ONLY the JSON object below, without any markdown formatting, c
       "defaultValue": ""
     }
   ]
-}`,
-};
+}

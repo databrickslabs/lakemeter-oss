@@ -26,7 +26,7 @@ export default function Home() {
     // Default row structure
     let newRow = [
       { type: "dropdown", value: "Ingestion" },
-      { type: "dropdown", value: "All-Purpose" },
+      { type: "dropdown", value: "Serverless All-Purpose" },
       { type: "dropdown", value: "i3.xlarge" },
       { type: "dropdown", value: "i3.xlarge" },
       { type: "dropdown", value: "1" },
@@ -98,7 +98,20 @@ export default function Home() {
 
   // Define dropdown options for each column
   const workloadOptions = ["Ingestion", "Transformation", "Analysis", "Exploration", "ML Inference"];
-  const skuOptions = ["All-Purpose", "SQL Pro", "Jobs", "Serverless"];
+  const skuOptions = [
+    "Jobs Classic",
+    "Jobs Serverless",
+    "LDP Serverless",
+    "LDP Classic Core",
+    "LDP Classic Pro",
+    "LDP Classic Advanced",
+    "Lakeflow Connect",
+    "SQL Classic",
+    "SQL Pro",
+    "SQL Serverless",
+    "Classic All-Purpose",
+    "Serverless All-Purpose"
+  ];
   const driverInstanceOptions = ["i3.xlarge", "i3.2xlarge", "i3.4xlarge"];
   const workerInstanceOptions = ["i3.xlarge", "i3.2xlarge", "i3.4xlarge"];
   const workerCountOptions = Array.from({ length: 20 }, (_, i) => String(i + 1));
