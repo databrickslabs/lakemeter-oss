@@ -31,17 +31,18 @@ SKUs:
 Reliable streaming and batch data pipelines made easy on the Databricks Lakehouse Platform.​
 
 SKUs:
-- LDP Serverless: Fully managed platform to run your pipelines, requiring minimal additional configuration. Recommended for users seeking managed service.​
-- LDP Classic Core: Requires customers to manage their own cloud infrastructure and provides additional control and configuration.​ Easily build scalable streaming or batch pipelines in SQL and Python
-- LDP Classic Pro: Requires customers to manage their own cloud infrastructure and provides additional control and configuration. Easily build scalable streaming or batch pipelines in SQL and Python and handle change data capture (CDC) from any data source
-- LDP Classic Advanced: Requires customers to manage their own cloud infrastructure and provides additional control and configuration. Easily build scalable streaming or batch pipelines in SQL and Python, handle change data capture (CDC) and maximize your data credibility with quality expectations and monitoring
+- DLT Serverless: Fully managed platform to run your pipelines, requiring minimal additional configuration. Recommended for users seeking managed service.​
+- DLT Core: Requires customers to manage their own cloud infrastructure and provides additional control and configuration.​ Easily build scalable streaming or batch pipelines in SQL and Python
+- DLT Pro: Requires customers to manage their own cloud infrastructure and provides additional control and configuration. Easily build scalable streaming or batch pipelines in SQL and Python and handle change data capture (CDC) from any data source
+- DLT Advanced: Requires customers to manage their own cloud infrastructure and provides additional control and configuration. Easily build scalable streaming or batch pipelines in SQL and Python, handle change data capture (CDC) and maximize your data credibility with quality expectations and monitoring
 
 
 ## Lakeflow Connect
 Built-in connectors for ingesting data from enterprise applications and databases.​
 
 SKUs:
-- Lakeflow Connect: Easily ingest data from key business systems with built-in connectors.
+- Jobs Serverless: Easily ingest data from SaaS sources with built-in connectors.
+- DLT Advanced: Easily ingest data from RDBMS sources with built-in connectors.
 
 Databricks SQL
 Run all SQL and BI applications at scale with high price-performance, unified governance, open formats, and broad tool integration.​
@@ -59,13 +60,23 @@ SKUs:
 - Serverless All-Purpose: Fully managed, elastic serverless platform to run interactive workloads.
 
 # Driver Instance
-Set the defaultValue of "Driver Instance" to "i3.xlarge"
+- if it is a serverless SKU, then set the defaultValue to "Small"
+- if it is not a serverless SKU, then set the defaultValue to "m5d.2xlarge"
 
 # Worker Instance
-Set the defaultValue of "Worker Instance" to "i3.xlarge"
+- if it is a serverless SKU, then set the defaultValue to "Small"
+- if it is a serverless SKU and the user give description on the size of the workload such as the data size, the concurrency, the complexity of the workload, then set the defaultValue of either 2X-Small, X-Small, Small, Medium, Large, X-Large, 2X-Large, 3X-Large, or 4X-Large following databricks serverless cluster sizing
+- if it is not a serverless SKU, then set the defaultValue to "m5d.2xlarge"
+- if it is not a serverless SKU and the user give description on the size of the workload such as the data size, the concurrency, the complexity of the workload, then set the defaultValue of either one of AWS instances based on the workload
 
 # Worker Count
 Set the defaultValue of "Worker Count" to "1"
+
+# Run Duration
+Set the defaultValue to duration in hours from user input
+
+# Run Freq.
+set the defaultValue to either either hourly, daily, or numbers from 1-100 from user input. Don't answer in any other way
 
 IMPORTANT: Return ONLY the JSON object below, without any markdown formatting, code blocks, or backticks:
 
