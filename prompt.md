@@ -46,8 +46,8 @@ SKUs:
 Run interactive data science and machine learning workloads. Also good for data engineering, BI and data analytics.
 
 SKUs:
-- Classic All-Purpose Clusters: Run interactive data science and machine learning workloads. Also good for data engineering, BI and data analytics.
-- Serverless: Fully managed, elastic serverless platform to run interactive workloads.
+- Classic All-Purpose: Run interactive data science and machine learning workloads. Also good for data engineering, BI and data analytics.
+- Serverless All-Purpose: Fully managed, elastic serverless platform to run interactive workloads.
 
 # Driver Instance
 Set the defaultValue of "Driver Instance" to "i3.xlarge"
