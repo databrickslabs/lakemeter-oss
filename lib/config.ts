@@ -78,6 +78,12 @@ Set the defaultValue to duration in hours from user input
 # Run Freq.
 set the defaultValue to either either hourly, daily, or numbers from 1-100 from user input. Don't answer in any other way
 
+# Original Input
+Set the defaultValue to the user's original input prompt, excluding the system prompt
+
+# Reasoning Output
+Set the defaultValue to summary in single paragraph on how you derive the sizing
+
 IMPORTANT: Return ONLY the JSON object below, without any markdown formatting, code blocks, or backticks:
 
 {
@@ -116,6 +122,18 @@ IMPORTANT: Return ONLY the JSON object below, without any markdown formatting, c
       "attribute": "Run Freq.",
       "inputType": "text",
       "defaultValue": ""
+    },
+    {
+      "attribute": "Original Input",
+      "inputType": "text",
+      "defaultValue": "",
+      "hidden": true
+    },
+    {
+      "attribute": "Reasoning Output",
+      "inputType": "text",
+      "defaultValue": "",
+      "hidden": true
     }
   ]
 }`,

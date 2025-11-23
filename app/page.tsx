@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "@/lib/config";
+
+// Define the structure for table columns
+interface ColumnStructure {
+  attribute: string;
+  inputType: string;
+  defaultValue: string;
+  hidden?: boolean;
+}
 
 export default function Home() {
   // State for the large text input
@@ -11,8 +19,39 @@ export default function Home() {
   // State for table data - starts with no rows
   const [tableData, setTableData] = useState<Array<Array<{type: string, value: string}>>>([]);
   
+  // State for table structure (columns)
+  const [tableStructure, setTableStructure] = useState<ColumnStructure[]>([
+    { attribute: "Workload", inputType: "dropdown", defaultValue: "" },
+    { attribute: "SKU", inputType: "dropdown", defaultValue: "" },
+    { attribute: "Driver Instance", inputType: "dropdown", defaultValue: "" },
+    { attribute: "Worker Instance", inputType: "dropdown", defaultValue: "" },
+    { attribute: "Worker Count", inputType: "dropdown", defaultValue: "1" },
+    { attribute: "Run Duration", inputType: "text", defaultValue: "" },
+    { attribute: "Run Freq.", inputType: "text", defaultValue: "" },
+    { attribute: "Original Input", inputType: "text", defaultValue: "", hidden: true },
+    { attribute: "Reasoning Output", inputType: "text", defaultValue: "", hidden: true },
+  ]);
+  
   // Loading state for API call
   const [isLoading, setIsLoading] = useState(false);
+
+  // State to track which rows have expanded accordion
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  // State to store the last LLM response for debugging
+  const [lastLLMResponse, setLastLLMResponse] = useState<string>("");
+  const [lastStopReason, setLastStopReason] = useState<string>("");
+
+  // Toggle accordion for a row
+  const toggleAccordion = (rowIndex: number) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(rowIndex)) {
+      newExpandedRows.delete(rowIndex);
+    } else {
+      newExpandedRows.add(rowIndex);
+    }
+    setExpandedRows(newExpandedRows);
+  };
 
   const handleTableChange = (rowIndex: number, colIndex: number, value: string) => {
     const newData = [...tableData];
@@ -23,16 +62,11 @@ export default function Home() {
   const addRow = async () => {
     setIsLoading(true);
     
-    // Default row structure
-    let newRow = [
-      { type: "dropdown", value: "Ingestion" },
-      { type: "dropdown", value: "Serverless All-Purpose" },
-      { type: "dropdown", value: "m5d.xlarge" },
-      { type: "dropdown", value: "m5d.xlarge" },
-      { type: "dropdown", value: "1" },
-      { type: "text", value: "" },
-      { type: "text", value: "" },
-    ];
+    // Default row structure based on tableStructure
+    let newRow = tableStructure.map(col => ({
+      type: col.inputType,
+      value: col.defaultValue
+    }));
 
     try {
       // Call Anthropic API if prompt text exists and API key is configured
@@ -58,6 +92,10 @@ export default function Home() {
         let responseText = message.content[0].type === "text" 
           ? message.content[0].text.trim() 
           : "";
+        
+        // Store the original response and stop_reason for debugging
+        setLastLLMResponse(responseText);
+        setLastStopReason(message.stop_reason || "");
         
         // Remove markdown code blocks if present
         responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -421,23 +459,26 @@ export default function Home() {
   ];
   const workerCountOptions = Array.from({ length: 20 }, (_, i) => String(i + 1));
 
-  // Function to get dropdown options based on column index
-  const getDropdownOptions = (colIndex: number) => {
-    switch (colIndex) {
-      case 0:
+  // Function to get dropdown options based on attribute name
+  const getDropdownOptions = (attribute: string) => {
+    switch (attribute) {
+      case "Workload":
         return workloadOptions;
-      case 1:
+      case "SKU":
         return skuOptions;
-      case 2:
+      case "Driver Instance":
         return driverInstanceOptions;
-      case 3:
+      case "Worker Instance":
         return workerInstanceOptions;
-      case 4:
+      case "Worker Count":
         return workerCountOptions;
       default:
         return [];
     }
   };
+
+  // Get visible columns (non-hidden)
+  const visibleColumns = tableStructure.filter(col => !col.hidden);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-8">
@@ -468,83 +509,130 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Table with 8 columns and dynamic rows */}
+        {/* Table with dynamic columns based on tableStructure */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse table-fixed">
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700">
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-45">
-                    Workload
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap w-16">
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-45">
-                    SKU
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-40">
-                    Driver Instance
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-40">
-                    Worker Instance
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-40">
-                    Worker Count
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-30">
-                    Run Duration (hours)
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 w-30">
-                    Run Freq.
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600">
+                  {visibleColumns.map((column, colIndex) => (
+                    <th
+                      key={colIndex}
+                      className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap"
+                    >
+                      {column.attribute}
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {tableData.map((row, rowIndex) => (
-                  <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                    {row.map((cell, colIndex) => (
-                      <td
-                        key={colIndex}
-                        className="px-4 py-3 border-b dark:border-gray-600"
-                      >
-                        {cell.type === "text" ? (
-                          <input
-                            type="text"
-                            value={cell.value}
-                            onChange={(e) =>
-                              handleTableChange(rowIndex, colIndex, e.target.value)
-                            }
-                            placeholder="Enter text..."
-                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                          />
-                        ) : (
-                          <select
-                            value={cell.value}
-                            onChange={(e) =>
-                              handleTableChange(rowIndex, colIndex, e.target.value)
-                            }
-                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                  <Fragment key={rowIndex}>
+                    {/* Main Row */}
+                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-750">
+                      <td className="px-4 py-3 border-b dark:border-gray-600">
+                        <button
+                          onClick={() => toggleAccordion(rowIndex)}
+                          className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
+                          title="Show/Hide Details"
+                        >
+                          <svg
+                            className={`w-5 h-5 transition-transform duration-200 ${expandedRows.has(rowIndex) ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            {getDropdownOptions(colIndex).map((option: string) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
                       </td>
-                    ))}
-                    <td className="px-4 py-3 border-b dark:border-gray-600">
-                      <button
-                        onClick={() => removeRow(rowIndex)}
-                        disabled={tableData.length === 1}
-                        className="px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
+                      {tableStructure.map((column, colIndex) => {
+                        // Skip hidden columns
+                        if (column.hidden) return null;
+                        
+                        const cell = row[colIndex];
+                        return (
+                          <td
+                            key={colIndex}
+                            className="px-4 py-3 border-b dark:border-gray-600"
+                          >
+                            {cell.type === "text" ? (
+                              <input
+                                type="text"
+                                value={cell.value}
+                                onChange={(e) =>
+                                  handleTableChange(rowIndex, colIndex, e.target.value)
+                                }
+                                placeholder="Enter text..."
+                                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                              />
+                            ) : (
+                              <select
+                                value={cell.value}
+                                onChange={(e) =>
+                                  handleTableChange(rowIndex, colIndex, e.target.value)
+                                }
+                                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                              >
+                                {getDropdownOptions(column.attribute).map((option: string) => (
+                                  <option key={option} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="px-4 py-3 border-b dark:border-gray-600">
+                        <button
+                          onClick={() => removeRow(rowIndex)}
+                          disabled={tableData.length === 1}
+                          className="px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                    
+                    {/* Accordion Row */}
+                    {expandedRows.has(rowIndex) && (
+                      <tr key={`accordion-${rowIndex}`} className="bg-gray-50 dark:bg-gray-750">
+                        <td colSpan={visibleColumns.length + 2} className="px-4 py-4 border-b dark:border-gray-600">
+                          <div className="space-y-4">
+                            {/* Original Input Section */}
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Original Input
+                              </h3>
+                              <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-600">
+                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                  {row[7]?.value || "(empty)"}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Reasoning Output Section */}
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Reasoning Output
+                              </h3>
+                              <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-600">
+                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                  {row[8]?.value || "(empty)"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -578,6 +666,26 @@ export default function Home() {
             </pre>
           </div>
         </div>
+
+        {/* Debug: Last LLM Response */}
+        {lastLLMResponse && (
+          <div className="mt-8 p-4 bg-yellow-50 dark:bg-yellow-900 rounded-lg">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
+              Debug: Last LLM Response
+            </h2>
+            <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+              <div>
+                <p className="font-semibold mb-1">Stop Reason: <span className="font-normal">{lastStopReason || "N/A"}</span></p>
+              </div>
+              <div>
+                <p className="font-semibold mb-1">Response:</p>
+                <pre className="p-2 bg-white dark:bg-gray-800 rounded overflow-auto text-xs whitespace-pre-wrap">
+                  {lastLLMResponse}
+                </pre>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
