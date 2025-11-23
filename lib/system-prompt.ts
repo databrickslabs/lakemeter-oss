@@ -37,16 +37,18 @@ Return ONLY the SKU name (e.g., "Jobs Serverless", "DLT Advanced", "SQL Pro"), N
 - Serverless All-Purpose: Fully managed
 
 # Worker/Driver Instance
+If the SKU is either Jobs Serverless, DLT Serverless, SQL Classic, SQL Pro, SQL Serverless, Serverless All-Purpose, then use the below Serverless Instance type, else, follow the direction on the Non-Serverless
 - Serverless: "Small" (or 2X-Small, X-Small, Medium, Large, X-Large, 2X-Large, 3X-Large, or 4X-Large following databricks serverless cluster sizing based on workload size)
 - Non-serverless: "m5d.2xlarge" (or match AWS instance to workload)
 
 # Defaults
 - Worker Count: "1"
 - Run Duration: Extract hours from input
-- Run Freq.: 1-100 
+- Runs/Day: 1-100 
+- Days/Month: 30
 
 **IMPORTANT: For SKU, return ONLY the SKU name (e.g., "Jobs Serverless"), not "Lakeflow Connect - Jobs Serverless"**
-**IMPORTANT: For Run Duration and Run Freq., return ONLY integer value, if not clear set to 1**
+**IMPORTANT: For Run Duration and Runs/Day, return ONLY integer value, if not clear set to 1**
 
 Return JSON:
 {
@@ -57,7 +59,8 @@ Return JSON:
     {"attribute": "Worker Instance", "inputType": "dropdown", "defaultValue": ""},
     {"attribute": "Worker Count", "inputType": "dropdown", "defaultValue": "1"},
     {"attribute": "Run Duration", "inputType": "text", "defaultValue": ""},
-    {"attribute": "Run Freq.", "inputType": "text", "defaultValue": ""},
+    {"attribute": "Runs/Day", "inputType": "text", "defaultValue": ""},
+    {"attribute": "Days/Month", "inputType": "text", "defaultValue": ""},
     {"attribute": "Original Input", "inputType": "text", "defaultValue": "", "hidden": true},
     {"attribute": "Reasoning Output", "inputType": "text", "defaultValue": "", "hidden": true}
   ]

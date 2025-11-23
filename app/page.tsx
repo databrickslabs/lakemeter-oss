@@ -27,7 +27,8 @@ export default function Home() {
     { attribute: "Worker Instance", inputType: "dropdown", defaultValue: "" },
     { attribute: "Worker Count", inputType: "dropdown", defaultValue: "1" },
     { attribute: "Run Duration", inputType: "text", defaultValue: "" },
-    { attribute: "Run Freq.", inputType: "text", defaultValue: "" },
+    { attribute: "Runs/Day", inputType: "text", defaultValue: "" },
+    { attribute: "Days/Month", inputType: "text", defaultValue: "" },
     { attribute: "Original Input", inputType: "text", defaultValue: "", hidden: true },
     { attribute: "Reasoning Output", inputType: "text", defaultValue: "", hidden: true },
   ]);
@@ -515,19 +516,19 @@ export default function Home() {
             <table className="w-full border-collapse table-fixed">
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700">
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap w-16">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap w-16">
                   </th>
                   {visibleColumns.map((column, colIndex) => (
                     <th
                       key={colIndex}
-                      className={`px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap ${
-                        column.attribute === "SKU" ? "w-56" : ""
+                      className={`px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap ${
+                        column.attribute === "SKU" ? "w-45" : ""
                       }`}
                     >
                       {column.attribute}
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
@@ -571,7 +572,7 @@ export default function Home() {
                                   handleTableChange(rowIndex, colIndex, e.target.value)
                                 }
                                 placeholder="Enter text..."
-                                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
                               />
                             ) : (
                               <select
@@ -579,7 +580,7 @@ export default function Home() {
                                 onChange={(e) =>
                                   handleTableChange(rowIndex, colIndex, e.target.value)
                                 }
-                                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
                               >
                                 {getDropdownOptions(column.attribute).map((option: string) => (
                                   <option key={option} value={option}>
@@ -595,7 +596,7 @@ export default function Home() {
                         <button
                           onClick={() => removeRow(rowIndex)}
                           disabled={tableData.length === 1}
-                          className="px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
+                          className="px-3 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
                         >
                           Remove
                         </button>
@@ -609,11 +610,11 @@ export default function Home() {
                           <div className="space-y-4">
                             {/* Original Input Section */}
                             <div>
-                              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Original Input
                               </h3>
                               <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-600">
-                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                                   {row[7]?.value || "(empty)"}
                                 </p>
                               </div>
@@ -621,11 +622,11 @@ export default function Home() {
                             
                             {/* Reasoning Output Section */}
                             <div>
-                              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Reasoning Output
                               </h3>
                               <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-600">
-                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                                   {row[8]?.value || "(empty)"}
                                 </p>
                               </div>
@@ -644,7 +645,7 @@ export default function Home() {
           <div className="p-4 bg-gray-50 dark:bg-gray-750 border-t dark:border-gray-600">
             <button
               onClick={addRow}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+              className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
             >
               + Add Row
             </button>
