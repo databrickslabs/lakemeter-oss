@@ -43,6 +43,15 @@ export default function Home() {
   const [lastLLMResponse, setLastLLMResponse] = useState<string>("");
   const [lastStopReason, setLastStopReason] = useState<string>("");
 
+  // State for the second table (DBU calculation table)
+  const [dbuTableData, setDbuTableData] = useState<Array<{
+    workload: string;
+    dbuPerHour: string;
+    dbuPerDay: string;
+    dbuPerMonth: string;
+    dollarPerDBU: string;
+  }>>([]);
+
   // Toggle accordion for a row
   const toggleAccordion = (rowIndex: number) => {
     const newExpandedRows = new Set(expandedRows);
@@ -68,6 +77,15 @@ export default function Home() {
       type: col.inputType,
       value: col.defaultValue
     }));
+    
+    // Add corresponding row to DBU table
+    const newDbuRow = {
+      workload: "",
+      dbuPerHour: "",
+      dbuPerDay: "",
+      dbuPerMonth: "",
+      dollarPerDBU: ""
+    };
 
     try {
       // Call Anthropic API if prompt text exists and API key is configured
@@ -125,14 +143,144 @@ export default function Home() {
       setIsLoading(false);
     }
 
-    setTableData([...tableData, newRow]);
+    const newTableData = [...tableData, newRow];
+    setTableData(newTableData);
+    setDbuTableData([...dbuTableData, newDbuRow]);
   };
 
   const removeRow = (rowIndex: number) => {
     if (tableData.length > 1) {
       const newData = tableData.filter((_, index) => index !== rowIndex);
       setTableData(newData);
+      const newDbuData = dbuTableData.filter((_, index) => index !== rowIndex);
+      setDbuTableData(newDbuData);
     }
+  };
+
+  const handleDbuTableChange = (rowIndex: number, field: keyof typeof dbuTableData[0], value: string) => {
+    const newData = [...dbuTableData];
+    newData[rowIndex][field] = value;
+    setDbuTableData(newData);
+  };
+
+  // Get workload values from main table to display in DBU table
+  const getWorkloadValue = (rowIndex: number): string => {
+    if (rowIndex < tableData.length) {
+      const workloadColIndex = tableStructure.findIndex(col => col.attribute === "Workload");
+      return tableData[rowIndex][workloadColIndex]?.value || "";
+    }
+    return "";
+  };
+
+  // DBU/Hour lookup based on Worker Instance type
+  const dbuPerHourLookup: { [key: string]: number } = {
+    "2X-Small": 4,
+    "X-Small": 6,
+    "Small": 12,
+    "Medium": 24,
+    "Large": 40,
+    "X-Large": 80,
+    "2X-Large": 144,
+    "3X-Large": 272,
+    "4X-Large": 528
+  };
+
+  // Get DBU/Hour value based on Worker Instance from main table
+  const getDbuPerHourValue = (rowIndex: number): string => {
+    if (rowIndex < tableData.length) {
+      const workerInstanceColIndex = tableStructure.findIndex(col => col.attribute === "Worker Instance");
+      const workerInstance = tableData[rowIndex][workerInstanceColIndex]?.value || "";
+      const dbuValue = dbuPerHourLookup[workerInstance];
+      return dbuValue !== undefined ? dbuValue.toString() : "";
+    }
+    return "";
+  };
+
+  // Get DBU/Day value using formula: DBU/Hour * Run Duration * Runs/Day
+  const getDbuPerDayValue = (rowIndex: number): string => {
+    if (rowIndex < tableData.length) {
+      // Get DBU/Hour
+      const workerInstanceColIndex = tableStructure.findIndex(col => col.attribute === "Worker Instance");
+      const workerInstance = tableData[rowIndex][workerInstanceColIndex]?.value || "";
+      const dbuPerHour = dbuPerHourLookup[workerInstance];
+      
+      if (dbuPerHour === undefined) return "";
+      
+      // Get Run Duration
+      const runDurationColIndex = tableStructure.findIndex(col => col.attribute === "Run Duration");
+      const runDuration = parseFloat(tableData[rowIndex][runDurationColIndex]?.value || "0");
+      
+      // Get Runs/Day
+      const runsPerDayColIndex = tableStructure.findIndex(col => col.attribute === "Runs/Day");
+      const runsPerDay = parseFloat(tableData[rowIndex][runsPerDayColIndex]?.value || "0");
+      
+      // Calculate DBU/Day
+      if (runDuration > 0 && runsPerDay > 0) {
+        const dbuPerDay = dbuPerHour * runDuration * runsPerDay;
+        return dbuPerDay.toString();
+      }
+    }
+    return "";
+  };
+
+  // Get DBU/Month value using formula: DBU/Day * Days/Month
+  const getDbuPerMonthValue = (rowIndex: number): string => {
+    if (rowIndex < tableData.length) {
+      // Get DBU/Day value
+      const dbuPerDayStr = getDbuPerDayValue(rowIndex);
+      const dbuPerDay = parseFloat(dbuPerDayStr);
+      
+      if (isNaN(dbuPerDay) || dbuPerDay === 0) return "";
+      
+      // Get Days/Month
+      const daysPerMonthColIndex = tableStructure.findIndex(col => col.attribute === "Days/Month");
+      const daysPerMonth = parseFloat(tableData[rowIndex][daysPerMonthColIndex]?.value || "0");
+      
+      // Calculate DBU/Month
+      if (daysPerMonth > 0) {
+        const dbuPerMonth = dbuPerDay * daysPerMonth;
+        return dbuPerMonth.toString();
+      }
+    }
+    return "";
+  };
+
+  // SKU Rates lookup
+  const skuRatesLookup: { [key: string]: number } = {
+    "Jobs Classic": 0.200,
+    "Jobs Serverless": 0.500,
+    "DLT Serverless": 0.500,
+    "DLT Core": 0.200,
+    "DLT Pro": 0.250,
+    "DLT Advanced": 0.360,
+    "SQL Classic": 0.220,
+    "SQL Pro": 0.690,
+    "SQL Serverless": 0.880,
+    "Classic All-Purpose": 0.650,
+    "Serverless All-Purpose": 1.050
+  };
+
+  // Get $DBU value using formula: DBU/Month * SKU Rate
+  const getDollarPerDBUValue = (rowIndex: number): string => {
+    if (rowIndex < tableData.length) {
+      // Get DBU/Month value
+      const dbuPerMonthStr = getDbuPerMonthValue(rowIndex);
+      const dbuPerMonth = parseFloat(dbuPerMonthStr);
+      
+      if (isNaN(dbuPerMonth) || dbuPerMonth === 0) return "";
+      
+      // Get SKU
+      const skuColIndex = tableStructure.findIndex(col => col.attribute === "SKU");
+      const sku = tableData[rowIndex][skuColIndex]?.value || "";
+      const skuRate = skuRatesLookup[sku];
+      
+      if (skuRate === undefined) return "";
+      
+      // Calculate $DBU
+      const dollarPerDBU = dbuPerMonth * skuRate;
+      return dollarPerDBU.toFixed(2); // Format to 2 decimal places for currency
+    }
+    return "";
   };
 
   // Define dropdown options for each column
@@ -615,7 +763,7 @@ export default function Home() {
                               </h3>
                               <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-600">
                                 <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                  {row[7]?.value || "(empty)"}
+                                  {row[8]?.value || "(empty)"}
                                 </p>
                               </div>
                             </div>
@@ -627,7 +775,7 @@ export default function Home() {
                               </h3>
                               <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-600">
                                 <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                  {row[8]?.value || "(empty)"}
+                                  {row[9]?.value || "(empty)"}
                                 </p>
                               </div>
                             </div>
@@ -649,6 +797,84 @@ export default function Home() {
             >
               + Add Row
             </button>
+          </div>
+        </div>
+
+        {/* DBU Calculation Table */}
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+          <div className="px-4 py-3 bg-gray-100 dark:bg-gray-700 border-b dark:border-gray-600">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+              DBU Calculation
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 dark:bg-gray-700">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
+                    Workload
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
+                    DBU/Hour
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
+                    DBU/Day
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
+                    DBU/Month
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
+                    $DBU
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {dbuTableData.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-750">
+                    <td className="px-4 py-3 border-b dark:border-gray-600">
+                      <input
+                        type="text"
+                        value={getWorkloadValue(rowIndex)}
+                        readOnly
+                        className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 dark:text-gray-100 cursor-not-allowed"
+                      />
+                    </td>
+                    <td className="px-4 py-3 border-b dark:border-gray-600">
+                      <input
+                        type="text"
+                        value={getDbuPerHourValue(rowIndex)}
+                        readOnly
+                        className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 dark:text-gray-100 cursor-not-allowed"
+                      />
+                    </td>
+                    <td className="px-4 py-3 border-b dark:border-gray-600">
+                      <input
+                        type="text"
+                        value={getDbuPerDayValue(rowIndex)}
+                        readOnly
+                        className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 dark:text-gray-100 cursor-not-allowed"
+                      />
+                    </td>
+                    <td className="px-4 py-3 border-b dark:border-gray-600">
+                      <input
+                        type="text"
+                        value={getDbuPerMonthValue(rowIndex)}
+                        readOnly
+                        className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 dark:text-gray-100 cursor-not-allowed"
+                      />
+                    </td>
+                    <td className="px-4 py-3 border-b dark:border-gray-600">
+                      <input
+                        type="text"
+                        value={getDollarPerDBUValue(rowIndex)}
+                        readOnly
+                        className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 dark:text-gray-100 cursor-not-allowed"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
