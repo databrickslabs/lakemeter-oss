@@ -520,7 +520,9 @@ export default function Home() {
                   {visibleColumns.map((column, colIndex) => (
                     <th
                       key={colIndex}
-                      className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap"
+                      className={`px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap ${
+                        column.attribute === "SKU" ? "w-56" : ""
+                      }`}
                     >
                       {column.attribute}
                     </th>
