@@ -284,19 +284,19 @@ export default function Home() {
   };
 
   // Define dropdown options for each column
-  const workloadOptions = ["Ingestion", "Transformation", "Analysis", "Exploration", "ML Inference"];
+  const workloadOptions = [
+    "ingestion_connect",
+    "sql_analytics",
+    "interactive_compute",
+  ];
   const skuOptions = [
-    "Jobs Classic",
-    "Jobs Serverless",
-    "DLT Serverless",
-    "DLT Core",
-    "DLT Pro",
-    "DLT Advanced",
-    "SQL Classic",
-    "SQL Pro",
-    "SQL Serverless",
-    "Classic All-Purpose",
-    "Serverless All-Purpose"
+    "Lakeflow Connect serverless",
+    "Lakeflow Jobs serverless",
+    "Lakeflow Jobs classic",
+    "SQL Warehouse serverless",
+    "SQL Warehouse pro",
+    "All-Purpose Serverless",
+    "All-Purpose Classic"
   ];
   const driverInstanceOptions = [
     "c6id.12xlarge",
@@ -670,7 +670,7 @@ export default function Home() {
                     <th
                       key={colIndex}
                       className={`px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap ${
-                        column.attribute === "SKU" ? "w-45" : ""
+                        column.attribute === "Workload" ? "w-50" : column.attribute === "SKU" ? "w-50" : ""
                       }`}
                     >
                       {column.attribute}
