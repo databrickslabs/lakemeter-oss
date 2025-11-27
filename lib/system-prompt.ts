@@ -16,7 +16,7 @@ Return ONLY the sku_name.
     sku_family: "Lakeflow Connect"
     infra: "serverless"
     sku_name: "Lakeflow Connect serverless"
-    reason: "Preferred for managed ingestion and CDC with minimal ops overhead."
+    reason: "Preferred for managed ingestion and CDC with minimal ops overhead. The available connectors now are: Google Analytics, Salesforce, Workday, SQL Server, ServiceNow, SharePoint"
 
   alternatives:
     - sku_family: "Lakeflow Jobs"
