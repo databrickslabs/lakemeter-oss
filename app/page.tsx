@@ -284,19 +284,19 @@ export default function Home() {
   };
 
   // Define dropdown options for each column
-  const workloadOptions = ["Ingestion", "Transformation", "Analysis", "Exploration", "ML Inference"];
+  const workloadOptions = [
+    "ingestion_connect",
+    "sql_analytics",
+    "interactive_compute",
+  ];
   const skuOptions = [
-    "Jobs Classic",
-    "Jobs Serverless",
-    "DLT Serverless",
-    "DLT Core",
-    "DLT Pro",
-    "DLT Advanced",
-    "SQL Classic",
-    "SQL Pro",
-    "SQL Serverless",
-    "Classic All-Purpose",
-    "Serverless All-Purpose"
+    "Lakeflow Connect serverless",
+    "Lakeflow Jobs serverless",
+    "Lakeflow Jobs classic",
+    "SQL Warehouse serverless",
+    "SQL Warehouse pro",
+    "All-Purpose Serverless",
+    "All-Purpose Classic"
   ];
   const driverInstanceOptions = [
     "c6id.12xlarge",
@@ -629,6 +629,71 @@ export default function Home() {
   // Get visible columns (non-hidden)
   const visibleColumns = tableStructure.filter(col => !col.hidden);
 
+  // Function to export DBU table to CSV
+  const exportToCSV = () => {
+    if (tableData.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    // CSV headers - combine both main table and DBU calculation columns
+    const headers = [
+      "Workload",
+      "SKU",
+      "Driver Instance",
+      "Worker Instance",
+      "Worker Count",
+      "Run Duration",
+      "Runs/Day",
+      "Days/Month",
+      "DBU/Hour",
+      "DBU/Day",
+      "DBU/Month",
+      "$DBU",
+      "Original Input",
+      "Reasoning Output"
+    ];
+    
+    // CSV rows - combine data from both tables
+    const rows = tableData.map((row, rowIndex) => {
+      return [
+        row[0]?.value || "", // Workload
+        row[1]?.value || "", // SKU
+        row[2]?.value || "", // Driver Instance
+        row[3]?.value || "", // Worker Instance
+        row[4]?.value || "", // Worker Count
+        row[5]?.value || "", // Run Duration
+        row[6]?.value || "", // Runs/Day
+        row[7]?.value || "", // Days/Month
+        getDbuPerHourValue(rowIndex), // DBU/Hour
+        getDbuPerDayValue(rowIndex), // DBU/Day
+        getDbuPerMonthValue(rowIndex), // DBU/Month
+        getDollarPerDBUValue(rowIndex), // $DBU
+        row[8]?.value || "", // Original Input
+        row[9]?.value || ""  // Reasoning Output
+      ];
+    });
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `dbu_calculation_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-8">
       <div className="max-w-7xl mx-auto">
@@ -670,7 +735,7 @@ export default function Home() {
                     <th
                       key={colIndex}
                       className={`px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap ${
-                        column.attribute === "SKU" ? "w-45" : ""
+                        column.attribute === "Workload" ? "w-50" : column.attribute === "SKU" ? "w-50" : ""
                       }`}
                     >
                       {column.attribute}
@@ -802,10 +867,21 @@ export default function Home() {
 
         {/* DBU Calculation Table */}
         <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-          <div className="px-4 py-3 bg-gray-100 dark:bg-gray-700 border-b dark:border-gray-600">
+          <div className="px-4 py-3 bg-gray-100 dark:bg-gray-700 border-b dark:border-gray-600 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
               DBU Calculation
             </h2>
+            <button
+              onClick={exportToCSV}
+              disabled={dbuTableData.length === 0}
+              className="px-4 py-2 text-xs font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors shadow-md hover:shadow-lg flex items-center gap-2"
+              title="Export to CSV"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Export CSV
+            </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
