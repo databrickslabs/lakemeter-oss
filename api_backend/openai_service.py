@@ -8,22 +8,26 @@ import os
 import sys
 import json
 from openai import OpenAI
+import mlflow
 
 
 def call_openai_api(prompt_text: str, system_prompt: str, api_key: str, base_url: str = None) -> dict:
     """
     Call OpenAI API with the given prompt
-    
+
     Args:
         prompt_text: User's prompt text
         system_prompt: System prompt for context
         api_key: OpenAI API key
         base_url: Optional custom base URL for OpenAI API (e.g., Azure OpenAI, local models)
-        
+
     Returns:
         dict: Response containing the parsed JSON or error information
     """
     try:
+        # Enable MLflow autologging for OpenAI
+        mlflow.openai.autolog()
+
         # Initialize OpenAI client with the API key and optional base URL
         client_kwargs = {"api_key": api_key}
         if base_url:
