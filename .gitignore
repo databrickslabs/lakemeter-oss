@@ -42,3 +42,9 @@ next-env.d.ts
 
 # databricks
 .databricks/
+
+# mlflow
+mlruns/
+
+# logs
+logs/
