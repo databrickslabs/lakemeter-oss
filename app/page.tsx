@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, Fragment } from "react";
-import Anthropic from "@anthropic-ai/sdk";
 import { config } from "@/lib/config";
 
 // Define the structure for table columns
@@ -88,56 +87,43 @@ export default function Home() {
     };
 
     try {
-      // Call Anthropic API if prompt text exists and API key is configured
-      if (promptText.trim() && config.anthropicApiKey) {
-        const anthropic = new Anthropic({
-          apiKey: config.anthropicApiKey,
-          dangerouslyAllowBrowser: true, // Note: For production, use a backend API route
+      // Call Python backend API if prompt text exists
+      if (promptText.trim()) {
+        const response = await fetch('/api/llm', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt_text: promptText,
+          }),
         });
 
-        const message = await anthropic.messages.create({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 500,
-          system: config.systemPrompt,
-          messages: [
-            {
-              role: "user",
-              content: promptText,
-            },
-          ],
-        });
+        const result = await response.json();
 
-        // Extract the JSON response from the LLM
-        let responseText = message.content[0].type === "text" 
-          ? message.content[0].text.trim() 
-          : "";
-        
-        // Store the original response and stop_reason for debugging
-        setLastLLMResponse(responseText);
-        setLastStopReason(message.stop_reason || "");
-        
-        // Remove markdown code blocks if present
-        responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        
-        try {
-          // Parse the JSON response
-          const jsonResponse = JSON.parse(responseText);
+        if (result.success && result.data) {
+          // Store the original response for debugging
+          setLastLLMResponse(JSON.stringify(result.data, null, 2));
+          setLastStopReason(result.debug?.finish_reason || "");
           
-          if (jsonResponse.tableStructure && Array.isArray(jsonResponse.tableStructure)) {
+          // Parse the response data
+          if (result.data.tableStructure && Array.isArray(result.data.tableStructure)) {
             // Build the row based on the JSON structure
-            newRow = jsonResponse.tableStructure.map((column: any) => ({
+            newRow = result.data.tableStructure.map((column: any) => ({
               type: column.inputType || "text",
               value: column.defaultValue || ""
             }));
           }
-        } catch (parseError) {
-          console.error("Error parsing JSON response:", parseError);
-          console.log("Response text:", responseText);
-          // Use default row structure on parse error
+        } else {
+          console.error("Error from API:", result.error);
+          setLastLLMResponse(result.raw_response || result.error || "Unknown error");
+          setLastStopReason("error");
         }
       }
     } catch (error) {
-      console.error("Error calling Anthropic API:", error);
+      console.error("Error calling Python backend:", error);
+      setLastLLMResponse(error instanceof Error ? error.message : "Unknown error");
+      setLastStopReason("error");
       // Use default row structure on error
     } finally {
       setIsLoading(false);
