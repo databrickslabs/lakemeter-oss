@@ -6,46 +6,23 @@ import { config } from '@/lib/config';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt_text, prompt_path } = body;
-
-    if (!prompt_text) {
-      return NextResponse.json(
-        { success: false, error: 'prompt_text is required' },
-        { status: 400 }
-      );
-    }
-
-    // if (!config.anthropicApiKey) {
-    //   return NextResponse.json(
-    //     { success: false, error: 'Anthropic API key is not configured' },
-    //     { status: 500 }
-    //   );
-    // }
-
-    if (!config.openaiApiKey) {
-      return NextResponse.json(
-        { success: false, error: 'OpenAI API key is not configured' },
-        { status: 500 }
-      );
-    }
+    const { action, catalog, schema, prompt_path } = body;
 
     // Prepare input data for Python script
     const inputData = {
-      prompt_text: prompt_text,
-      prompt_path: prompt_path || "prompts:/users.fajar_muharandy.lakemeter/1", // Use prompt_path instead of system_prompt
-      // api_key: config.anthropicApiKey, // Anthropic
-      api_key: config.openaiApiKey, // OpenAI
-      base_url: config.openaiBaseUrl, // OpenAI Base URL (optional)
+      action: action || "search",
+      catalog: catalog || "users",
+      schema: schema || "fajar_muharandy",
+      prompt_path: prompt_path || "",
     };
 
     // Path to Python script
-    // const scriptPath = path.join(process.cwd(), 'api_backend', 'anthropic_service.py'); // Anthropic
-    const scriptPath = path.join(process.cwd(), 'api_backend', 'openai_service.py'); // OpenAI
+    const scriptPath = path.join(process.cwd(), 'api_backend', 'prompt_service.py');
 
     // Execute Python script using spawn for better control over stdin/stdout
     const result = await new Promise<any>((resolve, reject) => {
       const pythonProcess = spawn(config.pythonPath, [scriptPath]);
-      
+
       let stdout = '';
       let stderr = '';
 

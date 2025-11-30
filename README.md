@@ -113,6 +113,25 @@ NEXT_PUBLIC_ANTHROPIC_API_KEY="<YOUR_ANTHROPIC_API_KEY>"
 
 ### Running the Application
 
+#### Setting Environment Variables for Local Development
+
+For local development, you can set the required environment variables using export statements:
+
+```bash
+export PYTHON_PATH='.venv/bin/python3'
+export DATABRICKS_HOST='https://e2-demo-field-eng.cloud.databricks.com'
+export MLFLOW_TRACKING_URI='databricks'
+export MLFLOW_REGISTRY_URI='databricks-uc'
+export MLFLOW_EXPERIMENT_ID='567797472056564'
+export DATABRICKS_TOKEN='<your-databricks-token>'
+```
+
+**Note:** Replace `<your-databricks-token>` with your actual Databricks personal access token.
+
+Alternatively, you can add these to your shell configuration file (`.bashrc`, `.zshrc`, etc.) or use a `.env` file with a tool like `direnv`.
+
+#### Start the Development Server
+
 Start the development server:
 
 ```bash
