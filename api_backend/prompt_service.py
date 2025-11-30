@@ -64,7 +64,7 @@ def search_prompts(catalog: str = "users", schema: str = "fajar_muharandy") -> d
                         "version": latest_version,
                         "catalog": prompt_catalog,
                         "schema": prompt_schema,
-                        "path": f"prompts:/{full_name}/{latest_version}",
+                        "path": f"prompts:/{full_name}",
                         "creation_timestamp": getattr(prompt, 'creation_timestamp', None),
                         "last_updated_timestamp": getattr(prompt, 'last_updated_timestamp', None),
                     }
@@ -78,7 +78,7 @@ def search_prompts(catalog: str = "users", schema: str = "fajar_muharandy") -> d
                     "version": latest_version,
                     "catalog": catalog,
                     "schema": schema,
-                    "path": f"prompts:/{catalog}.{schema}.{full_name}/{latest_version}",
+                    "path": f"prompts:/{catalog}.{schema}.{full_name}",
                     "creation_timestamp": getattr(prompt, 'creation_timestamp', None),
                     "last_updated_timestamp": getattr(prompt, 'last_updated_timestamp', None),
                 }
