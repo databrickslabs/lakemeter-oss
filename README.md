@@ -98,12 +98,18 @@ NEXT_PUBLIC_OPENAI_API_KEY="<YOUR_OPENAI_API_KEY>"
 
 # Option 3: Using Anthropic
 NEXT_PUBLIC_ANTHROPIC_API_KEY="<YOUR_ANTHROPIC_API_KEY>"
+
+# Python Path (for containerized deployments)
+# PYTHON_PATH="/databricks/python3/bin/python3"  # Databricks Apps standard container
+# PYTHON_PATH="/app/.venv/bin/python3"           # Custom Docker with virtual environment
+# PYTHON_PATH="python3"                          # Default for local development
 ```
 
 **Notes:**
 - The tool supports multiple LLM providers via environment variables
 - For Databricks-hosted models, set both `OPENAI_API_KEY` (your token) and `OPENAI_BASE_URL`
 - The default model is `databricks-gpt-5-1` but can be configured in [lib/config.ts](lib/config.ts)
+- **For containerized deployments:** Set `PYTHON_PATH` to the full path of your Python executable (e.g., `/app/.venv/bin/python3`) if using a virtual environment
 
 ### Running the Application
 
@@ -175,6 +181,48 @@ This project is built with Next.js. Key files:
 - [lib/config.ts](lib/config.ts) - LLM provider configuration
 - [lib/system-prompt.ts](lib/system-prompt.ts) - AI instructions for workload analysis
 - [api_backend/openai_service.py](api_backend/openai_service.py) - Python LLM service
+
+## Troubleshooting
+
+### Containerized Deployment Issues
+
+If you encounter Python import errors in containerized environments (Docker, Kubernetes, etc.):
+
+1. **Problem**: `ModuleNotFoundError` or Python finding wrong packages
+
+2. **Solution**: Set the `PYTHON_PATH` environment variable to point to your virtual environment's Python:
+   ```bash
+   # For Databricks Apps (standard container)
+   PYTHON_PATH="/databricks/python3/bin/python3"
+
+   # For custom Docker with virtual environment
+   PYTHON_PATH="/app/.venv/bin/python3"
+   ```
+
+3. **Verify Python Path**:
+   ```bash
+   # Inside your container, check where Python packages are installed
+   python3 -c "import sys; print(sys.path)"
+
+   # Check which Python executable is being used
+   which python3
+   ```
+
+4. **Common Docker Setup**:
+   ```dockerfile
+   # In your Dockerfile
+   RUN python3 -m venv /app/.venv
+   RUN /app/.venv/bin/pip install -r requirements.txt
+
+   # Then set in .env or docker-compose.yml:
+   ENV PYTHON_PATH=/app/.venv/bin/python3
+   ```
+
+### Other Common Issues
+
+- **API Key Issues**: Ensure environment variables are properly loaded. Check `.env.local` exists and has correct keys.
+- **Python Dependencies**: Run `pip install -r requirements.txt` to ensure all Python packages are installed.
+- **Port Already in Use**: Change the port with `npm run dev -- -p 3001`
 
 ## Contributing
 

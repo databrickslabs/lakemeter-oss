@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     // Execute Python script using spawn for better control over stdin/stdout
     const result = await new Promise<any>((resolve, reject) => {
-      const pythonProcess = spawn('python3', [scriptPath]);
+      const pythonProcess = spawn(config.pythonPath, [scriptPath]);
       
       let stdout = '';
       let stderr = '';
