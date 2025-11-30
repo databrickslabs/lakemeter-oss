@@ -3,7 +3,7 @@
   "host": "https://e2-demo-field-eng.cloud.databricks.com",
   "remote_path": "/Workspace/Users/fajar.muharandy@databricks.com/99_FEIP/promptsizer",
   "last_modified_times": {
-    ".gitignore": "2025-11-28T22:16:52.998330155+07:00",
+    ".gitignore": "2025-11-30T11:36:34.792049894+07:00",
     "README.md": "2025-11-30T11:13:36.931674745+07:00",
     "api_backend/openai_service.py": "2025-11-28T22:24:22.31488652+07:00",
     "app.yaml": "2025-11-30T11:19:43.013117269+07:00",
