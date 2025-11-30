@@ -6,7 +6,7 @@ import { config } from '@/lib/config';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt_text } = body;
+    const { prompt_text, prompt_path } = body;
 
     if (!prompt_text) {
       return NextResponse.json(
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     // Prepare input data for Python script
     const inputData = {
       prompt_text: prompt_text,
-      system_prompt: config.systemPrompt,
+      prompt_path: prompt_path || "prompts:/users.fajar_muharandy.lakemeter/1", // Use prompt_path instead of system_prompt
       // api_key: config.anthropicApiKey, // Anthropic
       api_key: config.openaiApiKey, // OpenAI
       base_url: config.openaiBaseUrl, // OpenAI Base URL (optional)

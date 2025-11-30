@@ -7,32 +7,32 @@ Handles calls to OpenAI API for workload analysis
 import os
 import sys
 import json
-import logging
+# import logging
 from openai import OpenAI
 import mlflow
 
 # Configure logging
-log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'logs')
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, 'openai_service.log')
+# log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'logs')
+# os.makedirs(log_dir, exist_ok=True)
+# log_file = os.path.join(log_dir, 'openai_service.log')
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler()  # Also print to console
-    ]
-)
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format='%(asctime)s - %(levelname)s - %(message)s',
+#     handlers=[
+#         logging.FileHandler(log_file),
+#         logging.StreamHandler()  # Also print to console
+#     ]
+# )
 
 
-def call_openai_api(prompt_text: str, system_prompt: str, api_key: str, base_url: str = None) -> dict:
+def call_openai_api(prompt_text: str, prompt_path: str, api_key: str, base_url: str = None) -> dict:
     """
     Call OpenAI API with the given prompt
 
     Args:
         prompt_text: User's prompt text
-        system_prompt: System prompt for context
+        prompt_path: MLflow prompt registry path (e.g., "prompts:/users.fajar_muharandy.lakemeter/1")
         api_key: OpenAI API key
         base_url: Optional custom base URL for OpenAI API (e.g., Azure OpenAI, local models)
 
@@ -48,7 +48,17 @@ def call_openai_api(prompt_text: str, system_prompt: str, api_key: str, base_url
         if base_url:
             client_kwargs["base_url"] = base_url
         client = OpenAI(**client_kwargs)
-        
+
+        # Load prompt from MLflow registry
+        system_prompt = ""
+        if prompt_path:
+            try:
+                prompt_template = mlflow.genai.load_prompt(prompt_path)
+                system_prompt = prompt_template.format()
+            except Exception as e:
+                # If loading from MLflow fails, we'll continue without a system prompt
+                print(f"Warning: Failed to load prompt from {prompt_path}: {str(e)}", file=sys.stderr)
+
         # Prepare messages
         messages = []
         if system_prompt:
@@ -112,27 +122,17 @@ def call_openai_api(prompt_text: str, system_prompt: str, api_key: str, base_url
 def main():
     """
     Main function to handle CLI execution
-    Expects JSON input via stdin with: prompt_text, system_prompt, api_key, base_url (optional)
+    Expects JSON input via stdin with: prompt_text, prompt_path, api_key, base_url (optional)
     Outputs JSON response to stdout
     """
     try:
         # Read input from stdin
         input_data = json.load(sys.stdin)
 
-        # Get prompt from prompt registry
-        # prompt_template = mlflow.genai.load_prompt("prompts:/users.fajar_muharandy.lakemeter/1")
-        # alternative_prompt = prompt_template.format()
-        
         prompt_text = input_data.get("prompt_text", "")
-        system_prompt = input_data.get("system_prompt", "")
+        prompt_path = input_data.get("prompt_path", "")
         api_key = input_data.get("api_key", "")
         base_url = input_data.get("base_url", "")
-
-
-
-        # Log both prompts
-        # logging.info(f"System Prompt: {system_prompt}")
-        # logging.info(f"Alternative Prompt: {alternative_prompt}")
 
         if not prompt_text:
             result = {
@@ -145,8 +145,8 @@ def main():
                 "error": "api_key is required"
             }
         else:
-            # Call the API with optional base_url
-            result = call_openai_api(prompt_text, system_prompt, api_key, base_url if base_url else None)
+            # Call the API with prompt_path and optional base_url
+            result = call_openai_api(prompt_text, prompt_path, api_key, base_url if base_url else None)
         
         # Output result as JSON
         print(json.dumps(result, indent=2))
