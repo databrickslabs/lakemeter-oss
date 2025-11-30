@@ -14,6 +14,9 @@ interface ColumnStructure {
 }
 
 export default function Home() {
+  // State for the prompt path input
+  const [promptPath, setPromptPath] = useState("prompts:/users.fajar_muharandy.lakemeter/1");
+
   // State for the large text input
   const [promptText, setPromptText] = useState("");
   
@@ -98,6 +101,7 @@ export default function Home() {
           },
           body: JSON.stringify({
             prompt_text: promptText,
+            prompt_path: promptPath,
           }),
         });
 
@@ -335,6 +339,21 @@ export default function Home() {
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-8">
           Prompt Input & Data Table
         </h1>
+
+        {/* Prompt Path Input Field */}
+        <div className="mb-6">
+          <label htmlFor="promptPath" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Prompt Path
+          </label>
+          <input
+            id="promptPath"
+            type="text"
+            value={promptPath}
+            onChange={(e) => setPromptPath(e.target.value)}
+            placeholder="prompts:/users.fajar_muharandy.lakemeter/1"
+            className="w-full p-3 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 transition-all"
+          />
+        </div>
 
         {/* Large Text Input Field */}
         <div className="mb-8">
