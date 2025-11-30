@@ -7,23 +7,42 @@ Handles calls to OpenAI API for workload analysis
 import os
 import sys
 import json
+import logging
 from openai import OpenAI
+import mlflow
+
+# Configure logging
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'logs')
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, 'openai_service.log')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()  # Also print to console
+    ]
+)
 
 
 def call_openai_api(prompt_text: str, system_prompt: str, api_key: str, base_url: str = None) -> dict:
     """
     Call OpenAI API with the given prompt
-    
+
     Args:
         prompt_text: User's prompt text
         system_prompt: System prompt for context
         api_key: OpenAI API key
         base_url: Optional custom base URL for OpenAI API (e.g., Azure OpenAI, local models)
-        
+
     Returns:
         dict: Response containing the parsed JSON or error information
     """
     try:
+        # Enable MLflow autologging for OpenAI
+        mlflow.openai.autolog()
+
         # Initialize OpenAI client with the API key and optional base URL
         client_kwargs = {"api_key": api_key}
         if base_url:
@@ -99,12 +118,22 @@ def main():
     try:
         # Read input from stdin
         input_data = json.load(sys.stdin)
+
+        # Get prompt from prompt registry
+        # prompt_template = mlflow.genai.load_prompt("prompts:/users.fajar_muharandy.lakemeter/1")
+        # alternative_prompt = prompt_template.format()
         
         prompt_text = input_data.get("prompt_text", "")
         system_prompt = input_data.get("system_prompt", "")
         api_key = input_data.get("api_key", "")
         base_url = input_data.get("base_url", "")
-        
+
+
+
+        # Log both prompts
+        # logging.info(f"System Prompt: {system_prompt}")
+        # logging.info(f"Alternative Prompt: {alternative_prompt}")
+
         if not prompt_text:
             result = {
                 "success": False,
