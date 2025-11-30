@@ -8,6 +8,9 @@ import sys
 import json
 import mlflow
 
+# revert to use prompt patch from input text for now, since the current implementation of search_prompts still only returns the Prompt not the PromptVersion object
+# https://mlflow.org/docs/latest/api_reference/python_api/mlflow.genai.html#mlflow.genai.search_prompts
+# https://docs.databricks.com/aws/en/mlflow3/genai/prompt-version-mgmt/prompt-registry/examples
 
 def search_prompts(catalog: str = "users", schema: str = "fajar_muharandy") -> dict:
     """
@@ -21,30 +24,71 @@ def search_prompts(catalog: str = "users", schema: str = "fajar_muharandy") -> d
         dict: Response containing the list of prompts or error information
     """
     try:
-        # Build filter string
-        filter_string = f"catalog = '{catalog}' AND schema = '{schema}'"
+        # Build filter string using the correct format with single quotes
+        filter_string = f"catalog='{catalog}' AND schema='{schema}'"
 
-        # Search prompts
+        # Search prompts with the filter
         results = mlflow.genai.search_prompts(filter_string)
 
         # Convert results to list of dictionaries
         prompts = []
+        all_prompts_debug = []  # For debugging
+
         for prompt in results:
-            prompt_info = {
-                "name": prompt.name,
-                "version": prompt.version,
-                "catalog": getattr(prompt, 'catalog', None),
-                "schema": getattr(prompt, 'schema', None),
-                "path": f"prompts:/{catalog}.{schema}.{prompt.name}/{prompt.version}",
-                "creation_timestamp": getattr(prompt, 'creation_timestamp', None),
-                "last_updated_timestamp": getattr(prompt, 'last_updated_timestamp', None),
-            }
-            prompts.append(prompt_info)
+            # Get the full prompt name which includes catalog.schema.name
+            full_name = prompt.name
+
+            # Get the latest version or all versions
+            # Since search_prompts returns Prompt objects (not PromptVersion),
+            # we need to access the latest_version or versions attribute
+            latest_version = getattr(prompt, 'latest_version', None)
+
+            # Debug: collect all prompts to see what's available
+            all_prompts_debug.append({
+                "name": full_name,
+                "latest_version": latest_version
+            })
+
+            # Check if the prompt matches the catalog and schema
+            # Expected format: catalog.schema.promptname or just promptname
+            if "." in full_name:
+                parts = full_name.split(".")
+                if len(parts) >= 3:
+                    prompt_catalog = parts[0]
+                    prompt_schema = parts[1]
+                    prompt_name = ".".join(parts[2:])  # Handle names with dots
+
+                    prompt_info = {
+                        "name": prompt_name,
+                        "full_name": full_name,
+                        "version": latest_version,
+                        "catalog": prompt_catalog,
+                        "schema": prompt_schema,
+                        "path": f"prompts:/{full_name}/{latest_version}",
+                        "creation_timestamp": getattr(prompt, 'creation_timestamp', None),
+                        "last_updated_timestamp": getattr(prompt, 'last_updated_timestamp', None),
+                    }
+                    prompts.append(prompt_info)
+            else:
+                # Handle prompts without catalog.schema prefix
+                # These might be in the format used by your existing code
+                prompt_info = {
+                    "name": full_name,
+                    "full_name": full_name,
+                    "version": latest_version,
+                    "catalog": catalog,
+                    "schema": schema,
+                    "path": f"prompts:/{catalog}.{schema}.{full_name}/{latest_version}",
+                    "creation_timestamp": getattr(prompt, 'creation_timestamp', None),
+                    "last_updated_timestamp": getattr(prompt, 'last_updated_timestamp', None),
+                }
+                prompts.append(prompt_info)
 
         return {
             "success": True,
             "data": prompts,
-            "count": len(prompts)
+            "count": len(prompts),
+            "debug_all_prompts": all_prompts_debug  # Include all prompts for debugging
         }
 
     except Exception as e:
