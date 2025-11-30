@@ -9,3 +9,5 @@ env:
     value: 'databricks-uc'
   - name: 'MLFLOW_EXPERIMENT_ID'
     value: '567797472056564'
+  - name: 'DATABRICKS_TOKEN'
+    valueFrom: secret
