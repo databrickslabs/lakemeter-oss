@@ -1,0 +1,3 @@
+env:
+  - name: 'PYTHON_PATH'
+    value: '.venv/bin/python3'
