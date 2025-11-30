@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Fragment } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { config } from "@/lib/config";
 import { workloadOptions, skuOptions, instanceOptions, workerCountOptions } from "@/lib/dropdown-options";
 import { dbuPerHourLookup, skuRatesLookup } from "@/lib/dbu-rates";
@@ -16,6 +16,13 @@ interface ColumnStructure {
 export default function Home() {
   // State for the prompt path input
   const [promptPath, setPromptPath] = useState("prompts:/users.fajar_muharandy.lakemeter/1");
+
+  // State for available prompt options
+  const [promptOptions, setPromptOptions] = useState<string[]>([]);
+  const [isLoadingPrompts, setIsLoadingPrompts] = useState(false);
+
+  // State for prompt version
+  const [promptVersion, setPromptVersion] = useState("1");
 
   // State for the large text input
   const [promptText, setPromptText] = useState("");
@@ -46,6 +53,44 @@ export default function Home() {
   // State to store the last LLM response for debugging
   const [lastLLMResponse, setLastLLMResponse] = useState<string>("");
   const [lastStopReason, setLastStopReason] = useState<string>("");
+
+  // Fetch available prompts on component mount
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      setIsLoadingPrompts(true);
+      try {
+        const response = await fetch('/api/prompts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'search',
+            catalog: 'users',
+            schema: 'fajar_muharandy',
+          }),
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data && Array.isArray(result.data)) {
+          const paths = result.data.map((prompt: any) => prompt.path);
+          setPromptOptions(paths);
+
+          // Set the first prompt as default if available and current is default
+          if (paths.length > 0 && promptPath === "prompts:/users.fajar_muharandy.lakemeter/1") {
+            setPromptPath(paths[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching prompts:', error);
+      } finally {
+        setIsLoadingPrompts(false);
+      }
+    };
+
+    fetchPrompts();
+  }, []);
 
   // State for the second table (DBU calculation table)
   const [dbuTableData, setDbuTableData] = useState<Array<{
@@ -94,6 +139,11 @@ export default function Home() {
     try {
       // Call Python backend API if prompt text exists
       if (promptText.trim()) {
+        // Combine prompt path with version
+        const fullPromptPath = promptVersion.trim()
+          ? `${promptPath}/${promptVersion.trim()}`
+          : promptPath;
+
         const response = await fetch('/api/llm', {
           method: 'POST',
           headers: {
@@ -101,7 +151,7 @@ export default function Home() {
           },
           body: JSON.stringify({
             prompt_text: promptText,
-            prompt_path: promptPath,
+            prompt_path: fullPromptPath,
           }),
         });
 
@@ -340,17 +390,43 @@ export default function Home() {
           Prompt Input & Data Table
         </h1>
 
-        {/* Prompt Path Input Field */}
+        {/* Prompt Path Dropdown Field */}
         <div className="mb-6">
           <label htmlFor="promptPath" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Prompt Path
           </label>
-          <input
+          <select
             id="promptPath"
-            type="text"
             value={promptPath}
             onChange={(e) => setPromptPath(e.target.value)}
-            placeholder="prompts:/users.fajar_muharandy.lakemeter/1"
+            disabled={isLoadingPrompts}
+            className="w-full p-3 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+          >
+            {isLoadingPrompts ? (
+              <option value="">Loading prompts...</option>
+            ) : promptOptions.length > 0 ? (
+              promptOptions.map((path) => (
+                <option key={path} value={path}>
+                  {path}
+                </option>
+              ))
+            ) : (
+              <option value="">No prompts available</option>
+            )}
+          </select>
+        </div>
+
+        {/* Prompt Version Input Field */}
+        <div className="mb-6">
+          <label htmlFor="promptVersion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Prompt Version
+          </label>
+          <input
+            id="promptVersion"
+            type="text"
+            value={promptVersion}
+            onChange={(e) => setPromptVersion(e.target.value)}
+            placeholder="1"
             className="w-full p-3 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 transition-all"
           />
         </div>
