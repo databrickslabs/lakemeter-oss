@@ -12,7 +12,7 @@ import mlflow
 # https://mlflow.org/docs/latest/api_reference/python_api/mlflow.genai.html#mlflow.genai.search_prompts
 # https://docs.databricks.com/aws/en/mlflow3/genai/prompt-version-mgmt/prompt-registry/examples
 
-def search_prompts(catalog: str = "users", schema: str = "fajar_muharandy") -> dict:
+def search_prompts(catalog: str = "lakemeter_catalog", schema: str = "lakemeter") -> dict:
     """
     Search prompts in MLflow registry based on catalog and schema
 
