@@ -11,8 +11,8 @@ export async function POST(request: NextRequest) {
     // Prepare input data for Python script
     const inputData = {
       action: action || "search",
-      catalog: catalog || "users",
-      schema: schema || "fajar_muharandy",
+      catalog: config.lakemeterCatalog || "users",
+      schema: config.lakemeterSchema || "fajar_muharandy",
       prompt_path: prompt_path || "",
     };
 
