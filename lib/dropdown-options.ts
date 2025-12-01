@@ -9,13 +9,40 @@ export const workloadOptions = [
 ];
 
 export const skuOptions = [
-  "Lakeflow Connect serverless",
-  "Lakeflow Jobs serverless",
-  "Lakeflow Jobs classic",
-  "SQL Warehouse serverless",
-  "SQL Warehouse pro",
-  "All-Purpose Serverless",
-  "All-Purpose Classic"
+  { value: "ALL_PURPOSE_COMPUTE", label: "All Purpose Compute" },
+  { value: "ALL_PURPOSE_COMPUTE_(DLT)", label: "All Purpose Compute (dlt)" },
+  { value: "ALL_PURPOSE_COMPUTE_(PHOTON)", label: "All Purpose Compute (photon)" },
+  { value: "ALL_PURPOSE_SERVERLESS_COMPUTE", label: "All Purpose Serverless Compute" },
+  { value: "ANTHROPIC_MODEL_SERVING", label: "Anthropic Model Serving" },
+  { value: "CLEAN_ROOMS_COLLABORATOR", label: "Clean Rooms Collaborator" },
+  { value: "DATABASE_SERVERLESS_COMPUTE", label: "Database Serverless Compute" },
+  { value: "DATABRICKS_STORAGE", label: "Databricks Storage" },
+  { value: "DATABRICKS_STORAGE_GB", label: "Databricks Storage Gb" },
+  { value: "DATABRICKS_STORAGE_TIER1REQUESTS", label: "Databricks Storage Tier1requests" },
+  { value: "DATABRICKS_STORAGE_TIER2REQUESTS", label: "Databricks Storage Tier2requests" },
+  { value: "DLT_ADVANCED_COMPUTE", label: "Dlt Advanced Compute" },
+  { value: "DLT_ADVANCED_COMPUTE_(PHOTON)", label: "Dlt Advanced Compute (photon)" },
+  { value: "DLT_CORE_COMPUTE", label: "Dlt Core Compute" },
+  { value: "DLT_CORE_COMPUTE_(PHOTON)", label: "Dlt Core Compute (photon)" },
+  { value: "DLT_PRO_COMPUTE", label: "Dlt Pro Compute" },
+  { value: "DLT_PRO_COMPUTE_(PHOTON)", label: "Dlt Pro Compute (photon)" },
+  { value: "GEMINI_MODEL_SERVING", label: "Gemini Model Serving" },
+  { value: "JOBS_COMPUTE", label: "Jobs Compute" },
+  { value: "JOBS_COMPUTE_(PHOTON)", label: "Jobs Compute (photon)" },
+  { value: "JOBS_LIGHT_COMPUTE", label: "Jobs Light Compute" },
+  { value: "JOBS_SERVERLESS_COMPUTE", label: "Jobs Serverless Compute" },
+  { value: "MODEL_TRAINING", label: "Model Training" },
+  { value: "MODEL_TRAINING_HERO_RESERVATION", label: "Model Training Hero Reservation" },
+  { value: "MODEL_TRAINING_IN_CUSTOMER_TENANCY", label: "Model Training In Customer Tenancy" },
+  { value: "MODEL_TRAINING_ON_DEMAND", label: "Model Training On Demand" },
+  { value: "MODEL_TRAINING_RESERVATION", label: "Model Training Reservation" },
+  { value: "MODEL_TRAINING_SERVERLESS_GPU_COMPUTE_PROVISIONED_CAPACITY", label: "Model Training Serverless Gpu Compute Provisioned Capacity" },
+  { value: "OPENAI_MODEL_SERVING", label: "Openai Model Serving" },
+  { value: "SERVERLESS_REAL_TIME_INFERENCE", label: "Serverless Real Time Inference" },
+  { value: "SERVERLESS_REAL_TIME_INFERENCE_LAUNCH", label: "Serverless Real Time Inference Launch" },
+  { value: "SERVERLESS_SQL_COMPUTE", label: "Serverless Sql Compute" },
+  { value: "SQL_COMPUTE", label: "Sql Compute" },
+  { value: "SQL_PRO_COMPUTE", label: "Sql Pro Compute" }
 ];
 
 export const instanceOptions = [

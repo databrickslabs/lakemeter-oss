@@ -1,0 +1,35 @@
+product_type,product_type_display
+ALL_PURPOSE_COMPUTE,All Purpose Compute
+ALL_PURPOSE_COMPUTE_(DLT),All Purpose Compute (dlt)
+ALL_PURPOSE_COMPUTE_(PHOTON),All Purpose Compute (photon)
+ALL_PURPOSE_SERVERLESS_COMPUTE,All Purpose Serverless Compute
+ANTHROPIC_MODEL_SERVING,Anthropic Model Serving
+CLEAN_ROOMS_COLLABORATOR,Clean Rooms Collaborator
+DATABASE_SERVERLESS_COMPUTE,Database Serverless Compute
+DATABRICKS_STORAGE,Databricks Storage
+DATABRICKS_STORAGE_GB,Databricks Storage Gb
+DATABRICKS_STORAGE_TIER1REQUESTS,Databricks Storage Tier1requests
+DATABRICKS_STORAGE_TIER2REQUESTS,Databricks Storage Tier2requests
+DLT_ADVANCED_COMPUTE,Dlt Advanced Compute
+DLT_ADVANCED_COMPUTE_(PHOTON),Dlt Advanced Compute (photon)
+DLT_CORE_COMPUTE,Dlt Core Compute
+DLT_CORE_COMPUTE_(PHOTON),Dlt Core Compute (photon)
+DLT_PRO_COMPUTE,Dlt Pro Compute
+DLT_PRO_COMPUTE_(PHOTON),Dlt Pro Compute (photon)
+GEMINI_MODEL_SERVING,Gemini Model Serving
+JOBS_COMPUTE,Jobs Compute
+JOBS_COMPUTE_(PHOTON),Jobs Compute (photon)
+JOBS_LIGHT_COMPUTE,Jobs Light Compute
+JOBS_SERVERLESS_COMPUTE,Jobs Serverless Compute
+MODEL_TRAINING,Model Training
+MODEL_TRAINING_HERO_RESERVATION,Model Training Hero Reservation
+MODEL_TRAINING_IN_CUSTOMER_TENANCY,Model Training In Customer Tenancy
+MODEL_TRAINING_ON_DEMAND,Model Training On Demand
+MODEL_TRAINING_RESERVATION,Model Training Reservation
+MODEL_TRAINING_SERVERLESS_GPU_COMPUTE_PROVISIONED_CAPACITY,Model Training Serverless Gpu Compute Provisioned Capacity
+OPENAI_MODEL_SERVING,Openai Model Serving
+SERVERLESS_REAL_TIME_INFERENCE,Serverless Real Time Inference
+SERVERLESS_REAL_TIME_INFERENCE_LAUNCH,Serverless Real Time Inference Launch
+SERVERLESS_SQL_COMPUTE,Serverless Sql Compute
+SQL_COMPUTE,Sql Compute
+SQL_PRO_COMPUTE,Sql Pro Compute
