@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   workloadOptions,
   dltEditionOptions,
@@ -22,6 +22,8 @@ interface TableRow {
 
 interface TableDataRow {
   [key: string]: any;
+  user_input?: string;
+  agent_response?: string;
 }
 
 interface TableData {
@@ -56,6 +58,9 @@ export default function Home() {
 
   // State to track which tables are expanded
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
+
+  // State to track which rows are expanded (format: "workloadType-rowIndex")
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Fetch available prompts on component mount
   useEffect(() => {
@@ -160,6 +165,17 @@ export default function Home() {
         inputType: col.inputType
       };
     });
+
+    // Capture user_input and agent_response from the table structure
+    const userInputRow = tableStructure.find(row => row.attribute === "user_input");
+    const agentResponseRow = tableStructure.find(row => row.attribute === "agent_response");
+
+    if (userInputRow) {
+      dataRow.user_input = userInputRow.defaultValue;
+    }
+    if (agentResponseRow) {
+      dataRow.agent_response = agentResponseRow.defaultValue;
+    }
 
     // Find existing table for this workload type or create new one
     setTableData(prevData => {
@@ -329,6 +345,20 @@ export default function Home() {
     });
   };
 
+  // Toggle row expansion
+  const toggleRow = (workloadType: string, rowIndex: number) => {
+    const rowKey = `${workloadType}-${rowIndex}`;
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(rowKey)) {
+        newSet.delete(rowKey);
+      } else {
+        newSet.add(rowKey);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-8">
       <div className="max-w-7xl mx-auto">
@@ -458,48 +488,105 @@ export default function Home() {
                                 {formatLabel(col.attribute)}
                               </th>
                             ))}
+                            {/* Check if any row has accordion data */}
+                            {table.dataRows.some(row => row.user_input || row.agent_response) && (
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                                Details
+                              </th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
-                          {table.dataRows.map((dataRow, rowIndex) => (
-                            <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                              {table.columns.map((col, colIndex) => {
-                                const cellData = dataRow[col.attribute];
-                                const value = cellData?.value;
-                                const inputType = cellData?.inputType || col.inputType;
+                          {table.dataRows.map((dataRow, rowIndex) => {
+                            const rowKey = `${table.workloadType}-${rowIndex}`;
+                            const isRowExpanded = expandedRows.has(rowKey);
+                            const hasAccordionData = dataRow.user_input || dataRow.agent_response;
 
-                                return (
-                                  <td key={colIndex} className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
-                                    {inputType === "dropdown" ? (
-                                      <select
-                                        className="w-full min-w-[150px] p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
-                                        defaultValue={value}
+                            return (
+                              <React.Fragment key={rowIndex}>
+                                <tr
+                                  className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${hasAccordionData ? 'cursor-pointer' : ''}`}
+                                  onClick={() => hasAccordionData && toggleRow(table.workloadType, rowIndex)}
+                                >
+                                  {table.columns.map((col, colIndex) => {
+                                    const cellData = dataRow[col.attribute];
+                                    const value = cellData?.value;
+                                    const inputType = cellData?.inputType || col.inputType;
+
+                                    return (
+                                      <td
+                                        key={colIndex}
+                                        className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300"
+                                        onClick={(e) => e.stopPropagation()}
                                       >
-                                        <option value="">Select...</option>
-                                        {getDropdownOptions(col.attribute).map((option: any, optIdx: number) => (
-                                          <option key={optIdx} value={option.value}>
-                                            {option.label}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    ) : inputType === "checkbox" ? (
-                                      <input
-                                        type="checkbox"
-                                        defaultChecked={value}
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                      />
-                                    ) : (
-                                      <input
-                                        type="text"
-                                        defaultValue={value}
-                                        className="w-full min-w-[120px] p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
-                                      />
-                                    )}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          ))}
+                                        {inputType === "dropdown" ? (
+                                          <select
+                                            className="w-full min-w-[150px] p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
+                                            defaultValue={value}
+                                          >
+                                            <option value="">Select...</option>
+                                            {getDropdownOptions(col.attribute).map((option: any, optIdx: number) => (
+                                              <option key={optIdx} value={option.value}>
+                                                {option.label}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        ) : inputType === "checkbox" ? (
+                                          <input
+                                            type="checkbox"
+                                            defaultChecked={value}
+                                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                          />
+                                        ) : (
+                                          <input
+                                            type="text"
+                                            defaultValue={value}
+                                            className="w-full min-w-[120px] p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
+                                          />
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                  {hasAccordionData && (
+                                    <td className="px-4 py-4 text-sm">
+                                      <svg
+                                        className={`w-5 h-5 text-gray-500 transition-transform ${isRowExpanded ? 'rotate-180' : ''}`}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    </td>
+                                  )}
+                                </tr>
+                                {hasAccordionData && isRowExpanded && (
+                                  <tr key={`${rowIndex}-expanded`}>
+                                    <td colSpan={table.columns.length + 1} className="px-4 py-4 bg-gray-50 dark:bg-gray-900">
+                                      <div className="space-y-4">
+                                        {dataRow.user_input && (
+                                          <div>
+                                            <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">User Input:</h4>
+                                            <div className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                              {dataRow.user_input}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {dataRow.agent_response && (
+                                          <div>
+                                            <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Agent Response:</h4>
+                                            <div className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                              {dataRow.agent_response}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
