@@ -3,46 +3,36 @@
  */
 
 export const workloadOptions = [
-  "ingestion_connect",
-  "sql_analytics",
-  "interactive_compute",
+  { value: "ALL_PURPOSE", label: "All-Purpose Compute" },
+  { value: "JOBS_CLASSIC", label: "Jobs Compute (Classic)" },
+  { value: "JOBS_SERVERLESS", label: "Jobs Compute (Serverless)" },
+  { value: "DLT", label: "Delta Live Tables" },
+  { value: "STREAMING", label: "Structured Streaming" },
+  { value: "DBSQL", label: "Databricks SQL" },
+  { value: "VECTOR_SEARCH", label: "Vector Search" },
+  { value: "MODEL_SERVING", label: "Model Serving" },
+  { value: "FMAPI_DATABRICKS", label: "Foundation Models (Databricks)" },
+  { value: "FMAPI_PROPRIETARY", label: "Foundation Models (External)" },
 ];
 
 export const skuOptions = [
-  { value: "ALL_PURPOSE_COMPUTE", label: "All Purpose Compute" },
-  { value: "ALL_PURPOSE_COMPUTE_(DLT)", label: "All Purpose Compute (dlt)" },
-  { value: "ALL_PURPOSE_COMPUTE_(PHOTON)", label: "All Purpose Compute (photon)" },
-  { value: "ALL_PURPOSE_SERVERLESS_COMPUTE", label: "All Purpose Serverless Compute" },
+  { value: "ALL_PURPOSE_COMPUTE", label: "All Purpose Classic" },
+  { value: "ALL_PURPOSE_SERVERLESS_COMPUTE", label: "All Purpose Serverless" },
   { value: "ANTHROPIC_MODEL_SERVING", label: "Anthropic Model Serving" },
   { value: "CLEAN_ROOMS_COLLABORATOR", label: "Clean Rooms Collaborator" },
-  { value: "DATABASE_SERVERLESS_COMPUTE", label: "Database Serverless Compute" },
-  { value: "DATABRICKS_STORAGE", label: "Databricks Storage" },
-  { value: "DATABRICKS_STORAGE_GB", label: "Databricks Storage Gb" },
-  { value: "DATABRICKS_STORAGE_TIER1REQUESTS", label: "Databricks Storage Tier1requests" },
-  { value: "DATABRICKS_STORAGE_TIER2REQUESTS", label: "Databricks Storage Tier2requests" },
-  { value: "DLT_ADVANCED_COMPUTE", label: "Dlt Advanced Compute" },
-  { value: "DLT_ADVANCED_COMPUTE_(PHOTON)", label: "Dlt Advanced Compute (photon)" },
-  { value: "DLT_CORE_COMPUTE", label: "Dlt Core Compute" },
-  { value: "DLT_CORE_COMPUTE_(PHOTON)", label: "Dlt Core Compute (photon)" },
-  { value: "DLT_PRO_COMPUTE", label: "Dlt Pro Compute" },
-  { value: "DLT_PRO_COMPUTE_(PHOTON)", label: "Dlt Pro Compute (photon)" },
+  { value: "DATABASE_SERVERLESS_COMPUTE", label: "Database Serverless" },
+  { value: "DLT_ADVANCED_COMPUTE", label: "DLT Advanced Classic" },
+  { value: "DLT_CORE_COMPUTE", label: "DLT Core Classic" },
+  { value: "DLT_PRO_COMPUTE", label: "DLT Pro Classic" },
   { value: "GEMINI_MODEL_SERVING", label: "Gemini Model Serving" },
-  { value: "JOBS_COMPUTE", label: "Jobs Compute" },
-  { value: "JOBS_COMPUTE_(PHOTON)", label: "Jobs Compute (photon)" },
-  { value: "JOBS_LIGHT_COMPUTE", label: "Jobs Light Compute" },
-  { value: "JOBS_SERVERLESS_COMPUTE", label: "Jobs Serverless Compute" },
+  { value: "JOBS_COMPUTE", label: "Jobs Classic" },
+  { value: "JOBS_SERVERLESS_COMPUTE", label: "Jobs Serverless" },
   { value: "MODEL_TRAINING", label: "Model Training" },
-  { value: "MODEL_TRAINING_HERO_RESERVATION", label: "Model Training Hero Reservation" },
-  { value: "MODEL_TRAINING_IN_CUSTOMER_TENANCY", label: "Model Training In Customer Tenancy" },
-  { value: "MODEL_TRAINING_ON_DEMAND", label: "Model Training On Demand" },
-  { value: "MODEL_TRAINING_RESERVATION", label: "Model Training Reservation" },
-  { value: "MODEL_TRAINING_SERVERLESS_GPU_COMPUTE_PROVISIONED_CAPACITY", label: "Model Training Serverless Gpu Compute Provisioned Capacity" },
   { value: "OPENAI_MODEL_SERVING", label: "Openai Model Serving" },
   { value: "SERVERLESS_REAL_TIME_INFERENCE", label: "Serverless Real Time Inference" },
-  { value: "SERVERLESS_REAL_TIME_INFERENCE_LAUNCH", label: "Serverless Real Time Inference Launch" },
-  { value: "SERVERLESS_SQL_COMPUTE", label: "Serverless Sql Compute" },
-  { value: "SQL_COMPUTE", label: "Sql Compute" },
-  { value: "SQL_PRO_COMPUTE", label: "Sql Pro Compute" }
+  { value: "SERVERLESS_SQL_COMPUTE", label: "SQL Serverless" },
+  { value: "SQL_COMPUTE", label: "SQL Compute" },
+  { value: "SQL_PRO_COMPUTE", label: "SQL Pro Compute" },
 ];
 
 export const instanceOptions = [
@@ -201,3 +191,83 @@ export const instanceOptions = [
 ];
 
 export const workerCountOptions = Array.from({ length: 20 }, (_, i) => String(i + 1));
+
+export const dltEditionOptions = [
+  { value: "CORE", label: "Core" },
+  { value: "PRO", label: "Pro" },
+  { value: "ADVANCED", label: "Advanced" },
+];
+
+export const dltPipelineModeOptions = [
+  { value: "CONTINUOUS", label: "Continuous" },
+  { value: "TRIGGERED", label: "Triggered" },
+];
+
+export const warehouseTypeOptions = [
+  { value: "CLASSIC", label: "Classic" },
+  { value: "PRO", label: "Pro" },
+  { value: "SERVERLESS", label: "Serverless" },
+];
+
+export const warehouseSizeOptions = [
+  { value: "2X-Small", label: "2X-Small" },
+  { value: "X-Small", label: "X-Small" },
+  { value: "Small", label: "Small" },
+  { value: "Medium", label: "Medium" },
+  { value: "Large", label: "Large" },
+  { value: "X-Large", label: "X-Large" },
+  { value: "2X-Large", label: "2X-Large" },
+  { value: "3X-Large", label: "3X-Large" },
+  { value: "4X-Large", label: "4X-Large" },
+];
+
+export const serverlessProductOptions = [
+  { value: "VECTOR_SEARCH", label: "Vector Search" },
+  { value: "MODEL_SERVING", label: "Model Serving" },
+];
+
+export const serverlessSizeOptions = [
+  { value: "Small", label: "Small" },
+  { value: "Medium", label: "Medium" },
+  { value: "Large", label: "Large" },
+];
+
+export const fmapiProviderOptions = [
+  { value: "ANTHROPIC", label: "Anthropic" },
+  { value: "OPENAI", label: "OpenAI" },
+  { value: "GOOGLE", label: "Google" },
+  { value: "META", label: "Meta" },
+  { value: "COHERE", label: "Cohere" },
+];
+
+export const fmapiModelOptions = [
+  // Databricks models
+  { value: "databricks-meta-llama-3-1-70b-instruct", label: "Llama 3.1 70B Instruct" },
+  { value: "databricks-meta-llama-3-1-405b-instruct", label: "Llama 3.1 405B Instruct" },
+  { value: "databricks-dbrx-instruct", label: "DBRX Instruct" },
+
+  // External models
+  { value: "anthropic.claude-3-5-sonnet-20241022-v2:0", label: "Claude 3.5 Sonnet" },
+  { value: "anthropic.claude-3-opus-20240229-v1:0", label: "Claude 3 Opus" },
+  { value: "gpt-4o", label: "GPT-4o" },
+  { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+  { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+];
+
+export const fmapiEndpointTypeOptions = [
+  { value: "PROVISIONED", label: "Provisioned Throughput" },
+  { value: "PAY_PER_TOKEN", label: "Pay-per-Token" },
+];
+
+export const pricingTierOptions = [
+  { value: "STANDARD", label: "Standard" },
+  { value: "PREMIUM", label: "Premium" },
+  { value: "ENTERPRISE", label: "Enterprise" },
+];
+
+export const paymentOptionOptions = [
+  { value: "ON_DEMAND", label: "On-Demand" },
+  { value: "RESERVED_1Y", label: "1-Year Reserved" },
+  { value: "RESERVED_3Y", label: "3-Year Reserved" },
+  { value: "SPOT", label: "Spot" },
+];
