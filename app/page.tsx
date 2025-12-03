@@ -1,16 +1,33 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
-import { config } from "@/lib/config";
-import { workloadOptions, skuOptions, instanceOptions, workerCountOptions } from "@/lib/dropdown-options";
-import { dbuPerHourLookup, skuRatesLookup } from "@/lib/dbu-rates";
+import { useState, useEffect } from "react";
+import {
+  workloadOptions,
+  dltEditionOptions,
+  warehouseTypeOptions,
+  warehouseSizeOptions,
+  serverlessSizeOptions,
+  fmapiProviderOptions,
+  fmapiModelOptions,
+  pricingTierOptions,
+  paymentOptionOptions,
+} from "@/lib/dropdown-options";
 
-// Define the structure for table columns
-interface ColumnStructure {
+interface TableRow {
   attribute: string;
   inputType: string;
-  defaultValue: string;
+  defaultValue: any;
   hidden?: boolean;
+}
+
+interface TableDataRow {
+  [key: string]: any;
+}
+
+interface TableData {
+  workloadType: string;
+  columns: TableRow[];
+  dataRows: TableDataRow[];
 }
 
 export default function Home() {
@@ -26,33 +43,19 @@ export default function Home() {
 
   // State for the large text input
   const [promptText, setPromptText] = useState("");
-  
-  // State for table data - starts with no rows
-  const [tableData, setTableData] = useState<Array<Array<{type: string, value: string}>>>([]);
-  
-  // State for table structure (columns)
-  const [tableStructure, setTableStructure] = useState<ColumnStructure[]>([
-    { attribute: "Workload", inputType: "dropdown", defaultValue: "" },
-    { attribute: "SKU", inputType: "dropdown", defaultValue: "" },
-    { attribute: "Driver Instance", inputType: "dropdown", defaultValue: "" },
-    { attribute: "Worker Instance", inputType: "dropdown", defaultValue: "" },
-    { attribute: "Worker Count", inputType: "dropdown", defaultValue: "1" },
-    { attribute: "Run Duration", inputType: "text", defaultValue: "" },
-    { attribute: "Runs/Day", inputType: "text", defaultValue: "" },
-    { attribute: "Days/Month", inputType: "text", defaultValue: "" },
-    { attribute: "Original Input", inputType: "text", defaultValue: "", hidden: true },
-    { attribute: "Reasoning Output", inputType: "text", defaultValue: "", hidden: true },
-  ]);
-  
+
   // Loading state for API call
   const [isLoading, setIsLoading] = useState(false);
-
-  // State to track which rows have expanded accordion
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   // State to store the last LLM response for debugging
   const [lastLLMResponse, setLastLLMResponse] = useState<string>("");
   const [lastStopReason, setLastStopReason] = useState<string>("");
+
+  // State to store parsed table data
+  const [tableData, setTableData] = useState<TableData[]>([]);
+
+  // State to track which tables are expanded
+  const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
 
   // Fetch available prompts on component mount
   useEffect(() => {
@@ -92,49 +95,8 @@ export default function Home() {
     fetchPrompts();
   }, []);
 
-  // State for the second table (DBU calculation table)
-  const [dbuTableData, setDbuTableData] = useState<Array<{
-    workload: string;
-    dbuPerHour: string;
-    dbuPerDay: string;
-    dbuPerMonth: string;
-    dollarPerDBU: string;
-  }>>([]);
-
-  // Toggle accordion for a row
-  const toggleAccordion = (rowIndex: number) => {
-    const newExpandedRows = new Set(expandedRows);
-    if (newExpandedRows.has(rowIndex)) {
-      newExpandedRows.delete(rowIndex);
-    } else {
-      newExpandedRows.add(rowIndex);
-    }
-    setExpandedRows(newExpandedRows);
-  };
-
-  const handleTableChange = (rowIndex: number, colIndex: number, value: string) => {
-    const newData = [...tableData];
-    newData[rowIndex][colIndex].value = value;
-    setTableData(newData);
-  };
-
-  const addRow = async () => {
+  const handleSubmit = async () => {
     setIsLoading(true);
-    
-    // Default row structure based on tableStructure
-    let newRow = tableStructure.map(col => ({
-      type: col.inputType,
-      value: col.defaultValue
-    }));
-    
-    // Add corresponding row to DBU table
-    const newDbuRow = {
-      workload: "",
-      dbuPerHour: "",
-      dbuPerDay: "",
-      dbuPerMonth: "",
-      dollarPerDBU: ""
-    };
 
     try {
       // Call Python backend API if prompt text exists
@@ -161,14 +123,10 @@ export default function Home() {
           // Store the original response for debugging
           setLastLLMResponse(JSON.stringify(result.data, null, 2));
           setLastStopReason(result.debug?.finish_reason || "");
-          
-          // Parse the response data
+
+          // Parse table structure from response
           if (result.data.tableStructure && Array.isArray(result.data.tableStructure)) {
-            // Build the row based on the JSON structure
-            newRow = result.data.tableStructure.map((column: any) => ({
-              type: column.inputType || "text",
-              value: column.defaultValue || ""
-            }));
+            parseTableStructure(result.data.tableStructure);
           }
         } else {
           console.error("Error from API:", result.error);
@@ -180,207 +138,195 @@ export default function Home() {
       console.error("Error calling Python backend:", error);
       setLastLLMResponse(error instanceof Error ? error.message : "Unknown error");
       setLastStopReason("error");
-      // Use default row structure on error
     } finally {
       setIsLoading(false);
     }
-
-    const newTableData = [...tableData, newRow];
-    setTableData(newTableData);
-    setDbuTableData([...dbuTableData, newDbuRow]);
   };
 
-  const removeRow = (rowIndex: number) => {
-    if (tableData.length > 1) {
-      const newData = tableData.filter((_, index) => index !== rowIndex);
-      setTableData(newData);
-      const newDbuData = dbuTableData.filter((_, index) => index !== rowIndex);
-      setDbuTableData(newDbuData);
-    }
-  };
+  // Helper function to parse table structure and group by workload type
+  const parseTableStructure = (tableStructure: TableRow[]) => {
+    // Find the workload type from the table
+    const workloadTypeRow = tableStructure.find(row => row.attribute === "workload_type");
+    const workloadType = workloadTypeRow?.defaultValue || "JOBS_CLASSIC";
 
-  const handleDbuTableChange = (rowIndex: number, field: keyof typeof dbuTableData[0], value: string) => {
-    const newData = [...dbuTableData];
-    newData[rowIndex][field] = value;
-    setDbuTableData(newData);
-  };
+    // Filter rows based on workload type and field mappings
+    const filteredColumns = filterRowsByWorkloadType(tableStructure, workloadType);
 
-  // Get workload values from main table to display in DBU table
-  const getWorkloadValue = (rowIndex: number): string => {
-    if (rowIndex < tableData.length) {
-      const workloadColIndex = tableStructure.findIndex(col => col.attribute === "Workload");
-      return tableData[rowIndex][workloadColIndex]?.value || "";
-    }
-    return "";
-  };
-
-  // Get DBU/Hour value based on Worker Instance from main table
-  const getDbuPerHourValue = (rowIndex: number): string => {
-    if (rowIndex < tableData.length) {
-      const workerInstanceColIndex = tableStructure.findIndex(col => col.attribute === "Worker Instance");
-      const workerInstance = tableData[rowIndex][workerInstanceColIndex]?.value || "";
-      const dbuValue = dbuPerHourLookup[workerInstance];
-      return dbuValue !== undefined ? dbuValue.toString() : "";
-    }
-    return "";
-  };
-
-  // Get DBU/Day value using formula: DBU/Hour * Run Duration * Runs/Day
-  const getDbuPerDayValue = (rowIndex: number): string => {
-    if (rowIndex < tableData.length) {
-      // Get DBU/Hour
-      const workerInstanceColIndex = tableStructure.findIndex(col => col.attribute === "Worker Instance");
-      const workerInstance = tableData[rowIndex][workerInstanceColIndex]?.value || "";
-      const dbuPerHour = dbuPerHourLookup[workerInstance];
-      
-      if (dbuPerHour === undefined) return "";
-      
-      // Get Run Duration
-      const runDurationColIndex = tableStructure.findIndex(col => col.attribute === "Run Duration");
-      const runDuration = parseFloat(tableData[rowIndex][runDurationColIndex]?.value || "0");
-      
-      // Get Runs/Day
-      const runsPerDayColIndex = tableStructure.findIndex(col => col.attribute === "Runs/Day");
-      const runsPerDay = parseFloat(tableData[rowIndex][runsPerDayColIndex]?.value || "0");
-      
-      // Calculate DBU/Day
-      if (runDuration > 0 && runsPerDay > 0) {
-        const dbuPerDay = dbuPerHour * runDuration * runsPerDay;
-        return dbuPerDay.toString();
-      }
-    }
-    return "";
-  };
-
-  // Get DBU/Month value using formula: DBU/Day * Days/Month
-  const getDbuPerMonthValue = (rowIndex: number): string => {
-    if (rowIndex < tableData.length) {
-      // Get DBU/Day value
-      const dbuPerDayStr = getDbuPerDayValue(rowIndex);
-      const dbuPerDay = parseFloat(dbuPerDayStr);
-      
-      if (isNaN(dbuPerDay) || dbuPerDay === 0) return "";
-      
-      // Get Days/Month
-      const daysPerMonthColIndex = tableStructure.findIndex(col => col.attribute === "Days/Month");
-      const daysPerMonth = parseFloat(tableData[rowIndex][daysPerMonthColIndex]?.value || "0");
-      
-      // Calculate DBU/Month
-      if (daysPerMonth > 0) {
-        const dbuPerMonth = dbuPerDay * daysPerMonth;
-        return dbuPerMonth.toString();
-      }
-    }
-    return "";
-  };
-
-  // Get $DBU value using formula: DBU/Month * SKU Rate
-  const getDollarPerDBUValue = (rowIndex: number): string => {
-    if (rowIndex < tableData.length) {
-      // Get DBU/Month value
-      const dbuPerMonthStr = getDbuPerMonthValue(rowIndex);
-      const dbuPerMonth = parseFloat(dbuPerMonthStr);
-      
-      if (isNaN(dbuPerMonth) || dbuPerMonth === 0) return "";
-      
-      // Get SKU
-      const skuColIndex = tableStructure.findIndex(col => col.attribute === "SKU");
-      const sku = tableData[rowIndex][skuColIndex]?.value || "";
-      const skuRate = skuRatesLookup[sku];
-      
-      if (skuRate === undefined) return "";
-      
-      // Calculate $DBU
-      const dollarPerDBU = dbuPerMonth * skuRate;
-      return dollarPerDBU.toFixed(2); // Format to 2 decimal places for currency
-    }
-    return "";
-  };
-
-  // Function to get dropdown options based on attribute name
-  const getDropdownOptions = (attribute: string) => {
-    switch (attribute) {
-      case "Workload":
-        return workloadOptions;
-      case "SKU":
-        return skuOptions;
-      case "Driver Instance":
-        return instanceOptions;
-      case "Worker Instance":
-        return instanceOptions;
-      case "Worker Count":
-        return workerCountOptions;
-      default:
-        return [];
-    }
-  };
-
-  // Get visible columns (non-hidden)
-  const visibleColumns = tableStructure.filter(col => !col.hidden);
-
-  // Function to export DBU table to CSV
-  const exportToCSV = () => {
-    if (tableData.length === 0) {
-      alert("No data to export");
-      return;
-    }
-
-    // CSV headers - combine both main table and DBU calculation columns
-    const headers = [
-      "Workload",
-      "SKU",
-      "Driver Instance",
-      "Worker Instance",
-      "Worker Count",
-      "Run Duration",
-      "Runs/Day",
-      "Days/Month",
-      "DBU/Hour",
-      "DBU/Day",
-      "DBU/Month",
-      "$DBU",
-      "Original Input",
-      "Reasoning Output"
-    ];
-    
-    // CSV rows - combine data from both tables
-    const rows = tableData.map((row, rowIndex) => {
-      return [
-        row[0]?.value || "", // Workload
-        row[1]?.value || "", // SKU
-        row[2]?.value || "", // Driver Instance
-        row[3]?.value || "", // Worker Instance
-        row[4]?.value || "", // Worker Count
-        row[5]?.value || "", // Run Duration
-        row[6]?.value || "", // Runs/Day
-        row[7]?.value || "", // Days/Month
-        getDbuPerHourValue(rowIndex), // DBU/Hour
-        getDbuPerDayValue(rowIndex), // DBU/Day
-        getDbuPerMonthValue(rowIndex), // DBU/Month
-        getDollarPerDBUValue(rowIndex), // $DBU
-        row[8]?.value || "", // Original Input
-        row[9]?.value || ""  // Reasoning Output
-      ];
+    // Create a data row from the filtered columns
+    const dataRow: TableDataRow = {};
+    filteredColumns.forEach(col => {
+      dataRow[col.attribute] = {
+        value: col.defaultValue,
+        inputType: col.inputType
+      };
     });
 
-    // Combine headers and rows
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(","))
-    ].join("\n");
+    // Find existing table for this workload type or create new one
+    setTableData(prevData => {
+      const existingTableIndex = prevData.findIndex(t => t.workloadType === workloadType);
 
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute("href", url);
-    link.setAttribute("download", `dbu_calculation_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = "hidden";
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      if (existingTableIndex >= 0) {
+        // Add new row to existing table, preserving columns
+        const updatedData = [...prevData];
+        const existingTable = updatedData[existingTableIndex];
+        updatedData[existingTableIndex] = {
+          workloadType: existingTable.workloadType,
+          columns: existingTable.columns, // Preserve existing columns
+          dataRows: [...existingTable.dataRows, dataRow]
+        };
+        return updatedData;
+      } else {
+        // Create new table for this workload type
+        return [...prevData, {
+          workloadType,
+          columns: filteredColumns,
+          dataRows: [dataRow]
+        }];
+      }
+    });
+
+    // Auto-expand the table when new data is added
+    setExpandedTables(prev => {
+      const newSet = new Set(prev);
+      newSet.add(workloadType);
+      return newSet;
+    });
+  };
+
+  // Helper function to determine which fields to show based on workload type
+  const filterRowsByWorkloadType = (rows: TableRow[], workloadType: string): TableRow[] => {
+    // Define field mappings based on screenshot
+    const fieldMappings: Record<string, string[]> = {
+      ALL_PURPOSE: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "hours_per_day"],
+      JOBS_CLASSIC: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "runs_per_day", "avg_runtime_minutes"],
+      JOBS_SERVERLESS: ["workload_type", "runs_per_day", "avg_runtime_minutes"],
+      DLT: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "dlt_edition", "hours_per_day"],
+      DBSQL: ["workload_type", "dbsql_warehouse_type", "dbsql_warehouse_size", "hours_per_day"],
+      VECTOR_SEARCH: ["workload_type", "serverless_size", "hours_per_day"],
+      MODEL_SERVING: ["workload_type", "serverless_size", "hours_per_day"],
+      FMAPI_DATABRICKS: ["workload_type", "fmapi_model", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
+      FMAPI_PROPRIETARY: ["workload_type", "fmapi_provider", "fmapi_model", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
+    };
+
+    const relevantFields = fieldMappings[workloadType] || [];
+
+    return rows.filter(row => {
+      // Always exclude hidden fields
+      if (row.hidden) return false;
+
+      // Include if in relevant fields for this workload type
+      return relevantFields.includes(row.attribute);
+    });
+  };
+
+  // Helper function to get dropdown options for a field
+  const getDropdownOptions = (attribute: string) => {
+    const optionsMap: Record<string, any[]> = {
+      workload_type: workloadOptions,
+      dlt_edition: dltEditionOptions,
+      dbsql_warehouse_type: warehouseTypeOptions,
+      dbsql_warehouse_size: warehouseSizeOptions,
+      serverless_size: serverlessSizeOptions,
+      fmapi_provider: fmapiProviderOptions,
+      fmapi_model: fmapiModelOptions,
+      vm_pricing_tier: pricingTierOptions,
+      vm_payment_option: paymentOptionOptions,
+    };
+
+    return optionsMap[attribute] || [];
+  };
+
+  // Helper function to format attribute names to readable labels
+  const formatLabel = (attribute: string): string => {
+    const labelMap: Record<string, string> = {
+      workload_type: "Workload Type",
+      driver_node_type: "Driver",
+      worker_node_type: "Workers",
+      photon_enabled: "Photon",
+      hours_per_day: "Hours per Day",
+      runs_per_day: "Runs per Day",
+      avg_runtime_minutes: "Avg Runtime",
+      dlt_edition: "DLT Edition",
+      dbsql_warehouse_type: "Warehouse Type",
+      dbsql_warehouse_size: "Warehouse Size",
+      serverless_size: "Serverless Size",
+      fmapi_provider: "FMAPI Provider",
+      fmapi_model: "FMAPI Model",
+      fmapi_input_tokens_per_month: "Input Tokens",
+      fmapi_output_tokens_per_month: "Output Tokens",
+    };
+
+    return labelMap[attribute] || attribute.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Helper function to get all workload types with their column definitions
+  const getAllWorkloadTypeDefinitions = (): TableData[] => {
+    const allWorkloadTypes: string[] = [
+      "ALL_PURPOSE",
+      "JOBS_CLASSIC",
+      "JOBS_SERVERLESS",
+      "DLT",
+      "DBSQL",
+      "VECTOR_SEARCH",
+      "MODEL_SERVING",
+      "FMAPI_DATABRICKS",
+      "FMAPI_PROPRIETARY"
+    ];
+
+    const tables = allWorkloadTypes.map(workloadType => {
+      // Create dummy columns to get the field mapping
+      const fieldMappings: Record<string, string[]> = {
+        ALL_PURPOSE: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "hours_per_day"],
+        JOBS_CLASSIC: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "runs_per_day", "avg_runtime_minutes"],
+        JOBS_SERVERLESS: ["workload_type", "runs_per_day", "avg_runtime_minutes"],
+        DLT: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "dlt_edition", "hours_per_day"],
+        DBSQL: ["workload_type", "dbsql_warehouse_type", "dbsql_warehouse_size", "hours_per_day"],
+        VECTOR_SEARCH: ["workload_type", "serverless_size", "hours_per_day"],
+        MODEL_SERVING: ["workload_type", "serverless_size", "hours_per_day"],
+        FMAPI_DATABRICKS: ["workload_type", "fmapi_model", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
+        FMAPI_PROPRIETARY: ["workload_type", "fmapi_provider", "fmapi_model", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
+      };
+
+      const columns: TableRow[] = (fieldMappings[workloadType] || []).map(attr => ({
+        attribute: attr,
+        inputType: attr === "photon_enabled" ? "checkbox" :
+                   attr === "driver_node_type" || attr === "worker_node_type" ? "text" :
+                   attr.includes("token") || attr.includes("runtime") || attr.includes("hours") || attr.includes("runs") ? "text" : "dropdown",
+        defaultValue: ""
+      }));
+
+      // Find existing data for this workload type
+      const existingTable = tableData.find(t => t.workloadType === workloadType);
+
+      return {
+        workloadType,
+        columns,
+        dataRows: existingTable?.dataRows || []
+      };
+    });
+
+    // Sort: tables with data first, then empty tables
+    return tables.sort((a, b) => {
+      const aHasData = a.dataRows.length > 0;
+      const bHasData = b.dataRows.length > 0;
+
+      if (aHasData && !bHasData) return -1;
+      if (!aHasData && bHasData) return 1;
+      return 0;
+    });
+  };
+
+  // Toggle table expansion
+  const toggleTable = (workloadType: string) => {
+    setExpandedTables(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(workloadType)) {
+        newSet.delete(workloadType);
+      } else {
+        newSet.add(workloadType);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -445,7 +391,7 @@ export default function Home() {
             rows={8}
           />
           <button
-            onClick={addRow}
+            onClick={handleSubmit}
             disabled={isLoading}
             className="mt-4 px-6 py-2 text-base font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors shadow-md hover:shadow-lg"
           >
@@ -453,258 +399,115 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Table with dynamic columns based on tableStructure */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse table-fixed">
-              <thead>
-                <tr className="bg-gray-100 dark:bg-gray-700">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap w-16">
-                  </th>
-                  {visibleColumns.map((column, colIndex) => (
-                    <th
-                      key={colIndex}
-                      className={`px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap ${
-                        column.attribute === "Workload" ? "w-50" : column.attribute === "SKU" ? "w-50" : ""
-                      }`}
-                    >
-                      {column.attribute}
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {tableData.map((row, rowIndex) => (
-                  <Fragment key={rowIndex}>
-                    {/* Main Row */}
-                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                      <td className="px-4 py-3 border-b dark:border-gray-600">
-                        <button
-                          onClick={() => toggleAccordion(rowIndex)}
-                          className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-all duration-200"
-                          title="Show/Hide Details"
-                        >
-                          <svg
-                            className={`w-5 h-5 transition-transform duration-200 ${expandedRows.has(rowIndex) ? 'rotate-180' : ''}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                      </td>
-                      {tableStructure.map((column, colIndex) => {
-                        // Skip hidden columns
-                        if (column.hidden) return null;
-                        
-                        const cell = row[colIndex];
-                        return (
-                          <td
-                            key={colIndex}
-                            className="px-4 py-3 border-b dark:border-gray-600"
-                          >
-                            {cell.type === "text" ? (
-                              <input
-                                type="text"
-                                value={cell.value}
-                                onChange={(e) =>
-                                  handleTableChange(rowIndex, colIndex, e.target.value)
-                                }
-                                placeholder="Enter text..."
-                                className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                              />
-                            ) : (
-                              <select
-                                value={cell.value}
-                                onChange={(e) =>
-                                  handleTableChange(rowIndex, colIndex, e.target.value)
-                                }
-                                className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                              >
-                                {getDropdownOptions(column.attribute).map((option: any) => {
-                                  // Handle both string and object options
-                                  const optionValue = typeof option === 'string' ? option : option.value;
-                                  const optionLabel = typeof option === 'string' ? option : option.label;
-                                  return (
-                                    <option key={optionValue} value={optionValue}>
-                                      {optionLabel}
-                                    </option>
-                                  );
-                                })}
-                              </select>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="px-4 py-3 border-b dark:border-gray-600">
-                        <button
-                          onClick={() => removeRow(rowIndex)}
-                          disabled={tableData.length === 1}
-                          className="px-3 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                    
-                    {/* Accordion Row */}
-                    {expandedRows.has(rowIndex) && (
-                      <tr key={`accordion-${rowIndex}`} className="bg-gray-50 dark:bg-gray-750">
-                        <td colSpan={visibleColumns.length + 2} className="px-4 py-4 border-b dark:border-gray-600">
-                          <div className="space-y-4">
-                            {/* Original Input Section */}
-                            <div>
-                              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                Original Input
-                              </h3>
-                              <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-600">
-                                <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                  {row[8]?.value || "(empty)"}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            {/* Reasoning Output Section */}
-                            <div>
-                              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                Reasoning Output
-                              </h3>
-                              <div className="p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-300 dark:border-gray-600">
-                                <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                  {row[9]?.value || "(empty)"}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Add Row Button */}
-          <div className="p-4 bg-gray-50 dark:bg-gray-750 border-t dark:border-gray-600">
-            <button
-              onClick={addRow}
-              className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-            >
-              + Add Row
-            </button>
-          </div>
-        </div>
-
-        {/* DBU Calculation Table */}
-        <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-          <div className="px-4 py-3 bg-gray-100 dark:bg-gray-700 border-b dark:border-gray-600 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-              DBU Calculation
-            </h2>
-            <button
-              onClick={exportToCSV}
-              disabled={dbuTableData.length === 0}
-              className="px-4 py-2 text-xs font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors shadow-md hover:shadow-lg flex items-center gap-2"
-              title="Export to CSV"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Export CSV
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-100 dark:bg-gray-700">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
-                    Workload
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
-                    DBU/Hour
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
-                    DBU/Day
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
-                    DBU/Month
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 whitespace-nowrap">
-                    $DBU
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {dbuTableData.map((row, rowIndex) => (
-                  <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                    <td className="px-4 py-3 border-b dark:border-gray-600">
-                      <input
-                        type="text"
-                        value={getWorkloadValue(rowIndex)}
-                        readOnly
-                        className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 dark:text-gray-100 cursor-not-allowed"
-                      />
-                    </td>
-                    <td className="px-4 py-3 border-b dark:border-gray-600">
-                      <input
-                        type="text"
-                        value={getDbuPerHourValue(rowIndex)}
-                        readOnly
-                        className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 dark:text-gray-100 cursor-not-allowed"
-                      />
-                    </td>
-                    <td className="px-4 py-3 border-b dark:border-gray-600">
-                      <input
-                        type="text"
-                        value={getDbuPerDayValue(rowIndex)}
-                        readOnly
-                        className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 dark:text-gray-100 cursor-not-allowed"
-                      />
-                    </td>
-                    <td className="px-4 py-3 border-b dark:border-gray-600">
-                      <input
-                        type="text"
-                        value={getDbuPerMonthValue(rowIndex)}
-                        readOnly
-                        className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 dark:text-gray-100 cursor-not-allowed"
-                      />
-                    </td>
-                    <td className="px-4 py-3 border-b dark:border-gray-600">
-                      <input
-                        type="text"
-                        value={getDollarPerDBUValue(rowIndex)}
-                        readOnly
-                        className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 dark:text-gray-100 cursor-not-allowed"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Display current values (for debugging/demo purposes) */}
-        <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
-            Current Values
+        {/* Render Tables by Workload Type */}
+        <div className="mt-8 space-y-4">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">
+            Configuration Tables
           </h2>
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            <p className="mb-2">
-              <strong>Prompt:</strong> {promptText || "(empty)"}
-            </p>
-            <p>
-              <strong>Table Data:</strong>
-            </p>
-            <pre className="mt-2 p-2 bg-white dark:bg-gray-800 rounded overflow-auto text-xs">
-              {JSON.stringify(tableData, null, 2)}
-            </pre>
-          </div>
+          {getAllWorkloadTypeDefinitions().map((table, tableIndex) => {
+            // Safety check: skip tables with invalid structure
+            if (!table.columns || !Array.isArray(table.columns)) {
+              return null;
+            }
+
+            const hasData = table.dataRows && table.dataRows.length > 0;
+            const isExpanded = expandedTables.has(table.workloadType);
+
+            return (
+              <div
+                key={table.workloadType}
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-all duration-500 ease-in-out"
+                style={{
+                  animation: hasData ? 'slideIn 0.5s ease-out' : 'none'
+                }}
+              >
+                <div
+                  className={`px-6 py-3 flex justify-between items-center cursor-pointer ${
+                    hasData ? 'bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-800' : 'bg-gray-400 dark:bg-gray-600'
+                  }`}
+                  onClick={() => hasData && toggleTable(table.workloadType)}
+                >
+                  <h3 className="text-xl font-semibold text-white">
+                    {workloadOptions.find(opt => opt.value === table.workloadType)?.label || table.workloadType}
+                    {hasData && <span className="ml-2 text-sm">({table.dataRows.length} row{table.dataRows.length !== 1 ? 's' : ''})</span>}
+                  </h3>
+                  {hasData && (
+                    <svg
+                      className={`w-6 h-6 text-white transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </div>
+
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    hasData && isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  {hasData && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-gray-100 dark:bg-gray-700">
+                            {table.columns.map((col, colIndex) => (
+                              <th key={colIndex} className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                                {formatLabel(col.attribute)}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {table.dataRows.map((dataRow, rowIndex) => (
+                            <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                              {table.columns.map((col, colIndex) => {
+                                const cellData = dataRow[col.attribute];
+                                const value = cellData?.value;
+                                const inputType = cellData?.inputType || col.inputType;
+
+                                return (
+                                  <td key={colIndex} className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
+                                    {inputType === "dropdown" ? (
+                                      <select
+                                        className="w-full min-w-[150px] p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
+                                        defaultValue={value}
+                                      >
+                                        <option value="">Select...</option>
+                                        {getDropdownOptions(col.attribute).map((option: any, optIdx: number) => (
+                                          <option key={optIdx} value={option.value}>
+                                            {option.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    ) : inputType === "checkbox" ? (
+                                      <input
+                                        type="checkbox"
+                                        defaultChecked={value}
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                      />
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        defaultValue={value}
+                                        className="w-full min-w-[120px] p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
+                                      />
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Debug: Last LLM Response */}

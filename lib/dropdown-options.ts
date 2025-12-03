@@ -191,3 +191,83 @@ export const instanceOptions = [
 ];
 
 export const workerCountOptions = Array.from({ length: 20 }, (_, i) => String(i + 1));
+
+export const dltEditionOptions = [
+  { value: "CORE", label: "Core" },
+  { value: "PRO", label: "Pro" },
+  { value: "ADVANCED", label: "Advanced" },
+];
+
+export const dltPipelineModeOptions = [
+  { value: "CONTINUOUS", label: "Continuous" },
+  { value: "TRIGGERED", label: "Triggered" },
+];
+
+export const warehouseTypeOptions = [
+  { value: "CLASSIC", label: "Classic" },
+  { value: "PRO", label: "Pro" },
+  { value: "SERVERLESS", label: "Serverless" },
+];
+
+export const warehouseSizeOptions = [
+  { value: "2X-Small", label: "2X-Small" },
+  { value: "X-Small", label: "X-Small" },
+  { value: "Small", label: "Small" },
+  { value: "Medium", label: "Medium" },
+  { value: "Large", label: "Large" },
+  { value: "X-Large", label: "X-Large" },
+  { value: "2X-Large", label: "2X-Large" },
+  { value: "3X-Large", label: "3X-Large" },
+  { value: "4X-Large", label: "4X-Large" },
+];
+
+export const serverlessProductOptions = [
+  { value: "VECTOR_SEARCH", label: "Vector Search" },
+  { value: "MODEL_SERVING", label: "Model Serving" },
+];
+
+export const serverlessSizeOptions = [
+  { value: "Small", label: "Small" },
+  { value: "Medium", label: "Medium" },
+  { value: "Large", label: "Large" },
+];
+
+export const fmapiProviderOptions = [
+  { value: "ANTHROPIC", label: "Anthropic" },
+  { value: "OPENAI", label: "OpenAI" },
+  { value: "GOOGLE", label: "Google" },
+  { value: "META", label: "Meta" },
+  { value: "COHERE", label: "Cohere" },
+];
+
+export const fmapiModelOptions = [
+  // Databricks models
+  { value: "databricks-meta-llama-3-1-70b-instruct", label: "Llama 3.1 70B Instruct" },
+  { value: "databricks-meta-llama-3-1-405b-instruct", label: "Llama 3.1 405B Instruct" },
+  { value: "databricks-dbrx-instruct", label: "DBRX Instruct" },
+
+  // External models
+  { value: "anthropic.claude-3-5-sonnet-20241022-v2:0", label: "Claude 3.5 Sonnet" },
+  { value: "anthropic.claude-3-opus-20240229-v1:0", label: "Claude 3 Opus" },
+  { value: "gpt-4o", label: "GPT-4o" },
+  { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+  { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+];
+
+export const fmapiEndpointTypeOptions = [
+  { value: "PROVISIONED", label: "Provisioned Throughput" },
+  { value: "PAY_PER_TOKEN", label: "Pay-per-Token" },
+];
+
+export const pricingTierOptions = [
+  { value: "STANDARD", label: "Standard" },
+  { value: "PREMIUM", label: "Premium" },
+  { value: "ENTERPRISE", label: "Enterprise" },
+];
+
+export const paymentOptionOptions = [
+  { value: "ON_DEMAND", label: "On-Demand" },
+  { value: "RESERVED_1Y", label: "1-Year Reserved" },
+  { value: "RESERVED_3Y", label: "3-Year Reserved" },
+  { value: "SPOT", label: "Spot" },
+];
