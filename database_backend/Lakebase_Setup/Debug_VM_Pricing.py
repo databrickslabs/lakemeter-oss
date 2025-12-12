@@ -238,8 +238,8 @@ if len(result_4) > 0:
     print(tabulate(result_4.head(20), headers='keys', tablefmt='grid', showindex=False))
     print(f"\n✅ Found {len(result_4)} instance types (showing first 20)")
     
-    # Check for test instance types
-    test_instances = ['Standard_D8s_v3', 'Standard_D16s_v3', 'Standard_D32s_v3']
+    # Check for test instance types (UPDATED to v4 instances)
+    test_instances = ['Standard_D8d_v4', 'Standard_D16d_v4', 'Standard_D32d_v4']
     available_instances = [i.lower() for i in result_4['instance_type'].tolist()]
     
     print("\n🔍 Checking test instance types:")
@@ -249,7 +249,7 @@ if len(result_4) > 0:
         else:
             print(f"   ❌ '{test_instance}' NOT FOUND")
             # Try case-insensitive partial match
-            matches = [i for i in result_4['instance_type'].tolist() if 'd8s' in i.lower() or 'd16s' in i.lower()]
+            matches = [i for i in result_4['instance_type'].tolist() if 'd8d' in i.lower() or 'd16d' in i.lower() or 'd32d' in i.lower()]
             if matches:
                 print(f"      Similar instances: {', '.join(matches[:3])}...")
 else:
@@ -333,16 +333,18 @@ SELECT
     payment_option
 FROM lakemeter.sync_pricing_vm_costs 
 WHERE UPPER(cloud) = 'AZURE'
-  AND (LOWER(instance_type) LIKE '%d8s%' 
-       OR LOWER(instance_type) LIKE '%d16s%'
-       OR LOWER(instance_type) LIKE '%d32s%')
+  AND (LOWER(instance_type) LIKE '%d8d%' 
+       OR LOWER(instance_type) LIKE '%d16d%'
+       OR LOWER(instance_type) LIKE '%d32d%'
+       OR LOWER(instance_type) LIKE '%d8as%'
+       OR LOWER(instance_type) LIKE '%d16as%')
 LIMIT 30;
 """
 
 result_6 = execute_query(query_6)
 
 print("=" * 100)
-print("AZURE INSTANCE TYPES (Case-Insensitive Search: D8s, D16s, D32s)")
+print("AZURE INSTANCE TYPES (Case-Insensitive Search: D8d, D16d, D32d, D-as series)")
 print("=" * 100)
 
 if len(result_6) > 0:
@@ -410,10 +412,10 @@ display(result_7)
 
 # COMMAND ----------
 
-# Simulate the exact query the view uses
+# Simulate the exact query the view uses (UPDATED to v4 instance)
 test_cloud = 'AZURE'
 test_region = 'eastus'
-test_instance = 'Standard_D8s_v3'
+test_instance = 'Standard_D8d_v4'
 test_pricing_tier = 'on_demand'
 
 query_8 = """
