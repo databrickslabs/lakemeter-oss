@@ -830,20 +830,35 @@ for scenario in debug_scenarios:
         print(f"   ❌ NOT FOUND in sync_pricing_vm_costs")
         print(f"   This will cause vm_cost_per_month = 0!")
     
-    # Check photon multiplier
-    product_type = 'JOBS_COMPUTE_(PHOTON)' if scenario['photon_enabled'] else 'JOBS_COMPUTE'
+    # Check photon multiplier - correct logic matching the view
+    # The view joins on sku_type (without _PHOTON suffix) and feature
+    sku_base = 'JOBS_COMPUTE'
+    feature = 'photon' if scenario['photon_enabled'] else 'standard'
+    
     check_multiplier = execute_query("""
-        SELECT sku_type, feature, multiplier
+        SELECT cloud, sku_type, feature, multiplier
         FROM lakemeter.sync_ref_dbu_multipliers
-        WHERE sku_type = %s AND feature = %s
-    """, (product_type, 'photon' if scenario['photon_enabled'] else 'standard'))
+        WHERE cloud = %s 
+          AND sku_type = %s 
+          AND feature = %s
+    """, (scenario['cloud'], sku_base, feature))
     
     print(f"\n4️⃣ Photon Multiplier Lookup:")
+    print(f"   Looking for: cloud={scenario['cloud']}, sku_type={sku_base}, feature={feature}")
     if len(check_multiplier) > 0:
         print(f"   ✅ FOUND: {check_multiplier.to_dict('records')[0]}")
     else:
         print(f"   ❌ NOT FOUND in sync_ref_dbu_multipliers")
-        print(f"   This will affect photon_multiplier!")
+        print(f"   This will cause photon_multiplier = 1.0 (default)")
+        # Check what exists for this cloud
+        check_cloud_multipliers = execute_query("""
+            SELECT sku_type, feature, multiplier
+            FROM lakemeter.sync_ref_dbu_multipliers
+            WHERE cloud = %s
+        """, (scenario['cloud'],))
+        if len(check_cloud_multipliers) > 0:
+            print(f"   Available for {scenario['cloud']}: {len(check_cloud_multipliers)} multipliers")
+            print(tabulate(check_cloud_multipliers.head(5), headers='keys', tablefmt='grid', showindex=False))
     
     print("\n")
 
