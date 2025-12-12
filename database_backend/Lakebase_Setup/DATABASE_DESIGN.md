@@ -974,6 +974,7 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | **Form Section Visibility** |
 | `show_compute_config` | BOOLEAN | | Show driver/worker node config (always visible for sizing) |
 | `show_serverless_toggle` | BOOLEAN | | Show serverless ON/OFF toggle |
+| `show_serverless_mode` | BOOLEAN | | Show serverless mode dropdown (standard/performance) - **JOBS/DLT only** |
 | `show_photon_toggle` | BOOLEAN | | Show Photon toggle (disabled when serverless=ON) |
 | `show_dlt_config` | BOOLEAN | | Show DLT edition (Core/Pro/Advanced) |
 | `show_dbsql_config` | BOOLEAN | | Show warehouse type/size |
@@ -991,12 +992,12 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 
 **Sample Data:**
 
-| workload_type | display_name | show_compute_config | show_serverless_toggle | show_photon_toggle | show_dlt_config | show_dbsql_config | show_vm_pricing |
-|---------------|--------------|:-------------------:|:----------------------:|:------------------:|:---------------:|:-----------------:|:---------------:|
-| JOBS | Jobs Compute | ✅ | ✅ | ✅ | | | ✅ |
-| ALL_PURPOSE | All-Purpose Compute | ✅ | ✅ | ✅ | | | ✅ |
-| DLT | Delta Live Tables | ✅ | ✅ | ✅ | ✅ | | ✅ |
-| DBSQL | Databricks SQL | | | | | ✅ | |
+| workload_type | display_name | show_compute_config | show_serverless_toggle | show_serverless_mode | show_photon_toggle | show_dlt_config | show_dbsql_config | show_vm_pricing |
+|---------------|--------------|:-------------------:|:----------------------:|:--------------------:|:------------------:|:---------------:|:-----------------:|:---------------:|
+| JOBS | Jobs Compute | ✅ | ✅ | ✅ | ✅ | | | ✅ |
+| ALL_PURPOSE | All-Purpose Compute | ✅ | ✅ | | ✅ | | | ✅ |
+| DLT | Delta Live Tables | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ |
+| DBSQL | Databricks SQL | | | | | | ✅ | |
 | VECTOR_SEARCH | Vector Search | | | | | | |
 | MODEL_SERVING | Model Serving | | | | | | |
 | FMAPI_DATABRICKS | Foundation Models (Databricks) | | | | | | |
