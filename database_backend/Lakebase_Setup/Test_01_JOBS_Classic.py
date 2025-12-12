@@ -138,7 +138,7 @@ TEST_USER_ID = str(uuid.uuid4())
 
 print(f"🧪 Test Run ID: {TEST_RUN_ID}")
 print(f"👤 Test User ID: {TEST_USER_ID}")
-print(f"📊 Test Estimate ID: {TEST_ESTIMATE_ID}")
+print(f"📊 Estimates will be created per cloud/region in Section 6.1")
 
 # COMMAND ----------
 
@@ -933,11 +933,12 @@ SELECT
     c.cost_per_month,
     c.notes
 FROM lakemeter.v_line_items_with_costs c
-WHERE c.estimate_id = %s
+WHERE c.line_item_id = ANY(%s)
 ORDER BY c.display_order;
 """
 
-results_df = execute_query(query_results_sql, (TEST_ESTIMATE_ID,))
+# Query using the line_item_ids we tracked during insertion
+results_df = execute_query(query_results_sql, (line_item_ids,))
 
 print(f"✅ Retrieved {len(results_df)} cost calculation results")
 
@@ -1383,8 +1384,8 @@ print(f"Validation Status: {passed} scenarios passed, {failed} scenarios failed"
 print("=" * 100)
 print("\n✅ TEST COMPLETE!")
 print("\n💡 TIP: Test data remains in the database for manual inspection.")
-print("   To clean up, run:")
-print(f"   DELETE FROM lakemeter.line_items WHERE estimate_id = '{TEST_ESTIMATE_ID}';")
-print(f"   DELETE FROM lakemeter.estimates WHERE estimate_id = '{TEST_ESTIMATE_ID}';")
+print("   To clean up, run Section 3 (Cleanup) or manually:")
+print(f"   DELETE FROM lakemeter.line_items WHERE workload_name LIKE '%{TEST_RUN_ID}%';")
+print(f"   DELETE FROM lakemeter.estimates WHERE estimate_name LIKE '%{TEST_RUN_ID}%';")
 print(f"   DELETE FROM lakemeter.users WHERE user_id = '{TEST_USER_ID}';")
 
