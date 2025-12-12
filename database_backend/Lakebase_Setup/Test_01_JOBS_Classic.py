@@ -933,7 +933,7 @@ SELECT
     c.cost_per_month,
     c.notes
 FROM lakemeter.v_line_items_with_costs c
-WHERE c.line_item_id = ANY(%s)
+WHERE c.line_item_id = ANY(%s::uuid[])
 ORDER BY c.display_order;
 """
 
