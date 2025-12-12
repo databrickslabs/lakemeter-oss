@@ -107,6 +107,7 @@ CREATE TABLE line_items (
     -- VM config always shown for sizing estimation, even when serverless
     -- =========================================================================
     serverless_enabled BOOLEAN DEFAULT false, -- Toggle: Serverless (if true, photon must be true)
+    serverless_mode VARCHAR(20),              -- Dropdown: standard, performance (for JOBS/DLT serverless only)
     photon_enabled BOOLEAN DEFAULT false,     -- Toggle: Photon (auto-true when serverless)
     driver_node_type VARCHAR(100),            -- Dropdown: for sizing estimation (even for serverless)
     worker_node_type VARCHAR(100),            -- Dropdown: for sizing estimation (even for serverless)
@@ -520,6 +521,8 @@ SELECT
     display_order,
     workload_name,
     workload_type,
+    serverless_enabled,
+    serverless_mode,
     driver_node_type,
     worker_node_type,
     num_workers,
