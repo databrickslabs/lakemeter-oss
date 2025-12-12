@@ -80,7 +80,52 @@ print("✅ Connection setup complete!")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 2. Test Data Preparation
+# MAGIC ## 2. Pre-Flight Check: Verify Pricing Data Availability
+# MAGIC 
+# MAGIC Check if we have VM pricing data for all clouds before running tests
+
+# COMMAND ----------
+
+# Check VM pricing data availability
+vm_pricing_check_sql = """
+SELECT 
+    cloud,
+    COUNT(*) as row_count,
+    COUNT(DISTINCT region) as region_count,
+    COUNT(DISTINCT instance_type) as instance_type_count
+FROM lakemeter.sync_pricing_vm_costs
+GROUP BY cloud
+ORDER BY cloud;
+"""
+
+vm_pricing_summary = execute_query(vm_pricing_check_sql)
+
+print("=" * 80)
+print("VM PRICING DATA AVAILABILITY")
+print("=" * 80)
+if len(vm_pricing_summary) > 0:
+    print(tabulate(vm_pricing_summary, headers='keys', tablefmt='grid', showindex=False))
+    
+    # Check for missing clouds
+    available_clouds = set(vm_pricing_summary['cloud'].tolist())
+    required_clouds = {'AWS', 'AZURE', 'GCP'}
+    missing_clouds = required_clouds - available_clouds
+    
+    if missing_clouds:
+        print(f"\n⚠️  WARNING: Missing VM pricing data for: {', '.join(missing_clouds)}")
+        print("   Tests for these clouds will show $0 VM costs!")
+    else:
+        print("\n✅ All clouds have VM pricing data")
+else:
+    print("❌ No VM pricing data found in sync_pricing_vm_costs!")
+    print("   Please run Pricing_Sync notebooks first!")
+
+print("=" * 80)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 3. Generate Test IDs
 # MAGIC 
 # MAGIC Create test user, estimate, and line items for JOBS Classic scenarios
 
@@ -98,7 +143,7 @@ print(f"📊 Test Estimate ID: {TEST_ESTIMATE_ID}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 2.1 Create Test User
+# MAGIC ## 4. Create Test User
 
 # COMMAND ----------
 
@@ -120,7 +165,7 @@ print(f"✅ Test user created: Test User - JOBS Classic {TEST_RUN_ID}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 2.2 Create Test Estimate
+# MAGIC ## 5. Create Test Estimate
 
 # COMMAND ----------
 
@@ -146,7 +191,7 @@ print(f"✅ Test estimate created: JOBS Classic Test - {TEST_RUN_ID}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 3. Test Scenarios - JOBS Classic
+# MAGIC ## 6. Test Scenarios - JOBS Classic
 # MAGIC 
 # MAGIC ### Test Matrix:
 # MAGIC 1. **AWS us-east-1** - Small cluster, Photon OFF, On-Demand, Light usage
@@ -347,7 +392,7 @@ print(f"📋 Prepared {len(test_scenarios)} test scenarios for JOBS Classic")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 3.1 Insert Test Line Items
+# MAGIC ### 6.1 Insert Test Line Items
 
 # COMMAND ----------
 
@@ -411,7 +456,7 @@ print(f"\n✅ Inserted {len(line_item_ids)} test line items")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4. Execute Cost Calculation View & Display Results
+# MAGIC ## 7. Execute Cost Calculation View & Display Results
 
 # COMMAND ----------
 
@@ -465,7 +510,7 @@ print(f"✅ Retrieved {len(results_df)} cost calculation results")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5. Display Results - Summary View
+# MAGIC ## 8. Display Results - Summary View
 
 # COMMAND ----------
 
@@ -507,7 +552,7 @@ display(summary_df)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 6. Detailed Breakdown by Cloud & Region
+# MAGIC ## 9. Detailed Breakdown by Cloud & Region
 
 # COMMAND ----------
 
@@ -566,12 +611,12 @@ display(gcp_results[['workload_name', 'photon_enabled', 'vm_pricing_tier',
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 7. Validation & Analysis
+# MAGIC ## 10. Validation & Analysis
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 7.1 Photon Impact Analysis
+# MAGIC ### 10.1 Photon Impact Analysis
 
 # COMMAND ----------
 
@@ -593,7 +638,7 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 7.2 VM Pricing Tier Comparison
+# MAGIC ### 10.2 VM Pricing Tier Comparison
 
 # COMMAND ----------
 
@@ -614,7 +659,7 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 7.3 Usage Pattern Analysis
+# MAGIC ### 10.3 Usage Pattern Analysis
 
 # COMMAND ----------
 
@@ -645,7 +690,7 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 8. Manual Validation - Verify Calculation Logic
+# MAGIC ## 11. Manual Validation - Verify Calculation Logic
 # MAGIC 
 # MAGIC **How to verify calculations are correct:**
 # MAGIC 
@@ -703,7 +748,7 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 8.1 Manual Calculation Example - Scenario 1
+# MAGIC ### 11.1 Manual Calculation Example - Scenario 1
 # MAGIC 
 # MAGIC Let's manually calculate **Scenario 1: AWS US-East Light ETL (No Photon)**
 
@@ -799,7 +844,7 @@ print("\n" + "=" * 100)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 8.2 Automated Validation - All Scenarios
+# MAGIC ### 11.2 Automated Validation - All Scenarios
 # MAGIC 
 # MAGIC Run automated validation checks across all test scenarios
 
@@ -878,7 +923,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 9. Test Summary
+# MAGIC ## 12. Test Summary
 
 # COMMAND ----------
 
