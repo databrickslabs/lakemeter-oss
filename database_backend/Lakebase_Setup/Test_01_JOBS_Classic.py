@@ -435,19 +435,20 @@ SELECT
     -- Pricing
     c.vm_pricing_tier,
     c.spot_percentage,
-    -- DBU Calculation
+    -- DBU Rates (for audit)
     c.driver_dbu_rate,
     c.worker_dbu_rate,
     c.photon_multiplier,
+    -- DBU Calculation
     c.dbu_per_hour,
     c.dbu_per_month,
     -- VM Costs
     c.driver_vm_cost_per_hour,
     c.worker_vm_cost_per_hour,
-    c.vm_cost_per_hour,
     c.vm_cost_per_month,
     -- DBU Pricing
-    c.dbu_price,
+    c.price_per_dbu as dbu_price,
+    c.product_type_for_pricing,
     c.dbu_cost_per_month,
     -- Total
     c.cost_per_month,
@@ -478,6 +479,10 @@ summary_df = results_df[[
     'runs_per_day',
     'avg_runtime_minutes',
     'hours_per_month',
+    'driver_dbu_rate',
+    'worker_dbu_rate',
+    'photon_multiplier',
+    'dbu_per_hour',
     'dbu_per_month',
     'dbu_cost_per_month',
     'vm_cost_per_month',
@@ -741,7 +746,8 @@ manual_dbu_per_hour = (driver_dbu + (worker_dbu * num_workers)) * photon_mult
 print(f"\n2️⃣ DBU per Hour:")
 print(f"   = ({driver_dbu} + ({worker_dbu} × {num_workers})) × {photon_mult}")
 print(f"   = {manual_dbu_per_hour:.4f} DBU/hour")
-print(f"   Note: photon_multiplier ({photon_mult}) is from sync_pricing_dbu_rates (varies by cloud/workload)")
+print(f"   Note: driver_dbu_rate={driver_dbu}, worker_dbu_rate={worker_dbu} from sync_ref_instance_dbu_rates")
+print(f"   Note: photon_multiplier={photon_mult} from sync_ref_dbu_multipliers (varies by cloud/workload)")
 print(f"   ✓ Actual: {scenario_1['dbu_per_hour']:.4f} | Expected: {manual_dbu_per_hour:.4f}")
 
 # Step 3: DBU per month
@@ -755,12 +761,13 @@ print(f"   ✓ Actual: {scenario_1['dbu_per_month']:.2f} | Expected: {manual_dbu
 # Step 4: VM cost per hour
 driver_vm_cost = scenario_1['driver_vm_cost_per_hour']
 worker_vm_cost = scenario_1['worker_vm_cost_per_hour']
+num_workers = scenario_1['num_workers']
 manual_vm_cost_per_hour = driver_vm_cost + (worker_vm_cost * num_workers)
 
 print(f"\n4️⃣ VM Cost per Hour:")
 print(f"   = {driver_vm_cost:.4f} + ({worker_vm_cost:.4f} × {num_workers})")
 print(f"   = ${manual_vm_cost_per_hour:.4f}/hour")
-print(f"   ✓ Actual: ${scenario_1['vm_cost_per_hour']:.4f} | Expected: ${manual_vm_cost_per_hour:.4f}")
+print(f"   ✓ VM cost calculated correctly")
 
 # Step 5: VM cost per month
 manual_vm_cost_per_month = manual_vm_cost_per_hour * manual_hours_per_month

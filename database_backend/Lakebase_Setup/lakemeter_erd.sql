@@ -588,8 +588,15 @@ SELECT
     region,
     tier,
     
-    -- CALCULATED FIELDS
+    -- CALCULATED FIELDS - Usage
     hours_per_month,
+    
+    -- CALCULATED FIELDS - DBU Rates (for auditability)
+    driver_dbu_rate,
+    worker_dbu_rate,
+    photon_multiplier,
+    
+    -- CALCULATED FIELDS - DBU Calculation
     dbu_per_hour,
     
     -- DBU per month (hourly workloads vs token-based)
@@ -598,16 +605,24 @@ SELECT
         ELSE dbu_per_hour * hours_per_month
     END as dbu_per_month,
     
+    -- CALCULATED FIELDS - Pricing
+    price_per_dbu,
+    product_type_for_pricing,
+    
     -- DBU cost per month
     CASE 
         WHEN workload_type IN ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY') THEN fmapi_dbu_per_month * price_per_dbu
         ELSE dbu_per_hour * hours_per_month * price_per_dbu
     END as dbu_cost_per_month,
     
+    -- CALCULATED FIELDS - VM Costs (for auditability)
+    driver_vm_cost_per_hour,
+    worker_vm_cost_per_hour,
+    
     -- VM cost per month (only for classic compute)
     (driver_vm_cost_per_hour + (worker_vm_cost_per_hour * COALESCE(num_workers, 0))) * hours_per_month as vm_cost_per_month,
     
-    -- Total cost per month
+    -- CALCULATED FIELDS - Total Cost
     CASE 
         WHEN workload_type IN ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY') THEN 
             fmapi_dbu_per_month * price_per_dbu
@@ -616,12 +631,8 @@ SELECT
             ((driver_vm_cost_per_hour + (worker_vm_cost_per_hour * COALESCE(num_workers, 0))) * hours_per_month)
     END as cost_per_month,
     
-    -- Price details for transparency
-    price_per_dbu,
-    driver_vm_cost_per_hour,
-    worker_vm_cost_per_hour,
-    photon_multiplier,
-    product_type_for_pricing
+    -- CALCULATED FIELDS - FMAPI Token-based (for auditability)
+    fmapi_dbu_per_month
 
 FROM final_calc;
 
