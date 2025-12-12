@@ -772,7 +772,85 @@ print(f"\n✅ Inserted {len(line_item_ids)} test line items")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 9. Execute Cost Calculation View & Display Results
+# MAGIC ## 9. Debug: Check What View Finds for Test Instances
+# MAGIC 
+# MAGIC Before running the full view, let's check if the view can find DBU rates and VM costs for our test instances
+
+# COMMAND ----------
+
+# Get first Azure and GCP scenarios to debug
+debug_scenarios = [s for s in test_scenarios if s['cloud'] in ['AZURE', 'GCP']][:2]
+
+for scenario in debug_scenarios:
+    print("=" * 100)
+    print(f"DEBUGGING: {scenario['workload_name']}")
+    print(f"Cloud: {scenario['cloud']}, Region: {scenario['region']}")
+    print(f"Driver: {scenario['driver_node_type']}, Worker: {scenario['worker_node_type']}")
+    print("=" * 100)
+    
+    # Check if driver instance has DBU rate
+    check_driver_dbu = execute_query("""
+        SELECT cloud, instance_type, dbu_rate
+        FROM lakemeter.sync_ref_instance_dbu_rates
+        WHERE cloud = %s AND instance_type = %s
+    """, (scenario['cloud'], scenario['driver_node_type']))
+    
+    print(f"\n1️⃣ Driver DBU Rate Lookup:")
+    if len(check_driver_dbu) > 0:
+        print(f"   ✅ FOUND: {check_driver_dbu.to_dict('records')[0]}")
+    else:
+        print(f"   ❌ NOT FOUND in sync_ref_instance_dbu_rates")
+        print(f"   This will cause dbu_per_hour = 0!")
+    
+    # Check if worker instance has DBU rate
+    check_worker_dbu = execute_query("""
+        SELECT cloud, instance_type, dbu_rate
+        FROM lakemeter.sync_ref_instance_dbu_rates
+        WHERE cloud = %s AND instance_type = %s
+    """, (scenario['cloud'], scenario['worker_node_type']))
+    
+    print(f"\n2️⃣ Worker DBU Rate Lookup:")
+    if len(check_worker_dbu) > 0:
+        print(f"   ✅ FOUND: {check_worker_dbu.to_dict('records')[0]}")
+    else:
+        print(f"   ❌ NOT FOUND in sync_ref_instance_dbu_rates")
+        print(f"   This will cause dbu_per_hour = 0!")
+    
+    # Check if VM costs exist
+    check_vm_cost = execute_query("""
+        SELECT cloud, region, instance_type, pricing_tier, cost_per_hour
+        FROM lakemeter.sync_pricing_vm_costs
+        WHERE cloud = %s AND region = %s AND instance_type = %s AND pricing_tier = %s
+    """, (scenario['cloud'], scenario['region'], scenario['worker_node_type'], scenario['vm_pricing_tier']))
+    
+    print(f"\n3️⃣ VM Cost Lookup:")
+    if len(check_vm_cost) > 0:
+        print(f"   ✅ FOUND: {check_vm_cost.to_dict('records')[0]}")
+    else:
+        print(f"   ❌ NOT FOUND in sync_pricing_vm_costs")
+        print(f"   This will cause vm_cost_per_month = 0!")
+    
+    # Check photon multiplier
+    product_type = 'JOBS_COMPUTE_(PHOTON)' if scenario['photon_enabled'] else 'JOBS_COMPUTE'
+    check_multiplier = execute_query("""
+        SELECT sku_type, feature, multiplier
+        FROM lakemeter.sync_ref_dbu_multipliers
+        WHERE sku_type = %s AND feature = %s
+    """, (product_type, 'photon' if scenario['photon_enabled'] else 'standard'))
+    
+    print(f"\n4️⃣ Photon Multiplier Lookup:")
+    if len(check_multiplier) > 0:
+        print(f"   ✅ FOUND: {check_multiplier.to_dict('records')[0]}")
+    else:
+        print(f"   ❌ NOT FOUND in sync_ref_dbu_multipliers")
+        print(f"   This will affect photon_multiplier!")
+    
+    print("\n")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 10. Execute Cost Calculation View & Display Results
 
 # COMMAND ----------
 
@@ -826,7 +904,7 @@ print(f"✅ Retrieved {len(results_df)} cost calculation results")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 10. Display Results - Summary View
+# MAGIC ## 11. Display Results - Summary View
 
 # COMMAND ----------
 
@@ -868,7 +946,7 @@ display(summary_df)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 11. Detailed Breakdown by Cloud & Region
+# MAGIC ## 12. Detailed Breakdown by Cloud & Region
 
 # COMMAND ----------
 
@@ -927,12 +1005,12 @@ display(gcp_results[['workload_name', 'photon_enabled', 'vm_pricing_tier',
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 12. Validation & Analysis
+# MAGIC ## 13. Validation & Analysis
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 12.1 Photon Impact Analysis
+# MAGIC ### 13.1 Photon Impact Analysis
 
 # COMMAND ----------
 
@@ -954,7 +1032,7 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 12.2 VM Pricing Tier Comparison
+# MAGIC ### 13.2 VM Pricing Tier Comparison
 
 # COMMAND ----------
 
@@ -975,7 +1053,7 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 12.3 Usage Pattern Analysis
+# MAGIC ### 13.3 Usage Pattern Analysis
 
 # COMMAND ----------
 
@@ -1006,7 +1084,7 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 13. Manual Validation - Verify Calculation Logic
+# MAGIC ## 14. Manual Validation - Verify Calculation Logic
 # MAGIC 
 # MAGIC **How to verify calculations are correct:**
 # MAGIC 
@@ -1064,7 +1142,7 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 13.1 Manual Calculation Example - Scenario 1
+# MAGIC ### 14.1 Manual Calculation Example - Scenario 1
 # MAGIC 
 # MAGIC Let's manually calculate **Scenario 1: AWS US-East Light ETL (No Photon)**
 
@@ -1160,7 +1238,7 @@ print("\n" + "=" * 100)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 13.2 Automated Validation - All Scenarios
+# MAGIC ### 14.2 Automated Validation - All Scenarios
 # MAGIC 
 # MAGIC Run automated validation checks across all test scenarios
 
@@ -1239,7 +1317,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 14. Test Summary
+# MAGIC ## 15. Test Summary
 
 # COMMAND ----------
 
