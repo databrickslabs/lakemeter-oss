@@ -200,43 +200,23 @@ print(f"✅ Test estimate created: JOBS Classic Test - {TEST_RUN_ID}")
 
 # Query available instance types that have BOTH VM costs and DBU rates
 get_available_instances_sql = """
-WITH available_instances AS (
-    -- Get instances that have VM pricing
-    SELECT DISTINCT 
-        vm.cloud,
-        vm.region,
-        vm.instance_type,
-        vm.pricing_tier,
-        vm.cost_per_hour as vm_cost
-    FROM lakemeter.sync_pricing_vm_costs vm
-    WHERE vm.pricing_tier = 'on_demand'
-    
-    INTERSECT
-    
-    -- Get instances that have DBU rates
-    SELECT DISTINCT
-        dbu.cloud,
-        dbu.region,
-        dbu.instance_type,
-        'on_demand' as pricing_tier,
-        NULL as vm_cost
-    FROM lakemeter.sync_ref_instance_dbu_rates dbu
-    JOIN lakemeter.sync_pricing_vm_costs vm 
-        ON dbu.cloud = vm.cloud 
-        AND dbu.instance_type = vm.instance_type
-)
-SELECT 
-    cloud,
-    region,
-    instance_type,
-    COUNT(*) OVER (PARTITION BY cloud, region) as instances_in_region
-FROM available_instances
-WHERE 
+SELECT DISTINCT 
+    vm.cloud,
+    vm.region,
+    vm.instance_type,
+    COUNT(*) OVER (PARTITION BY vm.cloud, vm.region) as instances_in_region
+FROM lakemeter.sync_pricing_vm_costs vm
+INNER JOIN lakemeter.sync_ref_instance_dbu_rates dbu 
+    ON vm.cloud = dbu.cloud 
+    AND vm.instance_type = dbu.instance_type
+WHERE vm.pricing_tier = 'on_demand'
+  AND (
     -- Filter for test regions only
-    (cloud = 'AWS' AND region IN ('us-east-1', 'eu-west-1'))
-    OR (cloud = 'AZURE' AND region IN ('eastus', 'westeurope'))
-    OR (cloud = 'GCP' AND region IN ('us-central1', 'europe-west1'))
-ORDER BY cloud, region, instance_type
+    (vm.cloud = 'AWS' AND vm.region IN ('us-east-1', 'eu-west-1'))
+    OR (vm.cloud = 'AZURE' AND vm.region IN ('eastus', 'westeurope'))
+    OR (vm.cloud = 'GCP' AND vm.region IN ('us-central1', 'europe-west1'))
+  )
+ORDER BY vm.cloud, vm.region, vm.instance_type
 LIMIT 100;
 """
 
