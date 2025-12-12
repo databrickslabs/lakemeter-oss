@@ -103,19 +103,19 @@ print(f"📊 Test Estimate ID: {TEST_ESTIMATE_ID}")
 # COMMAND ----------
 
 create_user_sql = """
-INSERT INTO lakemeter.users (user_id, username, email, role, is_active, created_at)
-VALUES (%s, %s, %s, %s, %s, %s)
+INSERT INTO lakemeter.users (user_id, email, full_name, role, is_active, created_at, updated_at)
+VALUES (%s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (user_id) DO NOTHING;
 """
 
 execute_query(
     create_user_sql,
-    (TEST_USER_ID, f'test_jobs_classic_{TEST_RUN_ID}', f'test_{TEST_RUN_ID}@databricks.com', 
-     'admin', True, datetime.now()),
+    (TEST_USER_ID, f'test_{TEST_RUN_ID}@databricks.com', f'Test User - JOBS Classic {TEST_RUN_ID}',
+     'admin', True, datetime.now(), datetime.now()),
     fetch=False
 )
 
-print(f"✅ Test user created: test_jobs_classic_{TEST_RUN_ID}")
+print(f"✅ Test user created: Test User - JOBS Classic {TEST_RUN_ID}")
 
 # COMMAND ----------
 
