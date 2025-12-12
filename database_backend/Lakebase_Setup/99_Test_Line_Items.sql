@@ -116,7 +116,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, photon_enabled,
+    serverless_enabled, serverless_mode, photon_enabled,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month,
     vm_pricing_tier
@@ -127,13 +127,15 @@ INSERT INTO line_items (
     'Data Science Notebook Cluster',
     'ALL_PURPOSE',
     false,  -- Classic
+    NULL,   -- No serverless mode for classic
     true,   -- Photon enabled
     'r5.xlarge',
     'r5.2xlarge',
     6,
     1,      -- Running daily
     480,    -- 8 hours per day
-    22      -- 22 working days
+    22,     -- 22 working days
+    'on_demand'
 );
 
 -- =============================================================================
@@ -141,7 +143,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, photon_enabled,
+    serverless_enabled, serverless_mode, photon_enabled,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
@@ -151,6 +153,7 @@ INSERT INTO line_items (
     'Serverless Notebooks',
     'ALL_PURPOSE',
     true,   -- Serverless
+    NULL,   -- ALL_PURPOSE doesn't have performance mode, only standard
     true,   -- Auto-enabled
     'r5.xlarge',   -- Sizing reference
     'r5.2xlarge',  -- Sizing reference
@@ -165,7 +168,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, photon_enabled,
+    serverless_enabled, serverless_mode, photon_enabled,
     dlt_edition, dlt_pipeline_mode,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month,
@@ -177,6 +180,7 @@ INSERT INTO line_items (
     'DLT Streaming Pipeline (Classic PRO)',
     'DLT',
     false,       -- Classic
+    NULL,        -- No serverless mode for classic
     true,        -- Photon enabled
     'PRO',
     'CONTINUOUS',
@@ -185,7 +189,8 @@ INSERT INTO line_items (
     4,
     1,
     1440,   -- 24 hours (continuous)
-    30
+    30,
+    'on_demand'
 );
 
 -- =============================================================================
@@ -221,6 +226,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
+    serverless_enabled, serverless_mode,
     dbsql_warehouse_type, dbsql_warehouse_size, dbsql_num_clusters,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
@@ -229,6 +235,8 @@ INSERT INTO line_items (
     8,
     'SQL Analytics Warehouse',
     'DBSQL',
+    NULL,   -- Not applicable for DBSQL
+    NULL,   -- Not applicable
     'serverless',
     'Medium',
     2,      -- 2 clusters for scaling
@@ -242,6 +250,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
+    serverless_enabled, serverless_mode,
     serverless_product, serverless_size,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
@@ -250,6 +259,8 @@ INSERT INTO line_items (
     9,
     'RAG Vector Search',
     'VECTOR_SEARCH',
+    NULL,   -- Not applicable
+    NULL,   -- Not applicable
     'vector_search',
     'standard',
     1,
@@ -262,6 +273,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
+    serverless_enabled, serverless_mode,
     serverless_product, serverless_size,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
@@ -270,6 +282,8 @@ INSERT INTO line_items (
     10,
     'ML Model Serving (GPU)',
     'MODEL_SERVING',
+    NULL,   -- Not applicable
+    NULL,   -- Not applicable
     'model_serving',
     'gpu_medium',
     1,
@@ -282,6 +296,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
+    serverless_enabled, serverless_mode,
     fmapi_provider, fmapi_model,
     fmapi_input_tokens_per_month, fmapi_output_tokens_per_month
 ) VALUES (
@@ -290,6 +305,8 @@ INSERT INTO line_items (
     11,
     'Chatbot with Llama',
     'FMAPI_DATABRICKS',
+    NULL,   -- Not applicable
+    NULL,   -- Not applicable
     'databricks',
     'llama-3.1-70b-instruct',
     50000000,   -- 50M input tokens
@@ -301,6 +318,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
+    serverless_enabled, serverless_mode,
     fmapi_provider, fmapi_model, fmapi_endpoint_type, fmapi_context_length,
     fmapi_input_tokens_per_month, fmapi_output_tokens_per_month
 ) VALUES (
@@ -309,6 +327,8 @@ INSERT INTO line_items (
     12,
     'Customer Support Bot (Claude)',
     'FMAPI_PROPRIETARY',
+    NULL,   -- Not applicable
+    NULL,   -- Not applicable
     'anthropic',
     'claude-sonnet-4-20250514',
     'global',
