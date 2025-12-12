@@ -650,6 +650,7 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | `workload_type` | VARCHAR(50) | | ✓ ref_workload_types | Dropdown: JOBS, ALL_PURPOSE, DLT, DBSQL, etc. |
 | **Compute Config** *(JOBS, ALL_PURPOSE, DLT)* |
 | `serverless_enabled` | BOOLEAN | | | Serverless toggle (**if true, photon_enabled must also be true**) |
+| `serverless_mode` | VARCHAR(20) | | | Dropdown: standard, performance (**for JOBS/DLT serverless only**) |
 | `photon_enabled` | BOOLEAN | | | Photon acceleration (auto-true when serverless) |
 | `driver_node_type` | VARCHAR(100) | | | Instance type (for sizing estimation, even for serverless) |
 | `worker_node_type` | VARCHAR(100) | | | Instance type (for sizing estimation, even for serverless) |
@@ -717,6 +718,7 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | workload_name | Serverless ETL Pipeline |
 | workload_type | `JOBS` |
 | serverless_enabled | **true** |
+| serverless_mode | **standard** *(or performance for faster execution)* |
 | photon_enabled | **true** *(auto-set)* |
 | driver_node_type | i3.xlarge *(sizing reference only)* |
 | worker_node_type | i3.2xlarge *(sizing reference only)* |
@@ -766,6 +768,7 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | workload_name | Streaming Ingestion |
 | workload_type | `DLT` |
 | serverless_enabled | **true** |
+| serverless_mode | **performance** *(or standard for cost optimization)* |
 | photon_enabled | **true** *(auto-set)* |
 | dlt_edition | PRO |
 | dlt_pipeline_mode | CONTINUOUS |
