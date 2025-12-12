@@ -134,7 +134,7 @@ print("=" * 80)
 # Generate unique IDs for this test run
 TEST_RUN_ID = str(uuid.uuid4())[:8]
 TEST_USER_ID = str(uuid.uuid4())
-TEST_ESTIMATE_ID = str(uuid.uuid4())
+# TEST_ESTIMATE_ID removed - now creating one estimate per cloud/region in Section 6.1
 
 print(f"🧪 Test Run ID: {TEST_RUN_ID}")
 print(f"👤 Test User ID: {TEST_USER_ID}")
@@ -165,28 +165,10 @@ print(f"✅ Test user created: Test User - JOBS Classic {TEST_RUN_ID}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5. Create Test Estimate
-
-# COMMAND ----------
-
-create_estimate_sql = """
-INSERT INTO lakemeter.estimates (
-    estimate_id, estimate_name, owner_user_id, customer_name,
-    cloud, region, tier, status, created_at, updated_at, updated_by
-)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-ON CONFLICT (estimate_id) DO NOTHING;
-"""
-
-execute_query(
-    create_estimate_sql,
-    (TEST_ESTIMATE_ID, f'JOBS Classic Test - {TEST_RUN_ID}', TEST_USER_ID, 
-     'Test Customer - JOBS Classic', 'AWS', 'us-east-1', 'PREMIUM', 'draft',
-     datetime.now(), datetime.now(), TEST_USER_ID),
-    fetch=False
-)
-
-print(f"✅ Test estimate created: JOBS Classic Test - {TEST_RUN_ID}")
+# MAGIC ## 5. Placeholder for Test Estimates
+# MAGIC 
+# MAGIC **Note:** Estimates are now created dynamically in Section 8, one per cloud/region combo.
+# MAGIC This ensures each line item has the correct cloud/region for pricing lookups.
 
 # COMMAND ----------
 
@@ -708,7 +690,46 @@ print(f"📋 Prepared {len(test_scenarios)} test scenarios for JOBS Classic")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 6.1 Insert Test Line Items
+# MAGIC ### 6.1 Create Estimates (One Per Cloud/Region Combo)
+
+# COMMAND ----------
+
+# CRITICAL FIX: Create one estimate per cloud/region
+# This ensures pricing lookups use the correct cloud/region rates
+
+create_estimate_sql = """
+INSERT INTO lakemeter.estimates (
+    estimate_id, estimate_name, owner_user_id, customer_name,
+    cloud, region, tier, status, created_at, updated_at, updated_by
+)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+ON CONFLICT (estimate_id) DO NOTHING;
+"""
+
+# Build estimate mapping: {cloud_region: estimate_id}
+estimate_map = {}
+for scenario in test_scenarios:
+    key = f"{scenario['cloud']}_{scenario['region']}"
+    if key not in estimate_map:
+        estimate_id = str(uuid.uuid4())
+        estimate_map[key] = estimate_id
+        
+        execute_query(
+            create_estimate_sql,
+            (estimate_id, f'Test - {scenario["cloud"]} {scenario["region"]} - {TEST_RUN_ID}', 
+             TEST_USER_ID, f'Test Customer - {scenario["cloud"]}', 
+             scenario['cloud'], scenario['region'], 'PREMIUM', 'draft',
+             datetime.now(), datetime.now(), TEST_USER_ID),
+            fetch=False
+        )
+        print(f"✅ Created estimate: {scenario['cloud']} / {scenario['region']} → {estimate_id}")
+
+print(f"\n✅ Created {len(estimate_map)} estimates for {len(test_scenarios)} scenarios")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 6.2 Insert Test Line Items (With Correct Estimate IDs)
 
 # COMMAND ----------
 
@@ -737,11 +758,15 @@ for scenario in test_scenarios:
     line_item_id = str(uuid.uuid4())
     line_item_ids.append(line_item_id)
     
+    # Get the correct estimate_id for this scenario's cloud/region
+    estimate_key = f"{scenario['cloud']}_{scenario['region']}"
+    estimate_id = estimate_map[estimate_key]
+    
     execute_query(
         insert_line_item_sql,
         (
             line_item_id,
-            TEST_ESTIMATE_ID,
+            estimate_id,  # ✅ Use cloud/region-specific estimate!
             scenario['scenario_id'],
             scenario['workload_name'],
             'JOBS',  # workload_type
