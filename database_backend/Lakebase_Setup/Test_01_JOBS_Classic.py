@@ -42,7 +42,7 @@ from datetime import datetime
 from tabulate import tabulate
 
 # Lakebase connection parameters
-LAKEBASE_HOST = "lakebase-pricing.postgres.database.azure.com"
+LAKEBASE_HOST = "instance-364041a4-0aae-44df-bbc6-37ac84169dfe.database.cloud.databricks.com"
 LAKEBASE_PORT = 5432
 LAKEBASE_DB = "lakemeter_pricing"
 LAKEBASE_USER = "lakemeter_sync_role"
@@ -658,7 +658,10 @@ print("=" * 80)
 # MAGIC    dbu_per_hour = (driver_dbu_rate + (worker_dbu_rate × num_workers)) × photon_multiplier
 # MAGIC    
 # MAGIC    where:
-# MAGIC      - photon_multiplier = 2.0 if photon_enabled else 1.0
+# MAGIC      - photon_multiplier is looked up from sync_pricing_dbu_rates
+# MAGIC      - It's the ratio: (Photon DBU rate / Non-Photon DBU rate) for the same cloud/region/tier
+# MAGIC      - Typically ~2.0 but varies by cloud and workload type
+# MAGIC      - photon_multiplier = 1.0 if photon_enabled = false
 # MAGIC    ```
 # MAGIC 
 # MAGIC 3. **DBU per Month:**
@@ -738,6 +741,7 @@ manual_dbu_per_hour = (driver_dbu + (worker_dbu * num_workers)) * photon_mult
 print(f"\n2️⃣ DBU per Hour:")
 print(f"   = ({driver_dbu} + ({worker_dbu} × {num_workers})) × {photon_mult}")
 print(f"   = {manual_dbu_per_hour:.4f} DBU/hour")
+print(f"   Note: photon_multiplier ({photon_mult}) is from sync_pricing_dbu_rates (varies by cloud/workload)")
 print(f"   ✓ Actual: {scenario_1['dbu_per_hour']:.4f} | Expected: {manual_dbu_per_hour:.4f}")
 
 # Step 3: DBU per month
