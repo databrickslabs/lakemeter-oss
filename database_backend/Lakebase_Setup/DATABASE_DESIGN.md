@@ -675,6 +675,11 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | `fmapi_context_length` | VARCHAR(20) | | | standard, long |
 | `fmapi_input_tokens_per_month` | BIGINT | | | Estimated input tokens |
 | `fmapi_output_tokens_per_month` | BIGINT | | | Estimated output tokens |
+| **Lakebase Config** *(LAKEBASE only)* |
+| `lakebase_cu` | INT | | | Compute Units: 1, 2, 4, 8 (**1 CU = 1 DBU**) |
+| `lakebase_storage_gb` | INT | | | Storage size in GB (100-10000) |
+| `lakebase_ha_enabled` | BOOLEAN | | | High availability (multi-AZ) toggle |
+| `lakebase_backup_retention_days` | INT | | | Backup retention days (1-35, default 7) |
 | **Usage/Frequency** *(Consistent for all hourly workloads)* |
 | `runs_per_day` | INT | | | Number of runs per day |
 | `avg_runtime_minutes` | INT | | | Average runtime per run (in minutes) |
@@ -806,6 +811,28 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | fmapi_output_tokens_per_month | 10,000,000 |
 
 > Cost = DBU cost only (token-based pricing)
+
+---
+
+#### Example 8: Lakebase (Managed PostgreSQL)
+| Column | Value |
+|--------|-------|
+| workload_name | Operational Database |
+| workload_type | `LAKEBASE` |
+| lakebase_cu | 4 *(4 CU = 4 DBU/hour)* |
+| lakebase_storage_gb | 500 |
+| lakebase_ha_enabled | true |
+| lakebase_backup_retention_days | 14 |
+| runs_per_day | 1 |
+| avg_runtime_minutes | 1440 *(24 hours/day, always on)* |
+| days_per_month | 30 |
+
+> **Cost Calculation:**
+> - DBU per hour = `lakebase_cu` (4 CU = 4 DBU/hour)
+> - Hours per month = `runs_per_day × (avg_runtime_minutes / 60) × days_per_month` = 1 × 24 × 30 = 720 hours
+> - DBU per month = 4 DBU/hour × 720 hours = 2,880 DBU
+> - DBU cost = 2,880 DBU × `sync_pricing_dbu_rates.price_per_dbu` (where `product_type = 'DATABASE_SERVERLESS_COMPUTE'`)
+> - Total cost = DBU cost + storage cost + backup cost
 
 ---
 
@@ -1002,6 +1029,9 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | MODEL_SERVING | Model Serving | | | | | | |
 | FMAPI_DATABRICKS | Foundation Models (Databricks) | | | | | | |
 | FMAPI_PROPRIETARY | Foundation Models (Proprietary) | | | | | | |
+| LAKEBASE | Lakebase | | | | | | | *(shows lakebase_cu + usage_hours)* |
+
+> **Note:** LAKEBASE shows: `lakebase_cu` dropdown (1/2/4/8 CU), `lakebase_storage_gb`, `lakebase_ha_enabled`, `lakebase_backup_retention_days`, and usage/frequency fields (`runs_per_day`, `avg_runtime_minutes`, `days_per_month`).
 
 **SKU Mapping by Workload Type:**
 
@@ -1015,7 +1045,10 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | MODEL_SERVING | *(N/A)* | *(N/A)* | SERVERLESS_REAL_TIME_INFERENCE |
 | FMAPI_DATABRICKS | *(N/A)* | *(N/A)* | SERVERLESS_REAL_TIME_INFERENCE |
 | FMAPI_PROPRIETARY | *(N/A)* | *(N/A)* | {PROVIDER}_MODEL_SERVING |
+| LAKEBASE | *(N/A)* | *(N/A)* | **DATABASE_SERVERLESS_COMPUTE** |
 
+> **Note for LAKEBASE:** DBU per hour = `lakebase_cu` (1 CU = 1 DBU). Pricing uses `DATABASE_SERVERLESS_COMPUTE` product type from `sync_pricing_dbu_rates`.
+> 
 > **Note for DLT:** The actual `sku_product_type` depends on `dlt_edition` (CORE/PRO/ADVANCED). Example: `DLT_PRO_COMPUTE_(PHOTON)`.
 
 **Form Behavior When Serverless is Toggled ON:**

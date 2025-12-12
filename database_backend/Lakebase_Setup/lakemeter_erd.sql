@@ -146,6 +146,14 @@ CREATE TABLE line_items (
     fmapi_output_tokens_per_month BIGINT,     -- Number input: estimated output tokens
     
     -- =========================================================================
+    -- SECTION 6.5: LAKEBASE CONFIG (Show when workload_type = 'LAKEBASE')
+    -- =========================================================================
+    lakebase_cu INT,                          -- Dropdown: 1, 2, 4, 8 CU (1 CU = 1 DBU)
+    lakebase_storage_gb INT,                  -- Number input: Storage size in GB (100-10000)
+    lakebase_ha_enabled BOOLEAN DEFAULT false,-- Toggle: High availability (multi-AZ)
+    lakebase_backup_retention_days INT DEFAULT 7, -- Number input: Backup retention (1-35 days)
+    
+    -- =========================================================================
     -- SECTION 7: USAGE / FREQUENCY (Consistent for all hourly workloads)
     -- =========================================================================
     -- hours_per_month = runs_per_day * (avg_runtime_minutes / 60) * days_per_month
@@ -273,6 +281,13 @@ INSERT INTO ref_workload_types VALUES
  NULL, NULL, NULL, 8)  -- sku_product_type determined by provider dynamically
 ON CONFLICT (workload_type) DO NOTHING;
 
+-- LAKEBASE: Managed PostgreSQL database service
+INSERT INTO ref_workload_types VALUES
+('LAKEBASE', 'Lakebase', 'Managed PostgreSQL database for operational workloads',
+ false, false, false, false, false, false, false, false, false, true, true, false,
+ NULL, NULL, 'DATABASE_SERVERLESS_COMPUTE', 9)  -- 1 CU = 1 DBU, hourly pricing (show_usage_hours=TRUE)
+ON CONFLICT (workload_type) DO NOTHING;
+
 -- Add FK constraint: line_items.workload_type → ref_workload_types.workload_type
 ALTER TABLE line_items 
 ADD CONSTRAINT fk_line_items_workload_type 
@@ -379,6 +394,10 @@ dbu_calc AS (
                           WHERE cloud = c.cloud 
                           AND product = LOWER(c.serverless_product)
                           AND size_or_model = c.serverless_size), 0)
+            
+            -- LAKEBASE: Direct CU to DBU conversion (1 CU = 1 DBU per hour)
+            WHEN c.workload_type = 'LAKEBASE' THEN
+                COALESCE(c.lakebase_cu, 0)  -- Simple: CU value IS the DBU per hour
             
             -- FMAPI: calculated from tokens, not hourly (handled separately)
             ELSE 0
@@ -545,6 +564,10 @@ SELECT
     fmapi_context_length,
     fmapi_input_tokens_per_month,
     fmapi_output_tokens_per_month,
+    lakebase_cu,
+    lakebase_storage_gb,
+    lakebase_ha_enabled,
+    lakebase_backup_retention_days,
     runs_per_day,
     avg_runtime_minutes,
     days_per_month,
