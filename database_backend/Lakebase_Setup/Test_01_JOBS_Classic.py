@@ -1058,86 +1058,7 @@ display(gcp_results[['workload_name', 'photon_enabled', 'vm_pricing_tier',
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 13. Validation & Analysis
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### 13.1 Photon Impact Analysis
-
-# COMMAND ----------
-
-photon_analysis = results_df.groupby('photon_enabled').agg({
-    'dbu_per_month': 'sum',
-    'cost_per_month': 'sum',
-    'display_order': 'count'
-}).rename(columns={'display_order': 'scenario_count'})
-
-photon_analysis['avg_cost_per_scenario'] = photon_analysis['cost_per_month'] / photon_analysis['scenario_count']
-photon_analysis['photon_enabled'] = photon_analysis.index.map({True: 'Photon ON', False: 'Photon OFF'})
-
-print("\n" + "=" * 80)
-print("PHOTON IMPACT ANALYSIS")
-print("=" * 80)
-print(tabulate(photon_analysis, headers='keys', tablefmt='grid'))
-print("=" * 80)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### 13.2 VM Pricing Tier Comparison
-
-# COMMAND ----------
-
-pricing_analysis = results_df.groupby('vm_pricing_tier').agg({
-    'vm_cost_per_month': 'sum',
-    'cost_per_month': 'sum',
-    'display_order': 'count'
-}).rename(columns={'display_order': 'scenario_count'})
-
-pricing_analysis['avg_vm_cost_per_scenario'] = pricing_analysis['vm_cost_per_month'] / pricing_analysis['scenario_count']
-
-print("\n" + "=" * 80)
-print("VM PRICING TIER COMPARISON")
-print("=" * 80)
-print(tabulate(pricing_analysis, headers='keys', tablefmt='grid'))
-print("=" * 80)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### 13.3 Usage Pattern Analysis
-
-# COMMAND ----------
-
-# Categorize by usage
-def categorize_usage(row):
-    if row['runs_per_day'] <= 4:
-        return 'Light'
-    elif row['runs_per_day'] <= 12:
-        return 'Medium'
-    else:
-        return 'Heavy'
-
-results_df['usage_category'] = results_df.apply(categorize_usage, axis=1)
-
-usage_analysis = results_df.groupby('usage_category').agg({
-    'hours_per_month': 'mean',
-    'dbu_per_month': 'mean',
-    'cost_per_month': 'mean',
-    'display_order': 'count'
-}).rename(columns={'display_order': 'scenario_count'})
-
-print("\n" + "=" * 80)
-print("USAGE PATTERN ANALYSIS")
-print("=" * 80)
-print(tabulate(usage_analysis, headers='keys', tablefmt='grid'))
-print("=" * 80)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 14. Manual Validation - Verify Calculation Logic
+# MAGIC ## 13. Manual Validation - Verify Calculation Logic
 # MAGIC 
 # MAGIC **How to verify calculations are correct:**
 # MAGIC 
@@ -1195,7 +1116,7 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 14.1 Manual Calculation Example - Scenario 1
+# MAGIC ### 13.1 Manual Calculation Example - Scenario 1
 # MAGIC 
 # MAGIC Let's manually calculate **Scenario 1: AWS US-East Light ETL (No Photon)**
 
@@ -1291,7 +1212,7 @@ print("\n" + "=" * 100)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 14.2 Automated Validation - All Scenarios
+# MAGIC ### 13.2 Automated Validation - All Scenarios
 # MAGIC 
 # MAGIC Run automated validation checks across all test scenarios
 
@@ -1370,7 +1291,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 15. Test Summary
+# MAGIC ## 14. Test Summary
 
 # COMMAND ----------
 
