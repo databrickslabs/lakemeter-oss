@@ -13,6 +13,16 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Setup: Install Dependencies
+
+# COMMAND ----------
+
+# MAGIC %pip install psycopg2-binary tabulate --quiet
+# MAGIC dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Setup: Connect to Lakebase
 
 # COMMAND ----------
