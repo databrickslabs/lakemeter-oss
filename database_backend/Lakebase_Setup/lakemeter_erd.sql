@@ -359,6 +359,7 @@ classic_compute AS (
         ON w.cloud = h.cloud AND w.instance_type = h.worker_node_type
     LEFT JOIN sync_ref_dbu_multipliers m 
         ON h.serverless_enabled = FALSE  -- Only join multiplier for classic
+        AND m.cloud = h.cloud  -- ✅ CRITICAL: Match by cloud (multipliers vary by cloud!)
         AND m.feature = CASE WHEN h.photon_enabled THEN 'photon' ELSE 'standard' END
         AND m.sku_type = CASE 
             WHEN h.workload_type = 'DLT' THEN 'DLT_' || COALESCE(h.dlt_edition, 'CORE') || '_COMPUTE'
