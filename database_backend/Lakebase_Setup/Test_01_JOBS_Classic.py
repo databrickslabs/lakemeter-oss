@@ -640,42 +640,234 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 8. Export Full Results to CSV
-
-# COMMAND ----------
-
-# Export full results
-output_path = f"/dbfs/tmp/test_jobs_classic_{TEST_RUN_ID}.csv"
-results_df.to_csv(output_path, index=False)
-
-print(f"✅ Full results exported to: {output_path}")
-print(f"   Download via: /tmp/test_jobs_classic_{TEST_RUN_ID}.csv")
+# MAGIC ## 8. Manual Validation - Verify Calculation Logic
+# MAGIC 
+# MAGIC **How to verify calculations are correct:**
+# MAGIC 
+# MAGIC For each scenario, we manually calculate expected values and compare with actual results from the view.
+# MAGIC 
+# MAGIC ### **Calculation Formula (JOBS Classic):**
+# MAGIC 
+# MAGIC 1. **Hours per Month:**
+# MAGIC    ```
+# MAGIC    hours_per_month = runs_per_day × (avg_runtime_minutes / 60) × days_per_month
+# MAGIC    ```
+# MAGIC 
+# MAGIC 2. **DBU per Hour:**
+# MAGIC    ```
+# MAGIC    dbu_per_hour = (driver_dbu_rate + (worker_dbu_rate × num_workers)) × photon_multiplier
+# MAGIC    
+# MAGIC    where:
+# MAGIC      - photon_multiplier = 2.0 if photon_enabled else 1.0
+# MAGIC    ```
+# MAGIC 
+# MAGIC 3. **DBU per Month:**
+# MAGIC    ```
+# MAGIC    dbu_per_month = dbu_per_hour × hours_per_month
+# MAGIC    ```
+# MAGIC 
+# MAGIC 4. **VM Cost per Hour:**
+# MAGIC    ```
+# MAGIC    vm_cost_per_hour = driver_vm_cost + (worker_vm_cost × num_workers) × spot_discount
+# MAGIC    
+# MAGIC    where:
+# MAGIC      - spot_discount = (1 - spot_percentage/100) if vm_pricing_tier = 'spot'
+# MAGIC    ```
+# MAGIC 
+# MAGIC 5. **VM Cost per Month:**
+# MAGIC    ```
+# MAGIC    vm_cost_per_month = vm_cost_per_hour × hours_per_month
+# MAGIC    ```
+# MAGIC 
+# MAGIC 6. **DBU Cost per Month:**
+# MAGIC    ```
+# MAGIC    dbu_cost_per_month = dbu_per_month × dbu_price
+# MAGIC    
+# MAGIC    where:
+# MAGIC      - dbu_price from sync_pricing_dbu_rates based on cloud, region, tier, product_type
+# MAGIC    ```
+# MAGIC 
+# MAGIC 7. **Total Cost per Month:**
+# MAGIC    ```
+# MAGIC    cost_per_month = dbu_cost_per_month + vm_cost_per_month
+# MAGIC    ```
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 9. Cleanup - Remove Test Data
+# MAGIC ### 8.1 Manual Calculation Example - Scenario 1
+# MAGIC 
+# MAGIC Let's manually calculate **Scenario 1: AWS US-East Light ETL (No Photon)**
 
 # COMMAND ----------
 
-# Delete test line items
-delete_line_items_sql = "DELETE FROM lakemeter.line_items WHERE estimate_id = %s;"
-execute_query(delete_line_items_sql, (TEST_ESTIMATE_ID,), fetch=False)
+# Get Scenario 1 data
+scenario_1 = results_df[results_df['display_order'] == 1].iloc[0]
 
-# Delete test estimate
-delete_estimate_sql = "DELETE FROM lakemeter.estimates WHERE estimate_id = %s;"
-execute_query(delete_estimate_sql, (TEST_ESTIMATE_ID,), fetch=False)
+print("=" * 100)
+print("MANUAL CALCULATION VALIDATION - Scenario 1")
+print("=" * 100)
+print(f"Workload: {scenario_1['workload_name']}")
+print(f"Configuration: {scenario_1['driver_node_type']} driver + {scenario_1['num_workers']}x {scenario_1['worker_node_type']}")
+print(f"Photon: {scenario_1['photon_enabled']}")
+print(f"Usage: {scenario_1['runs_per_day']} runs/day × {scenario_1['avg_runtime_minutes']} min × {scenario_1['days_per_month']} days")
+print(f"VM Pricing: {scenario_1['vm_pricing_tier']}")
+print("=" * 100)
 
-# Delete test user
-delete_user_sql = "DELETE FROM lakemeter.users WHERE user_id = %s;"
-execute_query(delete_user_sql, (TEST_USER_ID,), fetch=False)
+# Step-by-step manual calculation
+print("\n📊 STEP-BY-STEP CALCULATION:\n")
 
-print("✅ Cleanup complete - all test data removed")
+# Step 1: Hours per month
+runs_per_day = scenario_1['runs_per_day']
+avg_runtime_minutes = scenario_1['avg_runtime_minutes']
+days_per_month = scenario_1['days_per_month']
+manual_hours_per_month = runs_per_day * (avg_runtime_minutes / 60) * days_per_month
+
+print(f"1️⃣ Hours per Month:")
+print(f"   = {runs_per_day} × ({avg_runtime_minutes} / 60) × {days_per_month}")
+print(f"   = {manual_hours_per_month:.2f} hours")
+print(f"   ✓ Actual: {scenario_1['hours_per_month']:.2f} | Expected: {manual_hours_per_month:.2f}")
+
+# Step 2: DBU per hour
+driver_dbu = scenario_1['driver_dbu_rate']
+worker_dbu = scenario_1['worker_dbu_rate']
+num_workers = scenario_1['num_workers']
+photon_mult = scenario_1['photon_multiplier']
+manual_dbu_per_hour = (driver_dbu + (worker_dbu * num_workers)) * photon_mult
+
+print(f"\n2️⃣ DBU per Hour:")
+print(f"   = ({driver_dbu} + ({worker_dbu} × {num_workers})) × {photon_mult}")
+print(f"   = {manual_dbu_per_hour:.4f} DBU/hour")
+print(f"   ✓ Actual: {scenario_1['dbu_per_hour']:.4f} | Expected: {manual_dbu_per_hour:.4f}")
+
+# Step 3: DBU per month
+manual_dbu_per_month = manual_dbu_per_hour * manual_hours_per_month
+
+print(f"\n3️⃣ DBU per Month:")
+print(f"   = {manual_dbu_per_hour:.4f} × {manual_hours_per_month:.2f}")
+print(f"   = {manual_dbu_per_month:.2f} DBUs")
+print(f"   ✓ Actual: {scenario_1['dbu_per_month']:.2f} | Expected: {manual_dbu_per_month:.2f}")
+
+# Step 4: VM cost per hour
+driver_vm_cost = scenario_1['driver_vm_cost_per_hour']
+worker_vm_cost = scenario_1['worker_vm_cost_per_hour']
+manual_vm_cost_per_hour = driver_vm_cost + (worker_vm_cost * num_workers)
+
+print(f"\n4️⃣ VM Cost per Hour:")
+print(f"   = {driver_vm_cost:.4f} + ({worker_vm_cost:.4f} × {num_workers})")
+print(f"   = ${manual_vm_cost_per_hour:.4f}/hour")
+print(f"   ✓ Actual: ${scenario_1['vm_cost_per_hour']:.4f} | Expected: ${manual_vm_cost_per_hour:.4f}")
+
+# Step 5: VM cost per month
+manual_vm_cost_per_month = manual_vm_cost_per_hour * manual_hours_per_month
+
+print(f"\n5️⃣ VM Cost per Month:")
+print(f"   = ${manual_vm_cost_per_hour:.4f} × {manual_hours_per_month:.2f}")
+print(f"   = ${manual_vm_cost_per_month:.2f}")
+print(f"   ✓ Actual: ${scenario_1['vm_cost_per_month']:.2f} | Expected: ${manual_vm_cost_per_month:.2f}")
+
+# Step 6: DBU cost per month
+dbu_price = scenario_1['dbu_price']
+manual_dbu_cost_per_month = manual_dbu_per_month * dbu_price
+
+print(f"\n6️⃣ DBU Cost per Month:")
+print(f"   = {manual_dbu_per_month:.2f} × ${dbu_price:.4f}")
+print(f"   = ${manual_dbu_cost_per_month:.2f}")
+print(f"   ✓ Actual: ${scenario_1['dbu_cost_per_month']:.2f} | Expected: ${manual_dbu_cost_per_month:.2f}")
+
+# Step 7: Total cost
+manual_total_cost = manual_dbu_cost_per_month + manual_vm_cost_per_month
+
+print(f"\n7️⃣ Total Cost per Month:")
+print(f"   = ${manual_dbu_cost_per_month:.2f} + ${manual_vm_cost_per_month:.2f}")
+print(f"   = ${manual_total_cost:.2f}")
+print(f"   ✓ Actual: ${scenario_1['cost_per_month']:.2f} | Expected: ${manual_total_cost:.2f}")
+
+print("\n" + "=" * 100)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 10. Test Summary
+# MAGIC ### 8.2 Automated Validation - All Scenarios
+# MAGIC 
+# MAGIC Run automated validation checks across all test scenarios
+
+# COMMAND ----------
+
+def validate_scenario(row):
+    """Validate calculations for a single scenario"""
+    errors = []
+    tolerance = 0.01  # Allow 1 cent difference due to rounding
+    
+    # Calculate expected values
+    expected_hours = row['runs_per_day'] * (row['avg_runtime_minutes'] / 60) * row['days_per_month']
+    expected_dbu_hour = (row['driver_dbu_rate'] + (row['worker_dbu_rate'] * row['num_workers'])) * row['photon_multiplier']
+    expected_dbu_month = expected_dbu_hour * expected_hours
+    expected_vm_hour = row['driver_vm_cost_per_hour'] + (row['worker_vm_cost_per_hour'] * row['num_workers'])
+    expected_vm_month = expected_vm_hour * expected_hours
+    expected_dbu_cost = expected_dbu_month * row['dbu_price']
+    expected_total = expected_dbu_cost + expected_vm_month
+    
+    # Validate
+    if abs(row['hours_per_month'] - expected_hours) > tolerance:
+        errors.append(f"Hours mismatch: {row['hours_per_month']:.2f} vs {expected_hours:.2f}")
+    
+    if abs(row['dbu_per_hour'] - expected_dbu_hour) > 0.0001:
+        errors.append(f"DBU/hour mismatch: {row['dbu_per_hour']:.4f} vs {expected_dbu_hour:.4f}")
+    
+    if abs(row['dbu_per_month'] - expected_dbu_month) > tolerance:
+        errors.append(f"DBU/month mismatch: {row['dbu_per_month']:.2f} vs {expected_dbu_month:.2f}")
+    
+    if abs(row['vm_cost_per_month'] - expected_vm_month) > tolerance:
+        errors.append(f"VM cost mismatch: ${row['vm_cost_per_month']:.2f} vs ${expected_vm_month:.2f}")
+    
+    if abs(row['dbu_cost_per_month'] - expected_dbu_cost) > tolerance:
+        errors.append(f"DBU cost mismatch: ${row['dbu_cost_per_month']:.2f} vs ${expected_dbu_cost:.2f}")
+    
+    if abs(row['cost_per_month'] - expected_total) > tolerance:
+        errors.append(f"Total cost mismatch: ${row['cost_per_month']:.2f} vs ${expected_total:.2f}")
+    
+    return {
+        'scenario': row['workload_name'],
+        'display_order': row['display_order'],
+        'status': '✅ PASS' if len(errors) == 0 else '❌ FAIL',
+        'errors': errors if errors else ['All calculations correct']
+    }
+
+# Run validation on all scenarios
+validation_results = [validate_scenario(row) for _, row in results_df.iterrows()]
+
+print("=" * 120)
+print("AUTOMATED VALIDATION RESULTS")
+print("=" * 120)
+
+passed = 0
+failed = 0
+
+for result in validation_results:
+    status_icon = result['status']
+    print(f"\n{status_icon} Scenario {result['display_order']}: {result['scenario']}")
+    for error in result['errors']:
+        print(f"   {error}")
+    
+    if '✅' in result['status']:
+        passed += 1
+    else:
+        failed += 1
+
+print("\n" + "=" * 120)
+print(f"VALIDATION SUMMARY: {passed} PASSED | {failed} FAILED")
+print("=" * 120)
+
+if failed > 0:
+    raise Exception(f"❌ Validation failed for {failed} scenario(s). Check calculations above.")
+else:
+    print("\n✅ All calculations are CORRECT!")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 9. Test Summary
 
 # COMMAND ----------
 
@@ -697,7 +889,12 @@ print(f"")
 print(f"Total Monthly Cost (All Scenarios): ${results_df['cost_per_month'].sum():,.2f}")
 print(f"Total DBUs (All Scenarios): {results_df['dbu_per_month'].sum():,.2f}")
 print(f"")
-print(f"Results exported to: /tmp/test_jobs_classic_{TEST_RUN_ID}.csv")
+print(f"Validation Status: {passed} scenarios passed, {failed} scenarios failed")
 print("=" * 100)
 print("\n✅ TEST COMPLETE!")
+print("\n💡 TIP: Test data remains in the database for manual inspection.")
+print("   To clean up, run:")
+print(f"   DELETE FROM lakemeter.line_items WHERE estimate_id = '{TEST_ESTIMATE_ID}';")
+print(f"   DELETE FROM lakemeter.estimates WHERE estimate_id = '{TEST_ESTIMATE_ID}';")
+print(f"   DELETE FROM lakemeter.users WHERE user_id = '{TEST_USER_ID}';")
 
