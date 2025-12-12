@@ -46,7 +46,7 @@ LAKEBASE_HOST = "lakebase-pricing.postgres.database.azure.com"
 LAKEBASE_PORT = 5432
 LAKEBASE_DB = "lakemeter_pricing"
 LAKEBASE_USER = "lakemeter_sync_role"
-LAKEBASE_PASSWORD = dbutils.secrets.get(scope="lakemeter", key="lakebase_password")
+LAKEBASE_PASSWORD = "Lak3m3t3r_Sync_2024!"
 
 def get_connection():
     """Create and return a PostgreSQL connection"""
