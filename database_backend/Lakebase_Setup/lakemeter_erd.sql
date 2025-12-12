@@ -358,10 +358,11 @@ dbu_calc AS (
             WHEN c.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') AND c.serverless_enabled = FALSE THEN
                 (c.driver_dbu_rate + (c.worker_dbu_rate * COALESCE(c.num_workers, 0))) * c.photon_multiplier
             
-            -- Serverless compute: DBU rate from serverless pricing (no instance DBU calc)
-            -- For serverless JOBS/ALL_PURPOSE/DLT, the DBU rate is flat per hour from pricing table
+            -- Serverless compute: Calculate DBU from nodes, then apply serverless mode multiplier
+            -- Standard mode: 1x multiplier, Performance mode: 2x multiplier
             WHEN c.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') AND c.serverless_enabled = TRUE THEN
-                0  -- Serverless DBU is calculated directly from pricing, not per-instance
+                (c.driver_dbu_rate + (c.worker_dbu_rate * COALESCE(c.num_workers, 0))) * c.photon_multiplier *
+                CASE WHEN COALESCE(c.serverless_mode, 'standard') = 'performance' THEN 2 ELSE 1 END
             
             -- DBSQL: lookup from product_dbsql_rates * num_clusters
             WHEN c.workload_type = 'DBSQL' THEN
