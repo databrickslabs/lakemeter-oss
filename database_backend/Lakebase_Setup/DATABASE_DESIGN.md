@@ -668,6 +668,7 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | **Serverless Products** *(VECTOR_SEARCH, MODEL_SERVING)* |
 | `serverless_product` | VARCHAR(50) | | | vector_search, model_serving |
 | `serverless_size` | VARCHAR(50) | | | cpu, gpu_small, gpu_medium |
+| `vector_search_mode` | VARCHAR(50) | | | standard, storage_optimized (**for VECTOR_SEARCH only**) |
 | **FMAPI Config** *(FMAPI_DATABRICKS, FMAPI_PROPRIETARY)* |
 | `fmapi_provider` | VARCHAR(50) | | | databricks, openai, anthropic, google |
 | `fmapi_model` | VARCHAR(100) | | | gpt-4o, claude-sonnet-4, llama-3.1-70b |
@@ -1001,13 +1002,14 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | **Form Section Visibility** |
 | `show_compute_config` | BOOLEAN | | Show driver/worker node config (always visible for sizing) |
 | `show_serverless_toggle` | BOOLEAN | | Show serverless ON/OFF toggle |
-| `show_serverless_mode` | BOOLEAN | | Show serverless mode dropdown (standard/performance) - **JOBS/DLT only** |
+| `show_serverless_performance_mode` | BOOLEAN | | Show serverless mode dropdown (standard/performance) - **JOBS/DLT only** |
 | `show_photon_toggle` | BOOLEAN | | Show Photon toggle (disabled when serverless=ON) |
 | `show_dlt_config` | BOOLEAN | | Show DLT edition (Core/Pro/Advanced) |
 | `show_dbsql_config` | BOOLEAN | | Show warehouse type/size |
 | `show_serverless_product` | BOOLEAN | | Show serverless product config (Vector Search, Model Serving) |
 | `show_fmapi_config` | BOOLEAN | | Show FMAPI model selection |
 | `show_lakebase_config` | BOOLEAN | | Show Lakebase config (CU, storage, HA, backup) |
+| `show_vector_search_mode` | BOOLEAN | | Show Vector Search mode dropdown (standard/storage_optimized) |
 | `show_vm_pricing` | BOOLEAN | | Show VM pricing tier (hidden when serverless=ON) |
 | `show_usage_hours` | BOOLEAN | | Show hours per day/month |
 | `show_usage_runs` | BOOLEAN | | Show runs per day, runtime |
@@ -1020,19 +1022,21 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 
 **Sample Data:**
 
-| workload_type | display_name | show_compute_config | show_serverless_toggle | show_serverless_mode | show_photon_toggle | show_dlt_config | show_dbsql_config | show_lakebase_config | show_vm_pricing |
-|---------------|--------------|:-------------------:|:----------------------:|:--------------------:|:------------------:|:---------------:|:-----------------:|:--------------------:|:---------------:|
-| JOBS | Jobs Compute | ✅ | ✅ | ✅ | ✅ | | | | ✅ |
-| ALL_PURPOSE | All-Purpose Compute | ✅ | ✅ | | ✅ | | | | ✅ |
-| DLT | Delta Live Tables | ✅ | ✅ | ✅ | ✅ | ✅ | | | ✅ |
-| DBSQL | Databricks SQL | | | | | | ✅ | | |
-| VECTOR_SEARCH | Vector Search | | | | | | | | |
-| MODEL_SERVING | Model Serving | | | | | | | | |
-| FMAPI_DATABRICKS | Foundation Models (Databricks) | | | | | | | | |
-| FMAPI_PROPRIETARY | Foundation Models (Proprietary) | | | | | | | | |
-| LAKEBASE | Lakebase | | | | | | | ✅ | |
+| workload_type | display_name | show_compute_config | show_serverless_toggle | show_serverless_performance_mode | show_photon_toggle | show_dlt_config | show_dbsql_config | show_lakebase_config | show_vector_search_mode | show_vm_pricing |
+|---------------|--------------|:-------------------:|:----------------------:|:--------------------------------:|:------------------:|:---------------:|:-----------------:|:--------------------:|:-----------------------:|:---------------:|
+| JOBS | Jobs Compute | ✅ | ✅ | ✅ | ✅ | | | | | ✅ |
+| ALL_PURPOSE | All-Purpose Compute | ✅ | ✅ | | ✅ | | | | | ✅ |
+| DLT | Delta Live Tables | ✅ | ✅ | ✅ | ✅ | ✅ | | | | ✅ |
+| DBSQL | Databricks SQL | | | | | | ✅ | | | |
+| VECTOR_SEARCH | Vector Search | | | | | | | | ✅ | |
+| MODEL_SERVING | Model Serving | | | | | | | | | |
+| FMAPI_DATABRICKS | Foundation Models (Databricks) | | | | | | | | | |
+| FMAPI_PROPRIETARY | Foundation Models (Proprietary) | | | | | | | | | |
+| LAKEBASE | Lakebase | | | | | | | ✅ | | |
 
-> **Note:** When `show_lakebase_config = TRUE`, the UI displays: `lakebase_cu` dropdown (1/2/4/8 CU), `lakebase_storage_gb` (number input), `lakebase_ha_enabled` (toggle), `lakebase_backup_retention_days` (number input), plus usage/frequency fields (`runs_per_day`, `avg_runtime_minutes`, `days_per_month`).
+> **Notes:**
+> - When `show_lakebase_config = TRUE`, the UI displays: `lakebase_cu` dropdown (1/2/4/8 CU), `lakebase_storage_gb` (number input), `lakebase_ha_enabled` (toggle), `lakebase_backup_retention_days` (number input), plus usage/frequency fields.
+> - When `show_vector_search_mode = TRUE`, the UI displays: `vector_search_mode` dropdown (standard/storage_optimized).
 
 **SKU Mapping by Workload Type:**
 

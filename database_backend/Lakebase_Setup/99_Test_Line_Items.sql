@@ -38,7 +38,7 @@ ON CONFLICT (estimate_id) DO NOTHING;
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, serverless_mode, photon_enabled,
+    serverless_enabled, serverless_mode, photon_enabled, vector_search_mode,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month,
     vm_pricing_tier, vm_payment_option
@@ -51,6 +51,7 @@ INSERT INTO line_items (
     false,  -- Classic compute
     NULL,   -- No serverless mode
     true,   -- Photon enabled
+    NULL,   -- Not applicable
     'i3.xlarge',
     'i3.2xlarge',
     8,
@@ -66,7 +67,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, serverless_mode, photon_enabled,
+    serverless_enabled, serverless_mode, photon_enabled, vector_search_mode,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
@@ -78,6 +79,7 @@ INSERT INTO line_items (
     true,       -- Serverless
     'standard', -- Standard mode (1x multiplier)
     true,       -- Auto-enabled
+    NULL,       -- Not applicable
     'i3.xlarge',   -- For sizing reference only
     'i3.2xlarge',  -- For sizing reference only
     4,             -- For sizing reference only
@@ -91,7 +93,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, serverless_mode, photon_enabled,
+    serverless_enabled, serverless_mode, photon_enabled, vector_search_mode,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
@@ -103,6 +105,7 @@ INSERT INTO line_items (
     true,         -- Serverless
     'performance', -- Performance mode (2x multiplier)
     true,         -- Auto-enabled
+    NULL,         -- Not applicable
     'i3.xlarge',
     'i3.2xlarge',
     4,
@@ -116,7 +119,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, serverless_mode, photon_enabled,
+    serverless_enabled, serverless_mode, photon_enabled, vector_search_mode,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month,
     vm_pricing_tier
@@ -129,6 +132,7 @@ INSERT INTO line_items (
     false,  -- Classic
     NULL,   -- No serverless mode for classic
     true,   -- Photon enabled
+    NULL,   -- Not applicable
     'r5.xlarge',
     'r5.2xlarge',
     6,
@@ -143,7 +147,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, serverless_mode, photon_enabled,
+    serverless_enabled, serverless_mode, photon_enabled, vector_search_mode,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
@@ -155,6 +159,7 @@ INSERT INTO line_items (
     true,   -- Serverless
     NULL,   -- ALL_PURPOSE doesn't have performance mode, only standard
     true,   -- Auto-enabled
+    NULL,   -- Not applicable
     'r5.xlarge',   -- Sizing reference
     'r5.2xlarge',  -- Sizing reference
     4,             -- Sizing reference
@@ -168,7 +173,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, serverless_mode, photon_enabled,
+    serverless_enabled, serverless_mode, photon_enabled, vector_search_mode,
     dlt_edition, dlt_pipeline_mode,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month,
@@ -182,6 +187,7 @@ INSERT INTO line_items (
     false,       -- Classic
     NULL,        -- No serverless mode for classic
     true,        -- Photon enabled
+    NULL,        -- Not applicable
     'PRO',
     'CONTINUOUS',
     'r5.xlarge',
@@ -198,7 +204,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, serverless_mode, photon_enabled,
+    serverless_enabled, serverless_mode, photon_enabled, vector_search_mode,
     dlt_edition, dlt_pipeline_mode,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month
@@ -211,6 +217,7 @@ INSERT INTO line_items (
     true,       -- Serverless
     'standard', -- Standard mode
     true,       -- Auto-enabled
+    NULL,       -- Not applicable
     'PRO',
     'TRIGGERED',
     'r5.xlarge',   -- Sizing reference
@@ -226,7 +233,7 @@ INSERT INTO line_items (
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, serverless_mode,
+    serverless_enabled, serverless_mode, vector_search_mode,
     dbsql_warehouse_type, dbsql_warehouse_size, dbsql_num_clusters,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
@@ -237,6 +244,7 @@ INSERT INTO line_items (
     'DBSQL',
     NULL,   -- Not applicable for DBSQL
     NULL,   -- Not applicable
+    NULL,   -- Not applicable
     'serverless',
     'Medium',
     2,      -- 2 clusters for scaling
@@ -246,65 +254,92 @@ INSERT INTO line_items (
 );
 
 -- =============================================================================
--- 9. VECTOR_SEARCH - Serverless Endpoint
+-- 9. VECTOR_SEARCH - Serverless Endpoint (Standard Mode)
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
     serverless_enabled, serverless_mode,
-    serverless_product, serverless_size,
+    serverless_product, serverless_size, vector_search_mode,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
     '20000000-0000-0000-0000-000000000009',
     '10000000-0000-0000-0000-000000000001',
     9,
-    'RAG Vector Search',
+    'RAG Vector Search (Standard)',
     'VECTOR_SEARCH',
     NULL,   -- Not applicable
     NULL,   -- Not applicable
     'vector_search',
     'standard',
+    'standard',  -- Standard mode
     1,
     1440,   -- 24/7 always on
     30
 );
 
 -- =============================================================================
--- 10. MODEL_SERVING - Serverless Endpoint (GPU Medium)
+-- 10. VECTOR_SEARCH - Storage Optimized Mode
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
     serverless_enabled, serverless_mode,
-    serverless_product, serverless_size,
+    serverless_product, serverless_size, vector_search_mode,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
     '20000000-0000-0000-0000-000000000010',
     '10000000-0000-0000-0000-000000000001',
     10,
+    'Document Search (Storage Optimized)',
+    'VECTOR_SEARCH',
+    NULL,   -- Not applicable
+    NULL,   -- Not applicable
+    'vector_search',
+    'storage_optimized',
+    'storage_optimized',  -- Storage optimized mode
+    1,
+    1440,   -- 24/7 always on
+    30
+);
+
+-- =============================================================================
+-- 11. MODEL_SERVING - Serverless Endpoint (GPU Medium)
+-- =============================================================================
+INSERT INTO line_items (
+    line_item_id, estimate_id, display_order, workload_name, workload_type,
+    serverless_enabled, serverless_mode,
+    serverless_product, serverless_size, vector_search_mode,
+    runs_per_day, avg_runtime_minutes, days_per_month
+) VALUES (
+    '20000000-0000-0000-0000-000000000011',
+    '10000000-0000-0000-0000-000000000001',
+    11,
     'ML Model Serving (GPU)',
     'MODEL_SERVING',
     NULL,   -- Not applicable
     NULL,   -- Not applicable
     'model_serving',
     'gpu_medium',
+    NULL,   -- Not applicable to MODEL_SERVING
     1,
     720,    -- 12 hours per day
     30
 );
 
 -- =============================================================================
--- 11. FMAPI_DATABRICKS - Llama Model
+-- 12. FMAPI_DATABRICKS - Llama Model
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, serverless_mode,
+    serverless_enabled, serverless_mode, vector_search_mode,
     fmapi_provider, fmapi_model,
     fmapi_input_tokens_per_month, fmapi_output_tokens_per_month
 ) VALUES (
-    '20000000-0000-0000-0000-000000000011',
+    '20000000-0000-0000-0000-000000000012',
     '10000000-0000-0000-0000-000000000001',
-    11,
+    12,
     'Chatbot with Llama',
     'FMAPI_DATABRICKS',
+    NULL,   -- Not applicable
     NULL,   -- Not applicable
     NULL,   -- Not applicable
     'databricks',
@@ -314,19 +349,20 @@ INSERT INTO line_items (
 );
 
 -- =============================================================================
--- 12. FMAPI_PROPRIETARY - Claude Sonnet 4
+-- 13. FMAPI_PROPRIETARY - Claude Sonnet 4
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
-    serverless_enabled, serverless_mode,
+    serverless_enabled, serverless_mode, vector_search_mode,
     fmapi_provider, fmapi_model, fmapi_endpoint_type, fmapi_context_length,
     fmapi_input_tokens_per_month, fmapi_output_tokens_per_month
 ) VALUES (
-    '20000000-0000-0000-0000-000000000012',
+    '20000000-0000-0000-0000-000000000013',
     '10000000-0000-0000-0000-000000000001',
-    12,
+    13,
     'Customer Support Bot (Claude)',
     'FMAPI_PROPRIETARY',
+    NULL,   -- Not applicable
     NULL,   -- Not applicable
     NULL,   -- Not applicable
     'anthropic',
@@ -338,18 +374,22 @@ INSERT INTO line_items (
 );
 
 -- =============================================================================
--- 13. LAKEBASE - 4 CU with HA
+-- 14. LAKEBASE - 4 CU with HA
 -- =============================================================================
 INSERT INTO line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type,
+    serverless_enabled, serverless_mode, vector_search_mode,
     lakebase_cu, lakebase_storage_gb, lakebase_ha_enabled, lakebase_backup_retention_days,
     runs_per_day, avg_runtime_minutes, days_per_month
 ) VALUES (
-    '20000000-0000-0000-0000-000000000013',
+    '20000000-0000-0000-0000-000000000014',
     '10000000-0000-0000-0000-000000000001',
-    13,
+    14,
     'Operational Database',
     'LAKEBASE',
+    NULL,   -- Not applicable
+    NULL,   -- Not applicable
+    NULL,   -- Not applicable
     4,      -- 4 CU = 4 DBU/hour
     500,    -- 500 GB storage
     true,   -- High availability enabled

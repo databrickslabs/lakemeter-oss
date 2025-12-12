@@ -134,6 +134,7 @@ CREATE TABLE line_items (
     -- =========================================================================
     serverless_product VARCHAR(50),           -- Dropdown: vector_search, model_serving
     serverless_size VARCHAR(50),              -- Dropdown: cpu, gpu_small, gpu_medium, etc.
+    vector_search_mode VARCHAR(50),           -- Dropdown: standard, storage_optimized (for VECTOR_SEARCH only)
     
     -- =========================================================================
     -- SECTION 6: FMAPI CONFIG (Show when workload_type = 'FMAPI')
@@ -205,13 +206,14 @@ CREATE TABLE ref_workload_types (
     -- Which form sections to show (TRUE = show, FALSE = hide)
     show_compute_config BOOLEAN DEFAULT false,     -- Driver/worker nodes (always for sizing)
     show_serverless_toggle BOOLEAN DEFAULT false,  -- Serverless ON/OFF toggle
-    show_serverless_mode BOOLEAN DEFAULT false,    -- Serverless mode dropdown (standard/performance) - JOBS/DLT only
+    show_serverless_performance_mode BOOLEAN DEFAULT false, -- Serverless mode dropdown (standard/performance) - JOBS/DLT only
     show_photon_toggle BOOLEAN DEFAULT false,      -- Photon toggle (disabled when serverless=ON)
     show_dlt_config BOOLEAN DEFAULT false,         -- DLT edition (Core/Pro/Advanced)
     show_dbsql_config BOOLEAN DEFAULT false,       -- Warehouse type/size
     show_serverless_product BOOLEAN DEFAULT false, -- Serverless product config (Vector Search, Model Serving)
     show_fmapi_config BOOLEAN DEFAULT false,       -- FMAPI model selection
     show_lakebase_config BOOLEAN DEFAULT false,    -- Lakebase config (CU, storage, HA, backup)
+    show_vector_search_mode BOOLEAN DEFAULT false, -- Vector Search mode (standard/storage_optimized)
     show_vm_pricing BOOLEAN DEFAULT false,         -- VM pricing tier (hidden when serverless=ON)
     show_usage_hours BOOLEAN DEFAULT false,        -- Hours per day/month
     show_usage_runs BOOLEAN DEFAULT false,         -- Runs per day, runtime
@@ -229,63 +231,63 @@ CREATE TABLE ref_workload_types (
 -- JOBS: Batch jobs (Classic or Serverless)
 INSERT INTO ref_workload_types VALUES
 ('JOBS', 'Jobs Compute', 'Scheduled batch jobs (Classic or Serverless)', 
- true, true, true, true, false, false, false, false, false, true, false, true, false,
+ true, true, true, true, false, false, false, false, false, false, true, false, true, false,
  'JOBS_COMPUTE', 'JOBS_COMPUTE_(PHOTON)', 'JOBS_SERVERLESS_COMPUTE', 1)
 ON CONFLICT (workload_type) DO NOTHING;
 
 -- ALL_PURPOSE: Interactive notebooks (Classic or Serverless)
 INSERT INTO ref_workload_types VALUES
 ('ALL_PURPOSE', 'All-Purpose Compute', 'Interactive clusters for notebooks (Classic or Serverless)', 
- true, true, false, true, false, false, false, false, false, true, true, false, false,
+ true, true, false, true, false, false, false, false, false, false, true, true, false, false,
  'ALL_PURPOSE_COMPUTE', 'ALL_PURPOSE_COMPUTE_(PHOTON)', 'INTERACTIVE_SERVERLESS_COMPUTE', 2)
 ON CONFLICT (workload_type) DO NOTHING;
 
 -- DLT: Delta Live Tables (Classic or Serverless)
 INSERT INTO ref_workload_types VALUES
 ('DLT', 'Delta Live Tables', 'Declarative ETL pipelines (Classic or Serverless)',
- true, true, true, true, true, false, false, false, false, true, true, false, false,
+ true, true, true, true, true, false, false, false, false, false, true, true, false, false,
  'DLT_CORE_COMPUTE', 'DLT_CORE_COMPUTE_(PHOTON)', 'DELTA_LIVE_TABLES_SERVERLESS', 3)
 ON CONFLICT (workload_type) DO NOTHING;
 
 -- DBSQL: SQL Analytics (has its own warehouse_type for serverless)
 INSERT INTO ref_workload_types VALUES
 ('DBSQL', 'Databricks SQL', 'SQL analytics warehouse (Classic/Pro/Serverless)',
- false, false, false, false, false, true, false, false, false, false, true, false, false,
+ false, false, false, false, false, true, false, false, false, false, false, true, false, false,
  'SQL_COMPUTE', 'SQL_PRO_COMPUTE', 'SERVERLESS_SQL_COMPUTE', 4)
 ON CONFLICT (workload_type) DO NOTHING;
 
--- VECTOR_SEARCH: Serverless only
+-- VECTOR_SEARCH: Serverless only (with mode selection)
 INSERT INTO ref_workload_types VALUES
 ('VECTOR_SEARCH', 'Vector Search', 'Vector search endpoints for RAG',
- false, false, false, false, false, false, true, false, false, false, true, false, false,
+ false, false, false, false, false, false, true, false, false, true, false, true, false, false,
  NULL, NULL, 'VECTOR_SEARCH_ENDPOINT', 5)
 ON CONFLICT (workload_type) DO NOTHING;
 
 -- MODEL_SERVING: Serverless only
 INSERT INTO ref_workload_types VALUES
 ('MODEL_SERVING', 'Model Serving', 'Real-time model inference endpoints',
- false, false, false, false, false, false, true, false, false, false, true, false, false,
+ false, false, false, false, false, false, true, false, false, false, false, true, false, false,
  NULL, NULL, 'SERVERLESS_REAL_TIME_INFERENCE', 6)
 ON CONFLICT (workload_type) DO NOTHING;
 
 -- FMAPI_DATABRICKS: Databricks-hosted LLMs (Serverless only)
 INSERT INTO ref_workload_types VALUES
 ('FMAPI_DATABRICKS', 'Foundation Models (Databricks)', 'Databricks-hosted LLMs (Llama, DBRX)',
- false, false, false, false, false, false, false, true, false, false, false, false, true,
+ false, false, false, false, false, false, false, true, false, false, false, false, false, true,
  NULL, NULL, 'SERVERLESS_REAL_TIME_INFERENCE', 7)
 ON CONFLICT (workload_type) DO NOTHING;
 
 -- FMAPI_PROPRIETARY: Proprietary LLMs served by Databricks (OpenAI, Anthropic, Google)
 INSERT INTO ref_workload_types VALUES
 ('FMAPI_PROPRIETARY', 'Foundation Models (Proprietary)', 'OpenAI, Anthropic, Google models served by Databricks',
- false, false, false, false, false, false, false, true, false, false, false, false, true,
+ false, false, false, false, false, false, false, true, false, false, false, false, false, true,
  NULL, NULL, NULL, 8)  -- sku_product_type determined by provider dynamically
 ON CONFLICT (workload_type) DO NOTHING;
 
 -- LAKEBASE: Managed PostgreSQL database service
 INSERT INTO ref_workload_types VALUES
 ('LAKEBASE', 'Lakebase', 'Managed PostgreSQL database for operational workloads',
- false, false, false, false, false, false, false, false, true, false, true, true, false,
+ false, false, false, false, false, false, false, false, true, false, false, true, true, false,
  NULL, NULL, 'DATABASE_SERVERLESS_COMPUTE', 9)  -- show_lakebase_config=TRUE, show_usage_hours=TRUE, show_usage_runs=TRUE
 ON CONFLICT (workload_type) DO NOTHING;
 
@@ -559,6 +561,7 @@ SELECT
     dbsql_num_clusters,
     serverless_product,
     serverless_size,
+    vector_search_mode,
     fmapi_provider,
     fmapi_model,
     fmapi_endpoint_type,
