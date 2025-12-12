@@ -198,7 +198,26 @@ print(f"✅ Test estimate created: JOBS Classic Test - {TEST_RUN_ID}")
 
 # COMMAND ----------
 
-# Query available instance types that have BOTH VM costs and DBU rates
+# First, let's see what regions actually exist in the pricing table
+check_regions_sql = """
+SELECT DISTINCT cloud, region
+FROM lakemeter.sync_pricing_vm_costs
+WHERE cloud IN ('AWS', 'AZURE', 'GCP')
+ORDER BY cloud, region;
+"""
+
+all_regions = execute_query(check_regions_sql)
+
+print("=" * 120)
+print("ALL AVAILABLE REGIONS IN PRICING TABLE")
+print("=" * 120)
+print(tabulate(all_regions, headers='keys', tablefmt='grid', showindex=False))
+print("=" * 120)
+
+# COMMAND ----------
+
+# Now query available instance types that have BOTH VM costs and DBU rates
+# We'll use ALL regions first, then filter dynamically
 get_available_instances_sql = """
 SELECT DISTINCT 
     vm.cloud,
@@ -210,36 +229,77 @@ INNER JOIN lakemeter.sync_ref_instance_dbu_rates dbu
     ON vm.cloud = dbu.cloud 
     AND vm.instance_type = dbu.instance_type
 WHERE vm.pricing_tier = 'on_demand'
-  AND (
-    -- Filter for test regions only
-    (vm.cloud = 'AWS' AND vm.region IN ('us-east-1', 'eu-west-1'))
-    OR (vm.cloud = 'AZURE' AND vm.region IN ('eastus', 'westeurope'))
-    OR (vm.cloud = 'GCP' AND vm.region IN ('us-central1', 'europe-west1'))
-  )
-ORDER BY vm.cloud, vm.region, vm.instance_type
-LIMIT 100;
+ORDER BY vm.cloud, vm.region, vm.instance_type;
 """
 
 available_instances = execute_query(get_available_instances_sql)
 
 print("=" * 120)
-print("AVAILABLE INSTANCE TYPES FOR TEST REGIONS")
+print("AVAILABLE INSTANCE TYPES (ALL REGIONS)")
 print("=" * 120)
 if len(available_instances) > 0:
-    # Group by cloud and region
+    # Group by cloud and show regions
     for cloud in ['AWS', 'AZURE', 'GCP']:
         cloud_instances = available_instances[available_instances['cloud'] == cloud]
         if len(cloud_instances) > 0:
-            print(f"\n{cloud}:")
-            for region in cloud_instances['region'].unique():
+            print(f"\n{cloud}: {len(cloud_instances['region'].unique())} regions available")
+            for region in cloud_instances['region'].unique()[:5]:  # Show first 5 regions
                 region_instances = cloud_instances[cloud_instances['region'] == region]
                 print(f"  {region}: {len(region_instances)} instance types")
-                # Show first 5 as examples
-                examples = region_instances['instance_type'].head(5).tolist()
+                examples = region_instances['instance_type'].head(3).tolist()
                 print(f"    Examples: {', '.join(examples)}")
-    print("\n✅ Will use these actual instance types for test scenarios")
+    print("\n✅ Will select 2 regions per cloud (1 US, 1 Europe) for test scenarios")
 else:
-    print("❌ No matching instances found! Check pricing data sync.")
+    print("❌ No instances found! Check pricing data sync.")
+    raise Exception("Cannot proceed without pricing data")
+print("=" * 120)
+
+# COMMAND ----------
+
+# Select 2 regions per cloud (1 US + 1 Europe) from available data
+def select_test_regions(cloud, available_df):
+    """Select 1 US and 1 Europe region from available data"""
+    cloud_df = available_df[available_df['cloud'] == cloud]
+    if len(cloud_df) == 0:
+        return []
+    
+    regions = cloud_df['region'].unique()
+    
+    # Keywords to identify US and Europe regions
+    us_keywords = ['us-', 'us_', 'east', 'west', 'central'] if cloud == 'AWS' or cloud == 'GCP' else ['east', 'central', 'west']
+    eu_keywords = ['eu-', 'europe', 'uk-', 'north'] if cloud == 'AWS' or cloud == 'GCP' else ['europe', 'uk', 'north']
+    
+    us_region = None
+    eu_region = None
+    
+    # Find US region
+    for region in regions:
+        region_lower = region.lower()
+        if any(kw in region_lower for kw in us_keywords) and 'europe' not in region_lower and 'eu-' not in region_lower:
+            us_region = region
+            break
+    
+    # Find Europe region
+    for region in regions:
+        region_lower = region.lower()
+        if any(kw in region_lower for kw in eu_keywords):
+            eu_region = region
+            break
+    
+    # Return whatever we found (could be 0, 1, or 2 regions)
+    return [r for r in [us_region, eu_region] if r is not None]
+
+# Select regions for each cloud
+aws_regions = select_test_regions('AWS', available_instances)
+azure_regions = select_test_regions('AZURE', available_instances)
+gcp_regions = select_test_regions('GCP', available_instances)
+
+print("\n" + "=" * 120)
+print("SELECTED TEST REGIONS")
+print("=" * 120)
+print(f"AWS: {aws_regions}")
+print(f"AZURE: {azure_regions}")
+print(f"GCP: {gcp_regions}")
 print("=" * 120)
 
 # COMMAND ----------
@@ -248,6 +308,81 @@ print("=" * 120)
 # MAGIC ## 7. Build Test Scenarios Dynamically
 # MAGIC 
 # MAGIC Use actual instance types from pricing tables to build test scenarios
+
+# COMMAND ----------
+
+print("=" * 120)
+print(f"AVAILABLE INSTANCE TYPES: {len(available_instances)} total")
+print("=" * 120)
+
+if len(available_instances) > 0:
+    # Group by cloud and show all regions
+    for cloud in ['AWS', 'AZURE', 'GCP']:
+        cloud_instances = available_instances[available_instances['cloud'] == cloud]
+        if len(cloud_instances) > 0:
+            unique_regions = cloud_instances['region'].unique()
+            print(f"\n{cloud}: {len(unique_regions)} regions, {len(cloud_instances)} instance types")
+            # Show first few regions as examples
+            for region in unique_regions[:3]:
+                region_count = len(cloud_instances[cloud_instances['region'] == region])
+                print(f"  {region}: {region_count} instance types")
+    print("\n✅ Proceeding to select test regions...")
+else:
+    print("❌ No instances found! Check pricing data sync.")
+    raise Exception("Cannot proceed without pricing data")
+print("=" * 120)
+
+# COMMAND ----------
+
+# Select 2 regions per cloud (1 US + 1 Europe) from ACTUAL available data
+def select_test_regions(cloud, available_df):
+    """Select 1 US and 1 Europe region from available data"""
+    cloud_df = available_df[available_df['cloud'] == cloud]
+    if len(cloud_df) == 0:
+        return []
+    
+    regions = cloud_df['region'].unique().tolist()
+    
+    # Keywords to identify US and Europe regions
+    us_keywords = ['us', 'east', 'west', 'central', 'america'] 
+    eu_keywords = ['eu', 'europe', 'uk', 'north', 'ireland', 'frankfurt', 'london']
+    
+    us_region = None
+    eu_region = None
+    
+    # Find US region
+    for region in regions:
+        region_lower = region.lower()
+        if any(kw in region_lower for kw in us_keywords) and not any(kw in region_lower for kw in eu_keywords):
+            us_region = region
+            break
+    
+    # Find Europe region  
+    for region in regions:
+        region_lower = region.lower()
+        if any(kw in region_lower for kw in eu_keywords):
+            eu_region = region
+            break
+    
+    # Fallback: if no regions found, just take first 2
+    selected = [r for r in [us_region, eu_region] if r is not None]
+    if len(selected) == 0 and len(regions) > 0:
+        selected = regions[:2]  # Just take first 2 available
+    
+    return selected
+
+# Select regions for each cloud
+aws_regions = select_test_regions('AWS', available_instances)
+azure_regions = select_test_regions('AZURE', available_instances)
+gcp_regions = select_test_regions('GCP', available_instances)
+
+print("\n" + "=" * 120)
+print("SELECTED TEST REGIONS (Auto-detected from available data)")
+print("=" * 120)
+print(f"AWS: {aws_regions if aws_regions else '❌ No regions available'}")
+print(f"AZURE: {azure_regions if azure_regions else '❌ No regions available'}")
+print(f"GCP: {gcp_regions if gcp_regions else '❌ No regions available'}")
+print("=" * 120)
 
 # COMMAND ----------
 
@@ -260,7 +395,6 @@ def get_instances_for_region(cloud, region, size='medium'):
     ]['instance_type'].tolist()
     
     if not region_instances:
-        print(f"⚠️  WARNING: No instances found for {cloud} {region}")
         return None
     
     # Sort and pick based on size
@@ -276,229 +410,111 @@ def get_instances_for_region(cloud, region, size='medium'):
     
     return region_instances[0]
 
-# Build test scenarios dynamically
+# Build test scenarios dynamically from ACTUAL selected regions
 test_scenarios = []
 scenario_id = 1
 
-# AWS scenarios
-aws_us_small = get_instances_for_region('AWS', 'us-east-1', 'small')
-aws_us_medium = get_instances_for_region('AWS', 'us-east-1', 'medium')
-aws_us_large = get_instances_for_region('AWS', 'us-east-1', 'large')
-aws_eu_medium = get_instances_for_region('AWS', 'eu-west-1', 'medium')
-
-if aws_us_small:
-    test_scenarios.append({
-        'scenario_id': scenario_id,
-        'workload_name': 'AWS US-East Light ETL (No Photon)',
-        'cloud': 'AWS',
-        'region': 'us-east-1',
-        'driver_node_type': aws_us_small,
-        'worker_node_type': aws_us_small,
-        'num_workers': 2,
-        'photon_enabled': False,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 4,
-        'avg_runtime_minutes': 30,
-        'days_per_month': 30,
-        'notes': f'Small cluster, no Photon, on-demand ({aws_us_small})'
-    })
-    scenario_id += 1
-
-if aws_us_medium:
-    test_scenarios.append({
-        'scenario_id': scenario_id,
-        'workload_name': 'AWS US-East Medium ETL (Photon)',
-        'cloud': 'AWS',
-        'region': 'us-east-1',
-        'driver_node_type': aws_us_small or aws_us_medium,
-        'worker_node_type': aws_us_medium,
-        'num_workers': 4,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 12,
-        'avg_runtime_minutes': 60,
-        'days_per_month': 30,
-        'notes': f'Medium cluster, Photon enabled ({aws_us_medium})'
-    })
-    scenario_id += 1
-
-if aws_us_large:
-    test_scenarios.append({
-        'scenario_id': scenario_id,
-        'workload_name': 'AWS US-East Heavy ETL (Spot)',
-        'cloud': 'AWS',
-        'region': 'us-east-1',
-        'driver_node_type': aws_us_medium or aws_us_large,
-        'worker_node_type': aws_us_large,
-        'num_workers': 8,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'spot',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 50,
-        'runs_per_day': 24,
-        'avg_runtime_minutes': 120,
-        'days_per_month': 30,
-        'notes': f'Large cluster, Photon, 50% spot ({aws_us_large})'
-    })
-    scenario_id += 1
-
-if aws_eu_medium:
-    test_scenarios.append({
-        'scenario_id': scenario_id,
-        'workload_name': 'AWS EU-West Reserved ETL',
-        'cloud': 'AWS',
-        'region': 'eu-west-1',
-        'driver_node_type': get_instances_for_region('AWS', 'eu-west-1', 'small') or aws_eu_medium,
-        'worker_node_type': aws_eu_medium,
-        'num_workers': 4,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'reserved_1y',
-        'vm_payment_option': 'no_upfront',
-        'spot_percentage': 0,
-        'runs_per_day': 12,
-        'avg_runtime_minutes': 60,
-        'days_per_month': 22,
-        'notes': f'Medium cluster, Photon, 1-year reserved ({aws_eu_medium})'
-    })
-    scenario_id += 1
+# AWS scenarios - use actual selected regions
+for idx, region in enumerate(aws_regions[:2]):  # Max 2 regions
+    region_label = "US" if idx == 0 else "EU"
+    
+    # Light usage scenario
+    small_instance = get_instances_for_region('AWS', region, 'small')
+    if small_instance:
+        test_scenarios.append({
+            'scenario_id': scenario_id,
+            'workload_name': f'AWS {region_label} Light ETL (No Photon)',
+            'cloud': 'AWS',
+            'region': region,
+            'driver_node_type': small_instance,
+            'worker_node_type': small_instance,
+            'num_workers': 2,
+            'photon_enabled': False,
+            'vm_pricing_tier': 'on_demand',
+            'vm_payment_option': 'NA',
+            'spot_percentage': 0,
+            'runs_per_day': 4,
+            'avg_runtime_minutes': 30,
+            'days_per_month': 30,
+            'notes': f'{region} small cluster, no Photon ({small_instance})'
+        })
+        scenario_id += 1
+    
+    # Medium usage scenario
+    medium_instance = get_instances_for_region('AWS', region, 'medium')
+    if medium_instance:
+        test_scenarios.append({
+            'scenario_id': scenario_id,
+            'workload_name': f'AWS {region_label} Medium ETL (Photon)',
+            'cloud': 'AWS',
+            'region': region,
+            'driver_node_type': small_instance or medium_instance,
+            'worker_node_type': medium_instance,
+            'num_workers': 4,
+            'photon_enabled': True,
+            'vm_pricing_tier': 'on_demand',
+            'vm_payment_option': 'NA',
+            'spot_percentage': 0,
+            'runs_per_day': 12,
+            'avg_runtime_minutes': 60,
+            'days_per_month': 30,
+            'notes': f'{region} medium cluster, Photon ({medium_instance})'
+        })
+        scenario_id += 1
 
 # Azure scenarios
-azure_us_small = get_instances_for_region('AZURE', 'eastus', 'small')
-azure_us_medium = get_instances_for_region('AZURE', 'eastus', 'medium')
-azure_eu_large = get_instances_for_region('AZURE', 'westeurope', 'large')
-
-if azure_us_small:
-    test_scenarios.append({
-        'scenario_id': scenario_id,
-        'workload_name': 'Azure US-East Light ETL',
-        'cloud': 'AZURE',
-        'region': 'eastus',
-        'driver_node_type': azure_us_small,
-        'worker_node_type': azure_us_small,
-        'num_workers': 2,
-        'photon_enabled': False,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 4,
-        'avg_runtime_minutes': 30,
-        'days_per_month': 30,
-        'notes': f'Azure small cluster, no Photon ({azure_us_small})'
-    })
-    scenario_id += 1
-
-if azure_us_medium:
-    test_scenarios.append({
-        'scenario_id': scenario_id,
-        'workload_name': 'Azure US-East Medium ETL (Photon)',
-        'cloud': 'AZURE',
-        'region': 'eastus',
-        'driver_node_type': azure_us_small or azure_us_medium,
-        'worker_node_type': azure_us_medium,
-        'num_workers': 4,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 12,
-        'avg_runtime_minutes': 60,
-        'days_per_month': 30,
-        'notes': f'Azure medium cluster, Photon enabled ({azure_us_medium})'
-    })
-    scenario_id += 1
-
-if azure_eu_large:
-    test_scenarios.append({
-        'scenario_id': scenario_id,
-        'workload_name': 'Azure EU-West Heavy ETL (Spot)',
-        'cloud': 'AZURE',
-        'region': 'westeurope',
-        'driver_node_type': get_instances_for_region('AZURE', 'westeurope', 'medium') or azure_eu_large,
-        'worker_node_type': azure_eu_large,
-        'num_workers': 8,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'spot',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 50,
-        'runs_per_day': 24,
-        'avg_runtime_minutes': 120,
-        'days_per_month': 30,
-        'notes': f'Azure large cluster, Photon, 50% spot ({azure_eu_large})'
-    })
-    scenario_id += 1
+for idx, region in enumerate(azure_regions[:2]):
+    region_label = "US" if idx == 0 else "EU"
+    
+    medium_instance = get_instances_for_region('AZURE', region, 'medium')
+    if medium_instance:
+        test_scenarios.append({
+            'scenario_id': scenario_id,
+            'workload_name': f'Azure {region_label} Medium ETL (Photon)',
+            'cloud': 'AZURE',
+            'region': region,
+            'driver_node_type': get_instances_for_region('AZURE', region, 'small') or medium_instance,
+            'worker_node_type': medium_instance,
+            'num_workers': 4,
+            'photon_enabled': True,
+            'vm_pricing_tier': 'on_demand',
+            'vm_payment_option': 'NA',
+            'spot_percentage': 0,
+            'runs_per_day': 12,
+            'avg_runtime_minutes': 60,
+            'days_per_month': 30,
+            'notes': f'{region} medium cluster, Photon ({medium_instance})'
+        })
+        scenario_id += 1
 
 # GCP scenarios
-gcp_us_small = get_instances_for_region('GCP', 'us-central1', 'small')
-gcp_us_medium = get_instances_for_region('GCP', 'us-central1', 'medium')
-gcp_eu_large = get_instances_for_region('GCP', 'europe-west1', 'large')
+for idx, region in enumerate(gcp_regions[:2]):
+    region_label = "US" if idx == 0 else "EU"
+    
+    medium_instance = get_instances_for_region('GCP', region, 'medium')
+    if medium_instance:
+        test_scenarios.append({
+            'scenario_id': scenario_id,
+            'workload_name': f'GCP {region_label} Medium ETL (Photon)',
+            'cloud': 'GCP',
+            'region': region,
+            'driver_node_type': get_instances_for_region('GCP', region, 'small') or medium_instance,
+            'worker_node_type': medium_instance,
+            'num_workers': 4,
+            'photon_enabled': True,
+            'vm_pricing_tier': 'on_demand',
+            'vm_payment_option': 'NA',
+            'spot_percentage': 0,
+            'runs_per_day': 12,
+            'avg_runtime_minutes': 60,
+            'days_per_month': 30,
+            'notes': f'{region} medium cluster, Photon ({medium_instance})'
+        })
+        scenario_id += 1
 
-if gcp_us_small:
-    test_scenarios.append({
-        'scenario_id': scenario_id,
-        'workload_name': 'GCP US-Central Light ETL',
-        'cloud': 'GCP',
-        'region': 'us-central1',
-        'driver_node_type': gcp_us_small,
-        'worker_node_type': gcp_us_small,
-        'num_workers': 2,
-        'photon_enabled': False,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 4,
-        'avg_runtime_minutes': 30,
-        'days_per_month': 30,
-        'notes': f'GCP small cluster, no Photon ({gcp_us_small})'
-    })
-    scenario_id += 1
-
-if gcp_us_medium:
-    test_scenarios.append({
-        'scenario_id': scenario_id,
-        'workload_name': 'GCP US-Central Medium ETL (Photon)',
-        'cloud': 'GCP',
-        'region': 'us-central1',
-        'driver_node_type': gcp_us_small or gcp_us_medium,
-        'worker_node_type': gcp_us_medium,
-        'num_workers': 4,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 12,
-        'avg_runtime_minutes': 60,
-        'days_per_month': 30,
-        'notes': f'GCP medium cluster, Photon enabled ({gcp_us_medium})'
-    })
-    scenario_id += 1
-
-if gcp_eu_large:
-    test_scenarios.append({
-        'scenario_id': scenario_id,
-        'workload_name': 'GCP EU-West Heavy ETL',
-        'cloud': 'GCP',
-        'region': 'europe-west1',
-        'driver_node_type': get_instances_for_region('GCP', 'europe-west1', 'medium') or gcp_eu_large,
-        'worker_node_type': gcp_eu_large,
-        'num_workers': 8,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 24,
-        'avg_runtime_minutes': 120,
-        'days_per_month': 30,
-        'notes': f'GCP large cluster, Photon, heavy usage ({gcp_eu_large})'
-    })
-    scenario_id += 1
-
-print(f"📋 Built {len(test_scenarios)} test scenarios dynamically from available pricing data:")
+print(f"\n📋 Built {len(test_scenarios)} test scenarios dynamically:")
 for scenario in test_scenarios:
-    print(f"   {scenario['scenario_id']}. {scenario['workload_name']}")
+    print(f"   {scenario['scenario_id']}. {scenario['cloud']} {scenario['region']}: {scenario['workload_name']}")
     print(f"      Driver: {scenario['driver_node_type']}, Worker: {scenario['worker_node_type']}")
 
 if len(test_scenarios) == 0:
