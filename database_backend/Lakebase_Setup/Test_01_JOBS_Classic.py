@@ -940,6 +940,18 @@ ORDER BY c.display_order;
 # Query using the line_item_ids we tracked during insertion
 results_df = execute_query(query_results_sql, (line_item_ids,))
 
+# Convert Decimal columns to float for calculations
+numeric_columns = [
+    'num_workers', 'runs_per_day', 'avg_runtime_minutes', 'days_per_month', 
+    'hours_per_month', 'spot_percentage', 'driver_dbu_rate', 'worker_dbu_rate', 
+    'photon_multiplier', 'dbu_per_hour', 'dbu_per_month', 'driver_vm_cost_per_hour',
+    'worker_vm_cost_per_hour', 'vm_cost_per_month', 'dbu_price', 
+    'dbu_cost_per_month', 'cost_per_month'
+]
+for col in numeric_columns:
+    if col in results_df.columns:
+        results_df[col] = pd.to_numeric(results_df[col], errors='coerce')
+
 print(f"✅ Retrieved {len(results_df)} cost calculation results")
 
 # COMMAND ----------
