@@ -1072,7 +1072,11 @@ The product type for DBU price lookup depends on `workload_type`, `serverless_en
 | `FMAPI_DATABRICKS` | *(always)* | *(N/A)* | `SERVERLESS_REAL_TIME_INFERENCE` | `sync_product_fmapi_databricks` |
 | `FMAPI_PROPRIETARY` | *(always)* | *(N/A)* | `{PROVIDER}_MODEL_SERVING` | `sync_product_fmapi_proprietary` |
 
-> **Key Rule:** When `serverless_enabled = true`, VM costs are **NOT** calculated (only DBU cost).
+> **Key Rules:**
+> - When `serverless_enabled = true`, VM costs are **NOT** calculated (only DBU cost).
+> - **Serverless Mode Multiplier:** 
+>   - `serverless_mode = 'standard'`: DBU calculation uses 1x multiplier
+>   - `serverless_mode = 'performance'`: DBU calculation uses **2x multiplier** (double the cost for faster execution)
 
 ### Complete Cost Calculation Join Example
 
