@@ -28,13 +28,22 @@ def get_connection():
     )
 
 def query_sql(sql, params=None):
+    """Execute a SELECT query and return results as DataFrame"""
     conn = get_connection()
+    cursor = None
     try:
         cursor = conn.cursor()
+        
+        # Execute query
         if params:
             cursor.execute(sql, params)
         else:
             cursor.execute(sql)
+        
+        # Check if query returned results
+        if cursor.description is None:
+            # No results (e.g., INSERT, UPDATE, DELETE)
+            return pd.DataFrame()
         
         # Fetch results
         columns = [desc[0] for desc in cursor.description]
@@ -42,9 +51,47 @@ def query_sql(sql, params=None):
         
         # Convert to DataFrame
         df = pd.DataFrame(results, columns=columns)
-        cursor.close()
         return df
+    except Exception as e:
+        print(f"❌ SQL Error: {str(e)}")
+        print(f"   Query: {sql[:100]}...")
+        if params:
+            print(f"   Params: {params}")
+        return pd.DataFrame()
     finally:
+        if cursor:
+            cursor.close()
+        conn.close()
+
+def execute_query(sql, params=None, fetch=True):
+    """Execute a query (INSERT/UPDATE/SELECT) with optional result fetching"""
+    conn = get_connection()
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        
+        if params:
+            cursor.execute(sql, params)
+        else:
+            cursor.execute(sql)
+        
+        conn.commit()
+        
+        if fetch and cursor.description:
+            columns = [desc[0] for desc in cursor.description]
+            results = cursor.fetchall()
+            return pd.DataFrame(results, columns=columns)
+        return None
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ Execute Error: {str(e)}")
+        print(f"   Query: {sql[:100]}...")
+        if params:
+            print(f"   Params: {params}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
         conn.close()
 
 # COMMAND ----------
