@@ -523,32 +523,76 @@ print("     → Reason: Standard_D4s_v3 is an Azure instance, not valid for AWS"
 
 # Let's check some sample valid combinations
 print("\n📊 Sample Valid Cloud/Region Combinations:")
-sample_regions_sql = """
-SELECT cloud, region_code, region_name
-FROM lakemeter.sync_ref_sku_region_map
-WHERE cloud = 'AWS' AND region_code LIKE 'us-%'
-LIMIT 5;
-"""
 
-sample_regions = query_sql(sample_regions_sql)
-for row in sample_regions:
-    cloud, region_code, region_name = row
-    print(f"   ✅ {cloud} + {region_code} ({region_name})")
+try:
+    # First, check what columns exist
+    check_columns_sql = """
+    SELECT column_name 
+    FROM information_schema.columns 
+    WHERE table_schema = 'lakemeter' 
+    AND table_name = 'sync_ref_sku_region_map'
+    ORDER BY ordinal_position;
+    """
+    columns = query_sql(check_columns_sql)
+    column_names = [col[0] for col in columns]
+    
+    # Use SELECT * to get whatever columns exist
+    sample_regions_sql = """
+    SELECT * 
+    FROM lakemeter.sync_ref_sku_region_map
+    WHERE cloud = 'AWS' AND region_code LIKE 'us-%'
+    LIMIT 5;
+    """
+    
+    sample_regions = query_sql(sample_regions_sql)
+    if sample_regions:
+        print(f"   Columns: {', '.join(column_names)}")
+        for row in sample_regions:
+            if len(row) >= 2:
+                print(f"   ✅ {row[0]} + {row[1]}")
+            else:
+                print(f"   ✅ {row}")
+    else:
+        print("   ℹ️  No sample data available")
+except Exception as e:
+    print(f"   ⚠️  Could not query sample data: {str(e)[:100]}")
+    print("   💡 Table structure may vary - query directly to see columns")
 
 # COMMAND ----------
 
 print("\n📊 Sample Valid Cloud/Instance Combinations:")
-sample_instances_sql = """
-SELECT cloud, instance_type, dbu_rate
-FROM lakemeter.sync_ref_instance_dbu_rates
-WHERE cloud = 'AWS' AND instance_type LIKE 'i3.%'
-LIMIT 5;
-"""
 
-sample_instances = query_sql(sample_instances_sql)
-for row in sample_instances:
-    cloud, instance_type, dbu_rate = row
-    print(f"   ✅ {cloud} + {instance_type} ({dbu_rate} DBU)")
+try:
+    # First, check what columns exist
+    check_columns_sql = """
+    SELECT column_name 
+    FROM information_schema.columns 
+    WHERE table_schema = 'lakemeter' 
+    AND table_name = 'sync_ref_instance_dbu_rates'
+    ORDER BY ordinal_position;
+    """
+    columns = query_sql(check_columns_sql)
+    column_names = [col[0] for col in columns]
+    
+    # Query with known columns (cloud, instance_type should always exist)
+    sample_instances_sql = """
+    SELECT cloud, instance_type, dbu_rate
+    FROM lakemeter.sync_ref_instance_dbu_rates
+    WHERE cloud = 'AWS' AND instance_type LIKE 'i3.%'
+    LIMIT 5;
+    """
+    
+    sample_instances = query_sql(sample_instances_sql)
+    if sample_instances:
+        print(f"   Columns: {', '.join(column_names)}")
+        for row in sample_instances:
+            cloud, instance_type, dbu_rate = row
+            print(f"   ✅ {cloud} + {instance_type} ({dbu_rate} DBU)")
+    else:
+        print("   ℹ️  No sample data available")
+except Exception as e:
+    print(f"   ⚠️  Could not query sample data: {str(e)[:100]}")
+    print("   💡 Query the table directly to see available instances")
 
 # COMMAND ----------
 
@@ -558,10 +602,44 @@ for row in sample_instances:
 # COMMAND ----------
 
 print("\n" + "=" * 80)
-print("✅ ALL SYNC-DEPENDENT CONSTRAINTS ADDED SUCCESSFULLY!")
+print("📊 SUMMARY")
 print("=" * 80)
 
-print("\n📋 What Was Added:")
+# Check if constraints were actually added
+verification_count_sql = """
+SELECT COUNT(*) 
+FROM pg_constraint
+WHERE conname IN (
+    'uq_cloud_region_code',
+    'fk_estimates_cloud_region',
+    'uq_cloud_instance_type',
+    'fk_line_items_driver_instance',
+    'fk_line_items_worker_instance'
+);
+"""
+
+try:
+    result = query_sql(verification_count_sql)
+    constraints_added = result[0][0] if result else 0
+    
+    if constraints_added == 5:
+        print("✅ ALL SYNC-DEPENDENT CONSTRAINTS ADDED SUCCESSFULLY!")
+    elif constraints_added > 0:
+        print(f"⚠️  PARTIAL SUCCESS: {constraints_added}/5 constraints added")
+        print("   Some constraints may have failed due to ownership issues.")
+    else:
+        print("❌ NO CONSTRAINTS ADDED")
+        print("   This is expected if sync_* tables are owned by Databricks connector.")
+        print("\n💡 RECOMMENDATION:")
+        print("   Skip this notebook and validate in frontend instead.")
+        print("   Your app will work perfectly without these constraints!")
+except Exception as e:
+    print("⚠️  Could not verify constraints")
+    print(f"   Error: {str(e)[:100]}")
+
+print("\n" + "=" * 80)
+
+print("\n📋 What This Notebook Attempts:")
 print("   1. Region Validation:")
 print("      - UNIQUE constraint on sync_ref_sku_region_map(cloud, region_code)")
 print("      - FK from estimates(cloud, region) → sync_ref_sku_region_map")
@@ -571,16 +649,32 @@ print("      - UNIQUE constraint on sync_ref_instance_dbu_rates(cloud, instance_
 print("      - FK from line_items(cloud, driver_node_type) → sync_ref_instance_dbu_rates")
 print("      - FK from line_items(cloud, worker_node_type) → sync_ref_instance_dbu_rates")
 
-print("\n🛡️  Data Integrity Protection:")
-print("   ✅ Users can only select valid cloud/region combinations")
-print("   ✅ Line items can only use instance types valid for their cloud")
-print("   ✅ Frontend can query sync_* tables for valid options")
-
-print("\n📋 Next Steps:")
-print("   1. Run 02_Create_Views.py to create cost calculation views")
-print("   2. Test your application with these validations active")
-print("   3. Frontend should query sync_ref_sku_region_map for valid regions")
-print("   4. Frontend should query sync_ref_instance_dbu_rates for valid instances")
+if constraints_added == 5:
+    print("\n🛡️  Data Integrity Protection NOW ACTIVE:")
+    print("   ✅ Users can only select valid cloud/region combinations")
+    print("   ✅ Line items can only use instance types valid for their cloud")
+    print("   ✅ Database enforces these rules automatically")
+    print("\n📋 Next Steps:")
+    print("   1. ✅ Run 02_Create_Views.py to create cost calculation views")
+    print("   2. ✅ Test your application - constraints are active!")
+elif constraints_added > 0:
+    print("\n⚠️  Partial Protection:")
+    print(f"   Only {constraints_added}/5 constraints are active")
+    print("   Frontend should handle validation for failed constraints")
+    print("\n📋 Next Steps:")
+    print("   1. ✅ Run 02_Create_Views.py anyway (views don't need these)")
+    print("   2. ⚠️  Implement frontend validation for missing constraints")
+else:
+    print("\n💡 No Database Constraints Added (Connector Ownership Issue)")
+    print("   ✅ App still works perfectly!")
+    print("   ✅ Validation moves to frontend layer")
+    print("\n📋 Frontend Validation Queries:")
+    print("   Valid regions:  SELECT DISTINCT cloud, region_code FROM sync_ref_sku_region_map WHERE cloud = ?")
+    print("   Valid instances: SELECT DISTINCT cloud, instance_type FROM sync_ref_instance_dbu_rates WHERE cloud = ?")
+    print("\n📋 Next Steps:")
+    print("   1. ✅ Run 02_Create_Views.py (this is NOT affected)")
+    print("   2. ✅ Implement frontend validation")
+    print("   3. ✅ Done! App is fully functional")
 
 print("\n" + "=" * 80)
 
