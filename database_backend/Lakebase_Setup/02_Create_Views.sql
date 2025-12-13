@@ -39,7 +39,8 @@ WITH
 hours_calc AS (
     SELECT 
         li.*,
-        e.cloud,
+        -- Note: li.cloud is auto-synced from e.cloud via trigger, so we don't need e.cloud here
+        -- Only get region and tier from estimates (not in line_items)
         e.region,
         e.tier,
         -- Hours calculation: runs_per_day * (avg_runtime_minutes / 60) * days_per_month
@@ -67,9 +68,9 @@ classic_compute AS (
         END as photon_multiplier
     FROM hours_calc h
     LEFT JOIN sync_ref_instance_dbu_rates d 
-        ON d.cloud = h.cloud AND d.instance_type = h.driver_node_type
+        ON d.cloud = h.cloud AND d.instance_type = h.driver_node_type  -- h.cloud from line_items
     LEFT JOIN sync_ref_instance_dbu_rates w 
-        ON w.cloud = h.cloud AND w.instance_type = h.worker_node_type
+        ON w.cloud = h.cloud AND w.instance_type = h.worker_node_type  -- h.cloud from line_items
     LEFT JOIN sync_ref_dbu_multipliers m 
         ON h.serverless_enabled = FALSE  -- Only join multiplier for classic
         AND m.cloud = h.cloud  -- ✅ CRITICAL: Match by cloud (multipliers vary by cloud!)
@@ -309,10 +310,10 @@ SELECT
     created_at,
     updated_at,
     
-    -- Estimate context
-    cloud,
-    region,
-    tier,
+    -- Estimate context (explicit to avoid ambiguity)
+    cloud,        -- From line_items (auto-synced from estimates)
+    region,       -- From estimates via hours_calc
+    tier,         -- From estimates via hours_calc
     
     -- CALCULATED FIELDS - Usage
     hours_per_month,
