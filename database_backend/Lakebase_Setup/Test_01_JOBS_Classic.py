@@ -830,6 +830,9 @@ summary_df = results_df[[
     'dbu_per_hour',
     'dbu_per_month',
     'dbu_cost_per_month',
+    'driver_vm_cost_per_hour',
+    'worker_vm_cost_per_hour',
+    'total_vm_cost_per_hour',
     'vm_cost_per_month',
     'cost_per_month'
 ]].copy()
@@ -837,6 +840,9 @@ summary_df = results_df[[
 summary_df['photon_enabled'] = summary_df['photon_enabled'].map({True: 'Yes', False: 'No'})
 summary_df['dbu_per_month'] = summary_df['dbu_per_month'].round(2)
 summary_df['dbu_cost_per_month'] = summary_df['dbu_cost_per_month'].round(2)
+summary_df['driver_vm_cost_per_hour'] = summary_df['driver_vm_cost_per_hour'].round(4)
+summary_df['worker_vm_cost_per_hour'] = summary_df['worker_vm_cost_per_hour'].round(4)
+summary_df['total_vm_cost_per_hour'] = summary_df['total_vm_cost_per_hour'].round(4)
 summary_df['vm_cost_per_month'] = summary_df['vm_cost_per_month'].round(2)
 summary_df['cost_per_month'] = summary_df['cost_per_month'].round(2)
 
@@ -870,7 +876,8 @@ print(f"Total DBUs: {aws_results['dbu_per_month'].sum():,.2f}")
 print("=" * 120)
 
 display(aws_results[['workload_name', 'photon_enabled', 'vm_pricing_tier', 
-                      'dbu_per_month', 'cost_per_month']])
+                      'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
+                      'dbu_per_month', 'vm_cost_per_month', 'cost_per_month']])
 
 # COMMAND ----------
 
@@ -888,7 +895,8 @@ print(f"Total DBUs: {azure_results['dbu_per_month'].sum():,.2f}")
 print("=" * 120)
 
 display(azure_results[['workload_name', 'photon_enabled', 'vm_pricing_tier', 
-                        'dbu_per_month', 'cost_per_month']])
+                        'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
+                        'dbu_per_month', 'vm_cost_per_month', 'cost_per_month']])
 
 # COMMAND ----------
 
@@ -906,7 +914,8 @@ print(f"Total DBUs: {gcp_results['dbu_per_month'].sum():,.2f}")
 print("=" * 120)
 
 display(gcp_results[['workload_name', 'photon_enabled', 'vm_pricing_tier', 
-                      'dbu_per_month', 'cost_per_month']])
+                      'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
+                      'dbu_per_month', 'vm_cost_per_month', 'cost_per_month']])
 
 # COMMAND ----------
 
