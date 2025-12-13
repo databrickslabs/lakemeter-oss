@@ -392,112 +392,137 @@ def get_instances_for_region(cloud, region, size='medium'):
     
     return region_instances[0]
 
-# Build test scenarios dynamically from ACTUAL selected regions
+# ============================================================================
+# BUILD COMPREHENSIVE TEST SCENARIOS - All Payment Options & Photon Configs
+# ============================================================================
+
 test_scenarios = []
 scenario_id = 1
 
-# AWS scenarios - use actual selected regions
-for idx, region in enumerate(aws_regions[:2]):  # Max 2 regions
-    region_label = "US" if idx == 0 else "EU"
-    
-    # Light usage scenario
-    small_instance = get_instances_for_region('AWS', region, 'small')
-    if small_instance:
-        test_scenarios.append({
-            'scenario_id': scenario_id,
-            'workload_name': f'AWS {region_label} Light ETL (No Photon)',
-            'cloud': 'AWS',
-            'region': region,
-            'driver_node_type': small_instance,
-            'worker_node_type': small_instance,
-            'num_workers': 2,
-            'photon_enabled': False,
-            'vm_pricing_tier': 'on_demand',
-            'vm_payment_option': 'NA',
-            'spot_percentage': 0,
-            'runs_per_day': 4,
-            'avg_runtime_minutes': 30,
-            'days_per_month': 30,
-            'notes': f'{region} small cluster, no Photon ({small_instance})'
-        })
-        scenario_id += 1
-    
-    # Medium usage scenario
-    medium_instance = get_instances_for_region('AWS', region, 'medium')
-    if medium_instance:
-        test_scenarios.append({
-            'scenario_id': scenario_id,
-            'workload_name': f'AWS {region_label} Medium ETL (Photon)',
-            'cloud': 'AWS',
-            'region': region,
-            'driver_node_type': small_instance or medium_instance,
-            'worker_node_type': medium_instance,
-            'num_workers': 4,
-            'photon_enabled': True,
-            'vm_pricing_tier': 'on_demand',
-            'vm_payment_option': 'NA',
-            'spot_percentage': 0,
-            'runs_per_day': 12,
-            'avg_runtime_minutes': 60,
-            'days_per_month': 30,
-            'notes': f'{region} medium cluster, Photon ({medium_instance})'
-        })
-        scenario_id += 1
+# Define payment option matrices
+# AWS: All payment options with upfront variants
+aws_payment_matrix = [
+    {'pricing_tier': 'on_demand', 'payment_option': 'on_demand', 'spot_pct': 0},
+    {'pricing_tier': 'on_demand', 'payment_option': 'spot', 'spot_pct': 100},
+    {'pricing_tier': 'reserved_1y', 'payment_option': 'no_upfront', 'spot_pct': 0},
+    {'pricing_tier': 'reserved_1y', 'payment_option': 'partial_upfront', 'spot_pct': 0},
+    {'pricing_tier': 'reserved_1y', 'payment_option': 'all_upfront', 'spot_pct': 0},
+    {'pricing_tier': 'reserved_3y', 'payment_option': 'no_upfront', 'spot_pct': 0},
+    {'pricing_tier': 'reserved_3y', 'payment_option': 'partial_upfront', 'spot_pct': 0},
+    {'pricing_tier': 'reserved_3y', 'payment_option': 'all_upfront', 'spot_pct': 0},
+]
 
-# Azure scenarios
-for idx, region in enumerate(azure_regions[:2]):
-    region_label = "US" if idx == 0 else "EU"
-    
-    medium_instance = get_instances_for_region('AZURE', region, 'medium')
-    if medium_instance:
-        test_scenarios.append({
-            'scenario_id': scenario_id,
-            'workload_name': f'Azure {region_label} Medium ETL (Photon)',
-            'cloud': 'AZURE',
-            'region': region,
-            'driver_node_type': get_instances_for_region('AZURE', region, 'small') or medium_instance,
-            'worker_node_type': medium_instance,
-            'num_workers': 4,
-            'photon_enabled': True,
-            'vm_pricing_tier': 'on_demand',
-            'vm_payment_option': 'NA',
-            'spot_percentage': 0,
-            'runs_per_day': 12,
-            'avg_runtime_minutes': 60,
-            'days_per_month': 30,
-            'notes': f'{region} medium cluster, Photon ({medium_instance})'
-        })
-        scenario_id += 1
+# Azure/GCP: No upfront options, simplified payment
+azure_gcp_payment_matrix = [
+    {'pricing_tier': 'on_demand', 'payment_option': 'NA', 'spot_pct': 0},
+    {'pricing_tier': 'spot', 'payment_option': 'NA', 'spot_pct': 100},
+    {'pricing_tier': 'reserved_1y', 'payment_option': 'NA', 'spot_pct': 0},
+    {'pricing_tier': 'reserved_3y', 'payment_option': 'NA', 'spot_pct': 0},
+]
 
-# GCP scenarios
-for idx, region in enumerate(gcp_regions[:2]):
-    region_label = "US" if idx == 0 else "EU"
-    
-    medium_instance = get_instances_for_region('GCP', region, 'medium')
-    if medium_instance:
-        test_scenarios.append({
-            'scenario_id': scenario_id,
-            'workload_name': f'GCP {region_label} Medium ETL (Photon)',
-            'cloud': 'GCP',
-            'region': region,
-            'driver_node_type': get_instances_for_region('GCP', region, 'small') or medium_instance,
-            'worker_node_type': medium_instance,
-            'num_workers': 4,
-            'photon_enabled': True,
-            'vm_pricing_tier': 'on_demand',
-            'vm_payment_option': 'NA',
-            'spot_percentage': 0,
-            'runs_per_day': 12,
-            'avg_runtime_minutes': 60,
-            'days_per_month': 30,
-            'notes': f'{region} medium cluster, Photon ({medium_instance})'
-        })
-        scenario_id += 1
+# Photon configurations
+photon_configs = [
+    {'enabled': False, 'label': 'No Photon'},
+    {'enabled': True, 'label': 'Photon'},
+]
 
-print(f"\n📋 Built {len(test_scenarios)} test scenarios dynamically:")
-for scenario in test_scenarios:
-    print(f"   {scenario['scenario_id']}. {scenario['cloud']} {scenario['region']}: {scenario['workload_name']}")
-    print(f"      Driver: {scenario['driver_node_type']}, Worker: {scenario['worker_node_type']}")
+# Build AWS scenarios: 1 region × 8 payment options × 2 photon configs = 16 scenarios
+aws_region = aws_regions[0] if len(aws_regions) > 0 else None
+if aws_region:
+    small_inst = get_instances_for_region('AWS', aws_region, 'small')
+    medium_inst = get_instances_for_region('AWS', aws_region, 'medium')
+    
+    for payment in aws_payment_matrix:
+        for photon in photon_configs:
+            if small_inst and medium_inst:
+                test_scenarios.append({
+                    'scenario_id': scenario_id,
+                    'workload_name': f"AWS {payment['payment_option'].replace('_', ' ').title()} {photon['label']}",
+                    'cloud': 'AWS',
+                    'region': aws_region,
+                    'driver_node_type': small_inst,
+                    'worker_node_type': medium_inst,
+                    'num_workers': 4,
+                    'photon_enabled': photon['enabled'],
+                    'vm_pricing_tier': payment['pricing_tier'],
+                    'vm_payment_option': payment['payment_option'],
+                    'spot_percentage': payment['spot_pct'],
+                    'runs_per_day': 12,
+                    'avg_runtime_minutes': 60,
+                    'days_per_month': 30,
+                    'notes': f"AWS {aws_region} - {payment['payment_option']} - {photon['label']}"
+                })
+                scenario_id += 1
+
+# Build Azure scenarios: 1 region × 4 payment options × 2 photon configs = 8 scenarios
+azure_region = azure_regions[0] if len(azure_regions) > 0 else None
+if azure_region:
+    small_inst = get_instances_for_region('AZURE', azure_region, 'small')
+    medium_inst = get_instances_for_region('AZURE', azure_region, 'medium')
+    
+    for payment in azure_gcp_payment_matrix:
+        for photon in photon_configs:
+            if small_inst and medium_inst:
+                test_scenarios.append({
+                    'scenario_id': scenario_id,
+                    'workload_name': f"Azure {payment['pricing_tier'].replace('_', ' ').title()} {photon['label']}",
+                    'cloud': 'AZURE',
+                    'region': azure_region,
+                    'driver_node_type': small_inst,
+                    'worker_node_type': medium_inst,
+                    'num_workers': 4,
+                    'photon_enabled': photon['enabled'],
+                    'vm_pricing_tier': payment['pricing_tier'],
+                    'vm_payment_option': payment['payment_option'],
+                    'spot_percentage': payment['spot_pct'],
+                    'runs_per_day': 12,
+                    'avg_runtime_minutes': 60,
+                    'days_per_month': 30,
+                    'notes': f"Azure {azure_region} - {payment['pricing_tier']} - {photon['label']}"
+                })
+                scenario_id += 1
+
+# Build GCP scenarios: 1 region × 4 payment options × 2 photon configs = 8 scenarios
+gcp_region = gcp_regions[0] if len(gcp_regions) > 0 else None
+if gcp_region:
+    small_inst = get_instances_for_region('GCP', gcp_region, 'small')
+    medium_inst = get_instances_for_region('GCP', gcp_region, 'medium')
+    
+    for payment in azure_gcp_payment_matrix:
+        for photon in photon_configs:
+            if small_inst and medium_inst:
+                test_scenarios.append({
+                    'scenario_id': scenario_id,
+                    'workload_name': f"GCP {payment['pricing_tier'].replace('_', ' ').title()} {photon['label']}",
+                    'cloud': 'GCP',
+                    'region': gcp_region,
+                    'driver_node_type': small_inst,
+                    'worker_node_type': medium_inst,
+                    'num_workers': 4,
+                    'photon_enabled': photon['enabled'],
+                    'vm_pricing_tier': payment['pricing_tier'],
+                    'vm_payment_option': payment['payment_option'],
+                    'spot_percentage': payment['spot_pct'],
+                    'runs_per_day': 12,
+                    'avg_runtime_minutes': 60,
+                    'days_per_month': 30,
+                    'notes': f"GCP {gcp_region} - {payment['pricing_tier']} - {photon['label']}"
+                })
+                scenario_id += 1
+
+print("\n" + "=" * 120)
+print(f"📋 Built {len(test_scenarios)} comprehensive test scenarios:")
+print("=" * 120)
+print(f"   AWS: {len([s for s in test_scenarios if s['cloud'] == 'AWS'])} scenarios (8 payment options × 2 photon)")
+print(f"   AZURE: {len([s for s in test_scenarios if s['cloud'] == 'AZURE'])} scenarios (4 payment options × 2 photon)")
+print(f"   GCP: {len([s for s in test_scenarios if s['cloud'] == 'GCP'])} scenarios (4 payment options × 2 photon)")
+print("=" * 120)
+
+# Show sample of scenarios
+print("\n📋 Sample scenarios:")
+for scenario in test_scenarios[:5]:
+    print(f"   {scenario['scenario_id']}. {scenario['workload_name']}")
+print(f"   ... and {len(test_scenarios) - 5} more")
 
 if len(test_scenarios) == 0:
     raise Exception("❌ No test scenarios could be built! Check pricing data availability.")
@@ -505,187 +530,9 @@ if len(test_scenarios) == 0:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 8. Insert Test Line Items (Using Dynamically Selected Instances)
-test_scenarios = [
-    # AWS us-east-1
-    {
-        'scenario_id': 1,
-        'workload_name': 'AWS US-East Light ETL (No Photon)',
-        'cloud': 'AWS',
-        'region': 'us-east-1',
-        'driver_node_type': 'i3.xlarge',
-        'worker_node_type': 'i3.xlarge',
-        'num_workers': 2,
-        'photon_enabled': False,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 4,
-        'avg_runtime_minutes': 30,
-        'days_per_month': 30,
-        'notes': 'Small cluster, no Photon, on-demand pricing, light daily ETL'
-    },
-    {
-        'scenario_id': 2,
-        'workload_name': 'AWS US-East Medium ETL (Photon)',
-        'cloud': 'AWS',
-        'region': 'us-east-1',
-        'driver_node_type': 'i3.xlarge',
-        'worker_node_type': 'i3.2xlarge',
-        'num_workers': 4,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 12,
-        'avg_runtime_minutes': 60,
-        'days_per_month': 30,
-        'notes': 'Medium cluster, Photon enabled, on-demand, frequent ETL'
-    },
-    {
-        'scenario_id': 3,
-        'workload_name': 'AWS US-East Heavy ETL (Spot)',
-        'cloud': 'AWS',
-        'region': 'us-east-1',
-        'driver_node_type': 'i3.2xlarge',
-        'worker_node_type': 'i3.4xlarge',
-        'num_workers': 8,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'spot',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 50,
-        'runs_per_day': 24,
-        'avg_runtime_minutes': 120,
-        'days_per_month': 30,
-        'notes': 'Large cluster, Photon, 50% spot instances, hourly heavy ETL'
-    },
-    # AWS eu-west-1
-    {
-        'scenario_id': 4,
-        'workload_name': 'AWS EU-West Reserved ETL',
-        'cloud': 'AWS',
-        'region': 'eu-west-1',
-        'driver_node_type': 'i3.xlarge',
-        'worker_node_type': 'i3.2xlarge',
-        'num_workers': 4,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'reserved_1y',
-        'vm_payment_option': 'no_upfront',
-        'spot_percentage': 0,
-        'runs_per_day': 12,
-        'avg_runtime_minutes': 60,
-        'days_per_month': 22,
-        'notes': 'Medium cluster, Photon, 1-year reserved, business days only'
-    },
-    # Azure eastus - UPDATED to use v4/v5 instances that exist in pricing data
-    {
-        'scenario_id': 5,
-        'workload_name': 'Azure US-East Light ETL',
-        'cloud': 'AZURE',
-        'region': 'eastus',
-        'driver_node_type': 'Standard_D8d_v4',
-        'worker_node_type': 'Standard_D8d_v4',
-        'num_workers': 2,
-        'photon_enabled': False,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 4,
-        'avg_runtime_minutes': 30,
-        'days_per_month': 30,
-        'notes': 'Azure small cluster, no Photon, on-demand (D8d_v4)'
-    },
-    {
-        'scenario_id': 6,
-        'workload_name': 'Azure US-East Medium ETL (Photon)',
-        'cloud': 'AZURE',
-        'region': 'eastus',
-        'driver_node_type': 'Standard_D8d_v4',
-        'worker_node_type': 'Standard_D16d_v4',
-        'num_workers': 4,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 12,
-        'avg_runtime_minutes': 60,
-        'days_per_month': 30,
-        'notes': 'Azure medium cluster, Photon enabled (D16d_v4)'
-    },
-    # Azure westeurope
-    {
-        'scenario_id': 7,
-        'workload_name': 'Azure EU-West Heavy ETL (Spot)',
-        'cloud': 'AZURE',
-        'region': 'westeurope',
-        'driver_node_type': 'Standard_D16d_v4',
-        'worker_node_type': 'Standard_D32d_v4',
-        'num_workers': 8,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'spot',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 50,
-        'runs_per_day': 24,
-        'avg_runtime_minutes': 120,
-        'days_per_month': 30,
-        'notes': 'Azure large cluster, Photon, 50% spot (D32d_v4)'
-    },
-    # GCP us-central1
-    {
-        'scenario_id': 8,
-        'workload_name': 'GCP US-Central Light ETL',
-        'cloud': 'GCP',
-        'region': 'us-central1',
-        'driver_node_type': 'n1-standard-8',
-        'worker_node_type': 'n1-standard-8',
-        'num_workers': 2,
-        'photon_enabled': False,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 4,
-        'avg_runtime_minutes': 30,
-        'days_per_month': 30,
-        'notes': 'GCP small cluster, no Photon'
-    },
-    {
-        'scenario_id': 9,
-        'workload_name': 'GCP US-Central Medium ETL (Photon)',
-        'cloud': 'GCP',
-        'region': 'us-central1',
-        'driver_node_type': 'n1-standard-8',
-        'worker_node_type': 'n1-standard-16',
-        'num_workers': 4,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 12,
-        'avg_runtime_minutes': 60,
-        'days_per_month': 30,
-        'notes': 'GCP medium cluster, Photon enabled'
-    },
-    # GCP europe-west1
-    {
-        'scenario_id': 10,
-        'workload_name': 'GCP EU-West Heavy ETL',
-        'cloud': 'GCP',
-        'region': 'europe-west1',
-        'driver_node_type': 'n1-standard-16',
-        'worker_node_type': 'n1-standard-32',
-        'num_workers': 8,
-        'photon_enabled': True,
-        'vm_pricing_tier': 'on_demand',
-        'vm_payment_option': 'NA',
-        'spot_percentage': 0,
-        'runs_per_day': 24,
-        'avg_runtime_minutes': 120,
-        'days_per_month': 30,
-        'notes': 'GCP large cluster, Photon, heavy usage'
-    }
-]
-
-print(f"📋 Prepared {len(test_scenarios)} test scenarios for JOBS Classic")
+# MAGIC ## 8. Insert Test Line Items
+# MAGIC 
+# MAGIC Using the comprehensive test scenarios built in Section 7 (all payment options × photon configs)
 
 # COMMAND ----------
 
