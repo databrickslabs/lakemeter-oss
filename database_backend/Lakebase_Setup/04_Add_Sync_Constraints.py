@@ -189,6 +189,73 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## 4B. Check Ownership of sync_* Tables
+
+# COMMAND ----------
+
+print("\n" + "=" * 80)
+print("🔍 CHECKING OWNERSHIP OF sync_* TABLES")
+print("=" * 80)
+print("These tables need ALTER permission to add UNIQUE constraints.")
+print("=" * 80)
+
+ownership_check_sql = """
+SELECT 
+    tablename,
+    tableowner,
+    CASE 
+        WHEN tableowner = current_user THEN '✅ YOU OWN THIS'
+        WHEN tableowner = 'lakemeter_sync_role' THEN '✅ OWNED BY lakemeter_sync_role'
+        ELSE '❌ OWNED BY: ' || tableowner
+    END as ownership_status
+FROM pg_tables
+WHERE schemaname = 'lakemeter'
+AND tablename IN ('sync_ref_sku_region_map', 'sync_ref_instance_dbu_rates')
+ORDER BY tablename;
+"""
+
+try:
+    ownership_results = query_sql(ownership_check_sql)
+    
+    ownership_issues = []
+    for row in ownership_results:
+        tablename, tableowner, status = row
+        print(f"\n   {tablename}:")
+        print(f"      Owner: {tableowner}")
+        print(f"      Status: {status}")
+        
+        if '❌' in status:
+            ownership_issues.append((tablename, tableowner))
+    
+    if ownership_issues:
+        print("\n" + "=" * 80)
+        print("⚠️  OWNERSHIP WARNING")
+        print("=" * 80)
+        print(f"\n{len(ownership_issues)} sync_* table(s) are owned by another user.")
+        print("Adding UNIQUE constraints requires ownership or ALTER permission.")
+        print("\n📋 OPTIONS TO FIX:")
+        print("\n  Option 1: Transfer ownership (run in Lakebase SQL Editor):")
+        print("  " + "─" * 76)
+        for table, owner in ownership_issues:
+            print(f"  ALTER TABLE lakemeter.{table} OWNER TO lakemeter_sync_role;")
+        print()
+        print("\n  Option 2: Run Pricing_Sync notebooks again as lakemeter_sync_role")
+        print("            (they will create tables with correct ownership)")
+        print("\n  Option 3: Continue anyway (constraints will be skipped)")
+        print("=" * 80)
+        
+        # Don't stop - just warn and continue
+        print("\n⚠️  Continuing... Constraints may fail due to ownership.")
+    else:
+        print("\n✅ All sync_* tables have correct ownership!")
+        
+except Exception as e:
+    print(f"\n⚠️  Could not check ownership: {e}")
+    print("   Continuing anyway...")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 5. Add Region Validation Constraints
 
 # COMMAND ----------
@@ -214,7 +281,11 @@ else:
     ADD CONSTRAINT uq_cloud_region_code 
     UNIQUE (cloud, region_code);
     """
-    execute_sql(add_unique_sql, f"Added UNIQUE constraint: {constraint_name}")
+    result = execute_sql(add_unique_sql, f"Added UNIQUE constraint: {constraint_name}", show_error=True)
+    
+    if not result:
+        print("\n💡 If ownership error, run this in Lakebase SQL Editor:")
+        print("   ALTER TABLE lakemeter.sync_ref_sku_region_map OWNER TO lakemeter_sync_role;")
 
 # COMMAND ----------
 
@@ -269,7 +340,11 @@ else:
     ADD CONSTRAINT uq_cloud_instance_type 
     UNIQUE (cloud, instance_type);
     """
-    execute_sql(add_unique_sql, f"Added UNIQUE constraint: {constraint_name}")
+    result = execute_sql(add_unique_sql, f"Added UNIQUE constraint: {constraint_name}", show_error=True)
+    
+    if not result:
+        print("\n💡 If ownership error, run this in Lakebase SQL Editor:")
+        print("   ALTER TABLE lakemeter.sync_ref_instance_dbu_rates OWNER TO lakemeter_sync_role;")
 
 # COMMAND ----------
 
@@ -334,7 +409,7 @@ SELECT
     CASE 
         WHEN contype = 'f' THEN '🔗 FK'
         WHEN contype = 'u' THEN '🔑 UNIQUE'
-        ELSE '  ' || contype
+        ELSE '  ' || contype::text  -- Fixed: explicit cast to text
     END as type,
     conname as constraint_name,
     '✅ EXISTS' as status
