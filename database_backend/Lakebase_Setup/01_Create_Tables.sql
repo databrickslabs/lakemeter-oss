@@ -44,6 +44,7 @@ DROP TABLE IF EXISTS line_items CASCADE;
 DROP TABLE IF EXISTS estimates CASCADE;
 DROP TABLE IF EXISTS templates CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS ref_cloud_tiers CASCADE;
 DROP TABLE IF EXISTS ref_workload_types CASCADE;
 
 -- =============================================================================
@@ -310,6 +311,53 @@ INSERT INTO ref_workload_types VALUES
  false, false, false, false, false, false, false, false, true, false, false, true, true, false,
  NULL, NULL, 'DATABASE_SERVERLESS_COMPUTE', 9)  -- show_lakebase_config=TRUE, show_usage_hours=TRUE, show_usage_runs=TRUE
 ON CONFLICT (workload_type) DO NOTHING;
+
+-- =============================================================================
+-- REFERENCE TABLE: ref_cloud_tiers
+-- =============================================================================
+-- PURPOSE: Defines which estimate tiers are valid for each cloud provider
+-- USAGE: Frontend queries this table to populate tier dropdown based on selected cloud
+-- CONSTRAINT: Prevents invalid cloud/tier combinations (e.g., Azure Enterprise)
+-- =============================================================================
+
+CREATE TABLE ref_cloud_tiers (
+    cloud VARCHAR(20) NOT NULL,
+    tier VARCHAR(50) NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    display_order INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    
+    PRIMARY KEY (cloud, tier),
+    CHECK (cloud IN ('AWS', 'AZURE', 'GCP')),
+    CHECK (tier IN ('STANDARD', 'PREMIUM', 'ENTERPRISE', 'FREE_TRIAL', 'DEV_TEST'))
+);
+
+-- Populate valid cloud/tier combinations
+-- AWS: Supports all tiers
+INSERT INTO ref_cloud_tiers VALUES
+('AWS', 'STANDARD', 'Standard', 'Standard production workloads', 1, true),
+('AWS', 'PREMIUM', 'Premium', 'High-performance production workloads', 2, true),
+('AWS', 'ENTERPRISE', 'Enterprise', 'Enterprise-grade workloads with dedicated support', 3, true)
+ON CONFLICT (cloud, tier) DO NOTHING;
+
+-- Azure: Only STANDARD and PREMIUM (no Enterprise tier)
+INSERT INTO ref_cloud_tiers VALUES
+('AZURE', 'STANDARD', 'Standard', 'Standard production workloads', 1, true),
+('AZURE', 'PREMIUM', 'Premium', 'High-performance production workloads', 2, true)
+ON CONFLICT (cloud, tier) DO NOTHING;
+
+-- GCP: Only STANDARD and PREMIUM (no Enterprise tier)
+INSERT INTO ref_cloud_tiers VALUES
+('GCP', 'STANDARD', 'Standard', 'Standard production workloads', 1, true),
+('GCP', 'PREMIUM', 'Premium', 'High-performance production workloads', 2, true)
+ON CONFLICT (cloud, tier) DO NOTHING;
+
+-- Add FK constraint: estimates.tier → ref_cloud_tiers.tier
+-- Note: This is a composite FK that checks BOTH cloud AND tier
+ALTER TABLE estimates 
+ADD CONSTRAINT fk_estimates_cloud_tier 
+FOREIGN KEY (cloud, tier) REFERENCES ref_cloud_tiers(cloud, tier);
 
 -- Add FK constraint: line_items.workload_type → ref_workload_types.workload_type
 ALTER TABLE line_items 
