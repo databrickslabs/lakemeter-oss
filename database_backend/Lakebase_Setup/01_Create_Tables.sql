@@ -1,16 +1,31 @@
 -- =============================================================================
--- LAKEMETER DATABASE SCHEMA - APPLICATION TABLES
+-- LAKEMETER DATABASE SCHEMA - PART 1: APPLICATION TABLES
 -- =============================================================================
--- Creates all application tables for the Lakemeter cost estimation app.
+-- FILE: 01_Create_Tables.sql
+-- PURPOSE: Creates all application tables for the Lakemeter cost estimation app
 -- 
 -- IDEMPOTENT: Safe to run multiple times.
 -- - Tables: DROP TABLE IF EXISTS + CREATE TABLE
 -- - Indexes: DROP INDEX IF EXISTS + CREATE INDEX
 -- - Inserts: INSERT ... ON CONFLICT DO NOTHING
 --
--- NOTE: This script creates TABLES ONLY.
--- VIEWS are in a separate section at the bottom and require sync_* tables.
--- Run PART 1 first, then PART 2 after sync tables exist.
+-- EXECUTION ORDER:
+--   1. Run this file FIRST: 01_Create_Tables.sql (creates tables)
+--   2. Run Pricing_Sync notebooks (syncs pricing data to sync_* tables)
+--   3. Run 02_Create_Views.sql LAST (creates cost calculation views)
+-- 
+-- TABLES CREATED:
+--   - users
+--   - templates
+--   - estimates
+--   - line_items
+--   - ref_workload_types (reference data with seed data)
+--   - conversation_messages
+--   - decision_records
+--   - sharing
+-- 
+-- NOTE: This script DOES NOT create views.
+-- For views, run 02_Create_Views.sql AFTER sync_* tables exist.
 -- =============================================================================
 
 -- =============================================================================
