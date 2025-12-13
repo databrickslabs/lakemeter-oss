@@ -55,7 +55,7 @@ SELECT
     p.product_type,
     p.price_per_dbu
 FROM lakemeter.sync_pricing_dbu_rates p
-WHERE p.product_type = 'INTERACTIVE_SERVERLESS_COMPUTE'
+WHERE p.product_type = 'ALL_PURPOSE_SERVERLESS_COMPUTE'
   AND EXISTS (
       SELECT 1 FROM lakemeter.line_items li
       JOIN lakemeter.estimates e ON li.estimate_id = e.estimate_id
@@ -117,7 +117,7 @@ pricing_check AS (
         ON lic.cloud = p.cloud
         AND lic.region = p.region
         AND lic.tier = p.tier
-        AND p.product_type = 'INTERACTIVE_SERVERLESS_COMPUTE'
+        AND p.product_type = 'ALL_PURPOSE_SERVERLESS_COMPUTE'
 )
 SELECT 
     '6. Pricing Coverage Analysis' as check_name,
@@ -134,13 +134,13 @@ ORDER BY status DESC, cloud, region, tier;
 -- ============================================================================
 
 SELECT 
-    '7. Available Regions for INTERACTIVE_SERVERLESS_COMPUTE' as check_name,
+    '7. Available Regions for ALL_PURPOSE_SERVERLESS_COMPUTE' as check_name,
     cloud,
     region,
     tier,
     price_per_dbu
 FROM lakemeter.sync_pricing_dbu_rates
-WHERE product_type = 'INTERACTIVE_SERVERLESS_COMPUTE'
+WHERE product_type = 'ALL_PURPOSE_SERVERLESS_COMPUTE'
   AND cloud IN (
       SELECT DISTINCT e.cloud
       FROM lakemeter.line_items li

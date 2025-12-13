@@ -264,7 +264,7 @@ ON CONFLICT (workload_type) DO NOTHING;
 INSERT INTO ref_workload_types VALUES
 ('ALL_PURPOSE', 'All-Purpose Compute', 'Interactive clusters for notebooks (Classic or Serverless)', 
  true, true, false, true, false, false, false, false, false, false, true, true, false, false,
- 'ALL_PURPOSE_COMPUTE', 'ALL_PURPOSE_COMPUTE_(PHOTON)', 'INTERACTIVE_SERVERLESS_COMPUTE', 2)
+ 'ALL_PURPOSE_COMPUTE', 'ALL_PURPOSE_COMPUTE_(PHOTON)', 'ALL_PURPOSE_SERVERLESS_COMPUTE', 2)
 ON CONFLICT (workload_type) DO NOTHING;
 
 -- DLT: Delta Live Tables (Classic or Serverless)
@@ -862,7 +862,7 @@ product_type_calc AS (
             -- ALL_PURPOSE: Classic vs Serverless
             WHEN f.workload_type = 'ALL_PURPOSE' THEN
                 CASE 
-                    WHEN f.serverless_enabled THEN 'INTERACTIVE_SERVERLESS_COMPUTE'
+                    WHEN f.serverless_enabled THEN 'ALL_PURPOSE_SERVERLESS_COMPUTE'
                     WHEN f.photon_enabled THEN 'ALL_PURPOSE_COMPUTE_(PHOTON)'
                     ELSE 'ALL_PURPOSE_COMPUTE'
                 END

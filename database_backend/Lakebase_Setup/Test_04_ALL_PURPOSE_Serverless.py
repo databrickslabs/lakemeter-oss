@@ -9,7 +9,7 @@
 # MAGIC - ✅ DBU costs only
 # MAGIC - ✅ Photon always enabled
 # MAGIC - ✅ NO performance mode (unlike JOBS/DLT serverless)
-# MAGIC - ✅ Uses INTERACTIVE_SERVERLESS_COMPUTE product type
+# MAGIC - ✅ Uses ALL_PURPOSE_SERVERLESS_COMPUTE product type
 # MAGIC 
 # MAGIC **Test Matrix:**
 # MAGIC - 3 clouds × 2 regions × 3 tiers × 2 usage patterns = ~36 scenarios
