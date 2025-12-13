@@ -125,7 +125,61 @@ print("=" * 80)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 3. Generate Test IDs
+# MAGIC ## 3. Clean Up Previous Test Data
+# MAGIC 
+# MAGIC Remove all test data from previous runs to ensure clean state
+
+# COMMAND ----------
+
+print("=" * 120)
+print("🧹 CLEANING UP PREVIOUS TEST DATA")
+print("=" * 120)
+
+try:
+    # Delete line items from test estimates
+    cleanup_line_items_sql = """
+    DELETE FROM lakemeter.line_items 
+    WHERE estimate_id IN (
+        SELECT estimate_id FROM lakemeter.estimates 
+        WHERE created_by IN (
+            SELECT user_id FROM lakemeter.users 
+            WHERE email LIKE 'test_%@databricks.com'
+        )
+    );
+    """
+    execute_query(cleanup_line_items_sql, fetch=False)
+    print("✅ Cleaned up test line items")
+    
+    # Delete estimates from test users
+    cleanup_estimates_sql = """
+    DELETE FROM lakemeter.estimates 
+    WHERE created_by IN (
+        SELECT user_id FROM lakemeter.users 
+        WHERE email LIKE 'test_%@databricks.com'
+    );
+    """
+    execute_query(cleanup_estimates_sql, fetch=False)
+    print("✅ Cleaned up test estimates")
+    
+    # Delete test users
+    cleanup_users_sql = """
+    DELETE FROM lakemeter.users 
+    WHERE email LIKE 'test_%@databricks.com';
+    """
+    execute_query(cleanup_users_sql, fetch=False)
+    print("✅ Cleaned up test users")
+    
+    print("\n🎉 All previous test data cleaned successfully!")
+except Exception as e:
+    print(f"⚠️ Cleanup error (may be first run): {e}")
+    print("   Proceeding with test...")
+
+print("=" * 120)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 4. Generate Test IDs
 # MAGIC 
 # MAGIC Create test user, estimate, and line items for JOBS Classic scenarios
 
@@ -134,16 +188,16 @@ print("=" * 80)
 # Generate unique IDs for this test run
 TEST_RUN_ID = str(uuid.uuid4())[:8]
 TEST_USER_ID = str(uuid.uuid4())
-# TEST_ESTIMATE_ID removed - now creating one estimate per cloud/region in Section 6.1
+# TEST_ESTIMATE_ID removed - now creating one estimate per cloud/region/tier combination
 
 print(f"🧪 Test Run ID: {TEST_RUN_ID}")
 print(f"👤 Test User ID: {TEST_USER_ID}")
-print(f"📊 Estimates will be created per cloud/region in Section 6.1")
+print(f"📊 Estimates will be created per cloud/region/tier in Section 8")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4. Create Test User
+# MAGIC ## 5. Create Test User
 
 # COMMAND ----------
 
@@ -165,15 +219,15 @@ print(f"✅ Test user created: Test User - JOBS Classic {TEST_RUN_ID}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5. Placeholder for Test Estimates
+# MAGIC ## 6. Placeholder for Test Estimates
 # MAGIC 
-# MAGIC **Note:** Estimates are now created dynamically in Section 8, one per cloud/region combo.
+# MAGIC **Note:** Estimates are now created dynamically in Section 9, one per cloud/region/tier combo.
 # MAGIC This ensures each line item has the correct cloud/region for pricing lookups.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 6. Query Available Instance Types from Pricing Tables
+# MAGIC ## 7. Query Available Instance Types from Pricing Tables
 # MAGIC 
 # MAGIC **Strategy:** Instead of hardcoding instance types, query actual available instances from pricing tables.
 # MAGIC This ensures tests always use real data that exists in the database.
@@ -287,7 +341,13 @@ print("=" * 120)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 7. Build Test Scenarios Dynamically
+# MAGIC ## 8. Build Comprehensive Test Scenarios
+# MAGIC 
+# MAGIC - 3 clouds (AWS, Azure, GCP)
+# MAGIC - 2 regions per cloud (1 US, 1 Europe)
+# MAGIC - 3 tiers per cloud/region (STANDARD, PREMIUM, ENTERPRISE)
+# MAGIC - Multiple payment options (driver/worker independent)
+# MAGIC - 2 Photon configs (enabled/disabled)
 # MAGIC 
 # MAGIC Use actual instance types from pricing tables to build test scenarios
 
@@ -393,140 +453,178 @@ def get_instances_for_region(cloud, region, size='medium'):
     return region_instances[0]
 
 # ============================================================================
-# BUILD COMPREHENSIVE TEST SCENARIOS - All Payment Options & Photon Configs
+# BUILD COMPREHENSIVE TEST SCENARIOS
+# ============================================================================
+# Coverage:
+#   - 3 clouds (AWS, Azure, GCP)
+#   - 2 regions per cloud (US + Europe)
+#   - 3 tiers per region (STANDARD, PREMIUM, ENTERPRISE)
+#   - Multiple payment options (driver/worker independent)
+#   - 2 Photon configs (enabled/disabled)
 # ============================================================================
 
 test_scenarios = []
 scenario_id = 1
 
-# Define payment option matrices
-# AWS: All payment options with upfront variants
-# Driver options: on_demand, reserved_1y, reserved_3y (NEVER spot)
-# Worker options: on_demand, spot, reserved_1y, reserved_3y
-aws_payment_matrix = [
-    {'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment_option': 'on_demand'},
-    {'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment_option': 'spot'},
-    {'driver_tier': 'reserved_1y', 'worker_tier': 'on_demand', 'payment_option': 'no_upfront'},
-    {'driver_tier': 'reserved_1y', 'worker_tier': 'spot', 'payment_option': 'no_upfront'},
-    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'partial_upfront'},
-    {'driver_tier': 'reserved_3y', 'worker_tier': 'on_demand', 'payment_option': 'no_upfront'},
-    {'driver_tier': 'reserved_3y', 'worker_tier': 'spot', 'payment_option': 'no_upfront'},
-    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'all_upfront'},
+# Define TIERS with different instance sizes and worker counts
+tier_configs = [
+    {
+        'tier': 'STANDARD',
+        'driver_size': 'small',
+        'worker_size': 'small',
+        'num_workers': 2,
+        'runs_per_day': 4,
+        'avg_runtime_minutes': 30,
+    },
+    {
+        'tier': 'PREMIUM',
+        'driver_size': 'medium',
+        'worker_size': 'medium',
+        'num_workers': 8,
+        'runs_per_day': 12,
+        'avg_runtime_minutes': 60,
+    },
+    {
+        'tier': 'ENTERPRISE',
+        'driver_size': 'large',
+        'worker_size': 'large',
+        'num_workers': 16,
+        'runs_per_day': 24,
+        'avg_runtime_minutes': 120,
+    },
 ]
 
-# Azure/GCP: No upfront options, simplified payment
-azure_gcp_payment_matrix = [
-    {'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment_option': 'NA'},
-    {'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment_option': 'NA'},
-    {'driver_tier': 'reserved_1y', 'worker_tier': 'on_demand', 'payment_option': 'NA'},
-    {'driver_tier': 'reserved_1y', 'worker_tier': 'spot', 'payment_option': 'NA'},
-    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'NA'},
-    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'NA'},
-]
+# Define payment option matrices (select 1 per tier to keep scenarios manageable)
+# AWS: Select representative payment options
+aws_payment_per_tier = {
+    'STANDARD': {'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment_option': 'on_demand'},
+    'PREMIUM': {'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment_option': 'spot'},
+    'ENTERPRISE': {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'partial_upfront'},
+}
+
+# Azure/GCP: Select representative payment options
+azure_gcp_payment_per_tier = {
+    'STANDARD': {'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment_option': 'NA'},
+    'PREMIUM': {'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment_option': 'NA'},
+    'ENTERPRISE': {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'NA'},
+}
 
 # Photon configurations
 photon_configs = [
-    {'enabled': False, 'label': 'No Photon'},
+    {'enabled': False, 'label': 'NoPhoton'},
     {'enabled': True, 'label': 'Photon'},
 ]
 
-# Build AWS scenarios: 1 region × 8 payment options × 2 photon configs = 16 scenarios
-aws_region = aws_regions[0] if len(aws_regions) > 0 else None
-if aws_region:
-    small_inst = get_instances_for_region('AWS', aws_region, 'small')
-    medium_inst = get_instances_for_region('AWS', aws_region, 'medium')
-    
-    for payment in aws_payment_matrix:
+# Build scenarios for each cloud
+# AWS: 2 regions × 3 tiers × 2 photon = 12 scenarios
+for region in aws_regions:
+    for tier in tier_configs:
+        payment = aws_payment_per_tier[tier['tier']]
         for photon in photon_configs:
-            if small_inst and medium_inst:
+            driver_inst = get_instances_for_region('AWS', region, tier['driver_size'])
+            worker_inst = get_instances_for_region('AWS', region, tier['worker_size'])
+            
+            if driver_inst and worker_inst:
                 test_scenarios.append({
                     'scenario_id': scenario_id,
-                    'workload_name': f"AWS Drv:{payment['driver_tier']} Wrk:{payment['worker_tier']} {photon['label']}",
+                    'workload_name': f"AWS {region[:10]} {tier['tier']} {photon['label']}",
                     'cloud': 'AWS',
-                    'region': aws_region,
-                    'driver_node_type': small_inst,
-                    'worker_node_type': medium_inst,
-                    'num_workers': 4,
+                    'region': region,
+                    'tier': tier['tier'],
+                    'driver_node_type': driver_inst,
+                    'worker_node_type': worker_inst,
+                    'num_workers': tier['num_workers'],
                     'photon_enabled': photon['enabled'],
                     'driver_pricing_tier': payment['driver_tier'],
                     'worker_pricing_tier': payment['worker_tier'],
                     'vm_payment_option': payment['payment_option'],
-                    'runs_per_day': 12,
-                    'avg_runtime_minutes': 60,
+                    'runs_per_day': tier['runs_per_day'],
+                    'avg_runtime_minutes': tier['avg_runtime_minutes'],
                     'days_per_month': 30,
-                    'notes': f"AWS {aws_region} - D:{payment['driver_tier']} W:{payment['worker_tier']} - {photon['label']}"
+                    'notes': f"AWS {region} | {tier['tier']} | D:{payment['driver_tier']} W:{payment['worker_tier']} | {photon['label']}"
                 })
                 scenario_id += 1
 
-# Build Azure scenarios: 1 region × 4 payment options × 2 photon configs = 8 scenarios
-azure_region = azure_regions[0] if len(azure_regions) > 0 else None
-if azure_region:
-    small_inst = get_instances_for_region('AZURE', azure_region, 'small')
-    medium_inst = get_instances_for_region('AZURE', azure_region, 'medium')
-    
-    for payment in azure_gcp_payment_matrix:
+# Azure: 2 regions × 3 tiers × 2 photon = 12 scenarios
+for region in azure_regions:
+    for tier in tier_configs:
+        payment = azure_gcp_payment_per_tier[tier['tier']]
         for photon in photon_configs:
-            if small_inst and medium_inst:
+            driver_inst = get_instances_for_region('AZURE', region, tier['driver_size'])
+            worker_inst = get_instances_for_region('AZURE', region, tier['worker_size'])
+            
+            if driver_inst and worker_inst:
                 test_scenarios.append({
                     'scenario_id': scenario_id,
-                    'workload_name': f"Azure Drv:{payment['driver_tier']} Wrk:{payment['worker_tier']} {photon['label']}",
+                    'workload_name': f"Azure {region[:12]} {tier['tier']} {photon['label']}",
                     'cloud': 'AZURE',
-                    'region': azure_region,
-                    'driver_node_type': small_inst,
-                    'worker_node_type': medium_inst,
-                    'num_workers': 4,
+                    'region': region,
+                    'tier': tier['tier'],
+                    'driver_node_type': driver_inst,
+                    'worker_node_type': worker_inst,
+                    'num_workers': tier['num_workers'],
                     'photon_enabled': photon['enabled'],
                     'driver_pricing_tier': payment['driver_tier'],
                     'worker_pricing_tier': payment['worker_tier'],
                     'vm_payment_option': payment['payment_option'],
-                    'runs_per_day': 12,
-                    'avg_runtime_minutes': 60,
+                    'runs_per_day': tier['runs_per_day'],
+                    'avg_runtime_minutes': tier['avg_runtime_minutes'],
                     'days_per_month': 30,
-                    'notes': f"Azure {azure_region} - D:{payment['driver_tier']} W:{payment['worker_tier']} - {photon['label']}"
+                    'notes': f"Azure {region} | {tier['tier']} | D:{payment['driver_tier']} W:{payment['worker_tier']} | {photon['label']}"
                 })
                 scenario_id += 1
 
-# Build GCP scenarios: 1 region × 4 payment options × 2 photon configs = 8 scenarios
-gcp_region = gcp_regions[0] if len(gcp_regions) > 0 else None
-if gcp_region:
-    small_inst = get_instances_for_region('GCP', gcp_region, 'small')
-    medium_inst = get_instances_for_region('GCP', gcp_region, 'medium')
-    
-    for payment in azure_gcp_payment_matrix:
+# GCP: 2 regions × 3 tiers × 2 photon = 12 scenarios
+for region in gcp_regions:
+    for tier in tier_configs:
+        payment = azure_gcp_payment_per_tier[tier['tier']]
         for photon in photon_configs:
-            if small_inst and medium_inst:
+            driver_inst = get_instances_for_region('GCP', region, tier['driver_size'])
+            worker_inst = get_instances_for_region('GCP', region, tier['worker_size'])
+            
+            if driver_inst and worker_inst:
                 test_scenarios.append({
                     'scenario_id': scenario_id,
-                    'workload_name': f"GCP Drv:{payment['driver_tier']} Wrk:{payment['worker_tier']} {photon['label']}",
+                    'workload_name': f"GCP {region[:10]} {tier['tier']} {photon['label']}",
                     'cloud': 'GCP',
-                    'region': gcp_region,
-                    'driver_node_type': small_inst,
-                    'worker_node_type': medium_inst,
-                    'num_workers': 4,
+                    'region': region,
+                    'tier': tier['tier'],
+                    'driver_node_type': driver_inst,
+                    'worker_node_type': worker_inst,
+                    'num_workers': tier['num_workers'],
                     'photon_enabled': photon['enabled'],
                     'driver_pricing_tier': payment['driver_tier'],
                     'worker_pricing_tier': payment['worker_tier'],
                     'vm_payment_option': payment['payment_option'],
-                    'runs_per_day': 12,
-                    'avg_runtime_minutes': 60,
+                    'runs_per_day': tier['runs_per_day'],
+                    'avg_runtime_minutes': tier['avg_runtime_minutes'],
                     'days_per_month': 30,
-                    'notes': f"GCP {gcp_region} - D:{payment['driver_tier']} W:{payment['worker_tier']} - {photon['label']}"
+                    'notes': f"GCP {region} | {tier['tier']} | D:{payment['driver_tier']} W:{payment['worker_tier']} | {photon['label']}"
                 })
                 scenario_id += 1
 
 print("\n" + "=" * 120)
-print(f"📋 Built {len(test_scenarios)} comprehensive test scenarios:")
+print(f"📋 BUILT {len(test_scenarios)} COMPREHENSIVE TEST SCENARIOS")
 print("=" * 120)
-print(f"   AWS: {len([s for s in test_scenarios if s['cloud'] == 'AWS'])} scenarios (8 payment options × 2 photon)")
-print(f"   AZURE: {len([s for s in test_scenarios if s['cloud'] == 'AZURE'])} scenarios (4 payment options × 2 photon)")
-print(f"   GCP: {len([s for s in test_scenarios if s['cloud'] == 'GCP'])} scenarios (4 payment options × 2 photon)")
+print(f"   AWS: {len([s for s in test_scenarios if s['cloud'] == 'AWS'])} scenarios ({len(aws_regions)} regions × 3 tiers × 2 photon)")
+print(f"   AZURE: {len([s for s in test_scenarios if s['cloud'] == 'AZURE'])} scenarios ({len(azure_regions)} regions × 3 tiers × 2 photon)")
+print(f"   GCP: {len([s for s in test_scenarios if s['cloud'] == 'GCP'])} scenarios ({len(gcp_regions)} regions × 3 tiers × 2 photon)")
+print("=" * 120)
+
+# Show breakdown by tier
+print("\n📊 Breakdown by Tier:")
+for tier in ['STANDARD', 'PREMIUM', 'ENTERPRISE']:
+    tier_count = len([s for s in test_scenarios if s['tier'] == tier])
+    print(f"   {tier}: {tier_count} scenarios across all clouds/regions")
 print("=" * 120)
 
 # Show sample of scenarios
 print("\n📋 Sample scenarios:")
-for scenario in test_scenarios[:5]:
-    print(f"   {scenario['scenario_id']}. {scenario['workload_name']}")
-print(f"   ... and {len(test_scenarios) - 5} more")
+for scenario in test_scenarios[:10]:
+    print(f"   {scenario['scenario_id']:3d}. {scenario['workload_name']:40s} | {scenario['tier']:12s} | {scenario['num_workers']} workers")
+if len(test_scenarios) > 10:
+    print(f"   ... and {len(test_scenarios) - 10} more")
+print("=" * 120)
 
 if len(test_scenarios) == 0:
     raise Exception("❌ No test scenarios could be built! Check pricing data availability.")
@@ -534,18 +632,20 @@ if len(test_scenarios) == 0:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 8. Insert Test Line Items
+# MAGIC ## 9. Insert Test Line Items
+# MAGIC 
+# MAGIC Create estimates and line items for all test scenarios
 # MAGIC 
 # MAGIC Using the comprehensive test scenarios built in Section 7 (all payment options × photon configs)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 6.1 Create Estimates (One Per Cloud/Region Combo)
+# MAGIC ### 9.1 Create Estimates (One Per Cloud/Region/Tier Combo)
 
 # COMMAND ----------
 
-# CRITICAL FIX: Create one estimate per cloud/region
+# Create one estimate per cloud/region/tier combination
 # This ensures pricing lookups use the correct cloud/region rates
 
 create_estimate_sql = """
@@ -557,30 +657,30 @@ VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (estimate_id) DO NOTHING;
 """
 
-# Build estimate mapping: {cloud_region: estimate_id}
+# Build estimate mapping: {cloud_region_tier: estimate_id}
 estimate_map = {}
 for scenario in test_scenarios:
-    key = f"{scenario['cloud']}_{scenario['region']}"
+    key = f"{scenario['cloud']}_{scenario['region']}_{scenario['tier']}"
     if key not in estimate_map:
         estimate_id = str(uuid.uuid4())
         estimate_map[key] = estimate_id
         
         execute_query(
             create_estimate_sql,
-            (estimate_id, f'Test - {scenario["cloud"]} {scenario["region"]} - {TEST_RUN_ID}', 
-             TEST_USER_ID, f'Test Customer - {scenario["cloud"]}', 
-             scenario['cloud'], scenario['region'], 'PREMIUM', 'draft',
+            (estimate_id, f'Test - {scenario["cloud"]} {scenario["region"]} {scenario["tier"]} - {TEST_RUN_ID}', 
+             TEST_USER_ID, f'Test Customer - {scenario["cloud"]} - {scenario["tier"]}', 
+             scenario['cloud'], scenario['region'], scenario['tier'], 'draft',
              datetime.now(), datetime.now(), TEST_USER_ID),
             fetch=False
         )
-        print(f"✅ Created estimate: {scenario['cloud']} / {scenario['region']} → {estimate_id}")
+        print(f"✅ Created estimate: {scenario['cloud']} / {scenario['region']} / {scenario['tier']} → {estimate_id[:8]}...")
 
-print(f"\n✅ Created {len(estimate_map)} estimates for {len(test_scenarios)} scenarios")
+print(f"\n✅ Created {len(estimate_map)} estimates (cloud × region × tier combinations) for {len(test_scenarios)} scenarios")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 6.2 Insert Test Line Items (With Correct Estimate IDs)
+# MAGIC ### 9.2 Insert Test Line Items (With Correct Estimate IDs)
 
 # COMMAND ----------
 
@@ -605,19 +705,20 @@ INSERT INTO lakemeter.line_items (
 # Track inserted line item IDs
 line_item_ids = []
 
-for scenario in test_scenarios:
+print(f"📝 Inserting {len(test_scenarios)} line items...")
+for i, scenario in enumerate(test_scenarios, 1):
     line_item_id = str(uuid.uuid4())
     line_item_ids.append(line_item_id)
     
-    # Get the correct estimate_id for this scenario's cloud/region
-    estimate_key = f"{scenario['cloud']}_{scenario['region']}"
+    # Get the correct estimate_id for this scenario's cloud/region/tier
+    estimate_key = f"{scenario['cloud']}_{scenario['region']}_{scenario['tier']}"
     estimate_id = estimate_map[estimate_key]
     
     execute_query(
         insert_line_item_sql,
         (
             line_item_id,
-            estimate_id,  # ✅ Use cloud/region-specific estimate!
+            estimate_id,  # ✅ Use cloud/region/tier-specific estimate!
             scenario['scenario_id'],
             scenario['workload_name'],
             'JOBS',  # workload_type
@@ -641,14 +742,16 @@ for scenario in test_scenarios:
         fetch=False
     )
     
-    print(f"✅ Scenario {scenario['scenario_id']}: {scenario['workload_name']}")
+    if i % 10 == 0:
+        print(f"   ✅ Inserted {i}/{len(test_scenarios)} line items...")
 
-print(f"\n✅ Inserted {len(line_item_ids)} test line items")
+print(f"\n🎉 Successfully inserted {len(line_item_ids)} test line items!")
+print(f"   Cloud/Region/Tier combinations: {len(estimate_map)}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 9. Debug: Check What View Finds for Test Instances
+# MAGIC ## 10. Debug: Check What View Finds for Test Instances
 # MAGIC 
 # MAGIC Before running the full view, let's check if the view can find DBU rates and VM costs for our test instances
 
@@ -741,7 +844,7 @@ for scenario in debug_scenarios:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 10. Execute Cost Calculation View & Display Results
+# MAGIC ## 11. Execute Cost Calculation View & Display Results
 
 # COMMAND ----------
 
@@ -814,7 +917,7 @@ print(f"✅ Retrieved {len(results_df)} cost calculation results")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 11. Display Results - Summary View
+# MAGIC ## 12. Display Results - Summary View
 
 # COMMAND ----------
 
@@ -862,7 +965,7 @@ display(summary_df)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 12. Detailed Breakdown by Cloud & Region
+# MAGIC ## 13. Detailed Breakdown by Cloud, Region & Tier
 
 # COMMAND ----------
 
@@ -924,7 +1027,7 @@ display(gcp_results[['workload_name', 'photon_enabled', 'vm_pricing_tier',
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 13. Manual Validation - Verify Calculation Logic
+# MAGIC ## 14. Manual Validation - Verify Calculation Logic
 # MAGIC 
 # MAGIC **How to verify calculations are correct:**
 # MAGIC 
@@ -1168,7 +1271,7 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 14. Test Summary
+# MAGIC ## 15. Test Summary
 
 # COMMAND ----------
 
