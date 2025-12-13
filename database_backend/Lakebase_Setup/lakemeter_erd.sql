@@ -620,7 +620,13 @@ SELECT
     driver_vm_cost_per_hour,
     worker_vm_cost_per_hour,
     
-    -- VM cost per month (only for classic compute)
+    -- VM cost breakdown - per hour
+    worker_vm_cost_per_hour * COALESCE(num_workers, 0) as total_worker_vm_cost_per_hour,
+    driver_vm_cost_per_hour + (worker_vm_cost_per_hour * COALESCE(num_workers, 0)) as total_vm_cost_per_hour,
+    
+    -- VM cost breakdown - per month
+    driver_vm_cost_per_hour * hours_per_month as driver_vm_cost_per_month,
+    (worker_vm_cost_per_hour * COALESCE(num_workers, 0)) * hours_per_month as total_worker_vm_cost_per_month,
     (driver_vm_cost_per_hour + (worker_vm_cost_per_hour * COALESCE(num_workers, 0))) * hours_per_month as vm_cost_per_month,
     
     -- CALCULATED FIELDS - Total Cost

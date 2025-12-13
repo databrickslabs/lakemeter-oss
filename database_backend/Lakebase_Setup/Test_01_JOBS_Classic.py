@@ -768,9 +768,13 @@ SELECT
     -- DBU Calculation
     c.dbu_per_hour,
     c.dbu_per_month,
-    -- VM Costs
+    -- VM Costs - Detailed Breakdown
     c.driver_vm_cost_per_hour,
     c.worker_vm_cost_per_hour,
+    c.total_worker_vm_cost_per_hour,
+    c.total_vm_cost_per_hour,
+    c.driver_vm_cost_per_month,
+    c.total_worker_vm_cost_per_month,
     c.vm_cost_per_month,
     -- DBU Pricing
     c.price_per_dbu as dbu_price,
@@ -791,9 +795,11 @@ results_df = execute_query(query_results_sql, (line_item_ids,))
 numeric_columns = [
     'num_workers', 'runs_per_day', 'avg_runtime_minutes', 'days_per_month', 
     'hours_per_month', 'spot_percentage', 'driver_dbu_rate', 'worker_dbu_rate', 
-    'photon_multiplier', 'dbu_per_hour', 'dbu_per_month', 'driver_vm_cost_per_hour',
-    'worker_vm_cost_per_hour', 'vm_cost_per_month', 'dbu_price', 
-    'dbu_cost_per_month', 'cost_per_month'
+    'photon_multiplier', 'dbu_per_hour', 'dbu_per_month', 
+    'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 
+    'total_worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
+    'driver_vm_cost_per_month', 'total_worker_vm_cost_per_month', 'vm_cost_per_month', 
+    'dbu_price', 'dbu_cost_per_month', 'cost_per_month'
 ]
 for col in numeric_columns:
     if col in results_df.columns:
