@@ -319,9 +319,17 @@ print("   ✅ VM costs are $0 (correct for serverless)")
 assert total_scenarios == len(test_scenarios), f"❌ FAIL: Expected {len(test_scenarios)}, got {total_scenarios}"
 print(f"   ✅ All {total_scenarios} scenarios present")
 
-# All costs positive
-assert (results_df['cost_per_month'] > 0).all(), "❌ FAIL: Some costs are $0 or negative"
-print("   ✅ All costs are positive")
+# STANDARD tier should have $0 costs (serverless not available)
+standard_tier_results = results_df[results_df['tier'] == 'STANDARD']
+if len(standard_tier_results) > 0:
+    assert (standard_tier_results['cost_per_month'] == 0).all(), "❌ FAIL: STANDARD tier should have $0 costs (serverless not available)"
+    print(f"   ✅ All {len(standard_tier_results)} STANDARD tier scenarios have $0 costs (expected - serverless N/A)")
+
+# PREMIUM/ENTERPRISE tiers should have positive costs
+premium_enterprise_results = results_df[results_df['tier'].isin(['PREMIUM', 'ENTERPRISE'])]
+if len(premium_enterprise_results) > 0:
+    assert (premium_enterprise_results['cost_per_month'] > 0).all(), "❌ FAIL: PREMIUM/ENTERPRISE should have positive costs"
+    print(f"   ✅ All {len(premium_enterprise_results)} PREMIUM/ENTERPRISE scenarios have positive costs")
 
 # DBU cost = Total cost
 assert (results_df['dbu_cost_per_month'] == results_df['cost_per_month']).all(), "❌ FAIL: DBU cost should equal total"
