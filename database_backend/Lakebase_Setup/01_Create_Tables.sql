@@ -118,6 +118,10 @@ CREATE TABLE line_items (
     workload_name VARCHAR(255),               -- User-defined name
     workload_type VARCHAR(50) NOT NULL,       -- Dropdown: JOBS, ALL_PURPOSE, DLT, DBSQL, etc.
     
+    -- Cloud (denormalized from estimates for validation)
+    -- This enables instance type validation: ensure driver/worker types match cloud
+    cloud VARCHAR(20),                        -- Denormalized from estimates.cloud (set by trigger)
+    
     -- =========================================================================
     -- SECTION 2: COMPUTE CONFIG (Show for JOBS, ALL_PURPOSE, DLT)
     -- VM config always shown for sizing estimation, even when serverless
@@ -366,24 +370,55 @@ ADD CONSTRAINT fk_line_items_workload_type
 FOREIGN KEY (workload_type) REFERENCES ref_workload_types(workload_type);
 
 -- =============================================================================
--- REGION VALIDATION CONSTRAINTS
+-- TRIGGER: Auto-populate line_items.cloud from estimates.cloud
 -- =============================================================================
--- Add UNIQUE constraint on sync_ref_sku_region_map to enable FK from estimates
--- This allows region validation: only valid cloud/region combinations can be used
--- NOTE: This assumes sync_ref_sku_region_map already exists (created by pricing sync)
+-- This enables instance type validation by denormalizing cloud to line_items
 
--- Add UNIQUE constraint if sync table exists (will be run after pricing sync)
--- Uncomment and run manually after sync_ref_sku_region_map is populated:
--- ALTER TABLE sync_ref_sku_region_map 
--- ADD CONSTRAINT uq_cloud_region_code 
--- UNIQUE (cloud, region_code);
+CREATE OR REPLACE FUNCTION sync_line_item_cloud()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- On INSERT: Copy cloud from parent estimate
+    IF (TG_OP = 'INSERT') THEN
+        SELECT cloud INTO NEW.cloud
+        FROM estimates
+        WHERE estimate_id = NEW.estimate_id;
+    END IF;
+    
+    -- On UPDATE of estimate_id: Resync cloud
+    IF (TG_OP = 'UPDATE' AND OLD.estimate_id IS DISTINCT FROM NEW.estimate_id) THEN
+        SELECT cloud INTO NEW.cloud
+        FROM estimates
+        WHERE estimate_id = NEW.estimate_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Add FK constraint: estimates.region → sync_ref_sku_region_map.region_code
--- Uncomment and run manually after UNIQUE constraint is added:
--- ALTER TABLE estimates 
--- ADD CONSTRAINT fk_estimates_cloud_region 
--- FOREIGN KEY (cloud, region) 
--- REFERENCES sync_ref_sku_region_map(cloud, region_code);
+CREATE TRIGGER trg_sync_line_item_cloud
+BEFORE INSERT OR UPDATE ON line_items
+FOR EACH ROW
+EXECUTE FUNCTION sync_line_item_cloud();
+
+-- Also need trigger on estimates to update line_items when estimate.cloud changes
+CREATE OR REPLACE FUNCTION sync_estimate_cloud_to_line_items()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- On UPDATE of cloud: Update all child line_items
+    IF (TG_OP = 'UPDATE' AND OLD.cloud IS DISTINCT FROM NEW.cloud) THEN
+        UPDATE line_items
+        SET cloud = NEW.cloud
+        WHERE estimate_id = NEW.estimate_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_sync_estimate_cloud
+AFTER UPDATE ON estimates
+FOR EACH ROW
+EXECUTE FUNCTION sync_estimate_cloud_to_line_items();
 
 -- =============================================================================
 -- BUSINESS LOGIC CONSTRAINTS
@@ -499,10 +534,162 @@ ADD CONSTRAINT chk_lakebase_cu
 CHECK (lakebase_cu IS NULL OR lakebase_cu IN (1, 2, 4, 8));
 
 -- =============================================================================
--- PART 1 COMPLETE - Tables created successfully!
+-- PART 1 COMPLETE - Application Tables & Basic Constraints Created!
 -- =============================================================================
--- You can stop here if sync_* tables don't exist yet.
--- Run PART 2 below AFTER the sync tables are created.
+-- At this point, all application tables and basic constraints are in place.
+-- 
+-- ⚠️  STOP HERE if sync_* tables (from Pricing_Sync) don't exist yet.
+-- 
+-- NEXT STEPS:
+--   1. Run Pricing_Sync notebooks to create sync_* tables
+--   2. Continue below to PART 1.5 to add sync-dependent constraints
+--   3. Run 02_Create_Views.sql to create cost calculation views
+-- =============================================================================
+
+
+-- =============================================================================
+-- PART 1.5: CONSTRAINTS THAT DEPEND ON SYNC TABLES (Run AFTER Pricing_Sync)
+-- =============================================================================
+-- These constraints reference sync_* tables created by Pricing_Sync notebooks.
+-- Uncomment and run the sections below AFTER sync_* tables exist.
+-- 
+-- OR use the convenience script: 04_Add_Sync_Constraints.sql
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- REGION VALIDATION: Prevents invalid cloud/region combinations
+-- -----------------------------------------------------------------------------
+-- Example violations this prevents:
+--   ❌ AWS + eastus (Azure region)
+--   ❌ AZURE + us-east-1 (AWS region)
+--   ❌ GCP + westeurope (Azure region)
+-- -----------------------------------------------------------------------------
+
+-- Step 1: Add UNIQUE constraint on sync_ref_sku_region_map
+/*
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_cloud_region_code'
+    ) THEN
+        ALTER TABLE sync_ref_sku_region_map 
+        ADD CONSTRAINT uq_cloud_region_code 
+        UNIQUE (cloud, region_code);
+        RAISE NOTICE '✅ Added UNIQUE constraint: uq_cloud_region_code';
+    END IF;
+END $$;
+*/
+
+-- Step 2: Add FK constraint from estimates to sync_ref_sku_region_map
+/*
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_estimates_cloud_region'
+    ) THEN
+        ALTER TABLE estimates 
+        ADD CONSTRAINT fk_estimates_cloud_region 
+        FOREIGN KEY (cloud, region) 
+        REFERENCES sync_ref_sku_region_map(cloud, region_code);
+        RAISE NOTICE '✅ Added FK constraint: fk_estimates_cloud_region';
+    END IF;
+END $$;
+*/
+
+-- -----------------------------------------------------------------------------
+-- INSTANCE TYPE VALIDATION: Prevents using AWS instances on Azure, etc.
+-- -----------------------------------------------------------------------------
+-- Example violations this prevents:
+--   ❌ AWS estimate with driver_node_type='Standard_D4s_v3' (Azure instance)
+--   ❌ Azure estimate with worker_node_type='i3.xlarge' (AWS instance)
+--   ❌ GCP estimate with driver_node_type='m5.large' (AWS instance)
+-- 
+-- How it works:
+--   - line_items.cloud is auto-synced from estimates.cloud (via trigger)
+--   - FK validates (cloud, driver_node_type) exists in sync_ref_instance_dbu_rates
+--   - FK validates (cloud, worker_node_type) exists in sync_ref_instance_dbu_rates
+-- -----------------------------------------------------------------------------
+
+-- Step 1: Add UNIQUE constraint on sync_ref_instance_dbu_rates (if not already PK)
+/*
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_cloud_instance_type'
+    ) THEN
+        ALTER TABLE sync_ref_instance_dbu_rates 
+        ADD CONSTRAINT uq_cloud_instance_type 
+        UNIQUE (cloud, instance_type);
+        RAISE NOTICE '✅ Added UNIQUE constraint: uq_cloud_instance_type';
+    END IF;
+END $$;
+*/
+
+-- Step 2: Add FK constraint from line_items to sync_ref_instance_dbu_rates (driver)
+/*
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_line_items_driver_instance'
+    ) THEN
+        ALTER TABLE line_items 
+        ADD CONSTRAINT fk_line_items_driver_instance 
+        FOREIGN KEY (cloud, driver_node_type) 
+        REFERENCES sync_ref_instance_dbu_rates(cloud, instance_type);
+        RAISE NOTICE '✅ Added FK constraint: fk_line_items_driver_instance';
+    END IF;
+END $$;
+*/
+
+-- Step 3: Add FK constraint from line_items to sync_ref_instance_dbu_rates (worker)
+/*
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_line_items_worker_instance'
+    ) THEN
+        ALTER TABLE line_items 
+        ADD CONSTRAINT fk_line_items_worker_instance 
+        FOREIGN KEY (cloud, worker_node_type) 
+        REFERENCES sync_ref_instance_dbu_rates(cloud, instance_type);
+        RAISE NOTICE '✅ Added FK constraint: fk_line_items_worker_instance';
+    END IF;
+END $$;
+*/
+
+-- =============================================================================
+-- VERIFICATION QUERIES (Optional - run after adding constraints)
+-- =============================================================================
+
+-- Check which constraints exist:
+/*
+SELECT 
+    conname as constraint_name,
+    contype as type,
+    CASE contype
+        WHEN 'f' THEN 'FOREIGN KEY'
+        WHEN 'u' THEN 'UNIQUE'
+        WHEN 'c' THEN 'CHECK'
+        WHEN 'p' THEN 'PRIMARY KEY'
+    END as type_name
+FROM pg_constraint
+WHERE conname IN (
+    'uq_cloud_region_code',
+    'fk_estimates_cloud_region',
+    'uq_cloud_instance_type',
+    'fk_line_items_driver_instance',
+    'fk_line_items_worker_instance'
+)
+ORDER BY conname;
+*/
+
+-- =============================================================================
+-- END OF PART 1.5
 -- =============================================================================
 
 
