@@ -467,6 +467,7 @@ test_scenarios = []
 scenario_id = 1
 
 # Define TIERS with different instance sizes and worker counts
+# NOTE: Not all clouds support all tiers (e.g., Azure/GCP don't have ENTERPRISE)
 tier_configs = [
     {
         'tier': 'STANDARD',
@@ -475,6 +476,7 @@ tier_configs = [
         'num_workers': 2,
         'runs_per_day': 4,
         'avg_runtime_minutes': 30,
+        'clouds': ['AWS', 'AZURE', 'GCP'],  # Available on all clouds
     },
     {
         'tier': 'PREMIUM',
@@ -483,6 +485,7 @@ tier_configs = [
         'num_workers': 8,
         'runs_per_day': 12,
         'avg_runtime_minutes': 60,
+        'clouds': ['AWS', 'AZURE', 'GCP'],  # Available on all clouds
     },
     {
         'tier': 'ENTERPRISE',
@@ -491,6 +494,7 @@ tier_configs = [
         'num_workers': 16,
         'runs_per_day': 24,
         'avg_runtime_minutes': 120,
+        'clouds': ['AWS'],  # ONLY available on AWS
     },
 ]
 
@@ -516,9 +520,13 @@ photon_configs = [
 ]
 
 # Build scenarios for each cloud
-# AWS: 2 regions × 3 tiers × 2 photon = 12 scenarios
+# AWS: 2 regions × 3 tiers × 2 photon = 12 scenarios (all tiers available)
 for region in aws_regions:
     for tier in tier_configs:
+        # ✅ Check if tier is valid for AWS
+        if 'AWS' not in tier['clouds']:
+            continue
+            
         payment = aws_payment_per_tier[tier['tier']]
         for photon in photon_configs:
             driver_inst = get_instances_for_region('AWS', region, tier['driver_size'])
@@ -545,10 +553,17 @@ for region in aws_regions:
                 })
                 scenario_id += 1
 
-# Azure: 2 regions × 3 tiers × 2 photon = 12 scenarios
+# Azure: 2 regions × 2 tiers × 2 photon = 8 scenarios (NO ENTERPRISE tier)
 for region in azure_regions:
     for tier in tier_configs:
-        payment = azure_gcp_payment_per_tier[tier['tier']]
+        # ✅ Check if tier is valid for AZURE
+        if 'AZURE' not in tier['clouds']:
+            continue
+            
+        payment = azure_gcp_payment_per_tier.get(tier['tier'])
+        if not payment:  # Skip if payment not defined for this tier
+            continue
+            
         for photon in photon_configs:
             driver_inst = get_instances_for_region('AZURE', region, tier['driver_size'])
             worker_inst = get_instances_for_region('AZURE', region, tier['worker_size'])
@@ -574,10 +589,17 @@ for region in azure_regions:
                 })
                 scenario_id += 1
 
-# GCP: 2 regions × 3 tiers × 2 photon = 12 scenarios
+# GCP: 2 regions × 2 tiers × 2 photon = 8 scenarios (NO ENTERPRISE tier)
 for region in gcp_regions:
     for tier in tier_configs:
-        payment = azure_gcp_payment_per_tier[tier['tier']]
+        # ✅ Check if tier is valid for GCP
+        if 'GCP' not in tier['clouds']:
+            continue
+            
+        payment = azure_gcp_payment_per_tier.get(tier['tier'])
+        if not payment:  # Skip if payment not defined for this tier
+            continue
+            
         for photon in photon_configs:
             driver_inst = get_instances_for_region('GCP', region, tier['driver_size'])
             worker_inst = get_instances_for_region('GCP', region, tier['worker_size'])
@@ -607,15 +629,16 @@ print("\n" + "=" * 120)
 print(f"📋 BUILT {len(test_scenarios)} COMPREHENSIVE TEST SCENARIOS")
 print("=" * 120)
 print(f"   AWS: {len([s for s in test_scenarios if s['cloud'] == 'AWS'])} scenarios ({len(aws_regions)} regions × 3 tiers × 2 photon)")
-print(f"   AZURE: {len([s for s in test_scenarios if s['cloud'] == 'AZURE'])} scenarios ({len(azure_regions)} regions × 3 tiers × 2 photon)")
-print(f"   GCP: {len([s for s in test_scenarios if s['cloud'] == 'GCP'])} scenarios ({len(gcp_regions)} regions × 3 tiers × 2 photon)")
+print(f"   AZURE: {len([s for s in test_scenarios if s['cloud'] == 'AZURE'])} scenarios ({len(azure_regions)} regions × 2 tiers × 2 photon) - NO ENTERPRISE")
+print(f"   GCP: {len([s for s in test_scenarios if s['cloud'] == 'GCP'])} scenarios ({len(gcp_regions)} regions × 2 tiers × 2 photon) - NO ENTERPRISE")
 print("=" * 120)
 
 # Show breakdown by tier
 print("\n📊 Breakdown by Tier:")
 for tier in ['STANDARD', 'PREMIUM', 'ENTERPRISE']:
     tier_count = len([s for s in test_scenarios if s['tier'] == tier])
-    print(f"   {tier}: {tier_count} scenarios across all clouds/regions")
+    tier_clouds = set([s['cloud'] for s in test_scenarios if s['tier'] == tier])
+    print(f"   {tier}: {tier_count} scenarios (clouds: {', '.join(sorted(tier_clouds))})")
 print("=" * 120)
 
 # Show sample of scenarios

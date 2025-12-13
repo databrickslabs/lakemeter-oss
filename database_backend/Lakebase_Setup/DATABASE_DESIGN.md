@@ -1015,7 +1015,86 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 
 ---
 
-### 8. `ref_workload_types`
+### 8. `ref_cloud_tiers`
+
+**Purpose:** Defines which estimate tiers are valid for each cloud provider. Prevents invalid combinations (e.g., "Azure Enterprise" doesn't exist).
+
+| Column | Type | PK | Description |
+|--------|------|:--:|-------------|
+| `cloud` | VARCHAR(20) | ✓ | Cloud provider: AWS, AZURE, GCP |
+| `tier` | VARCHAR(50) | ✓ | Estimate tier: STANDARD, PREMIUM, ENTERPRISE |
+| `display_name` | VARCHAR(100) | | Human-readable tier name |
+| `description` | TEXT | | Tier description |
+| `display_order` | INT | | Sort order in UI dropdown |
+| `is_active` | BOOLEAN | | Whether tier is currently available |
+
+**Composite Primary Key:** `(cloud, tier)`
+
+**Constraints:**
+- `CHECK (cloud IN ('AWS', 'AZURE', 'GCP'))`
+- `CHECK (tier IN ('STANDARD', 'PREMIUM', 'ENTERPRISE', 'FREE_TRIAL', 'DEV_TEST'))`
+- Foreign Key: `estimates.cloud + estimates.tier → ref_cloud_tiers(cloud, tier)`
+
+**Sample Data:**
+
+| cloud | tier | display_name | description | is_active |
+|-------|------|--------------|-------------|-----------|
+| AWS | STANDARD | Standard | Standard production workloads | ✅ |
+| AWS | PREMIUM | Premium | High-performance production workloads | ✅ |
+| AWS | ENTERPRISE | Enterprise | Enterprise-grade with dedicated support | ✅ |
+| AZURE | STANDARD | Standard | Standard production workloads | ✅ |
+| AZURE | PREMIUM | Premium | High-performance production workloads | ✅ |
+| GCP | STANDARD | Standard | Standard production workloads | ✅ |
+| GCP | PREMIUM | Premium | High-performance production workloads | ✅ |
+
+> **⚠️ Important:** Azure and GCP do NOT have an ENTERPRISE tier. The composite FK constraint prevents invalid combinations.
+
+**Frontend Usage:**
+
+```sql
+-- Example 1: Get valid tiers for selected cloud (AWS)
+SELECT tier, display_name, description
+FROM ref_cloud_tiers
+WHERE cloud = 'AWS' AND is_active = TRUE
+ORDER BY display_order;
+
+-- Returns: STANDARD, PREMIUM, ENTERPRISE
+
+-- Example 2: Get valid tiers for Azure
+SELECT tier, display_name, description
+FROM ref_cloud_tiers
+WHERE cloud = 'AZURE' AND is_active = TRUE
+ORDER BY display_order;
+
+-- Returns: STANDARD, PREMIUM (NO ENTERPRISE)
+
+-- Example 3: Validate cloud/tier combination before insert
+SELECT EXISTS (
+    SELECT 1 FROM ref_cloud_tiers 
+    WHERE cloud = 'AZURE' AND tier = 'ENTERPRISE'
+);
+
+-- Returns: FALSE (invalid combination)
+```
+
+**API Endpoint (Suggested):**
+
+```
+GET /api/v1/tiers?cloud={cloud}
+
+Response:
+{
+  "cloud": "AZURE",
+  "tiers": [
+    { "tier": "STANDARD", "display_name": "Standard", "description": "..." },
+    { "tier": "PREMIUM", "display_name": "Premium", "description": "..." }
+  ]
+}
+```
+
+---
+
+### 9. `ref_workload_types`
 
 **Purpose:** Configuration table that drives dynamic form UI. Controls which form sections are shown/hidden based on workload type selection.
 
