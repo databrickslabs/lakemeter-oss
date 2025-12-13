@@ -341,16 +341,17 @@ INSERT INTO ref_cloud_tiers VALUES
 ('AWS', 'ENTERPRISE', 'Enterprise', 'Enterprise-grade workloads with dedicated support', 3, true)
 ON CONFLICT (cloud, tier) DO NOTHING;
 
--- Azure: Only STANDARD and PREMIUM (no Enterprise tier)
+-- Azure: Only STANDARD and PREMIUM (NO Enterprise tier)
 INSERT INTO ref_cloud_tiers VALUES
 ('AZURE', 'STANDARD', 'Standard', 'Standard production workloads', 1, true),
 ('AZURE', 'PREMIUM', 'Premium', 'High-performance production workloads', 2, true)
 ON CONFLICT (cloud, tier) DO NOTHING;
 
--- GCP: Only STANDARD and PREMIUM (no Enterprise tier)
+-- GCP: Supports all tiers (including Enterprise)
 INSERT INTO ref_cloud_tiers VALUES
 ('GCP', 'STANDARD', 'Standard', 'Standard production workloads', 1, true),
-('GCP', 'PREMIUM', 'Premium', 'High-performance production workloads', 2, true)
+('GCP', 'PREMIUM', 'Premium', 'High-performance production workloads', 2, true),
+('GCP', 'ENTERPRISE', 'Enterprise', 'Enterprise-grade workloads with dedicated support', 3, true)
 ON CONFLICT (cloud, tier) DO NOTHING;
 
 -- Add FK constraint: estimates.tier → ref_cloud_tiers.tier

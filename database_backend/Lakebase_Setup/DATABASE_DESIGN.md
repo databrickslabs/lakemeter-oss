@@ -1046,8 +1046,9 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | AZURE | PREMIUM | Premium | High-performance production workloads | ✅ |
 | GCP | STANDARD | Standard | Standard production workloads | ✅ |
 | GCP | PREMIUM | Premium | High-performance production workloads | ✅ |
+| GCP | ENTERPRISE | Enterprise | Enterprise-grade with dedicated support | ✅ |
 
-> **⚠️ Important:** Azure and GCP do NOT have an ENTERPRISE tier. The composite FK constraint prevents invalid combinations.
+> **⚠️ Important:** Only **Azure** does NOT have an ENTERPRISE tier. AWS and GCP both support ENTERPRISE. The composite FK constraint prevents invalid combinations.
 
 **Frontend Usage:**
 

@@ -494,7 +494,7 @@ tier_configs = [
         'num_workers': 16,
         'runs_per_day': 24,
         'avg_runtime_minutes': 120,
-        'clouds': ['AWS'],  # ONLY available on AWS
+        'clouds': ['AWS', 'GCP'],  # Available on AWS and GCP (NOT Azure)
     },
 ]
 
@@ -630,7 +630,7 @@ print(f"📋 BUILT {len(test_scenarios)} COMPREHENSIVE TEST SCENARIOS")
 print("=" * 120)
 print(f"   AWS: {len([s for s in test_scenarios if s['cloud'] == 'AWS'])} scenarios ({len(aws_regions)} regions × 3 tiers × 2 photon)")
 print(f"   AZURE: {len([s for s in test_scenarios if s['cloud'] == 'AZURE'])} scenarios ({len(azure_regions)} regions × 2 tiers × 2 photon) - NO ENTERPRISE")
-print(f"   GCP: {len([s for s in test_scenarios if s['cloud'] == 'GCP'])} scenarios ({len(gcp_regions)} regions × 2 tiers × 2 photon) - NO ENTERPRISE")
+print(f"   GCP: {len([s for s in test_scenarios if s['cloud'] == 'GCP'])} scenarios ({len(gcp_regions)} regions × 3 tiers × 2 photon)")
 print("=" * 120)
 
 # Show breakdown by tier
