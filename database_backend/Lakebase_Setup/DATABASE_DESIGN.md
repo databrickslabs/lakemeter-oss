@@ -132,22 +132,52 @@ Lakemeter requires a **fast, transactional database** to support:
 
 1. **Cloud/Tier Validation:** `estimates(cloud, tier) → ref_cloud_tiers(cloud, tier)`
    - Prevents: Azure + ENTERPRISE (not supported)
+   - Status: ✅ Always active (Part 1)
 
 2. **Cloud/Region Validation:** `estimates(cloud, region) → sync_ref_sku_region_map(cloud, region_code)`
-   - Prevents: AWS + eastus (Azure region)
-   - Requires: Run `03_Add_Region_Constraint.sql` after pricing sync
+   - Prevents: AWS + eastus (Azure region), AZURE + us-east-1 (AWS region)
+   - Status: ⚠️ Run after pricing sync (Part 1.5 or `04_Add_Sync_Constraints.sql`)
 
-3. **Workload Type Validation:** `line_items(workload_type) → ref_workload_types(workload_type)`
+3. **Instance Type Validation:** `line_items(cloud, driver/worker_node_type) → sync_ref_instance_dbu_rates(cloud, instance_type)`
+   - Prevents: AWS using Azure instances (Standard_D4s_v3), Azure using AWS instances (i3.xlarge)
+   - How: `line_items.cloud` auto-synced from `estimates.cloud` via trigger
+   - Status: ⚠️ Run after pricing sync (Part 1.5 or `04_Add_Sync_Constraints.sql`)
+
+4. **Workload Type Validation:** `line_items(workload_type) → ref_workload_types(workload_type)`
    - Ensures only valid workload types
+   - Status: ✅ Always active (Part 1)
 
-4. **Serverless Logic:** When `serverless_enabled = TRUE`, `photon_enabled` MUST be `TRUE`
+5. **Serverless Logic:** When `serverless_enabled = TRUE`, `photon_enabled` MUST be `TRUE`
+   - Status: ✅ Always active (Part 1)
 
-5. **Range Validations:**
+6. **Range Validations:**
    - Workers: 0-1000
    - DBSQL clusters: 1-100  
    - Days per month: 1-31
    - Lakebase storage: 100-10000 GB
    - Lakebase backup: 1-35 days
+   - Status: ✅ Always active (Part 1)
+
+### Constraint Execution Order
+
+```
+PART 1: Run 01_Create_Tables.sql
+  ✅ Creates all application tables
+  ✅ Adds basic constraints (cloud/tier, enums, ranges, business logic)
+  ✅ Creates triggers to sync line_items.cloud from estimates.cloud
+  ✅ Constraints: ~100 constraints active
+
+PART 1.5: Run after Pricing_Sync notebooks complete
+  ⚠️ Uncomment code in 01_Create_Tables.sql (Part 1.5 section)
+  OR run convenience script: 04_Add_Sync_Constraints.sql
+  ✅ Adds cloud/region validation (2 constraints)
+  ✅ Adds instance type validation (3 constraints)
+  ✅ Constraints: ~105 total constraints active
+
+PART 2: Run 02_Create_Views.sql
+  ✅ Creates cost calculation views
+  ✅ Views depend on sync_* tables
+```
 
 ---
 
@@ -683,6 +713,8 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 
 > **⚠️ Pricing Rule:** Driver nodes CANNOT use spot pricing (requires stability). Worker nodes CAN use spot pricing. Use `driver_pricing_tier` and `worker_pricing_tier` to specify independently.
 
+> **🔄 Auto-Sync:** The `cloud` column is automatically synced from parent `estimates.cloud` via triggers. This enables instance type validation (ensures driver/worker instances match the estimate's cloud).
+
 | Column | Type | PK | FK | Description |
 |--------|------|:--:|:--:|-------------|
 | `line_item_id` | UUID | ✓ | | Unique line item identifier |
@@ -691,6 +723,7 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | **Identity** |
 | `workload_name` | VARCHAR(255) | | | User-defined workload name |
 | `workload_type` | VARCHAR(50) | | ✓ ref_workload_types | Dropdown: JOBS, ALL_PURPOSE, DLT, DBSQL, etc. |
+| `cloud` | VARCHAR(20) | | | Auto-synced from estimates.cloud (via trigger) |
 | **Compute Config** *(JOBS, ALL_PURPOSE, DLT)* |
 | `serverless_enabled` | BOOLEAN | | | Serverless toggle (**if true, photon_enabled must also be true**) |
 | `serverless_mode` | VARCHAR(20) | | | Dropdown: standard, performance (**for JOBS/DLT serverless only**) |
