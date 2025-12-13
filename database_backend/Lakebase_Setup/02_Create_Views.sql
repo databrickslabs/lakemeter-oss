@@ -224,7 +224,7 @@ final_calc AS (
         CASE WHEN p.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') 
               AND p.serverless_enabled = FALSE THEN
             COALESCE((
-                SELECT cost_per_hour FROM pricing_vm_costs 
+                SELECT cost_per_hour FROM sync_pricing_vm_costs 
                 WHERE cloud = p.cloud AND region = p.region 
                 AND instance_type = p.driver_node_type
                 AND pricing_tier = COALESCE(p.vm_pricing_tier, 'on_demand')
@@ -235,7 +235,7 @@ final_calc AS (
         CASE WHEN p.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') 
               AND p.serverless_enabled = FALSE THEN
             COALESCE((
-                SELECT cost_per_hour FROM pricing_vm_costs 
+                SELECT cost_per_hour FROM sync_pricing_vm_costs 
                 WHERE cloud = p.cloud AND region = p.region 
                 AND instance_type = p.worker_node_type
                 AND pricing_tier = COALESCE(p.vm_pricing_tier, 'on_demand')
