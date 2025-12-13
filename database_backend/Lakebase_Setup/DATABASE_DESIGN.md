@@ -110,6 +110,47 @@ Lakemeter requires a **fast, transactional database** to support:
 
 ---
 
+## Database Constraints Summary
+
+### Application Table Constraints
+
+| Constraint Type | Count | Examples |
+|----------------|:-----:|----------|
+| **PRIMARY KEYS** | 9 | All tables have UUID or composite PKs |
+| **FOREIGN KEYS** | 12 | estimates→users, line_items→estimates, etc. |
+| **UNIQUE** | 3 | users.email, sharing.share_link, sync_ref_sku_region_map(cloud,region_code) |
+| **CHECK (Business Logic)** | 8 | serverless_requires_photon, autoscale_min_max, positive_usage |
+| **CHECK (Enums)** | 15 | cloud, status, warehouse_type, pricing_tier, etc. |
+| **CHECK (Ranges)** | 6 | num_workers(0-1000), days_per_month(1-31), lakebase_storage(100-10000) |
+| **NOT NULL** | 6 | workload_type, email, template_name, ref_cloud_tiers columns |
+| **DEFAULTS** | 43 | timestamps, booleans, numeric values |
+| **INDEXES** | 2 | line_items(estimate_id), line_items(workload_type) |
+
+**Total Constraints: ~104**
+
+### Key Validation Rules
+
+1. **Cloud/Tier Validation:** `estimates(cloud, tier) → ref_cloud_tiers(cloud, tier)`
+   - Prevents: Azure + ENTERPRISE (not supported)
+
+2. **Cloud/Region Validation:** `estimates(cloud, region) → sync_ref_sku_region_map(cloud, region_code)`
+   - Prevents: AWS + eastus (Azure region)
+   - Requires: Run `03_Add_Region_Constraint.sql` after pricing sync
+
+3. **Workload Type Validation:** `line_items(workload_type) → ref_workload_types(workload_type)`
+   - Ensures only valid workload types
+
+4. **Serverless Logic:** When `serverless_enabled = TRUE`, `photon_enabled` MUST be `TRUE`
+
+5. **Range Validations:**
+   - Workers: 0-1000
+   - DBSQL clusters: 1-100  
+   - Days per month: 1-31
+   - Lakebase storage: 100-10000 GB
+   - Lakebase backup: 1-35 days
+
+---
+
 ## Pricing Tables (Synced)
 
 These tables are **synced from Unity Catalog Delta tables** to Lakebase via CDC. They are **read-only** in Lakebase.
