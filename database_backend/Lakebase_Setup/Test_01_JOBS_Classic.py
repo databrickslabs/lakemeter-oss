@@ -877,6 +877,10 @@ SELECT
     c.display_order,
     c.workload_name,
     c.workload_type,
+    -- Context (cloud/region/tier)
+    c.cloud,
+    c.region,
+    c.tier,
     -- Configuration
     c.driver_node_type,
     c.worker_node_type,
@@ -888,8 +892,11 @@ SELECT
     c.avg_runtime_minutes,
     c.days_per_month,
     c.hours_per_month,
-    -- Pricing
+    -- Pricing Tiers
+    c.driver_pricing_tier,
+    c.worker_pricing_tier,
     c.vm_pricing_tier,
+    c.vm_payment_option,
     c.spot_percentage,
     -- DBU Rates (for audit)
     c.driver_dbu_rate,
@@ -923,7 +930,7 @@ results_df = execute_query(query_results_sql, (line_item_ids,))
 
 # Convert Decimal columns to float for calculations
 numeric_columns = [
-    'num_workers', 'runs_per_day', 'avg_runtime_minutes', 'days_per_month', 
+    'display_order', 'num_workers', 'runs_per_day', 'avg_runtime_minutes', 'days_per_month', 
     'hours_per_month', 'spot_percentage', 'driver_dbu_rate', 'worker_dbu_rate', 
     'photon_multiplier', 'dbu_per_hour', 'dbu_per_month', 
     'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 
@@ -936,6 +943,45 @@ for col in numeric_columns:
         results_df[col] = pd.to_numeric(results_df[col], errors='coerce')
 
 print(f"✅ Retrieved {len(results_df)} cost calculation results")
+print(f"   Columns: {len(results_df.columns)}")
+
+# COMMAND ----------
+
+# Display summary by cloud
+print("\n" + "=" * 100)
+print("📊 RESULTS SUMMARY BY CLOUD")
+print("=" * 100)
+
+summary_df = results_df.groupby(['cloud', 'tier']).agg({
+    'workload_name': 'count',
+    'vm_cost_per_month': 'sum',
+    'dbu_cost_per_month': 'sum',
+    'cost_per_month': 'sum'
+}).rename(columns={'workload_name': 'count'})
+
+print(summary_df.to_string())
+
+# COMMAND ----------
+
+# Show key columns for all results
+print("\n" + "=" * 100)
+print("📋 DETAILED RESULTS (Key Columns)")
+print("=" * 100)
+
+display_columns = [
+    'workload_name', 'cloud', 'region', 'tier',
+    'driver_node_type', 'worker_node_type', 'num_workers',
+    'photon_enabled', 'driver_pricing_tier', 'worker_pricing_tier', 'vm_payment_option',
+    'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
+    'dbu_per_hour', 'dbu_price', 
+    'vm_cost_per_month', 'dbu_cost_per_month', 'cost_per_month'
+]
+
+# Filter to only columns that exist
+display_columns = [col for col in display_columns if col in results_df.columns]
+
+print(f"Showing {len(display_columns)} columns for {len(results_df)} scenarios:")
+print(results_df[display_columns].to_string(index=False))
 
 # COMMAND ----------
 
@@ -944,43 +990,45 @@ print(f"✅ Retrieved {len(results_df)} cost calculation results")
 
 # COMMAND ----------
 
-# Create summary view with key metrics
+# Create summary view with key metrics (human-readable)
 summary_df = results_df[[
-    'display_order',
     'workload_name',
+    'cloud',
+    'region',
+    'tier',
+    'driver_node_type',
+    'worker_node_type',
     'num_workers',
     'photon_enabled',
-    'vm_pricing_tier',
-    'runs_per_day',
-    'avg_runtime_minutes',
-    'hours_per_month',
-    'driver_dbu_rate',
-    'worker_dbu_rate',
-    'photon_multiplier',
-    'dbu_per_hour',
-    'dbu_per_month',
-    'dbu_cost_per_month',
+    'driver_pricing_tier',
+    'worker_pricing_tier',
+    'vm_payment_option',
     'driver_vm_cost_per_hour',
     'worker_vm_cost_per_hour',
     'total_vm_cost_per_hour',
+    'dbu_per_hour',
+    'dbu_price',
     'vm_cost_per_month',
+    'dbu_cost_per_month',
     'cost_per_month'
 ]].copy()
 
+# Format for display
 summary_df['photon_enabled'] = summary_df['photon_enabled'].map({True: 'Yes', False: 'No'})
-summary_df['dbu_per_month'] = summary_df['dbu_per_month'].round(2)
-summary_df['dbu_cost_per_month'] = summary_df['dbu_cost_per_month'].round(2)
-summary_df['driver_vm_cost_per_hour'] = summary_df['driver_vm_cost_per_hour'].round(4)
-summary_df['worker_vm_cost_per_hour'] = summary_df['worker_vm_cost_per_hour'].round(4)
-summary_df['total_vm_cost_per_hour'] = summary_df['total_vm_cost_per_hour'].round(4)
+summary_df['driver_vm_cost_per_hour'] = summary_df['driver_vm_cost_per_hour'].round(6)
+summary_df['worker_vm_cost_per_hour'] = summary_df['worker_vm_cost_per_hour'].round(6)
+summary_df['total_vm_cost_per_hour'] = summary_df['total_vm_cost_per_hour'].round(6)
+summary_df['dbu_per_hour'] = summary_df['dbu_per_hour'].round(4)
+summary_df['dbu_price'] = summary_df['dbu_price'].round(6)
 summary_df['vm_cost_per_month'] = summary_df['vm_cost_per_month'].round(2)
+summary_df['dbu_cost_per_month'] = summary_df['dbu_cost_per_month'].round(2)
 summary_df['cost_per_month'] = summary_df['cost_per_month'].round(2)
 
-print("=" * 180)
-print("JOBS CLASSIC - COST CALCULATION SUMMARY")
-print("=" * 180)
-print(tabulate(summary_df, headers='keys', tablefmt='grid', showindex=False))
-print("=" * 180)
+print("=" * 200)
+print("JOBS CLASSIC - COST CALCULATION SUMMARY (ALL SCENARIOS)")
+print("=" * 200)
+print(tabulate(summary_df, headers='keys', tablefmt='grid', showindex=False, maxcolwidths=30))
+print("=" * 200)
 
 # Display Spark DataFrame for better Databricks visualization
 display(summary_df)
@@ -1005,7 +1053,8 @@ print(f"Total Monthly Cost: ${aws_results['cost_per_month'].sum():,.2f}")
 print(f"Total DBUs: {aws_results['dbu_per_month'].sum():,.2f}")
 print("=" * 120)
 
-display(aws_results[['workload_name', 'photon_enabled', 'vm_pricing_tier', 
+display(aws_results[['workload_name', 'region', 'tier', 'driver_node_type', 'worker_node_type',
+                      'photon_enabled', 'driver_pricing_tier', 'worker_pricing_tier', 'vm_payment_option',
                       'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
                       'dbu_per_month', 'vm_cost_per_month', 'cost_per_month']])
 
@@ -1024,7 +1073,8 @@ print(f"Total Monthly Cost: ${azure_results['cost_per_month'].sum():,.2f}")
 print(f"Total DBUs: {azure_results['dbu_per_month'].sum():,.2f}")
 print("=" * 120)
 
-display(azure_results[['workload_name', 'photon_enabled', 'vm_pricing_tier', 
+display(azure_results[['workload_name', 'region', 'tier', 'driver_node_type', 'worker_node_type',
+                        'photon_enabled', 'driver_pricing_tier', 'worker_pricing_tier', 'vm_payment_option',
                         'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
                         'dbu_per_month', 'vm_cost_per_month', 'cost_per_month']])
 
@@ -1043,7 +1093,8 @@ print(f"Total Monthly Cost: ${gcp_results['cost_per_month'].sum():,.2f}")
 print(f"Total DBUs: {gcp_results['dbu_per_month'].sum():,.2f}")
 print("=" * 120)
 
-display(gcp_results[['workload_name', 'photon_enabled', 'vm_pricing_tier', 
+display(gcp_results[['workload_name', 'region', 'tier', 'driver_node_type', 'worker_node_type',
+                      'photon_enabled', 'driver_pricing_tier', 'worker_pricing_tier', 'vm_payment_option',
                       'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
                       'dbu_per_month', 'vm_cost_per_month', 'cost_per_month']])
 
