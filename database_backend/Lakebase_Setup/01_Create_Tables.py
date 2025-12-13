@@ -82,13 +82,21 @@ def execute_sql(sql_statement, description="SQL", show_error=True):
         print(f"✅ {description}")
         return True
     except Exception as e:
+        error_msg = str(e)
         if show_error:
-            print(f"❌ {description}")
-            print(f"   Error: {str(e)}")
+            # Check if it's a "doesn't exist" error (harmless)
+            if "does not exist" in error_msg:
+                print(f"⚪ {description} (doesn't exist - OK)")
+                return True  # Treat as success
+            else:
+                # Real error (like ownership issue)
+                print(f"❌ {description}")
+                print(f"   Error: {error_msg}")
+                return False
         else:
-            # Silent mode - just note it was processed
-            print(f"⚪ {description} (skipped - doesn't exist)")
-        return False
+            # Silent mode
+            print(f"⚪ {description}")
+            return False
 
 # COMMAND ----------
 
@@ -152,13 +160,48 @@ drop_statements = [
 
 print("\n📋 Dropping objects...")
 success_count = 0
-for sql, desc in drop_statements:
-    # Use show_error=False to avoid cluttering output with "doesn't exist" errors
-    if execute_sql(sql, desc, show_error=False):
-        success_count += 1
+failed_objects = []
 
-print(f"\n✅ Cleanup complete! ({success_count}/{len(drop_statements)} objects processed)")
-print("   Note: Objects that didn't exist are skipped silently.")
+for sql, desc in drop_statements:
+    # Show errors so we can see what's failing
+    result = execute_sql(sql, desc, show_error=True)
+    if result:
+        success_count += 1
+    else:
+        failed_objects.append(desc)
+
+print(f"\n📊 Cleanup summary: {success_count}/{len(drop_statements)} objects dropped")
+
+if failed_objects:
+    print(f"\n⚠️  WARNING: {len(failed_objects)} objects could not be dropped:")
+    for obj in failed_objects:
+        print(f"   ❌ {obj}")
+    print("\n💡 This usually means objects are owned by another user.")
+    print("\n🔧 SOLUTION: Run this SQL in Lakebase SQL Editor to diagnose and fix:")
+    print("=" * 70)
+    print("""
+-- 1. Check who owns the functions
+SELECT 
+    p.proname as function_name,
+    pg_get_userbyid(p.proowner) as owner,
+    'DROP FUNCTION lakemeter.' || p.proname || '() CASCADE;' as drop_command
+FROM pg_proc p 
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE n.nspname = 'lakemeter' AND p.proname LIKE 'sync_%';
+
+-- 2. Copy and run the DROP commands from above output
+--    (or run this if you own them):
+DROP FUNCTION IF EXISTS lakemeter.sync_line_item_cloud() CASCADE;
+DROP FUNCTION IF EXISTS lakemeter.sync_estimate_cloud_to_line_items() CASCADE;
+
+-- 3. Then re-run this notebook
+""")
+    print("=" * 70)
+    print("\n🛑 STOPPING: Cannot proceed with failed drops.")
+    print("   Fix ownership issues above, then re-run this notebook.")
+    raise Exception("Ownership errors detected. Fix in SQL Editor first.")
+else:
+    print("\n✅ All objects dropped successfully!")
 
 # COMMAND ----------
 
