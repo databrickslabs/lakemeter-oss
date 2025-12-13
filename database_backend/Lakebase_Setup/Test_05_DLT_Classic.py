@@ -168,7 +168,7 @@ for cloud in ['AWS', 'AZURE', 'GCP']:
                             'photon_enabled': photon,
                             'driver_pricing_tier': 'on_demand',
                             'worker_pricing_tier': 'on_demand',
-                            'vm_payment_option': 'NO_UPFRONT',
+                            'vm_payment_option': 'on_demand',
                             'runs_per_day': usage['runs_per_day'],
                             'avg_runtime_minutes': usage['avg_runtime_minutes'],
                             'days_per_month': 30,
