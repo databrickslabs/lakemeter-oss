@@ -229,23 +229,51 @@ try:
     
     if ownership_issues:
         print("\n" + "=" * 80)
-        print("⚠️  OWNERSHIP WARNING")
+        print("⚠️  OWNERSHIP WARNING: DATABRICKS MANAGED CONNECTOR DETECTED")
         print("=" * 80)
-        print(f"\n{len(ownership_issues)} sync_* table(s) are owned by another user.")
-        print("Adding UNIQUE constraints requires ownership or ALTER permission.")
-        print("\n📋 OPTIONS TO FIX:")
-        print("\n  Option 1: Transfer ownership (run in Lakebase SQL Editor):")
-        print("  " + "─" * 76)
-        for table, owner in ownership_issues:
-            print(f"  ALTER TABLE lakemeter.{table} OWNER TO lakemeter_sync_role;")
-        print()
-        print("\n  Option 2: Run Pricing_Sync notebooks again as lakemeter_sync_role")
-        print("            (they will create tables with correct ownership)")
-        print("\n  Option 3: Continue anyway (constraints will be skipped)")
-        print("=" * 80)
+        print(f"\n{len(ownership_issues)} sync_* table(s) are owned by: {ownership_issues[0][1]}")
         
-        # Don't stop - just warn and continue
-        print("\n⚠️  Continuing... Constraints may fail due to ownership.")
+        # Check if it's a Databricks system account
+        if 'databricks_writer' in ownership_issues[0][1]:
+            print("\n🔍 DIAGNOSIS:")
+            print("   This is a DATABRICKS MANAGED CONNECTOR system account.")
+            print("   You CANNOT modify these tables without superuser privileges.")
+            print("\n💡 RECOMMENDATION: SKIP THIS NOTEBOOK")
+            print("   The constraints this notebook adds are OPTIONAL.")
+            print("   Your app will work perfectly without them!")
+            print("\n📋 WHAT YOU LOSE:")
+            print("   ❌ Database-level region validation (cloud + region FK)")
+            print("   ❌ Database-level instance validation (cloud + instance FK)")
+            print("\n📋 WHAT STILL WORKS:")
+            print("   ✅ All cost calculations (views work fine)")
+            print("   ✅ All business logic constraints (32+ in line_items)")
+            print("   ✅ All pricing data queries")
+            print("   ✅ Frontend validation (same end result)")
+            print("\n🚀 NEXT STEPS:")
+            print("   1. Stop this notebook")
+            print("   2. Go to: 02_Create_Views.py")
+            print("   3. Run that instead")
+            print("   4. Done!")
+            print("\n" + "=" * 80)
+            print("🛑 STOPPING: Cannot proceed with connector-owned tables.")
+            print("=" * 80)
+            raise Exception("Databricks managed connector ownership detected. Skip this notebook and run 02_Create_Views.py instead.")
+        else:
+            # Regular user ownership - can be fixed
+            print("\nAdding UNIQUE constraints requires ownership or ALTER permission.")
+            print("\n📋 OPTIONS TO FIX:")
+            print("\n  Option 1: Transfer ownership (run in Lakebase SQL Editor):")
+            print("  " + "─" * 76)
+            for table, owner in ownership_issues:
+                print(f"  ALTER TABLE lakemeter.{table} OWNER TO lakemeter_sync_role;")
+            print()
+            print("\n  Option 2: Run Pricing_Sync notebooks again as lakemeter_sync_role")
+            print("            (they will create tables with correct ownership)")
+            print("\n  Option 3: Continue anyway (constraints will be skipped)")
+            print("=" * 80)
+            
+            # Don't stop - just warn and continue
+            print("\n⚠️  Continuing... Constraints may fail due to ownership.")
     else:
         print("\n✅ All sync_* tables have correct ownership!")
         
