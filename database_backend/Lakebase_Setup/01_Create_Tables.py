@@ -70,7 +70,7 @@ def get_connection():
         sslmode='require'
     )
 
-def execute_sql(sql_statement, description="SQL"):
+def execute_sql(sql_statement, description="SQL", show_error=True):
     """Execute SQL statement and return success/failure"""
     try:
         conn = get_connection()
@@ -82,8 +82,12 @@ def execute_sql(sql_statement, description="SQL"):
         print(f"✅ {description}")
         return True
     except Exception as e:
-        print(f"❌ {description}")
-        print(f"   Error: {str(e)}")
+        if show_error:
+            print(f"❌ {description}")
+            print(f"   Error: {str(e)}")
+        else:
+            # Silent mode - just note it was processed
+            print(f"⚪ {description} (skipped - doesn't exist)")
         return False
 
 # COMMAND ----------
@@ -114,27 +118,47 @@ except Exception as e:
 # COMMAND ----------
 
 print("=" * 80)
-print("🗑️  DROPPING EXISTING OBJECTS")
+print("🗑️  DROPPING EXISTING OBJECTS (if they exist)")
+print("=" * 80)
+print("\nThis ensures a clean slate by removing any existing objects.")
+print("Drop order: Triggers → Functions → Views → Tables")
 print("=" * 80)
 
+# Drop in correct dependency order
 drop_statements = [
-    ("DROP VIEW IF EXISTS lakemeter.v_estimates_with_totals CASCADE", "Drop v_estimates_with_totals"),
-    ("DROP VIEW IF EXISTS lakemeter.v_line_items_with_costs CASCADE", "Drop v_line_items_with_costs"),
-    ("DROP TABLE IF EXISTS lakemeter.decision_records CASCADE", "Drop decision_records"),
-    ("DROP TABLE IF EXISTS lakemeter.conversation_messages CASCADE", "Drop conversation_messages"),
-    ("DROP TABLE IF EXISTS lakemeter.sharing CASCADE", "Drop sharing"),
-    ("DROP TABLE IF EXISTS lakemeter.line_items CASCADE", "Drop line_items"),
-    ("DROP TABLE IF EXISTS lakemeter.estimates CASCADE", "Drop estimates"),
-    ("DROP TABLE IF EXISTS lakemeter.templates CASCADE", "Drop templates"),
-    ("DROP TABLE IF EXISTS lakemeter.users CASCADE", "Drop users"),
-    ("DROP TABLE IF EXISTS lakemeter.ref_cloud_tiers CASCADE", "Drop ref_cloud_tiers"),
-    ("DROP TABLE IF EXISTS lakemeter.ref_workload_types CASCADE", "Drop ref_workload_types"),
+    # 1. Drop triggers first (depend on functions and tables)
+    ("DROP TRIGGER IF EXISTS trg_sync_line_item_cloud ON lakemeter.line_items CASCADE", "Drop trigger: trg_sync_line_item_cloud"),
+    ("DROP TRIGGER IF EXISTS trg_sync_estimate_cloud ON lakemeter.estimates CASCADE", "Drop trigger: trg_sync_estimate_cloud"),
+    
+    # 2. Drop functions (triggers depend on these)
+    ("DROP FUNCTION IF EXISTS lakemeter.sync_line_item_cloud() CASCADE", "Drop function: sync_line_item_cloud()"),
+    ("DROP FUNCTION IF EXISTS lakemeter.sync_estimate_cloud_to_line_items() CASCADE", "Drop function: sync_estimate_cloud_to_line_items()"),
+    
+    # 3. Drop views (depend on tables)
+    ("DROP VIEW IF EXISTS lakemeter.v_estimates_with_totals CASCADE", "Drop view: v_estimates_with_totals"),
+    ("DROP VIEW IF EXISTS lakemeter.v_line_items_with_costs CASCADE", "Drop view: v_line_items_with_costs"),
+    
+    # 4. Drop tables (in reverse dependency order)
+    ("DROP TABLE IF EXISTS lakemeter.decision_records CASCADE", "Drop table: decision_records"),
+    ("DROP TABLE IF EXISTS lakemeter.conversation_messages CASCADE", "Drop table: conversation_messages"),
+    ("DROP TABLE IF EXISTS lakemeter.sharing CASCADE", "Drop table: sharing"),
+    ("DROP TABLE IF EXISTS lakemeter.line_items CASCADE", "Drop table: line_items"),
+    ("DROP TABLE IF EXISTS lakemeter.estimates CASCADE", "Drop table: estimates"),
+    ("DROP TABLE IF EXISTS lakemeter.templates CASCADE", "Drop table: templates"),
+    ("DROP TABLE IF EXISTS lakemeter.users CASCADE", "Drop table: users"),
+    ("DROP TABLE IF EXISTS lakemeter.ref_cloud_tiers CASCADE", "Drop table: ref_cloud_tiers"),
+    ("DROP TABLE IF EXISTS lakemeter.ref_workload_types CASCADE", "Drop table: ref_workload_types"),
 ]
 
+print("\n📋 Dropping objects...")
+success_count = 0
 for sql, desc in drop_statements:
-    execute_sql(sql, desc)
+    # Use show_error=False to avoid cluttering output with "doesn't exist" errors
+    if execute_sql(sql, desc, show_error=False):
+        success_count += 1
 
-print("\n✅ All existing objects dropped")
+print(f"\n✅ Cleanup complete! ({success_count}/{len(drop_statements)} objects processed)")
+print("   Note: Objects that didn't exist are skipped silently.")
 
 # COMMAND ----------
 
