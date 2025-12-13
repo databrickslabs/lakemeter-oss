@@ -119,7 +119,19 @@ print("=" * 180)
 print(tabulate(results_df.head(20), headers='keys', tablefmt='grid', showindex=False, maxcolwidths=30))
 display(results_df)
 
-assert len(results_df) == len(test_scenarios) and (results_df['cost_per_month'] > 0).all()
+assert len(results_df) == len(test_scenarios), f"❌ Missing scenarios"
+
+# STANDARD tier should have $0 costs (serverless not available)
+standard_tier_results = results_df[results_df['tier'] == 'STANDARD']
+if len(standard_tier_results) > 0:
+    assert (standard_tier_results['cost_per_month'] == 0).all(), "❌ FAIL: STANDARD tier should have $0 costs (serverless not available)"
+    print(f"   ✅ All {len(standard_tier_results)} STANDARD tier scenarios have $0 costs (expected - serverless N/A)")
+
+# PREMIUM/ENTERPRISE tiers should have positive costs
+premium_enterprise_results = results_df[results_df['tier'].isin(['PREMIUM', 'ENTERPRISE'])]
+if len(premium_enterprise_results) > 0:
+    assert (premium_enterprise_results['cost_per_month'] > 0).all(), "❌ FAIL: PREMIUM/ENTERPRISE should have positive costs"
+    print(f"   ✅ All {len(premium_enterprise_results)} PREMIUM/ENTERPRISE scenarios have positive costs")
 print(f"✅ All {len(test_scenarios)} LAKEBASE scenarios validated!")
 print(f"   CU to DBU conversion: 1 CU = 1 DBU per hour")
 

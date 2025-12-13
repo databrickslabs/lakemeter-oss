@@ -193,11 +193,11 @@ usage_patterns = [
     {'name': 'Full-Time', 'runs_per_day': 24, 'avg_runtime_minutes': 60},  # 24/7 continuous
 ]
 
-# VM pricing tiers
+# VM pricing tiers (payment_option matches Test_01 pattern)
 pricing_tiers = [
-    {'name': 'OnDemand', 'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment': 'NO_UPFRONT'},
-    {'name': 'Spot', 'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment': 'NO_UPFRONT'},  # Driver can't be spot
-    {'name': 'Reserved1Y', 'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment': 'PARTIAL_UPFRONT'},
+    {'name': 'OnDemand', 'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment': 'on_demand'},
+    {'name': 'Spot', 'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment': 'spot'},  # Driver can't be spot
+    {'name': 'Reserved1Y', 'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment': 'partial_upfront'},
 ]
 
 # Photon options

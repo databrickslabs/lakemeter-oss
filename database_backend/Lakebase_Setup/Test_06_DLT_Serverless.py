@@ -181,8 +181,17 @@ assert results_df['vm_cost_per_month'].sum() == 0, "❌ FAIL: VM cost should be 
 print("   ✅ VM costs are $0 (correct for serverless)")
 assert len(results_df) == len(test_scenarios), "❌ FAIL: Missing scenarios"
 print(f"   ✅ All {len(test_scenarios)} scenarios present")
-assert (results_df['cost_per_month'] > 0).all(), "❌ FAIL: Some costs $0"
-print("   ✅ All costs positive")
+# STANDARD tier should have $0 costs (serverless not available)
+standard_tier_results = results_df[results_df['tier'] == 'STANDARD']
+if len(standard_tier_results) > 0:
+    assert (standard_tier_results['cost_per_month'] == 0).all(), "❌ FAIL: STANDARD tier should have $0 costs (serverless not available)"
+    print(f"   ✅ All {len(standard_tier_results)} STANDARD tier scenarios have $0 costs (expected - serverless N/A)")
+
+# PREMIUM/ENTERPRISE tiers should have positive costs
+premium_enterprise_results = results_df[results_df['tier'].isin(['PREMIUM', 'ENTERPRISE'])]
+if len(premium_enterprise_results) > 0:
+    assert (premium_enterprise_results['cost_per_month'] > 0).all(), "❌ FAIL: PREMIUM/ENTERPRISE should have positive costs"
+    print(f"   ✅ All {len(premium_enterprise_results)} PREMIUM/ENTERPRISE scenarios have positive costs")
 print("\n🎉 ALL TESTS PASSED!")
 print("=" * 120)
 
