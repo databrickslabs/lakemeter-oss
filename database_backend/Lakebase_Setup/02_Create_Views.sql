@@ -19,6 +19,13 @@
 -- =============================================================================
 
 -- =============================================================================
+-- DROP EXISTING VIEWS (required when changing column order/names)
+-- =============================================================================
+
+DROP VIEW IF EXISTS v_estimates_with_totals CASCADE;
+DROP VIEW IF EXISTS v_line_items_with_costs CASCADE;
+
+-- =============================================================================
 -- VIEW 1: v_line_items_with_costs
 -- =============================================================================
 -- Calculates DBU and VM costs for each line item using pricing data
@@ -26,7 +33,7 @@
 --   MODEL_SERVING, FMAPI_DATABRICKS, FMAPI_PROPRIETARY, LAKEBASE
 -- =============================================================================
 
-CREATE OR REPLACE VIEW v_line_items_with_costs AS
+CREATE VIEW v_line_items_with_costs AS
 WITH 
 -- Calculate hours per month for each line item
 hours_calc AS (
@@ -356,7 +363,7 @@ FROM final_calc;
 -- Usage: SELECT * FROM v_estimates_with_totals WHERE owner_user_id = :user_id
 -- =============================================================================
 
-CREATE OR REPLACE VIEW v_estimates_with_totals AS
+CREATE VIEW v_estimates_with_totals AS
 SELECT 
     e.*,
     COALESCE(t.total_dbu_per_month, 0) as total_dbu_per_month,
