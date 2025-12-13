@@ -688,8 +688,17 @@ for cloud in ['AWS', 'AZURE', 'GCP']:
                     std_cost = results_df[results_df['display_order'] == std_id]['cost_per_month'].iloc[0]
                     perf_cost = results_df[results_df['display_order'] == perf_id]['cost_per_month'].iloc[0]
                     
-                    ratio = perf_cost / std_cost if std_cost > 0 else 0
-                    is_valid = abs(ratio - 2.0) < 0.01  # Allow 1% tolerance
+                    # SPECIAL CASE: Serverless not available in STANDARD tier
+                    if tier == 'STANDARD':
+                        # Expect $0 costs for STANDARD tier (serverless not available)
+                        is_valid = (std_cost == 0 and perf_cost == 0)
+                        ratio = 0
+                        status = '✅ (N/A)' if is_valid else '❌'
+                    else:
+                        # PREMIUM/ENTERPRISE: Validate 2x ratio
+                        ratio = perf_cost / std_cost if std_cost > 0 else 0
+                        is_valid = abs(ratio - 2.0) < 0.01  # Allow 1% tolerance
+                        status = '✅' if is_valid else '❌'
                     
                     validation_results.append({
                         'cloud': cloud,
@@ -699,23 +708,42 @@ for cloud in ['AWS', 'AZURE', 'GCP']:
                         'standard_cost': std_cost,
                         'performance_cost': perf_cost,
                         'ratio': ratio,
-                        'valid': '✅' if is_valid else '❌'
+                        'valid': status,
+                        'is_valid_bool': is_valid
                     })
 
 validation_df = pd.DataFrame(validation_results)
 
+# Separate STANDARD tier (N/A) from PREMIUM/ENTERPRISE
+standard_tier_df = validation_df[validation_df['tier'] == 'STANDARD']
+premium_enterprise_df = validation_df[validation_df['tier'].isin(['PREMIUM', 'ENTERPRISE'])]
+
 print(f"\nTotal validations: {len(validation_df)}")
-print(f"Valid (ratio ~2.0): {len(validation_df[validation_df['valid'] == '✅'])}")
-print(f"Invalid: {len(validation_df[validation_df['valid'] == '❌'])}")
+print(f"  STANDARD tier (serverless N/A): {len(standard_tier_df)}")
+print(f"  PREMIUM/ENTERPRISE tier: {len(premium_enterprise_df)}")
+print(f"\nValid: {len(validation_df[validation_df['is_valid_bool'] == True])}")
+print(f"Invalid: {len(validation_df[validation_df['is_valid_bool'] == False])}")
 
-print("\nSample validations:")
-print(validation_df.head(10).to_string(index=False))
+print("\n📋 STANDARD Tier Validation (Serverless Not Available):")
+if len(standard_tier_df) > 0:
+    print(standard_tier_df[['cloud', 'region', 'tier', 'usage', 'standard_cost', 'performance_cost', 'valid']].head(6).to_string(index=False))
+    if (standard_tier_df['is_valid_bool'] == True).all():
+        print("✅ All STANDARD tier scenarios correctly return $0 (serverless not available)")
+    else:
+        print("❌ Some STANDARD tier scenarios have unexpected non-zero costs!")
 
-if len(validation_df[validation_df['valid'] == '❌']) > 0:
+print("\n📋 PREMIUM/ENTERPRISE Tier Validation (2× Multiplier):")
+if len(premium_enterprise_df) > 0:
+    print(premium_enterprise_df[['cloud', 'region', 'tier', 'usage', 'standard_cost', 'performance_cost', 'ratio', 'valid']].head(10).to_string(index=False))
+
+if len(validation_df[validation_df['is_valid_bool'] == False]) > 0:
     print("\n⚠️  FAILED VALIDATIONS:")
-    print(validation_df[validation_df['valid'] == '❌'].to_string(index=False))
+    failed_df = validation_df[validation_df['is_valid_bool'] == False]
+    print(failed_df[['cloud', 'region', 'tier', 'usage', 'standard_cost', 'performance_cost', 'ratio', 'valid']].to_string(index=False))
 else:
-    print("\n✅ ALL VALIDATIONS PASSED! Performance mode = 2× Standard mode")
+    print("\n✅ ALL VALIDATIONS PASSED!")
+    print("   • STANDARD tier: $0 costs (expected - serverless not available)")
+    print("   • PREMIUM/ENTERPRISE: Performance mode = 2× Standard mode")
 
 # COMMAND ----------
 
@@ -750,17 +778,27 @@ print("   ✅ VM costs are $0 (correct for serverless)")
 assert total_scenarios == len(test_scenarios), f"❌ FAIL: Expected {len(test_scenarios)} results, got {total_scenarios}"
 print(f"   ✅ All {total_scenarios} scenarios have results")
 
-# 3. All costs should be positive
-assert (results_df['cost_per_month'] > 0).all(), "❌ FAIL: Some costs are $0 or negative"
-print("   ✅ All costs are positive")
+# 3. STANDARD tier should have $0 costs (serverless not available)
+standard_tier_results = results_df[results_df['tier'] == 'STANDARD']
+if len(standard_tier_results) > 0:
+    assert (standard_tier_results['cost_per_month'] == 0).all(), "❌ FAIL: STANDARD tier should have $0 costs"
+    print(f"   ✅ All {len(standard_tier_results)} STANDARD tier scenarios have $0 costs (expected)")
 
-# 4. Performance mode validation
-valid_performance_ratios = len(validation_df[validation_df['valid'] == '✅'])
+# 4. PREMIUM/ENTERPRISE tiers should have positive costs
+premium_enterprise_results = results_df[results_df['tier'].isin(['PREMIUM', 'ENTERPRISE'])]
+if len(premium_enterprise_results) > 0:
+    assert (premium_enterprise_results['cost_per_month'] > 0).all(), "❌ FAIL: PREMIUM/ENTERPRISE should have positive costs"
+    print(f"   ✅ All {len(premium_enterprise_results)} PREMIUM/ENTERPRISE scenarios have positive costs")
+
+# 5. Performance mode validation (excludes STANDARD tier N/A scenarios)
+valid_performance_ratios = len(validation_df[validation_df['is_valid_bool'] == True])
 total_validations = len(validation_df)
-assert valid_performance_ratios == total_validations, f"❌ FAIL: {total_validations - valid_performance_ratios} performance mode ratios are incorrect"
-print(f"   ✅ All {total_validations} performance mode validations passed (2× multiplier)")
+assert valid_performance_ratios == total_validations, f"❌ FAIL: {total_validations - valid_performance_ratios} validations failed"
+print(f"   ✅ All {total_validations} validations passed:")
+print(f"      • STANDARD tier: $0 (serverless not available)")
+print(f"      • PREMIUM/ENTERPRISE: Performance = 2× Standard")
 
-# 5. DBU cost = Total cost (since VM cost is $0)
+# 6. DBU cost = Total cost (since VM cost is $0)
 assert (results_df['dbu_cost_per_month'] == results_df['cost_per_month']).all(), "❌ FAIL: DBU cost should equal total cost for serverless"
 print("   ✅ DBU cost = Total cost (as expected for serverless)")
 
