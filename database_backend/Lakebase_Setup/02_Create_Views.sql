@@ -228,17 +228,24 @@ final_calc AS (
         
         -- VM costs (ONLY for classic compute - NOT serverless)
         -- When serverless_enabled = true, VM cost is $0 (no VMs charged)
+        
+        -- DRIVER: Always uses on_demand or reserved (NEVER spot)
+        -- If pricing_tier = 'spot', driver uses 'on_demand' instead
         CASE WHEN p.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') 
               AND p.serverless_enabled = FALSE THEN
             COALESCE((
                 SELECT cost_per_hour FROM sync_pricing_vm_costs 
                 WHERE cloud = p.cloud AND region = p.region 
                 AND instance_type = p.driver_node_type
-                AND pricing_tier = COALESCE(p.vm_pricing_tier, 'on_demand')
+                AND pricing_tier = CASE 
+                    WHEN COALESCE(p.vm_pricing_tier, 'on_demand') = 'spot' THEN 'on_demand'
+                    ELSE COALESCE(p.vm_pricing_tier, 'on_demand')
+                END
                 LIMIT 1
             ), 0)
         ELSE 0 END as driver_vm_cost_per_hour,
         
+        -- WORKER: Can use any pricing tier including spot
         CASE WHEN p.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') 
               AND p.serverless_enabled = FALSE THEN
             COALESCE((

@@ -926,6 +926,17 @@ display(gcp_results[['workload_name', 'photon_enabled', 'vm_pricing_tier',
 # MAGIC 
 # MAGIC For each scenario, we manually calculate expected values and compare with actual results from the view.
 # MAGIC 
+# MAGIC ### **⚠️ IMPORTANT: Driver vs Worker Pricing Rule**
+# MAGIC 
+# MAGIC - **Driver Node**: ALWAYS uses `on_demand` or `reserved` pricing (NEVER spot)
+# MAGIC   - If `vm_pricing_tier = 'spot'`, driver automatically uses `'on_demand'` instead
+# MAGIC   - Driver can use `reserved_1y` or `reserved_3y` for cost savings
+# MAGIC 
+# MAGIC - **Worker Nodes**: CAN use `spot` pricing (or any other pricing tier)
+# MAGIC   - Full flexibility: on_demand, spot, reserved_1y, reserved_3y
+# MAGIC 
+# MAGIC This reflects real-world Databricks pricing where driver stability is critical.
+# MAGIC 
 # MAGIC ### **Calculation Formula (JOBS Classic):**
 # MAGIC 
 # MAGIC 1. **Hours per Month:**
