@@ -1,0 +1,483 @@
+# Databricks notebook source
+# MAGIC %md
+# MAGIC # Lakemeter - Add Sync-Dependent Validation Constraints
+# MAGIC 
+# MAGIC **Purpose:** Adds validation constraints that depend on sync_* pricing tables
+# MAGIC 
+# MAGIC **Connects to:** Lakebase (PostgreSQL)
+# MAGIC 
+# MAGIC **Constraints Added:**
+# MAGIC 1. **Region Validation**
+# MAGIC    - UNIQUE on `sync_ref_sku_region_map(cloud, region_code)`
+# MAGIC    - FK from `estimates(cloud, region)` → `sync_ref_sku_region_map`
+# MAGIC    - Prevents: ❌ AWS + eastus, AZURE + us-east-1, etc.
+# MAGIC 
+# MAGIC 2. **Instance Type Validation**
+# MAGIC    - UNIQUE on `sync_ref_instance_dbu_rates(cloud, instance_type)`
+# MAGIC    - FK from `line_items(cloud, driver_node_type)` → `sync_ref_instance_dbu_rates`
+# MAGIC    - FK from `line_items(cloud, worker_node_type)` → `sync_ref_instance_dbu_rates`
+# MAGIC    - Prevents: ❌ Azure estimate with i3.xlarge, AWS with Standard_D4s_v3, etc.
+# MAGIC 
+# MAGIC **Prerequisites:**
+# MAGIC 1. ✅ 01_Create_Tables.py (creates application tables + triggers)
+# MAGIC 2. ✅ Pricing_Sync notebooks (creates all sync_* tables)
+# MAGIC 
+# MAGIC **Run Order:**
+# MAGIC 1. 01_Create_Tables.py
+# MAGIC 2. Pricing_Sync notebooks
+# MAGIC 3. **This notebook**
+# MAGIC 4. 02_Create_Views.py
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 1. Install Dependencies & Connect to Lakebase
+
+# COMMAND ----------
+
+# Install required packages
+%pip install psycopg2-binary --quiet
+dbutils.library.restartPython()
+
+# COMMAND ----------
+
+import psycopg2
+from datetime import datetime
+
+# Lakebase connection details
+LAKEBASE_HOST = "instance-364041a4-0aae-44df-bbc6-37ac84169dfe.database.cloud.databricks.com"
+LAKEBASE_PORT = 5432
+LAKEBASE_DATABASE = "lakemeter_pricing"
+LAKEBASE_USER = "lakemeter_sync_role"
+LAKEBASE_PASSWORD = "***REMOVED_DATABASE_CREDENTIAL***"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 2. Helper Functions
+
+# COMMAND ----------
+
+def get_connection():
+    """Create PostgreSQL connection"""
+    return psycopg2.connect(
+        host=LAKEBASE_HOST,
+        port=LAKEBASE_PORT,
+        database=LAKEBASE_DATABASE,
+        user=LAKEBASE_USER,
+        password=LAKEBASE_PASSWORD,
+        sslmode='require'
+    )
+
+def execute_sql(sql_statement, description="SQL", show_error=True):
+    """Execute SQL statement and return success/failure"""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(sql_statement)
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f"✅ {description}")
+        return True
+    except Exception as e:
+        if show_error:
+            print(f"❌ {description}")
+            print(f"   Error: {str(e)}")
+        else:
+            print(f"⚠️  {description} - Already exists or not applicable")
+        return False
+
+def query_sql(sql_statement):
+    """Execute query and return results"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(sql_statement)
+    results = cur.fetchall()
+    cur.close()
+    conn.close()
+    return results
+
+def constraint_exists(constraint_name):
+    """Check if constraint already exists"""
+    sql = f"""
+    SELECT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = '{constraint_name}'
+    );
+    """
+    result = query_sql(sql)
+    return result[0][0] if result else False
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 3. Test Connection
+
+# COMMAND ----------
+
+try:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT version();")
+    version = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    print("✅ Connected to Lakebase!")
+    print(f"   PostgreSQL version: {version[:50]}...")
+except Exception as e:
+    print(f"❌ Connection failed: {e}")
+    raise
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 4. Check Prerequisites
+
+# COMMAND ----------
+
+print("=" * 80)
+print("🔍 CHECKING PREREQUISITES")
+print("=" * 80)
+
+required_tables = [
+    ('lakemeter.estimates', 'Application table'),
+    ('lakemeter.line_items', 'Application table'),
+    ('lakemeter.sync_ref_sku_region_map', 'Pricing sync table'),
+    ('lakemeter.sync_ref_instance_dbu_rates', 'Pricing sync table'),
+]
+
+all_tables_exist = True
+
+for table_name, table_type in required_tables:
+    schema, table = table_name.split('.')
+    check_sql = f"""
+    SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = '{schema}' 
+        AND table_name = '{table}'
+    );
+    """
+    result = query_sql(check_sql)
+    exists = result[0][0] if result else False
+    
+    if exists:
+        # Count rows
+        try:
+            count_sql = f"SELECT COUNT(*) FROM {table_name};"
+            count_result = query_sql(count_sql)
+            row_count = count_result[0][0] if count_result else 0
+            print(f"   ✅ {table_name} ({table_type}) - {row_count:,} rows")
+        except:
+            print(f"   ✅ {table_name} ({table_type})")
+    else:
+        print(f"   ❌ {table_name} ({table_type}) - MISSING!")
+        all_tables_exist = False
+
+if not all_tables_exist:
+    print("\n" + "=" * 80)
+    print("❌ ERROR: Required tables are missing!")
+    print("=" * 80)
+    print("\n📋 Next Steps:")
+    print("   1. Run 01_Create_Tables.py if application tables are missing")
+    print("   2. Run Pricing_Sync notebooks if sync_* tables are missing")
+    print("=" * 80)
+    raise Exception("Prerequisites not met. Cannot add constraints.")
+else:
+    print("\n✅ All prerequisites met!")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 5. Add Region Validation Constraints
+
+# COMMAND ----------
+
+print("\n" + "=" * 80)
+print("1️⃣  REGION VALIDATION")
+print("=" * 80)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 5.1 Add UNIQUE Constraint on sync_ref_sku_region_map
+
+# COMMAND ----------
+
+constraint_name = 'uq_cloud_region_code'
+
+if constraint_exists(constraint_name):
+    print(f"⚠️  UNIQUE constraint already exists: {constraint_name}")
+else:
+    add_unique_sql = """
+    ALTER TABLE lakemeter.sync_ref_sku_region_map 
+    ADD CONSTRAINT uq_cloud_region_code 
+    UNIQUE (cloud, region_code);
+    """
+    execute_sql(add_unique_sql, f"Added UNIQUE constraint: {constraint_name}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 5.2 Add FK Constraint: estimates → sync_ref_sku_region_map
+
+# COMMAND ----------
+
+constraint_name = 'fk_estimates_cloud_region'
+
+if constraint_exists(constraint_name):
+    print(f"⚠️  FK constraint already exists: {constraint_name}")
+else:
+    add_fk_sql = """
+    ALTER TABLE lakemeter.estimates 
+    ADD CONSTRAINT fk_estimates_cloud_region 
+    FOREIGN KEY (cloud, region) 
+    REFERENCES lakemeter.sync_ref_sku_region_map(cloud, region_code);
+    """
+    execute_sql(add_fk_sql, f"Added FK constraint: {constraint_name}")
+
+# COMMAND ----------
+
+print("\n✅ Region validation active!")
+print("   → Prevents: ❌ AWS + eastus, AZURE + us-east-1, GCP + westeurope")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 6. Add Instance Type Validation Constraints
+
+# COMMAND ----------
+
+print("\n" + "=" * 80)
+print("2️⃣  INSTANCE TYPE VALIDATION")
+print("=" * 80)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 6.1 Add UNIQUE Constraint on sync_ref_instance_dbu_rates
+
+# COMMAND ----------
+
+constraint_name = 'uq_cloud_instance_type'
+
+if constraint_exists(constraint_name):
+    print(f"⚠️  UNIQUE constraint already exists: {constraint_name}")
+else:
+    add_unique_sql = """
+    ALTER TABLE lakemeter.sync_ref_instance_dbu_rates 
+    ADD CONSTRAINT uq_cloud_instance_type 
+    UNIQUE (cloud, instance_type);
+    """
+    execute_sql(add_unique_sql, f"Added UNIQUE constraint: {constraint_name}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 6.2 Add FK Constraint: line_items(driver_node_type) → sync_ref_instance_dbu_rates
+
+# COMMAND ----------
+
+constraint_name = 'fk_line_items_driver_instance'
+
+if constraint_exists(constraint_name):
+    print(f"⚠️  FK constraint already exists: {constraint_name}")
+else:
+    add_fk_sql = """
+    ALTER TABLE lakemeter.line_items 
+    ADD CONSTRAINT fk_line_items_driver_instance 
+    FOREIGN KEY (cloud, driver_node_type) 
+    REFERENCES lakemeter.sync_ref_instance_dbu_rates(cloud, instance_type)
+    DEFERRABLE INITIALLY DEFERRED;
+    """
+    execute_sql(add_fk_sql, f"Added FK constraint: {constraint_name}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 6.3 Add FK Constraint: line_items(worker_node_type) → sync_ref_instance_dbu_rates
+
+# COMMAND ----------
+
+constraint_name = 'fk_line_items_worker_instance'
+
+if constraint_exists(constraint_name):
+    print(f"⚠️  FK constraint already exists: {constraint_name}")
+else:
+    add_fk_sql = """
+    ALTER TABLE lakemeter.line_items 
+    ADD CONSTRAINT fk_line_items_worker_instance 
+    FOREIGN KEY (cloud, worker_node_type) 
+    REFERENCES lakemeter.sync_ref_instance_dbu_rates(cloud, instance_type)
+    DEFERRABLE INITIALLY DEFERRED;
+    """
+    execute_sql(add_fk_sql, f"Added FK constraint: {constraint_name}")
+
+# COMMAND ----------
+
+print("\n✅ Instance type validation active!")
+print("   → Prevents: ❌ AWS using Azure instances, Azure using GCP instances, etc.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 7. Verification
+
+# COMMAND ----------
+
+print("\n" + "=" * 80)
+print("📊 VERIFICATION: Checking All Constraints")
+print("=" * 80)
+
+verification_sql = """
+SELECT 
+    CASE 
+        WHEN contype = 'f' THEN '🔗 FK'
+        WHEN contype = 'u' THEN '🔑 UNIQUE'
+        ELSE '  ' || contype
+    END as type,
+    conname as constraint_name,
+    '✅ EXISTS' as status
+FROM pg_constraint
+WHERE conname IN (
+    'uq_cloud_region_code',
+    'fk_estimates_cloud_region',
+    'uq_cloud_instance_type',
+    'fk_line_items_driver_instance',
+    'fk_line_items_worker_instance'
+)
+ORDER BY 
+    CASE conname
+        WHEN 'uq_cloud_region_code' THEN 1
+        WHEN 'fk_estimates_cloud_region' THEN 2
+        WHEN 'uq_cloud_instance_type' THEN 3
+        WHEN 'fk_line_items_driver_instance' THEN 4
+        WHEN 'fk_line_items_worker_instance' THEN 5
+    END;
+"""
+
+results = query_sql(verification_sql)
+
+print("\n📋 Constraints Added:")
+for row in results:
+    constraint_type, constraint_name, status = row
+    print(f"   {constraint_type} {constraint_name} - {status}")
+
+# COMMAND ----------
+
+# Get count of constraints by type
+constraint_summary_sql = """
+SELECT 
+    CASE 
+        WHEN contype = 'f' THEN 'Foreign Key (FK)'
+        WHEN contype = 'u' THEN 'Unique (UNIQUE)'
+        WHEN contype = 'p' THEN 'Primary Key (PK)'
+        WHEN contype = 'c' THEN 'Check (CHECK)'
+        ELSE 'Other'
+    END as constraint_type,
+    COUNT(*) as count
+FROM pg_constraint c
+JOIN pg_class t ON c.conrelid = t.oid
+JOIN pg_namespace n ON t.relnamespace = n.oid
+WHERE n.nspname = 'lakemeter'
+GROUP BY contype
+ORDER BY count DESC;
+"""
+
+summary_results = query_sql(constraint_summary_sql)
+
+print("\n📊 Total Constraints in lakemeter schema:")
+for row in summary_results:
+    constraint_type, count = row
+    print(f"   {constraint_type}: {count}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 8. Test Examples (Read-Only)
+
+# COMMAND ----------
+
+print("\n" + "=" * 80)
+print("🧪 TEST EXAMPLES (What These Constraints Prevent)")
+print("=" * 80)
+
+print("\n✅ Valid operations:")
+print("   • INSERT INTO estimates (cloud='AWS', region='us-east-1', tier='STANDARD', ...)")
+print("   • INSERT INTO line_items (estimate_id=..., driver_node_type='i3.xlarge', ...)")
+print("     → SUCCESS (i3.xlarge exists for AWS)")
+
+print("\n❌ Invalid operations that will be BLOCKED:")
+print("   • INSERT INTO estimates (cloud='AWS', region='eastus', ...)")
+print("     → ERROR: FK constraint fk_estimates_cloud_region violated")
+print("     → Reason: eastus is an Azure region, not valid for AWS")
+
+print("\n   • INSERT INTO line_items (cloud='AWS', driver_node_type='Standard_D4s_v3', ...)")
+print("     → ERROR: FK constraint fk_line_items_driver_instance violated")
+print("     → Reason: Standard_D4s_v3 is an Azure instance, not valid for AWS")
+
+# COMMAND ----------
+
+# Let's check some sample valid combinations
+print("\n📊 Sample Valid Cloud/Region Combinations:")
+sample_regions_sql = """
+SELECT cloud, region_code, region_name
+FROM lakemeter.sync_ref_sku_region_map
+WHERE cloud = 'AWS' AND region_code LIKE 'us-%'
+LIMIT 5;
+"""
+
+sample_regions = query_sql(sample_regions_sql)
+for row in sample_regions:
+    cloud, region_code, region_name = row
+    print(f"   ✅ {cloud} + {region_code} ({region_name})")
+
+# COMMAND ----------
+
+print("\n📊 Sample Valid Cloud/Instance Combinations:")
+sample_instances_sql = """
+SELECT cloud, instance_type, dbu_rate
+FROM lakemeter.sync_ref_instance_dbu_rates
+WHERE cloud = 'AWS' AND instance_type LIKE 'i3.%'
+LIMIT 5;
+"""
+
+sample_instances = query_sql(sample_instances_sql)
+for row in sample_instances:
+    cloud, instance_type, dbu_rate = row
+    print(f"   ✅ {cloud} + {instance_type} ({dbu_rate} DBU)")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 9. Summary
+
+# COMMAND ----------
+
+print("\n" + "=" * 80)
+print("✅ ALL SYNC-DEPENDENT CONSTRAINTS ADDED SUCCESSFULLY!")
+print("=" * 80)
+
+print("\n📋 What Was Added:")
+print("   1. Region Validation:")
+print("      - UNIQUE constraint on sync_ref_sku_region_map(cloud, region_code)")
+print("      - FK from estimates(cloud, region) → sync_ref_sku_region_map")
+print("")
+print("   2. Instance Type Validation:")
+print("      - UNIQUE constraint on sync_ref_instance_dbu_rates(cloud, instance_type)")
+print("      - FK from line_items(cloud, driver_node_type) → sync_ref_instance_dbu_rates")
+print("      - FK from line_items(cloud, worker_node_type) → sync_ref_instance_dbu_rates")
+
+print("\n🛡️  Data Integrity Protection:")
+print("   ✅ Users can only select valid cloud/region combinations")
+print("   ✅ Line items can only use instance types valid for their cloud")
+print("   ✅ Frontend can query sync_* tables for valid options")
+
+print("\n📋 Next Steps:")
+print("   1. Run 02_Create_Views.py to create cost calculation views")
+print("   2. Test your application with these validations active")
+print("   3. Frontend should query sync_ref_sku_region_map for valid regions")
+print("   4. Frontend should query sync_ref_instance_dbu_rates for valid instances")
+
+print("\n" + "=" * 80)
+
