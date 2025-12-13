@@ -180,9 +180,14 @@ CREATE TABLE line_items (
     -- =========================================================================
     -- SECTION 8: PRICING OPTIONS (Show for classic compute with VMs)
     -- =========================================================================
-    vm_pricing_tier VARCHAR(20) DEFAULT 'on_demand',  -- Dropdown: on_demand, spot, reserved_1y, reserved_3y
+    -- NEW: Separate pricing tiers for driver vs worker nodes
+    driver_pricing_tier VARCHAR(20),          -- Driver: on_demand, reserved_1y, reserved_3y (NEVER spot)
+    worker_pricing_tier VARCHAR(20),          -- Worker: on_demand, spot, reserved_1y, reserved_3y
+    
+    -- DEPRECATED: Legacy single tier (kept for backward compatibility)
+    vm_pricing_tier VARCHAR(20) DEFAULT 'on_demand',  -- Fallback if driver/worker tiers not set
     vm_payment_option VARCHAR(20),            -- Dropdown (if reserved): no_upfront, partial_upfront, all_upfront
-    spot_percentage INT,                      -- If using spot: what % of workers are spot (0-100)
+    spot_percentage INT,                      -- DEPRECATED: Not used in new pricing model
     
     -- =========================================================================
     -- SECTION 9: EXTENSIBLE CONFIG (For future workload types)

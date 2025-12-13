@@ -401,23 +401,27 @@ scenario_id = 1
 
 # Define payment option matrices
 # AWS: All payment options with upfront variants
+# Driver options: on_demand, reserved_1y, reserved_3y (NEVER spot)
+# Worker options: on_demand, spot, reserved_1y, reserved_3y
 aws_payment_matrix = [
-    {'pricing_tier': 'on_demand', 'payment_option': 'on_demand', 'spot_pct': 0},
-    {'pricing_tier': 'on_demand', 'payment_option': 'spot', 'spot_pct': 100},
-    {'pricing_tier': 'reserved_1y', 'payment_option': 'no_upfront', 'spot_pct': 0},
-    {'pricing_tier': 'reserved_1y', 'payment_option': 'partial_upfront', 'spot_pct': 0},
-    {'pricing_tier': 'reserved_1y', 'payment_option': 'all_upfront', 'spot_pct': 0},
-    {'pricing_tier': 'reserved_3y', 'payment_option': 'no_upfront', 'spot_pct': 0},
-    {'pricing_tier': 'reserved_3y', 'payment_option': 'partial_upfront', 'spot_pct': 0},
-    {'pricing_tier': 'reserved_3y', 'payment_option': 'all_upfront', 'spot_pct': 0},
+    {'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment_option': 'on_demand'},
+    {'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment_option': 'spot'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'on_demand', 'payment_option': 'no_upfront'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'spot', 'payment_option': 'no_upfront'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'partial_upfront'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'on_demand', 'payment_option': 'no_upfront'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'spot', 'payment_option': 'no_upfront'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'all_upfront'},
 ]
 
 # Azure/GCP: No upfront options, simplified payment
 azure_gcp_payment_matrix = [
-    {'pricing_tier': 'on_demand', 'payment_option': 'NA', 'spot_pct': 0},
-    {'pricing_tier': 'spot', 'payment_option': 'NA', 'spot_pct': 100},
-    {'pricing_tier': 'reserved_1y', 'payment_option': 'NA', 'spot_pct': 0},
-    {'pricing_tier': 'reserved_3y', 'payment_option': 'NA', 'spot_pct': 0},
+    {'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment_option': 'NA'},
+    {'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment_option': 'NA'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'on_demand', 'payment_option': 'NA'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'spot', 'payment_option': 'NA'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'NA'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'NA'},
 ]
 
 # Photon configurations
@@ -437,20 +441,20 @@ if aws_region:
             if small_inst and medium_inst:
                 test_scenarios.append({
                     'scenario_id': scenario_id,
-                    'workload_name': f"AWS {payment['payment_option'].replace('_', ' ').title()} {photon['label']}",
+                    'workload_name': f"AWS Drv:{payment['driver_tier']} Wrk:{payment['worker_tier']} {photon['label']}",
                     'cloud': 'AWS',
                     'region': aws_region,
                     'driver_node_type': small_inst,
                     'worker_node_type': medium_inst,
                     'num_workers': 4,
                     'photon_enabled': photon['enabled'],
-                    'vm_pricing_tier': payment['pricing_tier'],
+                    'driver_pricing_tier': payment['driver_tier'],
+                    'worker_pricing_tier': payment['worker_tier'],
                     'vm_payment_option': payment['payment_option'],
-                    'spot_percentage': payment['spot_pct'],
                     'runs_per_day': 12,
                     'avg_runtime_minutes': 60,
                     'days_per_month': 30,
-                    'notes': f"AWS {aws_region} - {payment['payment_option']} - {photon['label']}"
+                    'notes': f"AWS {aws_region} - D:{payment['driver_tier']} W:{payment['worker_tier']} - {photon['label']}"
                 })
                 scenario_id += 1
 
@@ -465,20 +469,20 @@ if azure_region:
             if small_inst and medium_inst:
                 test_scenarios.append({
                     'scenario_id': scenario_id,
-                    'workload_name': f"Azure {payment['pricing_tier'].replace('_', ' ').title()} {photon['label']}",
+                    'workload_name': f"Azure Drv:{payment['driver_tier']} Wrk:{payment['worker_tier']} {photon['label']}",
                     'cloud': 'AZURE',
                     'region': azure_region,
                     'driver_node_type': small_inst,
                     'worker_node_type': medium_inst,
                     'num_workers': 4,
                     'photon_enabled': photon['enabled'],
-                    'vm_pricing_tier': payment['pricing_tier'],
+                    'driver_pricing_tier': payment['driver_tier'],
+                    'worker_pricing_tier': payment['worker_tier'],
                     'vm_payment_option': payment['payment_option'],
-                    'spot_percentage': payment['spot_pct'],
                     'runs_per_day': 12,
                     'avg_runtime_minutes': 60,
                     'days_per_month': 30,
-                    'notes': f"Azure {azure_region} - {payment['pricing_tier']} - {photon['label']}"
+                    'notes': f"Azure {azure_region} - D:{payment['driver_tier']} W:{payment['worker_tier']} - {photon['label']}"
                 })
                 scenario_id += 1
 
@@ -493,20 +497,20 @@ if gcp_region:
             if small_inst and medium_inst:
                 test_scenarios.append({
                     'scenario_id': scenario_id,
-                    'workload_name': f"GCP {payment['pricing_tier'].replace('_', ' ').title()} {photon['label']}",
+                    'workload_name': f"GCP Drv:{payment['driver_tier']} Wrk:{payment['worker_tier']} {photon['label']}",
                     'cloud': 'GCP',
                     'region': gcp_region,
                     'driver_node_type': small_inst,
                     'worker_node_type': medium_inst,
                     'num_workers': 4,
                     'photon_enabled': photon['enabled'],
-                    'vm_pricing_tier': payment['pricing_tier'],
+                    'driver_pricing_tier': payment['driver_tier'],
+                    'worker_pricing_tier': payment['worker_tier'],
                     'vm_payment_option': payment['payment_option'],
-                    'spot_percentage': payment['spot_pct'],
                     'runs_per_day': 12,
                     'avg_runtime_minutes': 60,
                     'days_per_month': 30,
-                    'notes': f"GCP {gcp_region} - {payment['pricing_tier']} - {photon['label']}"
+                    'notes': f"GCP {gcp_region} - D:{payment['driver_tier']} W:{payment['worker_tier']} - {photon['label']}"
                 })
                 scenario_id += 1
 
@@ -586,7 +590,7 @@ INSERT INTO lakemeter.line_items (
     serverless_enabled, serverless_mode, photon_enabled, vector_search_mode,
     driver_node_type, worker_node_type, num_workers,
     runs_per_day, avg_runtime_minutes, days_per_month,
-    vm_pricing_tier, vm_payment_option, spot_percentage,
+    driver_pricing_tier, worker_pricing_tier, vm_payment_option,
     notes, created_at, updated_at
 ) VALUES (
     %s, %s, %s, %s, %s,
@@ -627,9 +631,9 @@ for scenario in test_scenarios:
             scenario['runs_per_day'],
             scenario['avg_runtime_minutes'],
             scenario['days_per_month'],
-            scenario['vm_pricing_tier'],
+            scenario['driver_pricing_tier'],
+            scenario['worker_pricing_tier'],
             scenario['vm_payment_option'],
-            scenario['spot_percentage'],
             scenario['notes'],
             datetime.now(),
             datetime.now()
@@ -693,7 +697,7 @@ for scenario in debug_scenarios:
         SELECT cloud, region, instance_type, pricing_tier, cost_per_hour
         FROM lakemeter.sync_pricing_vm_costs
         WHERE cloud = %s AND region = %s AND instance_type = %s AND pricing_tier = %s
-    """, (scenario['cloud'], scenario['region'], scenario['worker_node_type'], scenario['vm_pricing_tier']))
+    """, (scenario['cloud'], scenario['region'], scenario['worker_node_type'], scenario['worker_pricing_tier']))
     
     print(f"\n3️⃣ VM Cost Lookup:")
     if len(check_vm_cost) > 0:

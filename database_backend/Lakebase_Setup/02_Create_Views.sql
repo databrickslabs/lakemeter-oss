@@ -229,8 +229,8 @@ final_calc AS (
         -- VM costs (ONLY for classic compute - NOT serverless)
         -- When serverless_enabled = true, VM cost is $0 (no VMs charged)
         
-        -- DRIVER: Always uses on_demand or reserved (NEVER spot)
-        -- If pricing_tier = 'spot', driver uses 'on_demand' instead
+        -- DRIVER: Uses driver_pricing_tier (or falls back to vm_pricing_tier)
+        -- Driver CANNOT use spot - if spot specified, defaults to on_demand
         CASE WHEN p.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') 
               AND p.serverless_enabled = FALSE THEN
             COALESCE((
@@ -238,21 +238,24 @@ final_calc AS (
                 WHERE cloud = p.cloud AND region = p.region 
                 AND instance_type = p.driver_node_type
                 AND pricing_tier = CASE 
-                    WHEN COALESCE(p.vm_pricing_tier, 'on_demand') = 'spot' THEN 'on_demand'
-                    ELSE COALESCE(p.vm_pricing_tier, 'on_demand')
+                    -- Use driver_pricing_tier if set, else fall back to vm_pricing_tier
+                    WHEN COALESCE(p.driver_pricing_tier, p.vm_pricing_tier, 'on_demand') = 'spot' 
+                        THEN 'on_demand'  -- Driver cannot be spot
+                    ELSE COALESCE(p.driver_pricing_tier, p.vm_pricing_tier, 'on_demand')
                 END
                 LIMIT 1
             ), 0)
         ELSE 0 END as driver_vm_cost_per_hour,
         
-        -- WORKER: Can use any pricing tier including spot
+        -- WORKER: Uses worker_pricing_tier (or falls back to vm_pricing_tier)
+        -- Worker CAN use spot pricing
         CASE WHEN p.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') 
               AND p.serverless_enabled = FALSE THEN
             COALESCE((
                 SELECT cost_per_hour FROM sync_pricing_vm_costs 
                 WHERE cloud = p.cloud AND region = p.region 
                 AND instance_type = p.worker_node_type
-                AND pricing_tier = COALESCE(p.vm_pricing_tier, 'on_demand')
+                AND pricing_tier = COALESCE(p.worker_pricing_tier, p.vm_pricing_tier, 'on_demand')
                 LIMIT 1
             ), 0)
         ELSE 0 END as worker_vm_cost_per_hour
@@ -297,6 +300,8 @@ SELECT
     runs_per_day,
     avg_runtime_minutes,
     days_per_month,
+    driver_pricing_tier,
+    worker_pricing_tier,
     vm_pricing_tier,
     vm_payment_option,
     spot_percentage,
