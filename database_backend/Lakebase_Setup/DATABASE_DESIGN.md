@@ -640,6 +640,8 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 
 > **Design Note:** Uses explicit columns instead of JSON for better queryability. Unused columns are NULL. The UI shows/hides fields based on `workload_type`. **No calculated costs stored** - use `v_line_items_with_costs` view.
 
+> **⚠️ Pricing Rule:** Driver nodes CANNOT use spot pricing (requires stability). Worker nodes CAN use spot pricing. Use `driver_pricing_tier` and `worker_pricing_tier` to specify independently.
+
 | Column | Type | PK | FK | Description |
 |--------|------|:--:|:--:|-------------|
 | `line_item_id` | UUID | ✓ | | Unique line item identifier |
@@ -686,9 +688,11 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | `avg_runtime_minutes` | INT | | | Average runtime per run (in minutes) |
 | `days_per_month` | INT | | | Days per month (default 30) |
 | **VM Pricing** *(Classic compute only - ignored when serverless_enabled=true)* |
-| `vm_pricing_tier` | VARCHAR(20) | | | on_demand, spot, reserved_1y, reserved_3y |
-| `vm_payment_option` | VARCHAR(20) | | | no_upfront, partial_upfront, all_upfront |
-| `spot_percentage` | INT | | | % workers using spot (0-100) |
+| `driver_pricing_tier` | VARCHAR(20) | | | Driver: on_demand, reserved_1y, reserved_3y (NEVER spot) |
+| `worker_pricing_tier` | VARCHAR(20) | | | Worker: on_demand, spot, reserved_1y, reserved_3y |
+| `vm_pricing_tier` | VARCHAR(20) | | | DEPRECATED: Fallback if driver/worker tiers not set |
+| `vm_payment_option` | VARCHAR(20) | | | no_upfront, partial_upfront, all_upfront (AWS only) |
+| `spot_percentage` | INT | | | DEPRECATED: No longer used |
 | **Metadata** |
 | `workload_config` | JSON | | | Extensible config for future workload types |
 | `notes` | TEXT | | | SA custom notes |
@@ -714,9 +718,29 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | num_workers | 8 |
 | runs_per_day | 4 |
 | avg_runtime_minutes | 45 |
-| vm_pricing_tier | on_demand |
+| driver_pricing_tier | on_demand |
+| worker_pricing_tier | on_demand |
 
 > Cost = DBU cost + VM cost (classic compute)
+
+#### Example 1b: Jobs Classic with Mixed Pricing (Cost Optimized)
+| Column | Value |
+|--------|-------|
+| workload_name | Cost-Optimized ETL |
+| workload_type | `JOBS` |
+| serverless_enabled | **false** |
+| photon_enabled | true |
+| driver_node_type | i3.xlarge |
+| worker_node_type | i3.2xlarge |
+| num_workers | 8 |
+| runs_per_day | 4 |
+| avg_runtime_minutes | 45 |
+| driver_pricing_tier | **reserved_1y** *(stable, predictable)* |
+| worker_pricing_tier | **spot** *(workers can be interrupted)* |
+| vm_payment_option | partial_upfront |
+
+> **Cost Optimization:** Driver uses reserved for stability, workers use spot for cost savings.  
+> This is a common pattern for production ETL workloads.
 
 #### Example 2: Jobs Serverless (ETL Pipeline)
 | Column | Value |
@@ -763,7 +787,8 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | worker_node_type | r5.2xlarge |
 | num_workers | 4 |
 | hours_per_day | 6 |
-| vm_pricing_tier | reserved_1y |
+| driver_pricing_tier | reserved_1y |
+| worker_pricing_tier | reserved_1y |
 | vm_payment_option | partial_upfront |
 
 > Cost = DBU cost + VM cost (classic compute)
