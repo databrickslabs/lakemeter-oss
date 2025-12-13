@@ -82,8 +82,8 @@ estimate_map = {}
 for key, combo in unique_combos.items():
     estimate_id = str(uuid.uuid4())
     estimate_map[key] = estimate_id
-    execute_query("INSERT INTO lakemeter.estimates (estimate_id, owner_user_id, estimate_name, description, cloud, region, tier, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);",
-                  (estimate_id, TEST_USER_ID, f"Test: {combo['cloud']}", "DBSQL Serverless", combo['cloud'], combo['region'], combo['tier'], datetime.now(), datetime.now()), fetch=False)
+    execute_query("INSERT INTO lakemeter.estimates (estimate_id, owner_user_id, estimate_name, cloud, region, tier, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);",
+                  (estimate_id, TEST_USER_ID, f"Test: {combo[\'cloud\']} {combo[\'region\']} {combo[\'tier\']}", combo[\'cloud\'], combo['region'], combo['tier'], datetime.now(), datetime.now()), fetch=False)
 
 line_item_ids = []
 for scenario in test_scenarios:
