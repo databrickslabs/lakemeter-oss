@@ -366,6 +366,139 @@ ADD CONSTRAINT fk_line_items_workload_type
 FOREIGN KEY (workload_type) REFERENCES ref_workload_types(workload_type);
 
 -- =============================================================================
+-- REGION VALIDATION CONSTRAINTS
+-- =============================================================================
+-- Add UNIQUE constraint on sync_ref_sku_region_map to enable FK from estimates
+-- This allows region validation: only valid cloud/region combinations can be used
+-- NOTE: This assumes sync_ref_sku_region_map already exists (created by pricing sync)
+
+-- Add UNIQUE constraint if sync table exists (will be run after pricing sync)
+-- Uncomment and run manually after sync_ref_sku_region_map is populated:
+-- ALTER TABLE sync_ref_sku_region_map 
+-- ADD CONSTRAINT uq_cloud_region_code 
+-- UNIQUE (cloud, region_code);
+
+-- Add FK constraint: estimates.region → sync_ref_sku_region_map.region_code
+-- Uncomment and run manually after UNIQUE constraint is added:
+-- ALTER TABLE estimates 
+-- ADD CONSTRAINT fk_estimates_cloud_region 
+-- FOREIGN KEY (cloud, region) 
+-- REFERENCES sync_ref_sku_region_map(cloud, region_code);
+
+-- =============================================================================
+-- BUSINESS LOGIC CONSTRAINTS
+-- =============================================================================
+
+-- Constraint 1: Serverless requires Photon
+-- When serverless_enabled = TRUE, photon_enabled MUST also be TRUE
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_serverless_requires_photon 
+CHECK (serverless_enabled = FALSE OR photon_enabled = TRUE);
+
+-- Constraint 2: Valid worker count range (0-1000)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_num_workers_range 
+CHECK (num_workers IS NULL OR (num_workers >= 0 AND num_workers <= 1000));
+
+-- Constraint 3: Autoscale min/max validation
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_autoscale_min_max 
+CHECK (
+    autoscale_enabled = FALSE 
+    OR (autoscale_min_workers IS NOT NULL 
+        AND autoscale_max_workers IS NOT NULL 
+        AND autoscale_min_workers <= autoscale_max_workers)
+);
+
+-- Constraint 4: DBSQL cluster count range (1-100)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_dbsql_num_clusters_range 
+CHECK (dbsql_num_clusters IS NULL OR (dbsql_num_clusters >= 1 AND dbsql_num_clusters <= 100));
+
+-- Constraint 5: Days per month range (1-31)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_days_per_month_range 
+CHECK (days_per_month IS NULL OR (days_per_month >= 1 AND days_per_month <= 31));
+
+-- Constraint 6: Positive usage values
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_positive_usage 
+CHECK (
+    (runs_per_day IS NULL OR runs_per_day > 0)
+    AND (avg_runtime_minutes IS NULL OR avg_runtime_minutes > 0)
+);
+
+-- Constraint 7: Lakebase storage range (100-10000 GB)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_lakebase_storage_range 
+CHECK (lakebase_storage_gb IS NULL OR (lakebase_storage_gb >= 100 AND lakebase_storage_gb <= 10000));
+
+-- Constraint 8: Lakebase backup retention range (1-35 days)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_lakebase_backup_range 
+CHECK (lakebase_backup_retention_days >= 1 AND lakebase_backup_retention_days <= 35);
+
+-- =============================================================================
+-- ENUM VALUE CONSTRAINTS
+-- =============================================================================
+
+-- Estimates table enum constraints
+ALTER TABLE estimates 
+ADD CONSTRAINT chk_estimates_cloud 
+CHECK (cloud IN ('AWS', 'AZURE', 'GCP'));
+
+ALTER TABLE estimates 
+ADD CONSTRAINT chk_estimates_status 
+CHECK (status IN ('draft', 'submitted', 'approved', 'rejected', 'archived'));
+
+-- Line items table enum constraints
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_serverless_mode 
+CHECK (serverless_mode IS NULL OR serverless_mode IN ('standard', 'performance'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_dlt_edition 
+CHECK (dlt_edition IS NULL OR dlt_edition IN ('CORE', 'PRO', 'ADVANCED'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_dlt_pipeline_mode 
+CHECK (dlt_pipeline_mode IS NULL OR dlt_pipeline_mode IN ('TRIGGERED', 'CONTINUOUS'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_dbsql_warehouse_type 
+CHECK (dbsql_warehouse_type IS NULL OR dbsql_warehouse_type IN ('CLASSIC', 'PRO', 'SERVERLESS'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_dbsql_warehouse_size 
+CHECK (dbsql_warehouse_size IS NULL OR dbsql_warehouse_size IN 
+    ('2X-Small', 'X-Small', 'Small', 'Medium', 'Large', 'X-Large', '2X-Large', '3X-Large', '4X-Large'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_vector_search_mode 
+CHECK (vector_search_mode IS NULL OR vector_search_mode IN ('standard', 'storage_optimized'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_driver_pricing_tier 
+CHECK (driver_pricing_tier IS NULL OR driver_pricing_tier IN ('on_demand', 'reserved_1y', 'reserved_3y'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_worker_pricing_tier 
+CHECK (worker_pricing_tier IS NULL OR worker_pricing_tier IN ('on_demand', 'spot', 'reserved_1y', 'reserved_3y'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_vm_pricing_tier 
+CHECK (vm_pricing_tier IS NULL OR vm_pricing_tier IN ('on_demand', 'spot', 'reserved_1y', 'reserved_3y'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_vm_payment_option 
+CHECK (vm_payment_option IS NULL OR vm_payment_option IN ('on_demand', 'spot', 'no_upfront', 'partial_upfront', 'all_upfront', 'NA'));
+
+-- Lakebase CU constraint (1, 2, 4, 8 CU only)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_lakebase_cu 
+CHECK (lakebase_cu IS NULL OR lakebase_cu IN (1, 2, 4, 8));
+
+-- =============================================================================
 -- PART 1 COMPLETE - Tables created successfully!
 -- =============================================================================
 -- You can stop here if sync_* tables don't exist yet.
