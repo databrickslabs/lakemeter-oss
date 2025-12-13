@@ -44,9 +44,10 @@ This guide explains how to set up the Lakemeter database (Lakebase) using Python
    ├─ Creates: sync_pricing_vm_costs
    └─ Creates: sync_product_* tables
 
-3. 04_Add_Sync_Constraints.py
+3. 04_Add_Sync_Constraints.py (OPTIONAL - see note below)
    ├─ Adds: Region validation (cloud + region FK)
    └─ Adds: Instance type validation (cloud + instance FK)
+   ⚠️  NOTE: May fail if sync_* tables owned by Databricks connector
 
 4. 02_Create_Views.py
    ├─ Creates: v_line_items_with_costs
@@ -267,6 +268,78 @@ CHECK: worker_pricing_tier IN ('on_demand', 'spot', 'reserved_1y', 'reserved_3y'
 ### Views (created by 02_Create_Views.py)
 - `v_line_items_with_costs` - Line items with calculated costs
 - `v_estimates_with_totals` - Estimates with aggregated totals
+
+---
+
+## ⚠️ Known Issue: Databricks Managed Connector Ownership
+
+### The Problem
+
+If `sync_*` tables are created by **Databricks managed connectors**, they will be owned by a system account like `databricks_writer_XXXXX`.
+
+```sql
+-- Example ownership
+tablename                    | tableowner
+-----------------------------+------------------------
+sync_ref_sku_region_map      | databricks_writer_16482
+sync_pricing_dbu_rates       | databricks_writer_16482
+...
+```
+
+**Impact:** You **cannot** add UNIQUE constraints to these tables without superuser privileges.
+
+### Solution Options
+
+#### **Option 1: Skip 04_Add_Sync_Constraints.py (Recommended)**
+
+The constraints added by `04_Add_Sync_Constraints.py` are **nice-to-have, not required**.
+
+**What you lose:**
+- ❌ Database-level validation of cloud/region combinations
+- ❌ Database-level validation of cloud/instance type combinations
+
+**What still works:**
+- ✅ All cost calculations (views work fine)
+- ✅ All business logic constraints (in `line_items`)
+- ✅ Frontend can query `sync_*` tables for valid options
+- ✅ Frontend validates before INSERT (same result)
+
+**Recommendation:** Just skip `04_Add_Sync_Constraints.py` and handle validation in the frontend.
+
+#### **Option 2: Ask Databricks Admin**
+
+If you **really** want database-level validation, ask your Databricks admin to either:
+
+**A. Grant ALTER permission:**
+```sql
+GRANT ALL ON TABLE lakemeter.sync_ref_sku_region_map TO lakemeter_sync_role;
+GRANT ALL ON TABLE lakemeter.sync_ref_instance_dbu_rates TO lakemeter_sync_role;
+```
+
+**B. Make you a temporary superuser:**
+```sql
+ALTER ROLE lakemeter_sync_role WITH SUPERUSER;
+-- Run 04_Add_Sync_Constraints.py
+ALTER ROLE lakemeter_sync_role WITH NOSUPERUSER;
+```
+
+#### **Option 3: Accept Partial Success**
+
+Run `04_Add_Sync_Constraints.py` anyway - it will:
+- ✅ Add constraints to application tables (you own these)
+- ❌ Skip constraints on `sync_*` tables (owned by connector)
+- ✅ Document what failed
+
+### Updated Execution Order
+
+```
+1. 01_Create_Tables.py       ✅ Always run
+2. Pricing_Sync notebooks     ✅ Always run  
+3. 04_Add_Sync_Constraints.py ⚠️  OPTIONAL (skip if connector ownership)
+4. 02_Create_Views.py         ✅ Always run
+```
+
+---
 
 ## 🎉 Success Criteria
 
