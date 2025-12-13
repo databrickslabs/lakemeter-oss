@@ -30,7 +30,19 @@ def get_connection():
 def query_sql(sql, params=None):
     conn = get_connection()
     try:
-        df = pd.read_sql_query(sql, conn, params=params)
+        cursor = conn.cursor()
+        if params:
+            cursor.execute(sql, params)
+        else:
+            cursor.execute(sql)
+        
+        # Fetch results
+        columns = [desc[0] for desc in cursor.description]
+        results = cursor.fetchall()
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(results, columns=columns)
+        cursor.close()
         return df
     finally:
         conn.close()
