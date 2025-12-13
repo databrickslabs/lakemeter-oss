@@ -435,7 +435,7 @@ workload_type_inserts = [
     """INSERT INTO lakemeter.ref_workload_types VALUES
     ('ALL_PURPOSE', 'All-Purpose Compute', 'Interactive clusters for notebooks (Classic or Serverless)', 
      true, true, false, true, false, false, false, false, false, false, true, true, false, false,
-     'ALL_PURPOSE_COMPUTE', 'ALL_PURPOSE_COMPUTE_(PHOTON)', 'INTERACTIVE_SERVERLESS_COMPUTE', 2)
+     'ALL_PURPOSE_COMPUTE', 'ALL_PURPOSE_COMPUTE_(PHOTON)', 'ALL_PURPOSE_SERVERLESS_COMPUTE', 2)
     ON CONFLICT (workload_type) DO NOTHING""",
     
     """INSERT INTO lakemeter.ref_workload_types VALUES

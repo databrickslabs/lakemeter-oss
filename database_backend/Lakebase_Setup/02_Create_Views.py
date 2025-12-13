@@ -358,7 +358,7 @@ product_type_calc AS (
                 END
             WHEN f.workload_type = 'ALL_PURPOSE' THEN
                 CASE 
-                    WHEN f.serverless_enabled THEN 'INTERACTIVE_SERVERLESS_COMPUTE'
+                    WHEN f.serverless_enabled THEN 'ALL_PURPOSE_SERVERLESS_COMPUTE'
                     WHEN f.photon_enabled THEN 'ALL_PURPOSE_COMPUTE_(PHOTON)'
                     ELSE 'ALL_PURPOSE_COMPUTE'
                 END
