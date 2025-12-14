@@ -129,7 +129,40 @@ print(f"✅ Inserted {len(line_item_ids)} line items")
 # COMMAND ----------
 
 # Query results
-results_df = execute_query("SELECT c.workload_name, c.cloud, c.region, c.tier, c.dbsql_warehouse_type, c.dbsql_warehouse_size, c.dbsql_num_clusters, c.hours_per_month, c.dbu_per_hour, c.price_per_dbu, c.dbu_cost_per_month, c.cost_per_month FROM lakemeter.v_line_items_with_costs c WHERE c.line_item_id = ANY(%s::uuid[]) ORDER BY c.display_order;", (line_item_ids,))
+query_results_sql = """
+SELECT 
+    c.display_order,
+    c.workload_name,
+    c.workload_type,
+    -- Context (cloud/region/tier)
+    c.cloud,
+    c.region,
+    c.tier,
+    -- Configuration
+    c.dbsql_warehouse_type,
+    c.dbsql_warehouse_size,
+    c.dbsql_num_clusters,
+    -- Usage
+    c.runs_per_day,
+    c.avg_runtime_minutes,
+    c.days_per_month,
+    c.hours_per_month,
+    -- DBU Calculation
+    c.dbu_per_hour,
+    c.dbu_per_month,
+    -- DBU Pricing
+    c.price_per_dbu as dbu_price,
+    c.product_type_for_pricing,
+    c.dbu_cost_per_month,
+    -- Total
+    c.cost_per_month,
+    c.notes
+FROM lakemeter.v_line_items_with_costs c
+WHERE c.line_item_id = ANY(%s::uuid[])
+ORDER BY c.display_order;
+"""
+
+results_df = execute_query(query_results_sql, (line_item_ids,))
 
 for col in ['dbsql_num_clusters', 'hours_per_month', 'dbu_per_hour', 'price_per_dbu', 'dbu_cost_per_month', 'cost_per_month']:
     if col in results_df.columns:

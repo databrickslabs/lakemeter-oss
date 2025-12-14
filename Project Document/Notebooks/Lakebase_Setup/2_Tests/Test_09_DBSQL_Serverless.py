@@ -113,7 +113,41 @@ print(f"✅ Created {len(estimate_map)} estimates, {len(line_item_ids)} line ite
 
 # COMMAND ----------
 
-results_df = execute_query("SELECT c.workload_name, c.cloud, c.region, c.tier, c.dbsql_warehouse_type, c.dbsql_warehouse_size, c.vm_cost_per_month, c.dbu_cost_per_month, c.cost_per_month FROM lakemeter.v_line_items_with_costs c WHERE c.line_item_id = ANY(%s::uuid[]) ORDER BY c.display_order;", (line_item_ids,))
+query_results_sql = """
+SELECT 
+    c.display_order,
+    c.workload_name,
+    c.workload_type,
+    -- Context (cloud/region/tier)
+    c.cloud,
+    c.region,
+    c.tier,
+    -- Configuration
+    c.dbsql_warehouse_type,
+    c.dbsql_warehouse_size,
+    c.dbsql_num_clusters,
+    c.serverless_enabled,
+    -- Usage
+    c.runs_per_day,
+    c.avg_runtime_minutes,
+    c.days_per_month,
+    c.hours_per_month,
+    -- DBU Calculation
+    c.dbu_per_hour,
+    c.dbu_per_month,
+    -- DBU Pricing
+    c.price_per_dbu as dbu_price,
+    c.product_type_for_pricing,
+    c.dbu_cost_per_month,
+    -- Total (serverless has no VM costs)
+    c.cost_per_month,
+    c.notes
+FROM lakemeter.v_line_items_with_costs c
+WHERE c.line_item_id = ANY(%s::uuid[])
+ORDER BY c.display_order;
+"""
+
+results_df = execute_query(query_results_sql, (line_item_ids,))
 
 for col in ['vm_cost_per_month', 'dbu_cost_per_month', 'cost_per_month']:
     if col in results_df.columns:
