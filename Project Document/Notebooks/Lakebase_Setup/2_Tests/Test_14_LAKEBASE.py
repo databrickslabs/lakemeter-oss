@@ -1,13 +1,42 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Test Case: LAKEBASE (Postgres Serverless)
+# MAGIC # Test Case: LAKEBASE (PostgreSQL Serverless Database)
+# MAGIC 
+# MAGIC **Objective:** Validate Lakebase cost calculations for serverless PostgreSQL with various configurations
 # MAGIC 
 # MAGIC **LAKEBASE Characteristics:**
-# MAGIC - **Sizing:** 1, 2, 4, 8 CU (Compute Units, where 1 CU = 1 DBU)
 # MAGIC - **Product type:** DATABASE_SERVERLESS_COMPUTE
-# MAGIC - **No VM costs** (serverless)
-# MAGIC - **No instance types** (uses CU instead)
-# MAGIC - **Additional features:** storage_gb, ha_enabled, backup_retention_days
+# MAGIC - **Sizing:** Compute Units (CU) instead of instance types
+# MAGIC   - **1 CU = 1 DBU per hour**
+# MAGIC   - Available sizes: 1, 2, 4, 8 CU
+# MAGIC - **No VM costs** (serverless database)
+# MAGIC - **No instance types** (uses CU-based sizing)
+# MAGIC - **Additional features:**
+# MAGIC   - **storage_gb:** Database storage size (100 GB default)
+# MAGIC   - **ha_enabled:** High Availability (multi-AZ) option
+# MAGIC   - **backup_retention_days:** Backup retention period (7 days default)
+# MAGIC 
+# MAGIC **Test Scenarios:**
+# MAGIC - **Clouds:** AWS, Azure, GCP
+# MAGIC - **Regions:** 2 per cloud (1 US + 1 Europe)
+# MAGIC - **Tiers:** STANDARD, PREMIUM (ENTERPRISE not commonly used)
+# MAGIC - **CU Sizes:** 1, 2, 4, 8 CU
+# MAGIC - **High Availability:** Enabled, Disabled
+# MAGIC - **Usage Patterns:**
+# MAGIC   - Standard: 8 runs/day, 60 min/run (8 hours/day)
+# MAGIC   - Always-on: 24 runs/day, 60 min/run (24 hours/day)
+# MAGIC 
+# MAGIC **Test Matrix:**
+# MAGIC - **AWS:** 2 regions × 2 tiers × 4 CU × 2 HA × 2 usage = **64 scenarios**
+# MAGIC - **AZURE:** 2 regions × 2 tiers × 4 CU × 2 HA × 2 usage = **64 scenarios**
+# MAGIC - **GCP:** 2 regions × 2 tiers × 4 CU × 2 HA × 2 usage = **64 scenarios**
+# MAGIC - **TOTAL: ~192 scenarios**
+# MAGIC 
+# MAGIC **Validation:**
+# MAGIC - ✅ DBU cost = CU size × hours × DBU rate
+# MAGIC - ✅ No VM costs (serverless)
+# MAGIC - ✅ HA enabled scenarios may have different configurations
+# MAGIC - ✅ Different usage patterns (8h vs 24h) affect monthly costs
 
 # COMMAND ----------
 

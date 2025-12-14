@@ -2,11 +2,33 @@
 # MAGIC %md
 # MAGIC # Test Case: Vector Search
 # MAGIC 
-# MAGIC **Vector Search Modes:**
-# MAGIC - **standard:** Optimized for query performance
-# MAGIC - **storage_optimized:** Lower cost, slightly higher latency
+# MAGIC **Objective:** Validate Vector Search cost calculations for both performance modes
 # MAGIC 
-# MAGIC **Product type:** VECTOR_SEARCH_ENDPOINT
+# MAGIC **Vector Search Characteristics:**
+# MAGIC - **Product type:** VECTOR_SEARCH_ENDPOINT
+# MAGIC - **Serverless-only** (no VM costs)
+# MAGIC - **Two modes:**
+# MAGIC   - **standard:** Optimized for query performance (higher DBU rate)
+# MAGIC   - **storage_optimized:** Lower cost, slightly higher latency (lower DBU rate)
+# MAGIC - **Always-on** usage pattern (24/7 availability)
+# MAGIC 
+# MAGIC **Test Scenarios:**
+# MAGIC - **Clouds:** AWS, Azure, GCP
+# MAGIC - **Regions:** 2 per cloud (1 US + 1 Europe)
+# MAGIC - **Tiers:** STANDARD (expect $0), PREMIUM, ENTERPRISE
+# MAGIC - **Modes:** standard, storage_optimized
+# MAGIC - **Usage:** 24 runs/day (always-on), 60 min/run, 30 days/month
+# MAGIC 
+# MAGIC **Test Matrix:**
+# MAGIC - **AWS:** 2 regions × 2 tiers × 2 modes = **8 scenarios** (STANDARD excluded)
+# MAGIC - **AZURE:** 2 regions × 1 tier × 2 modes = **4 scenarios** (PREMIUM only)
+# MAGIC - **GCP:** 2 regions × 2 tiers × 2 modes = **8 scenarios**
+# MAGIC - **TOTAL: ~20 scenarios** (plus STANDARD tier validation)
+# MAGIC 
+# MAGIC **Validation:**
+# MAGIC - ✅ STANDARD tier: $0 costs (serverless not available)
+# MAGIC - ✅ PREMIUM/ENTERPRISE: Positive DBU costs, $0 VM costs
+# MAGIC - ✅ storage_optimized mode: Lower DBU rate than standard mode
 
 # COMMAND ----------
 

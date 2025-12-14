@@ -2,14 +2,39 @@
 # MAGIC %md
 # MAGIC # Test Case: FMAPI Databricks-Hosted Models
 # MAGIC 
-# MAGIC **Databricks-Hosted Foundation Models:**
-# MAGIC - **llama-3.1-8b-instruct**
-# MAGIC - **llama-3.1-70b-instruct**
-# MAGIC - **dbrx-instruct**
-# MAGIC - **bge-large-en-v1.5** (embeddings)
+# MAGIC **Objective:** Validate token-based cost calculations for Databricks-hosted foundation models
 # MAGIC 
-# MAGIC **Pricing:** Token-based (input + output tokens per million)
-# MAGIC **Product type:** SERVERLESS_REAL_TIME_INFERENCE
+# MAGIC **FMAPI Databricks Characteristics:**
+# MAGIC - **Product type:** SERVERLESS_REAL_TIME_INFERENCE
+# MAGIC - **Pricing model:** Token-based (input + output tokens per million)
+# MAGIC - **Models tested:**
+# MAGIC   - **llama-3.1-8b-instruct:** Lightweight LLM (lowest DBU rate)
+# MAGIC   - **llama-3.1-70b-instruct:** Large LLM (higher DBU rate)
+# MAGIC   - **dbrx-instruct:** Databricks foundation model
+# MAGIC   - **bge-large-en-v1.5:** Embedding model (input tokens only)
+# MAGIC - **Serverless-only** (no VM costs)
+# MAGIC - **Hosted and served by Databricks**
+# MAGIC 
+# MAGIC **Test Scenarios:**
+# MAGIC - **Clouds:** AWS, Azure, GCP
+# MAGIC - **Regions:** 2 per cloud (1 US + 1 Europe)
+# MAGIC - **Tiers:** PREMIUM, ENTERPRISE (STANDARD not applicable)
+# MAGIC - **Models:** 4 different foundation models
+# MAGIC - **Token Volumes:** 3 usage patterns
+# MAGIC   - Light: 1M input, 500K output tokens/month
+# MAGIC   - Medium: 10M input, 5M output tokens/month
+# MAGIC   - Heavy: 100M input, 50M output tokens/month
+# MAGIC 
+# MAGIC **Test Matrix:**
+# MAGIC - **AWS:** 2 regions × 1 tier × 4 models × 3 volumes = **24 scenarios**
+# MAGIC - **AZURE:** 2 regions × 1 tier × 4 models × 3 volumes = **24 scenarios**
+# MAGIC - **GCP:** 2 regions × 1 tier × 4 models × 3 volumes = **24 scenarios**
+# MAGIC - **TOTAL: ~72 scenarios**
+# MAGIC 
+# MAGIC **Validation:**
+# MAGIC - ✅ Cost calculated from token volumes (not hourly)
+# MAGIC - ✅ Different DBU rates per model
+# MAGIC - ✅ Input + output token costs calculated correctly
 
 # COMMAND ----------
 
