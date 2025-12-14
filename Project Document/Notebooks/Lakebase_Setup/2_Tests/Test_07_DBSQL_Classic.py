@@ -55,7 +55,7 @@ execute_query("INSERT INTO lakemeter.users (user_id, full_name, email, role, is_
               (TEST_USER_ID, f'test_dbsql_classic_{TEST_RUN_ID}', f'test_{TEST_RUN_ID}@databricks.com', 'admin', True, datetime.now()), fetch=False)
 
 # Get regions
-available_regions_df = execute_query("SELECT DISTINCT cloud, region_code FROM lakemeter.sync_ref_sku_region_map WHERE (cloud = 'AWS' AND region_code LIKE 'us-east-%') OR (cloud = 'AZURE' AND region_code = 'eastus') OR (cloud = 'GCP' AND region_code LIKE 'us-central%') ORDER BY cloud, region_code;")
+available_regions_df = execute_query("SELECT DISTINCT cloud, region_code FROM lakemeter.sync_ref_sku_region_map WHERE (cloud = 'AWS' AND (region_code LIKE 'us-east-%' OR region_code LIKE 'eu-west-%')) OR (cloud = 'AZURE' AND region_code IN ('eastus', 'westeurope')) OR (cloud = 'GCP' AND (region_code LIKE 'us-central%' OR region_code LIKE 'europe-west%')) ORDER BY cloud, region_code;")
 region_map = {}
 for cloud in ['AWS', 'AZURE', 'GCP']:
     cloud_regions = available_regions_df[available_regions_df['cloud'] == cloud]
