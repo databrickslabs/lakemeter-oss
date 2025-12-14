@@ -114,8 +114,8 @@ for scenario in test_scenarios:
     line_item_id = str(uuid.uuid4())
     line_item_ids.append(line_item_id)
     estimate_key = f"{scenario['cloud']}_{scenario['region']}_{scenario['tier']}"
-    execute_query("""INSERT INTO lakemeter.line_items (line_item_id, estimate_id, display_order, workload_name, workload_type, serverless_enabled, fmapi_model, fmapi_input_tokens_per_month, fmapi_output_tokens_per_month, vm_pricing_tier, vm_payment_option, notes, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
-                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'FMAPI_DATABRICKS', True, scenario['fmapi_model'], scenario['fmapi_input_tokens_per_month'], scenario['fmapi_output_tokens_per_month'], None, None, "FMAPI Databricks", datetime.now(), datetime.now()), fetch=False)
+    execute_query("""INSERT INTO lakemeter.line_items (line_item_id, estimate_id, display_order, workload_name, workload_type, serverless_enabled, photon_enabled, fmapi_model, fmapi_input_tokens_per_month, fmapi_output_tokens_per_month, vm_pricing_tier, vm_payment_option, notes, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
+                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'FMAPI_DATABRICKS', True, True, scenario['fmapi_model'], scenario['fmapi_input_tokens_per_month'], scenario['fmapi_output_tokens_per_month'], None, None, "FMAPI Databricks", datetime.now(), datetime.now()), fetch=False)
 
 print(f"✅ Created {len(line_item_ids)} line items")
 
