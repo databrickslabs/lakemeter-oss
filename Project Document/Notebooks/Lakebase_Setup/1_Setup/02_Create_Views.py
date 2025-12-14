@@ -24,25 +24,17 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1. Install Dependencies & Connect to Lakebase
+# MAGIC ## 1. Load Configuration & Import Libraries
 
 # COMMAND ----------
 
-# Install required packages
-%pip install psycopg2-binary --quiet
-dbutils.library.restartPython()
+# Load Lakebase configuration
+%run ../00_Lakebase_Config
 
 # COMMAND ----------
 
 import psycopg2
 from datetime import datetime
-
-# Lakebase connection details
-LAKEBASE_HOST = "instance-364041a4-0aae-44df-bbc6-37ac84169dfe.database.cloud.databricks.com"
-LAKEBASE_PORT = 5432
-LAKEBASE_DATABASE = "lakemeter_pricing"
-LAKEBASE_USER = "lakemeter_sync_role"
-LAKEBASE_PASSWORD = "***REMOVED_DATABASE_CREDENTIAL***"
 
 # COMMAND ----------
 
