@@ -133,9 +133,13 @@ print("\n✅ Reference table populated!")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 4: Add Constraint to line_items (Optional)
+# MAGIC ## Step 4: Add CHECK Constraint to line_items (Optional)
 # MAGIC 
-# MAGIC **WARNING:** This will fail if there are existing line_items with invalid cloud/GPU combinations.
+# MAGIC **Type:** CHECK constraint (not FK) - Only validates MODEL_SERVING workloads
+# MAGIC 
+# MAGIC **WARNING:** This will fail if there are existing MODEL_SERVING line_items with invalid cloud/GPU combinations.
+# MAGIC 
+# MAGIC **Note:** Other workload types (VECTOR_SEARCH, FMAPI, etc.) are NOT affected by this constraint.
 # MAGIC 
 # MAGIC **Recommendation:** Run Test_11_Model_Serving first to ensure all GPU types are in the reference table.
 
@@ -146,33 +150,46 @@ print("⚠️  ADDING CONSTRAINT TO line_items")
 print("=" * 80)
 
 add_constraint_sql = """
--- Add foreign key constraint for MODEL_SERVING workloads
--- This ensures cloud + serverless_size combination is valid
+-- Add CHECK constraint for MODEL_SERVING workloads only
+-- This ensures cloud + serverless_size combination is valid ONLY for MODEL_SERVING
+-- Other workload types (VECTOR_SEARCH, etc.) are not affected
 ALTER TABLE lakemeter.line_items
-ADD CONSTRAINT fk_line_items_model_serving_gpu
-FOREIGN KEY (cloud, serverless_size)
-REFERENCES lakemeter.ref_model_serving_gpu_types (cloud, gpu_type)
-DEFERRABLE INITIALLY DEFERRED;
+ADD CONSTRAINT chk_line_items_model_serving_gpu
+CHECK (
+    -- If not MODEL_SERVING, constraint passes
+    workload_type != 'MODEL_SERVING' 
+    OR 
+    -- If MODEL_SERVING, validate cloud+serverless_size exists in reference table
+    (workload_type = 'MODEL_SERVING' AND 
+     EXISTS (
+         SELECT 1 FROM lakemeter.ref_model_serving_gpu_types 
+         WHERE cloud = line_items.cloud 
+         AND gpu_type = line_items.serverless_size
+         AND is_active = true
+     )
+    )
+);
 
--- Note: Constraint is DEFERRABLE so it's checked at COMMIT time
--- This allows cloud to be auto-synced from estimates before validation
+-- Note: CHECK constraint with subquery validates only MODEL_SERVING rows
+-- Vector Search, FMAPI, and other workloads are not affected
 """
 
-result = execute_sql(add_constraint_sql, "Added fk_line_items_model_serving_gpu constraint", show_error=True)
+result = execute_sql(add_constraint_sql, "Added chk_line_items_model_serving_gpu constraint", show_error=True)
 
 if result:
     print("\n✅ Constraint added successfully!")
-    print("   • Only valid cloud/GPU combinations can be inserted")
+    print("   • Only valid cloud/GPU combinations can be inserted for MODEL_SERVING")
     print("   • Prevents selecting AWS GPUs when cloud=AZURE, etc.")
+    print("   • Other workload types (VECTOR_SEARCH, FMAPI, etc.) are NOT affected")
 else:
     print("\n⚠️  Constraint could not be added.")
     print("   Possible reasons:")
-    print("   1. Existing line_items with invalid cloud/GPU combinations")
+    print("   1. Existing MODEL_SERVING line_items with invalid cloud/GPU combinations")
     print("   2. Sync triggers haven't populated 'cloud' column yet")
     print("   3. GPU type not in reference table")
     print("\n💡 To fix:")
     print("   1. Run Test_11_Model_Serving to populate all GPU types")
-    print("   2. Update existing line_items with valid cloud/GPU combinations")
+    print("   2. Delete or update existing MODEL_SERVING line_items with invalid GPU types")
     print("   3. Re-run this notebook")
 
 # COMMAND ----------
@@ -222,18 +239,20 @@ else:
 # MAGIC 
 # MAGIC ✅ **What was created:**
 # MAGIC - `ref_model_serving_gpu_types` table with valid cloud/GPU combinations
-# MAGIC - Constraint on `line_items` to prevent invalid combinations (if enabled)
+# MAGIC - CHECK constraint on `line_items` to prevent invalid GPU combinations (if enabled)
 # MAGIC 
 # MAGIC 📊 **Valid combinations:**
 # MAGIC - AWS: cpu, gpu_small_t4, gpu_medium_a10g_*, gpu_xlarge/2xlarge/4xlarge_a100_80gb_*
 # MAGIC - AZURE: cpu, gpu_medium_a10g_*, gpu_xlarge_a100_40gb/80gb_*
 # MAGIC - GCP: cpu, gpu_small_t4, gpu_medium_g2_standard_8, gpu_xlarge/2xlarge_a100_80gb_*
 # MAGIC 
-# MAGIC 🔒 **Constraint behavior:**
-# MAGIC - Prevents inserting AWS GPU types when cloud=AZURE
-# MAGIC - Prevents inserting Azure GPU types when cloud=AWS
-# MAGIC - Prevents inserting GCP GPU types when cloud=AZURE
-# MAGIC - Only applies to MODEL_SERVING workload type
+# MAGIC 🔒 **CHECK Constraint behavior:**
+# MAGIC - **Type:** CHECK constraint (not FK) with conditional logic
+# MAGIC - **Scope:** Only validates MODEL_SERVING workload type
+# MAGIC - **Impact:** Other workloads (VECTOR_SEARCH, FMAPI, etc.) are NOT affected
+# MAGIC - Prevents inserting AWS GPU types when cloud=AZURE for MODEL_SERVING
+# MAGIC - Prevents inserting Azure GPU types when cloud=AWS for MODEL_SERVING
+# MAGIC - Prevents inserting GCP GPU types when cloud=AZURE for MODEL_SERVING
 # MAGIC 
 # MAGIC ⚠️  **Note:** If constraint fails, it's optional. You can skip it and rely on application-level validation.
 
