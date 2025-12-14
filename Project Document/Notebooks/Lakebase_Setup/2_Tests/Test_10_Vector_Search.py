@@ -10,20 +10,14 @@
 
 # COMMAND ----------
 
-%pip install psycopg2-binary pandas tabulate
-
-# COMMAND ----------
-
-dbutils.library.restartPython()
+# Load Lakebase configuration
+%run ../00_Lakebase_Config
 
 # COMMAND ----------
 
 import psycopg2, pandas as pd, uuid
 from datetime import datetime
 from tabulate import tabulate
-
-LAKEBASE_HOST = "instance-364041a4-0aae-44df-bbc6-37ac84169dfe.database.cloud.databricks.com"
-LAKEBASE_PORT, LAKEBASE_DB, LAKEBASE_USER, LAKEBASE_PASSWORD = 5432, "lakemeter_pricing", "lakemeter_sync_role", "Lak3m3t3r_Sync_2024!"
 
 def get_connection():
     return psycopg2.connect(host=LAKEBASE_HOST, port=LAKEBASE_PORT, database=LAKEBASE_DB, user=LAKEBASE_USER, password=LAKEBASE_PASSWORD)
