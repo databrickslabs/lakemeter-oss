@@ -477,17 +477,18 @@ SELECT
     END as dbu_cost_per_month,
     driver_vm_cost_per_hour, worker_vm_cost_per_hour,
     -- Use resolved_num_workers for DBSQL warehouse worker count
+    -- Account for dbsql_driver_count (DBSQL can have multiple drivers)
     worker_vm_cost_per_hour * COALESCE(resolved_num_workers, 0) as total_worker_vm_cost_per_hour,
-    driver_vm_cost_per_hour + (worker_vm_cost_per_hour * COALESCE(resolved_num_workers, 0)) as total_vm_cost_per_hour,
-    driver_vm_cost_per_hour * hours_per_month as driver_vm_cost_per_month,
+    (driver_vm_cost_per_hour * COALESCE(dbsql_driver_count, 1)) + (worker_vm_cost_per_hour * COALESCE(resolved_num_workers, 0)) as total_vm_cost_per_hour,
+    driver_vm_cost_per_hour * COALESCE(dbsql_driver_count, 1) * hours_per_month as driver_vm_cost_per_month,
     (worker_vm_cost_per_hour * COALESCE(resolved_num_workers, 0)) * hours_per_month as total_worker_vm_cost_per_month,
-    (driver_vm_cost_per_hour + (worker_vm_cost_per_hour * COALESCE(resolved_num_workers, 0))) * hours_per_month as vm_cost_per_month,
+    ((driver_vm_cost_per_hour * COALESCE(dbsql_driver_count, 1)) + (worker_vm_cost_per_hour * COALESCE(resolved_num_workers, 0))) * hours_per_month as vm_cost_per_month,
     CASE 
         WHEN workload_type IN ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY') THEN 
             fmapi_dbu_per_month * price_per_dbu
         ELSE 
             (dbu_per_hour * hours_per_month * price_per_dbu) +
-            ((driver_vm_cost_per_hour + (worker_vm_cost_per_hour * COALESCE(num_workers, 0))) * hours_per_month)
+            (((driver_vm_cost_per_hour * COALESCE(dbsql_driver_count, 1)) + (worker_vm_cost_per_hour * COALESCE(resolved_num_workers, 0))) * hours_per_month)
     END as cost_per_month,
     fmapi_dbu_per_month
 FROM final_calc;
