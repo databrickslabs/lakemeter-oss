@@ -54,15 +54,22 @@ TEST_USER_ID = str(uuid.uuid4())
 execute_query("INSERT INTO lakemeter.users (user_id, full_name, email, role, is_active, created_at) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING;",
               (TEST_USER_ID, f'test_dbsql_classic_{TEST_RUN_ID}', f'test_{TEST_RUN_ID}@databricks.com', 'admin', True, datetime.now()), fetch=False)
 
-# Get regions
+# Get regions (1 US + 1 EU per cloud)
 available_regions_df = execute_query("SELECT DISTINCT cloud, region_code FROM lakemeter.sync_ref_sku_region_map WHERE (cloud = 'AWS' AND (region_code LIKE 'us-east-%' OR region_code LIKE 'eu-west-%')) OR (cloud = 'AZURE' AND region_code IN ('eastus', 'westeurope')) OR (cloud = 'GCP' AND (region_code LIKE 'us-central%' OR region_code LIKE 'europe-west%')) ORDER BY cloud, region_code;")
 region_map = {}
 for cloud in ['AWS', 'AZURE', 'GCP']:
     cloud_regions = available_regions_df[available_regions_df['cloud'] == cloud]
-    if len(cloud_regions) >= 1:
-        region_map[cloud] = cloud_regions.iloc[0]['region_code']
+    if len(cloud_regions) >= 2:
+        us_region = cloud_regions[cloud_regions['region_code'].str.contains('us')].iloc[0]['region_code']
+        eu_region = cloud_regions[cloud_regions['region_code'].str.contains('eu')].iloc[0]['region_code']
+        region_map[cloud] = {'us': us_region, 'eu': eu_region}
 
-print("✅ Test data loaded")
+print("=" * 100)
+print("📊 SELECTED REGIONS (US + EU)")
+print("=" * 100)
+for cloud, regions in region_map.items():
+    print(f"{cloud}: US={regions['us']}, EU={regions['eu']}")
+print("=" * 100)
 
 # COMMAND ----------
 
@@ -74,21 +81,22 @@ num_clusters_options = [1, 2, 4]
 usage_patterns = [{'runs': 8, 'mins': 60}, {'runs': 24, 'mins': 60}]
 
 for cloud in ['AWS', 'AZURE', 'GCP']:
-    for tier in ['STANDARD', 'PREMIUM', 'ENTERPRISE']:
-        if cloud == 'AZURE' and tier == 'ENTERPRISE':
-            continue
-        for size in warehouse_sizes:
-            for num_clusters in num_clusters_options:
-                for usage in usage_patterns:
-                    region = region_map[cloud]
-                    test_scenarios.append({
-                        'scenario_id': scenario_id, 'cloud': cloud, 'region': region, 'tier': tier,
-                        'workload_name': f"{cloud} {tier} {size} {num_clusters}clusters {usage['runs']}h",
-                        'dbsql_warehouse_type': 'CLASSIC', 'dbsql_warehouse_size': size, 'dbsql_num_clusters': num_clusters,
-                        'runs_per_day': usage['runs'], 'avg_runtime_minutes': usage['mins'], 'days_per_month': 30,
-                        'notes': f"DBSQL Classic {size} {num_clusters} clusters"
-                    })
-                    scenario_id += 1
+    for region_type in ['us', 'eu']:  # Test both US and EU regions
+        region = region_map[cloud][region_type]
+        for tier in ['STANDARD', 'PREMIUM', 'ENTERPRISE']:
+            if cloud == 'AZURE' and tier == 'ENTERPRISE':
+                continue
+            for size in warehouse_sizes:
+                for num_clusters in num_clusters_options:
+                    for usage in usage_patterns:
+                        test_scenarios.append({
+                            'scenario_id': scenario_id, 'cloud': cloud, 'region': region, 'tier': tier,
+                            'workload_name': f"{cloud} {tier} {size} {num_clusters}clusters {usage['runs']}h",
+                            'dbsql_warehouse_type': 'CLASSIC', 'dbsql_warehouse_size': size, 'dbsql_num_clusters': num_clusters,
+                            'runs_per_day': usage['runs'], 'avg_runtime_minutes': usage['mins'], 'days_per_month': 30,
+                            'notes': f"DBSQL Classic {size} {num_clusters} clusters"
+                        })
+                        scenario_id += 1
 
 print(f"✅ Generated {len(test_scenarios)} scenarios")
 
