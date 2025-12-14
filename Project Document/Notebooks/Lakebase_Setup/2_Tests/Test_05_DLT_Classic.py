@@ -137,7 +137,31 @@ usage_patterns = [
     {'runs_per_day': 24, 'avg_runtime_minutes': 60},  # CONTINUOUS equivalent
 ]
 
+# COMPREHENSIVE PAYMENT OPTIONS (like Test_01)
+# AWS: All payment options with different upfront modes
+aws_payment_options = [
+    {'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment_option': 'on_demand', 'label': 'OnDemand'},
+    {'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment_option': 'spot', 'label': 'Spot'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'no_upfront', 'label': 'Reserved1y-NoUpfront'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'partial_upfront', 'label': 'Reserved1y-PartialUpfront'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'all_upfront', 'label': 'Reserved1y-AllUpfront'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'no_upfront', 'label': 'Reserved3y-NoUpfront'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'partial_upfront', 'label': 'Reserved3y-PartialUpfront'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'all_upfront', 'label': 'Reserved3y-AllUpfront'},
+]
+
+# Azure/GCP: On-demand, Spot, Reserved (no payment options)
+azure_gcp_payment_options = [
+    {'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment_option': 'NA', 'label': 'OnDemand'},
+    {'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment_option': 'NA', 'label': 'Spot'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'NA', 'label': 'Reserved1y'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'NA', 'label': 'Reserved3y'},
+]
+
 for cloud in ['AWS', 'AZURE', 'GCP']:
+    # Select payment options for this cloud
+    payment_options = aws_payment_options if cloud == 'AWS' else azure_gcp_payment_options
+    
     for region_key in ['us', 'eu']:
         for tier in ['STANDARD', 'PREMIUM', 'ENTERPRISE']:
             if cloud == 'AZURE' and tier == 'ENTERPRISE':
@@ -146,40 +170,43 @@ for cloud in ['AWS', 'AZURE', 'GCP']:
             for edition in editions:
                 for photon in photon_options:
                     for mode in pipeline_modes:
-                        # Select usage pattern (use continuous for CONTINUOUS mode)
-                        usage_idx = 1 if mode == 'CONTINUOUS' else 0
-                        usage = usage_patterns[usage_idx]
-                        
-                        region = region_map[cloud][region_key]
-                        driver_instance = instance_map[cloud]['driver']
-                        worker_instance = instance_map[cloud]['worker']
-                        
-                        scenario = {
-                            'scenario_id': scenario_id,
-                            'cloud': cloud,
-                            'region': region,
-                            'tier': tier,
-                            'workload_name': f"{cloud} {region} {tier} {edition} {'Photon' if photon else 'NoPhoton'} {mode}",
-                            'dlt_edition': edition,
-                            'dlt_pipeline_mode': mode,
-                            'driver_node_type': driver_instance,
-                            'worker_node_type': worker_instance,
-                            'num_workers': 4,
-                            'photon_enabled': photon,
-                            'driver_pricing_tier': 'on_demand',
-                            'worker_pricing_tier': 'on_demand',
-                            'vm_payment_option': 'on_demand',
-                            'runs_per_day': usage['runs_per_day'],
-                            'avg_runtime_minutes': usage['avg_runtime_minutes'],
-                            'days_per_month': 30,
-                            'notes': f"DLT {edition} {mode} {'Photon' if photon else 'No Photon'}"
-                        }
-                        
-                        test_scenarios.append(scenario)
-                        scenario_id += 1
+                        # COMPREHENSIVE: Test all payment options
+                        for payment in payment_options:
+                            # Select usage pattern (use continuous for CONTINUOUS mode)
+                            usage_idx = 1 if mode == 'CONTINUOUS' else 0
+                            usage = usage_patterns[usage_idx]
+                            
+                            region = region_map[cloud][region_key]
+                            driver_instance = instance_map[cloud]['driver']
+                            worker_instance = instance_map[cloud]['worker']
+                            
+                            scenario = {
+                                'scenario_id': scenario_id,
+                                'cloud': cloud,
+                                'region': region,
+                                'tier': tier,
+                                'workload_name': f"{cloud} {region[:10]} {tier} {edition} {'Photon' if photon else 'NoPhoton'} {mode} {payment['label']}",
+                                'dlt_edition': edition,
+                                'dlt_pipeline_mode': mode,
+                                'driver_node_type': driver_instance,
+                                'worker_node_type': worker_instance,
+                                'num_workers': 4,
+                                'photon_enabled': photon,
+                                'driver_pricing_tier': payment['driver_tier'],
+                                'worker_pricing_tier': payment['worker_tier'],
+                                'vm_payment_option': payment['payment_option'],
+                                'runs_per_day': usage['runs_per_day'],
+                                'avg_runtime_minutes': usage['avg_runtime_minutes'],
+                                'days_per_month': 30,
+                                'notes': f"DLT {edition} {mode} {'Photon' if photon else 'No Photon'} | D:{payment['driver_tier']} W:{payment['worker_tier']}"
+                            }
+                            
+                            test_scenarios.append(scenario)
+                            scenario_id += 1
 
 print(f"✅ Generated {len(test_scenarios)} test scenarios")
-print(f"   3 clouds × 2 regions × 3 tiers × 3 editions × 2 photon × 2 modes")
+print(f"   AWS: 2 regions × 3 tiers × 3 editions × 2 photon × 2 modes × 8 payment options")
+print(f"   AZURE/GCP: 2 regions × 2/3 tiers × 3 editions × 2 photon × 2 modes × 4 payment options")
 print(f"   Azure ENTERPRISE excluded")
 
 # COMMAND ----------
@@ -351,7 +378,7 @@ summary_display_df = results_df[[
     # Node Configuration
     'driver_node_type', 'worker_node_type', 'num_workers',
     # Pricing Tiers
-    'driver_pricing_tier', 'worker_pricing_tier',
+    'driver_pricing_tier', 'worker_pricing_tier', 'vm_payment_option',
     # Usage
     'hours_per_month',
     # DBU Calculation
