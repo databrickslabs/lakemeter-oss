@@ -2,11 +2,32 @@
 # MAGIC %md
 # MAGIC # Test Case: DBSQL Classic Warehouse
 # MAGIC 
+# MAGIC **Objective:** Validate DBSQL Classic cost calculations across ALL payment options
+# MAGIC 
 # MAGIC **DBSQL Characteristics:**
-# MAGIC - **Warehouse sizes:** 2X-Small, X-Small, Small, Medium, Large, X-Large, 2X-Large, 3X-Large, 4X-Large
-# MAGIC - **Num clusters:** 1-10 (multiple clusters for scaling)
+# MAGIC - **Warehouse sizes:** X-Small, Small, Medium, Large (representative subset)
+# MAGIC - **Num clusters:** 1, 2, 4 (multiple clusters for scaling)
 # MAGIC - **Product type:** SQL_COMPUTE
 # MAGIC - **No Photon** (Classic warehouse)
+# MAGIC - **Underlying VMs:** Uses sync_ref_dbsql_warehouse_config for driver/worker instance types
+# MAGIC 
+# MAGIC **VM Payment Options Tested:**
+# MAGIC - **AWS (8 combinations):**
+# MAGIC   - On-Demand (driver + worker)
+# MAGIC   - Spot (driver=on_demand, worker=spot)
+# MAGIC   - Reserved 1 Year: No Upfront, Partial Upfront, All Upfront
+# MAGIC   - Reserved 3 Year: No Upfront, Partial Upfront, All Upfront
+# MAGIC - **Azure/GCP (4 combinations):**
+# MAGIC   - On-Demand
+# MAGIC   - Spot
+# MAGIC   - Reserved 1 Year
+# MAGIC   - Reserved 3 Year
+# MAGIC 
+# MAGIC **Test Matrix:**
+# MAGIC - **AWS:** 2 regions × 3 tiers × 4 sizes × 3 clusters × 2 usage × 8 payment options = **1,152 scenarios**
+# MAGIC - **AZURE:** 2 regions × 2 tiers × 4 sizes × 3 clusters × 2 usage × 4 payment options = **384 scenarios**
+# MAGIC - **GCP:** 2 regions × 3 tiers × 4 sizes × 3 clusters × 2 usage × 4 payment options = **576 scenarios**
+# MAGIC - **TOTAL: ~2,112 scenarios** (Azure ENTERPRISE excluded)
 
 # COMMAND ----------
 
@@ -80,7 +101,31 @@ warehouse_sizes = ['X-Small', 'Small', 'Medium', 'Large']
 num_clusters_options = [1, 2, 4]
 usage_patterns = [{'runs': 8, 'mins': 60}, {'runs': 24, 'mins': 60}]
 
+# COMPREHENSIVE PAYMENT OPTIONS (like Test_01 & Test_05)
+# AWS: All payment options with different upfront modes
+aws_payment_options = [
+    {'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment_option': 'on_demand', 'label': 'OnDemand'},
+    {'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment_option': 'spot', 'label': 'Spot'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'no_upfront', 'label': 'Res1y-NoUp'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'partial_upfront', 'label': 'Res1y-PartialUp'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'all_upfront', 'label': 'Res1y-AllUp'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'no_upfront', 'label': 'Res3y-NoUp'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'partial_upfront', 'label': 'Res3y-PartialUp'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'all_upfront', 'label': 'Res3y-AllUp'},
+]
+
+# Azure/GCP: On-demand, Spot, Reserved (no payment options)
+azure_gcp_payment_options = [
+    {'driver_tier': 'on_demand', 'worker_tier': 'on_demand', 'payment_option': 'NA', 'label': 'OnDemand'},
+    {'driver_tier': 'on_demand', 'worker_tier': 'spot', 'payment_option': 'NA', 'label': 'Spot'},
+    {'driver_tier': 'reserved_1y', 'worker_tier': 'reserved_1y', 'payment_option': 'NA', 'label': 'Reserved1y'},
+    {'driver_tier': 'reserved_3y', 'worker_tier': 'reserved_3y', 'payment_option': 'NA', 'label': 'Reserved3y'},
+]
+
 for cloud in ['AWS', 'AZURE', 'GCP']:
+    # Select payment options for this cloud
+    payment_options = aws_payment_options if cloud == 'AWS' else azure_gcp_payment_options
+    
     for region_type in ['us', 'eu']:  # Test both US and EU regions
         region = region_map[cloud][region_type]
         for tier in ['STANDARD', 'PREMIUM', 'ENTERPRISE']:
@@ -89,16 +134,24 @@ for cloud in ['AWS', 'AZURE', 'GCP']:
             for size in warehouse_sizes:
                 for num_clusters in num_clusters_options:
                     for usage in usage_patterns:
-                        test_scenarios.append({
-                            'scenario_id': scenario_id, 'cloud': cloud, 'region': region, 'tier': tier,
-                            'workload_name': f"{cloud} {tier} {size} {num_clusters}clusters {usage['runs']}h",
-                            'dbsql_warehouse_type': 'CLASSIC', 'dbsql_warehouse_size': size, 'dbsql_num_clusters': num_clusters,
-                            'runs_per_day': usage['runs'], 'avg_runtime_minutes': usage['mins'], 'days_per_month': 30,
-                            'notes': f"DBSQL Classic {size} {num_clusters} clusters"
-                        })
-                        scenario_id += 1
+                        # COMPREHENSIVE: Test all payment options
+                        for payment in payment_options:
+                            test_scenarios.append({
+                                'scenario_id': scenario_id, 'cloud': cloud, 'region': region, 'tier': tier,
+                                'workload_name': f"{cloud} {tier} {size} {num_clusters}cl {usage['runs']}h {payment['label']}",
+                                'dbsql_warehouse_type': 'CLASSIC', 'dbsql_warehouse_size': size, 'dbsql_num_clusters': num_clusters,
+                                'runs_per_day': usage['runs'], 'avg_runtime_minutes': usage['mins'], 'days_per_month': 30,
+                                'driver_pricing_tier': payment['driver_tier'],
+                                'worker_pricing_tier': payment['worker_tier'],
+                                'vm_payment_option': payment['payment_option'],
+                                'notes': f"DBSQL Classic {size} {num_clusters}cl | D:{payment['driver_tier']} W:{payment['worker_tier']}"
+                            })
+                            scenario_id += 1
 
 print(f"✅ Generated {len(test_scenarios)} scenarios")
+print(f"   AWS: {len([s for s in test_scenarios if s['cloud'] == 'AWS'])} scenarios")
+print(f"   AZURE: {len([s for s in test_scenarios if s['cloud'] == 'AZURE'])} scenarios")
+print(f"   GCP: {len([s for s in test_scenarios if s['cloud'] == 'GCP'])} scenarios")
 
 # COMMAND ----------
 
@@ -121,8 +174,8 @@ for scenario in test_scenarios:
     line_item_id = str(uuid.uuid4())
     line_item_ids.append(line_item_id)
     estimate_key = f"{scenario['cloud']}_{scenario['region']}_{scenario['tier']}"
-    execute_query("""INSERT INTO lakemeter.line_items (line_item_id, estimate_id, display_order, workload_name, workload_type, serverless_enabled, dbsql_warehouse_type, dbsql_warehouse_size, dbsql_num_clusters, runs_per_day, avg_runtime_minutes, days_per_month, notes, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
-                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'DBSQL', False, scenario['dbsql_warehouse_type'], scenario['dbsql_warehouse_size'], scenario['dbsql_num_clusters'], scenario['runs_per_day'], scenario['avg_runtime_minutes'], scenario['days_per_month'], scenario['notes'], datetime.now(), datetime.now()), fetch=False)
+    execute_query("""INSERT INTO lakemeter.line_items (line_item_id, estimate_id, display_order, workload_name, workload_type, serverless_enabled, dbsql_warehouse_type, dbsql_warehouse_size, dbsql_num_clusters, runs_per_day, avg_runtime_minutes, days_per_month, driver_pricing_tier, worker_pricing_tier, vm_payment_option, notes, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
+                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'DBSQL', False, scenario['dbsql_warehouse_type'], scenario['dbsql_warehouse_size'], scenario['dbsql_num_clusters'], scenario['runs_per_day'], scenario['avg_runtime_minutes'], scenario['days_per_month'], scenario['driver_pricing_tier'], scenario['worker_pricing_tier'], scenario['vm_payment_option'], scenario['notes'], datetime.now(), datetime.now()), fetch=False)
 
 print(f"✅ Inserted {len(line_item_ids)} line items")
 
@@ -180,7 +233,11 @@ ORDER BY c.display_order;
 
 results_df = execute_query(query_results_sql, (line_item_ids,))
 
-for col in ['dbsql_num_clusters', 'hours_per_month', 'dbu_per_hour', 'price_per_dbu', 'dbu_cost_per_month', 'cost_per_month']:
+# Convert numeric columns
+numeric_columns = ['dbsql_num_clusters', 'driver_count', 'num_workers', 'hours_per_month', 'dbu_per_hour', 'price_per_dbu', 
+                   'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'total_worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
+                   'driver_vm_cost_per_month', 'total_worker_vm_cost_per_month', 'vm_cost_per_month', 'dbu_cost_per_month', 'cost_per_month']
+for col in numeric_columns:
     if col in results_df.columns:
         results_df[col] = pd.to_numeric(results_df[col], errors='coerce')
 
@@ -188,16 +245,28 @@ print(f"✅ Retrieved {len(results_df)} results")
 
 # COMMAND ----------
 
-# Display
-results_df['dbu_per_hour'] = results_df['dbu_per_hour'].round(4)
-results_df['price_per_dbu'] = results_df['price_per_dbu'].round(6)
-results_df['cost_per_month'] = results_df['cost_per_month'].round(2)
+# Display summary with payment options
+summary_display_df = results_df[[
+    'workload_name', 'cloud', 'region', 'tier',
+    'dbsql_warehouse_size', 'dbsql_num_clusters',
+    'driver_node_type', 'worker_node_type', 'num_workers', 'driver_count',
+    'driver_pricing_tier', 'worker_pricing_tier', 'vm_payment_option',
+    'hours_per_month', 'dbu_per_hour', 'price_per_dbu',
+    'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour',
+    'total_worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
+    'driver_vm_cost_per_month', 'total_worker_vm_cost_per_month',
+    'vm_cost_per_month', 'dbu_cost_per_month', 'cost_per_month'
+]].copy()
+
+summary_display_df['dbu_per_hour'] = summary_display_df['dbu_per_hour'].round(4)
+summary_display_df['price_per_dbu'] = summary_display_df['price_per_dbu'].round(6)
+summary_display_df['cost_per_month'] = summary_display_df['cost_per_month'].round(2)
 
 print("=" * 180)
-print("DBSQL CLASSIC - COST CALCULATION SUMMARY")
+print("DBSQL CLASSIC - COMPREHENSIVE VM PAYMENT OPTION TESTING")
 print("=" * 180)
-print(tabulate(results_df.head(20), headers='keys', tablefmt='grid', showindex=False, maxcolwidths=30))
-display(results_df)
+print(tabulate(summary_display_df.head(30), headers='keys', tablefmt='grid', showindex=False, maxcolwidths=30))
+display(summary_display_df)
 
 # COMMAND ----------
 
