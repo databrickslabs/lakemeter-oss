@@ -152,8 +152,8 @@ for scenario in test_scenarios:
     line_item_id = str(uuid.uuid4())
     line_item_ids.append(line_item_id)
     estimate_key = f"{scenario['cloud']}_{scenario['region']}_{scenario['tier']}"
-    execute_query("""INSERT INTO lakemeter.line_items (line_item_id, estimate_id, display_order, workload_name, workload_type, serverless_enabled, photon_enabled, vector_search_mode, serverless_product, serverless_size, runs_per_day, avg_runtime_minutes, days_per_month, vm_pricing_tier, vm_payment_option, notes, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
-                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'VECTOR_SEARCH', True, True, scenario['vector_search_mode'], 'vector_search', scenario['serverless_size'], scenario['runs_per_day'], scenario['avg_runtime_minutes'], scenario['days_per_month'], None, None, scenario['notes'], datetime.now(), datetime.now()), fetch=False)
+    execute_query("""INSERT INTO lakemeter.line_items (line_item_id, estimate_id, display_order, workload_name, workload_type, serverless_enabled, photon_enabled, vector_search_mode, vector_capacity_millions, serverless_product, serverless_size, runs_per_day, avg_runtime_minutes, days_per_month, vm_pricing_tier, vm_payment_option, notes, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
+                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'VECTOR_SEARCH', True, True, scenario['vector_search_mode'], scenario['vector_capacity_millions'], 'vector_search', scenario['serverless_size'], scenario['runs_per_day'], scenario['avg_runtime_minutes'], scenario['days_per_month'], None, None, scenario['notes'], datetime.now(), datetime.now()), fetch=False)
 
 print(f"✅ Created {len(line_item_ids)} line items")
 
@@ -170,6 +170,7 @@ SELECT
     c.tier,
     -- Configuration
     c.vector_search_mode,
+    c.vector_capacity_millions,
     c.serverless_product,
     c.serverless_size,
     c.serverless_enabled,
@@ -201,31 +202,26 @@ for col in ['dbu_per_hour', 'price_per_dbu', 'vm_cost_per_month', 'dbu_cost_per_
     if col in results_df.columns:
         results_df[col] = pd.to_numeric(results_df[col], errors='coerce')
 
-# Extract vector capacity from notes and calculate units
-# Notes format: "Vector Search {mode} mode - {capacity}M vectors ({label})"
-def extract_vector_info(row):
-    try:
-        notes = row['notes']
-        # Extract capacity (e.g., "10M vectors" -> 10)
-        capacity_str = notes.split(' - ')[1].split('M vectors')[0]
-        capacity_millions = int(capacity_str)
-        
-        # Calculate units based on mode
-        mode = row['vector_search_mode']
-        if mode == 'standard':
-            # Standard: 2M vectors per unit
-            units = capacity_millions / 2
-        else:  # storage_optimized
-            # Storage-optimized: 64M vectors per unit
-            units = capacity_millions / 64
-        
-        return capacity_millions, units
-    except:
-        return None, None
+# Calculate vector units from capacity (with CEILING to match view logic)
+import math
 
-results_df[['vector_capacity_millions', 'vector_units']] = results_df.apply(
-    lambda row: pd.Series(extract_vector_info(row)), axis=1
-)
+def calculate_vector_units(row):
+    capacity = row['vector_capacity_millions']
+    mode = row['vector_search_mode']
+    
+    if pd.isna(capacity) or capacity == 0:
+        return 0
+    
+    if mode == 'standard':
+        # Standard: 2M vectors per unit, round up
+        return math.ceil(capacity / 2.0)
+    elif mode == 'storage_optimized':
+        # Storage-optimized: 64M vectors per unit, round up
+        return math.ceil(capacity / 64.0)
+    else:
+        return 0
+
+results_df['vector_units'] = results_df.apply(calculate_vector_units, axis=1)
 
 results_df['cost_per_month'] = results_df['cost_per_month'].round(2)
 results_df['vector_units'] = results_df['vector_units'].round(2)

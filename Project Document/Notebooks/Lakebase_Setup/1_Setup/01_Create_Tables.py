@@ -327,6 +327,7 @@ CREATE TABLE lakemeter.line_items (
     serverless_product VARCHAR(50),
     serverless_size VARCHAR(50),
     vector_search_mode VARCHAR(50),
+    vector_capacity_millions INT,  -- Vector Search: capacity in millions of vectors
     
     -- FMAPI config
     fmapi_provider VARCHAR(50),
