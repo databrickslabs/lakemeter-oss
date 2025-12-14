@@ -155,7 +155,9 @@ SELECT
     c.price_per_dbu as dbu_price,
     c.product_type_for_pricing,
     c.dbu_cost_per_month,
-    -- Total (serverless has no VM costs)
+    -- VM Costs (should be $0 for serverless)
+    c.vm_cost_per_month,
+    -- Total (DBU only for serverless)
     c.cost_per_month,
     c.notes
 FROM lakemeter.v_line_items_with_costs c
