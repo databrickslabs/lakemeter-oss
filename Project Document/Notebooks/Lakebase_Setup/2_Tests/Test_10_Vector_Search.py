@@ -25,17 +25,32 @@
 # MAGIC - **Vector Capacities:** 3 sizes per mode (small, medium, large)
 # MAGIC - **Usage:** 24 runs/day (always-on), 60 min/run, 30 days/month
 # MAGIC 
-# MAGIC **Test Matrix:**
-# MAGIC - **AWS:** 2 regions × 2 tiers × 2 modes × 3 sizes = **24 scenarios** (STANDARD excluded)
-# MAGIC - **AZURE:** 2 regions × 1 tier × 2 modes × 3 sizes = **12 scenarios** (PREMIUM only)
-# MAGIC - **GCP:** 2 regions × 2 tiers × 2 modes × 3 sizes = **24 scenarios**
-# MAGIC - **TOTAL: ~60 scenarios** (plus STANDARD tier validation)
+# MAGIC **Test Matrix (Including Edge Cases):**
+# MAGIC - **Standard mode:** 6 sizes (1M, 3M, 5M, 10M, 50M, 100M) - includes fractional units
+# MAGIC - **Storage-optimized mode:** 6 sizes (1M, 100M, 200M, 64M, 256M, 500M) - includes fractional units
+# MAGIC - **AWS:** 2 regions × 3 tiers × 2 modes × 6 sizes = **72 scenarios**
+# MAGIC - **AZURE:** 2 regions × 2 tiers × 2 modes × 6 sizes = **48 scenarios** (no ENTERPRISE)
+# MAGIC - **GCP:** 2 regions × 3 tiers × 2 modes × 6 sizes = **72 scenarios**
+# MAGIC - **TOTAL: ~192 scenarios** (includes edge cases for CEILING validation)
+# MAGIC 
+# MAGIC **Edge Cases Tested (CEILING Validation):**
+# MAGIC 
+# MAGIC | Mode | Capacity | Raw Calc | Expected Units | Validation |
+# MAGIC |------|----------|----------|----------------|------------|
+# MAGIC | Standard | 1M | 1 / 2 = 0.5 | 1 | CEILING rounds up |
+# MAGIC | Standard | 3M | 3 / 2 = 1.5 | 2 | ✅ CEILING rounds up |
+# MAGIC | Standard | 5M | 5 / 2 = 2.5 | 3 | ✅ CEILING rounds up |
+# MAGIC | Storage-opt | 1M | 1 / 64 = 0.015 | 1 | CEILING rounds up |
+# MAGIC | Storage-opt | 100M | 100 / 64 = 1.56 | 2 | ✅ CEILING rounds up |
+# MAGIC | Storage-opt | 200M | 200 / 64 = 3.125 | 4 | ✅ CEILING rounds up |
+# MAGIC | Storage-opt | 500M | 500 / 64 = 7.81 | 8 | ✅ CEILING rounds up |
 # MAGIC 
 # MAGIC **Validation:**
 # MAGIC - ✅ STANDARD tier: $0 costs (serverless not available)
 # MAGIC - ✅ PREMIUM/ENTERPRISE: Positive DBU costs, $0 VM costs
 # MAGIC - ✅ storage_optimized mode: Lower DBU rate than standard mode
-# MAGIC - ✅ Vector capacity correctly reflected in test notes
+# MAGIC - ✅ Vector capacity correctly reflected and units properly rounded
+# MAGIC - ✅ All edge cases validate CEILING logic is working
 
 # COMMAND ----------
 
@@ -97,19 +112,29 @@ print("=" * 100)
 test_scenarios = []
 scenario_id = 1
 
-# Vector capacity configurations:
+# Vector capacity configurations (including edge cases for CEILING validation):
 # - Standard mode: 2M vectors per unit
 # - Storage-optimized mode: 64M vectors per unit
 vector_configs = {
     'standard': [
-        {'capacity_millions': 10, 'label': 'Small'},   # 10M vectors (5 units)
-        {'capacity_millions': 50, 'label': 'Medium'},  # 50M vectors (25 units)
-        {'capacity_millions': 100, 'label': 'Large'},  # 100M vectors (50 units)
+        # Edge cases to test CEILING rounding
+        {'capacity_millions': 1, 'label': 'Edge-Tiny', 'expected_units': 1},     # 1M → CEILING(0.5) = 1
+        {'capacity_millions': 3, 'label': 'Edge-Odd1', 'expected_units': 2},     # 3M → CEILING(1.5) = 2 ✅ ROUNDS UP
+        {'capacity_millions': 5, 'label': 'Edge-Odd2', 'expected_units': 3},     # 5M → CEILING(2.5) = 3 ✅ ROUNDS UP
+        # Normal sizes
+        {'capacity_millions': 10, 'label': 'Small', 'expected_units': 5},        # 10M → 5 units (exact)
+        {'capacity_millions': 50, 'label': 'Medium', 'expected_units': 25},      # 50M → 25 units (exact)
+        {'capacity_millions': 100, 'label': 'Large', 'expected_units': 50},      # 100M → 50 units (exact)
     ],
     'storage_optimized': [
-        {'capacity_millions': 64, 'label': 'Small'},    # 64M vectors (1 unit)
-        {'capacity_millions': 256, 'label': 'Medium'},  # 256M vectors (4 units)
-        {'capacity_millions': 512, 'label': 'Large'},   # 512M vectors (8 units)
+        # Edge cases to test CEILING rounding
+        {'capacity_millions': 1, 'label': 'Edge-Tiny', 'expected_units': 1},     # 1M → CEILING(0.015) = 1
+        {'capacity_millions': 100, 'label': 'Edge-Odd1', 'expected_units': 2},   # 100M → CEILING(1.56) = 2 ✅ ROUNDS UP
+        {'capacity_millions': 200, 'label': 'Edge-Odd2', 'expected_units': 4},   # 200M → CEILING(3.125) = 4 ✅ ROUNDS UP
+        # Normal sizes
+        {'capacity_millions': 64, 'label': 'Small', 'expected_units': 1},        # 64M → 1 unit (exact)
+        {'capacity_millions': 256, 'label': 'Medium', 'expected_units': 4},      # 256M → 4 units (exact)
+        {'capacity_millions': 500, 'label': 'Large', 'expected_units': 8},       # 500M → CEILING(7.8) = 8 ✅ ROUNDS UP
     ]
 }
 
@@ -259,7 +284,7 @@ if len(premium_enterprise_results) > 0:
 
 # Show vector unit breakdown by mode
 print("\n" + "=" * 150)
-print("VECTOR UNIT VALIDATION")
+print("VECTOR UNIT VALIDATION (INCLUDING CEILING EDGE CASES)")
 print("=" * 150)
 mode_summary = results_df[results_df['tier'] != 'STANDARD'].groupby(['vector_search_mode', 'vector_capacity_millions']).agg({
     'vector_units': 'first',
@@ -269,11 +294,59 @@ mode_summary = results_df[results_df['tier'] != 'STANDARD'].groupby(['vector_sea
 print(tabulate(mode_summary, headers='keys', tablefmt='grid'))
 
 print("\n📊 Vector Capacity Formula:")
-print("  • Standard mode: 2M vectors per unit → Units = Capacity (M) / 2")
-print("  • Storage-optimized mode: 64M vectors per unit → Units = Capacity (M) / 64")
+print("  • Standard mode: 2M vectors per unit → Units = CEILING(Capacity / 2)")
+print("  • Storage-optimized mode: 64M vectors per unit → Units = CEILING(Capacity / 64)")
+
+# Validate edge cases specifically (CEILING logic)
+print("\n" + "=" * 150)
+print("EDGE CASE VALIDATION (CEILING ROUNDING)")
+print("=" * 150)
+
+edge_cases_validation = []
+for mode, configs in vector_configs.items():
+    for config in configs:
+        capacity = config['capacity_millions']
+        expected_units = config['expected_units']
+        
+        # Get actual units from results (take first non-STANDARD tier result)
+        actual_result = results_df[
+            (results_df['vector_capacity_millions'] == capacity) & 
+            (results_df['vector_search_mode'] == mode) &
+            (results_df['tier'] != 'STANDARD')
+        ]
+        
+        if len(actual_result) > 0:
+            actual_units = actual_result.iloc[0]['vector_units']
+            match = '✅ PASS' if actual_units == expected_units else '❌ FAIL'
+            
+            # Calculate what the raw division would be
+            divisor = 2 if mode == 'standard' else 64
+            raw_calc = capacity / divisor
+            
+            edge_cases_validation.append({
+                'mode': mode,
+                'capacity_M': capacity,
+                'raw_calc': round(raw_calc, 2),
+                'expected_units': expected_units,
+                'actual_units': actual_units,
+                'status': match
+            })
+
+edge_cases_df = pd.DataFrame(edge_cases_validation)
+print(tabulate(edge_cases_df, headers='keys', tablefmt='grid', showindex=False))
+
+# Assert all edge cases pass
+failed_edge_cases = edge_cases_df[edge_cases_df['status'] == '❌ FAIL']
+if len(failed_edge_cases) > 0:
+    print(f"\n❌ FAIL: {len(failed_edge_cases)} edge cases failed!")
+    print(tabulate(failed_edge_cases, headers='keys', tablefmt='grid', showindex=False))
+    assert False, "Edge case validation failed"
+else:
+    print(f"\n✅ All {len(edge_cases_df)} edge cases passed! CEILING logic is correct!")
 
 print(f"\n✅ All {len(test_scenarios)} Vector Search scenarios validated!")
 print("✅ VM costs are $0 (correct for serverless)")
-print("✅ Vector units calculated and displayed correctly")
+print("✅ Vector units calculated correctly with CEILING")
+print("✅ Edge cases (fractional units) round up correctly")
 
 # COMMAND ----------
