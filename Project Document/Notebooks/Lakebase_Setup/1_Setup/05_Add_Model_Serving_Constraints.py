@@ -224,37 +224,69 @@ print("=" * 80)
 print("Testing trigger with invalid cloud/GPU combination...")
 print("(This should fail with trigger exception)")
 
-# Test the trigger
+# Test the trigger with proper setup
 test_trigger_sql = """
--- Create a test estimate
-INSERT INTO lakemeter.estimates (estimate_id, owner_user_id, estimate_name, cloud, region, tier, created_at, updated_at)
-VALUES (gen_random_uuid(), gen_random_uuid(), 'Test Trigger', 'AZURE', 'eastus', 'PREMIUM', NOW(), NOW());
+-- Step 1: Create a test user
+INSERT INTO lakemeter.users (user_id, full_name, email, role, is_active, created_at, updated_at)
+VALUES ('00000000-0000-0000-0000-000000000001', 'Test User', 'test_trigger@example.com', 'admin', true, NOW(), NOW())
+ON CONFLICT (user_id) DO NOTHING;
 
--- Try to insert invalid GPU type (AWS-specific GPU on AZURE cloud)
--- This should FAIL with trigger exception
+-- Step 2: Create a test estimate (AZURE cloud)
+INSERT INTO lakemeter.estimates (estimate_id, owner_user_id, estimate_name, cloud, region, tier, created_at, updated_at)
+VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Test GPU Trigger', 'AZURE', 'eastus', 'PREMIUM', NOW(), NOW())
+ON CONFLICT (estimate_id) DO NOTHING;
+
+-- Step 3: Try to insert INVALID GPU type (AWS-specific GPU on AZURE cloud)
+-- This should FAIL with trigger exception: "Invalid GPU type gpu_small_t4 for cloud AZURE"
 INSERT INTO lakemeter.line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type, 
-    cloud, serverless_enabled, photon_enabled, serverless_product, serverless_size,
+    serverless_enabled, photon_enabled, serverless_product, serverless_size,
     runs_per_day, avg_runtime_minutes, days_per_month, created_at, updated_at
 ) VALUES (
     gen_random_uuid(),
-    (SELECT estimate_id FROM lakemeter.estimates WHERE estimate_name = 'Test Trigger' LIMIT 1),
+    '00000000-0000-0000-0000-000000000002',
     1, 'Test Invalid GPU', 'MODEL_SERVING',
-    'AZURE', TRUE, TRUE, 'model_serving', 'gpu_small_t4',  -- AWS GPU on AZURE ❌
+    TRUE, TRUE, 'model_serving', 'gpu_small_t4',  -- AWS-only GPU on AZURE ❌
     24, 60, 30, NOW(), NOW()
 );
 """
 
-result = execute_sql(test_trigger_sql, "Test trigger", show_error=True)
+result = execute_sql(test_trigger_sql, "Test trigger with invalid GPU", show_error=True)
 
 if not result:
-    print("\n✅ Trigger is working! (Test insertion failed as expected)")
-    print("   • Invalid GPU type for cloud was rejected")
+    print("\n✅ Trigger is working! (Invalid GPU insertion failed as expected)")
+    print("   • AWS GPU 'gpu_small_t4' was correctly rejected for AZURE cloud")
 else:
-    print("\n⚠️  Trigger may not be active (Test insertion succeeded)")
-    print("   • Cleaning up test data...")
-    cleanup_sql = "DELETE FROM lakemeter.estimates WHERE estimate_name = 'Test Trigger';"
-    execute_sql(cleanup_sql, "Cleanup test data", show_error=False)
+    print("\n⚠️  Trigger may not be active (Invalid GPU insertion succeeded)")
+    
+    # If trigger didn't fire, test with valid GPU to confirm trigger isn't blocking everything
+    print("\n   Testing with VALID GPU to confirm trigger allows valid data...")
+    test_valid_sql = """
+    INSERT INTO lakemeter.line_items (
+        line_item_id, estimate_id, display_order, workload_name, workload_type, 
+        serverless_enabled, photon_enabled, serverless_product, serverless_size,
+        runs_per_day, avg_runtime_minutes, days_per_month, created_at, updated_at
+    ) VALUES (
+        gen_random_uuid(),
+        '00000000-0000-0000-0000-000000000002',
+        2, 'Test Valid GPU', 'MODEL_SERVING',
+        TRUE, TRUE, 'model_serving', 'cpu',  -- Valid for all clouds ✅
+        24, 60, 30, NOW(), NOW()
+    );
+    """
+    valid_result = execute_sql(test_valid_sql, "Test with valid GPU (cpu)", show_error=True)
+    if valid_result:
+        print("   ✅ Valid GPU 'cpu' was accepted (trigger allows valid data)")
+    
+# Cleanup test data
+print("\n🧹 Cleaning up test data...")
+cleanup_sql = """
+DELETE FROM lakemeter.line_items WHERE estimate_id = '00000000-0000-0000-0000-000000000002';
+DELETE FROM lakemeter.estimates WHERE estimate_id = '00000000-0000-0000-0000-000000000002';
+DELETE FROM lakemeter.users WHERE user_id = '00000000-0000-0000-0000-000000000001';
+"""
+execute_sql(cleanup_sql, "Cleanup test data", show_error=False)
+print("✅ Test data cleaned up")
 
 # COMMAND ----------
 
