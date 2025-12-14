@@ -235,65 +235,65 @@ print("=" * 80)
 print("🧪 TESTING TRIGGER (Simplified Validation)")
 print("=" * 80)
 
-print("Testing trigger with invalid GPU type (not in reference table)...")
-print("(This should fail with trigger exception)")
+# Test 1: Invalid GPU type (should fail)
+print("\n📋 Test 1: Invalid GPU Type (should be rejected)")
+print("-" * 80)
 
-# Test the trigger with proper setup
-test_trigger_sql = """
--- Step 1: Create a test user
+# Create test data first
+setup_sql = """
 INSERT INTO lakemeter.users (user_id, full_name, email, role, is_active, created_at, updated_at)
 VALUES ('00000000-0000-0000-0000-000000000001', 'Test User', 'test_trigger@example.com', 'admin', true, NOW(), NOW())
 ON CONFLICT (user_id) DO NOTHING;
 
--- Step 2: Create a test estimate
 INSERT INTO lakemeter.estimates (estimate_id, owner_user_id, estimate_name, cloud, region, tier, created_at, updated_at)
 VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Test GPU Trigger', 'AWS', 'us-east-1', 'PREMIUM', NOW(), NOW())
 ON CONFLICT (estimate_id) DO NOTHING;
+"""
+execute_sql(setup_sql, "Setup test data", show_error=False)
 
--- Step 3: Try to insert COMPLETELY INVALID GPU type (typo/doesn't exist)
--- This should FAIL with trigger exception: "Invalid GPU type gpu_invalid_typo"
+# Try invalid GPU
+test_invalid_sql = """
 INSERT INTO lakemeter.line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type, 
     serverless_enabled, photon_enabled, serverless_product, serverless_size,
     runs_per_day, avg_runtime_minutes, days_per_month, created_at, updated_at
 ) VALUES (
-    gen_random_uuid(),
-    '00000000-0000-0000-0000-000000000002',
+    gen_random_uuid(), '00000000-0000-0000-0000-000000000002',
     1, 'Test Invalid GPU', 'MODEL_SERVING',
-    TRUE, TRUE, 'model_serving', 'gpu_invalid_typo',  -- Doesn't exist in table ❌
+    TRUE, TRUE, 'model_serving', 'gpu_invalid_typo',
     24, 60, 30, NOW(), NOW()
 );
 """
+result_invalid = execute_sql(test_invalid_sql, "Insert with invalid GPU 'gpu_invalid_typo'", show_error=True)
 
-result = execute_sql(test_trigger_sql, "Test trigger with invalid GPU", show_error=True)
-
-if not result:
-    print("\n✅ Trigger is working! (Invalid GPU insertion failed as expected)")
-    print("   • GPU type 'gpu_invalid_typo' was correctly rejected (not in reference table)")
+if not result_invalid:
+    print("✅ PASS: Invalid GPU was correctly rejected by trigger!")
 else:
-    print("\n⚠️  Trigger may not be active (Invalid GPU insertion succeeded)")
-    
-# Test with valid GPU to confirm trigger allows valid data
-print("\n   Testing with VALID GPU to confirm trigger allows valid data...")
+    print("❌ FAIL: Invalid GPU was accepted (trigger not working)")
+
+# Test 2: Valid GPU type (should succeed)
+print("\n📋 Test 2: Valid GPU Type (should be accepted)")
+print("-" * 80)
+
 test_valid_sql = """
 INSERT INTO lakemeter.line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type, 
     serverless_enabled, photon_enabled, serverless_product, serverless_size,
     runs_per_day, avg_runtime_minutes, days_per_month, created_at, updated_at
 ) VALUES (
-    gen_random_uuid(),
-    '00000000-0000-0000-0000-000000000002',
+    gen_random_uuid(), '00000000-0000-0000-0000-000000000002',
     2, 'Test Valid GPU', 'MODEL_SERVING',
-    TRUE, TRUE, 'model_serving', 'cpu',  -- Valid (exists in table) ✅
+    TRUE, TRUE, 'model_serving', 'cpu',
     24, 60, 30, NOW(), NOW()
 );
 """
-valid_result = execute_sql(test_valid_sql, "Test with valid GPU (cpu)", show_error=True)
-if valid_result:
-    print("   ✅ Valid GPU 'cpu' was accepted (trigger allows valid data)")
+result_valid = execute_sql(test_valid_sql, "Insert with valid GPU 'cpu'", show_error=True)
+
+if result_valid:
+    print("✅ PASS: Valid GPU was correctly accepted by trigger!")
 else:
-    print("   ❌ Valid GPU 'cpu' was rejected (trigger may be too strict)")
-    
+    print("❌ FAIL: Valid GPU was rejected (trigger too strict or other error)")
+
 # Cleanup test data
 print("\n🧹 Cleaning up test data...")
 cleanup_sql = """
@@ -302,7 +302,25 @@ DELETE FROM lakemeter.estimates WHERE estimate_id = '00000000-0000-0000-0000-000
 DELETE FROM lakemeter.users WHERE user_id = '00000000-0000-0000-0000-000000000001';
 """
 execute_sql(cleanup_sql, "Cleanup test data", show_error=False)
-print("✅ Test data cleaned up")
+
+# Final summary
+print("\n" + "=" * 80)
+print("🎯 TRIGGER VALIDATION SUMMARY")
+print("=" * 80)
+if not result_invalid and result_valid:
+    print("✅ Trigger is working correctly!")
+    print("   • Invalid GPU types are rejected ✅")
+    print("   • Valid GPU types are accepted ✅")
+elif not result_invalid and not result_valid:
+    print("⚠️  Trigger rejected both invalid AND valid GPUs")
+    print("   • May be too strict - check trigger logic")
+elif result_invalid and result_valid:
+    print("❌ Trigger is NOT working!")
+    print("   • Both invalid and valid GPUs were accepted")
+else:
+    print("⚠️  Mixed results - trigger behavior unclear")
+
+print("=" * 80)
 
 # COMMAND ----------
 
