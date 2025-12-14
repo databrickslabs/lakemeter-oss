@@ -18,25 +18,12 @@
 
 # COMMAND ----------
 
+# Load Lakebase configuration (from same folder)
+%run ./00_Lakebase_Config
+
+# COMMAND ----------
+
 import psycopg2
-
-# Lakebase connection parameters
-LAKEBASE_HOST = "instance-364041a4-0aae-44df-bbc6-37ac84169dfe.database.cloud.databricks.com"
-LAKEBASE_PORT = 5432
-LAKEBASE_DB = "lakemeter_pricing"
-LAKEBASE_USER = "lakemeter_sync_role"
-LAKEBASE_PASSWORD = "***REMOVED_DATABASE_CREDENTIAL***"
-
-def get_lakebase_connection():
-    """Creates and returns a PostgreSQL connection"""
-    return psycopg2.connect(
-        host=LAKEBASE_HOST,
-        port=LAKEBASE_PORT,
-        database=LAKEBASE_DB,
-        user=LAKEBASE_USER,
-        password=LAKEBASE_PASSWORD,
-        sslmode='require'
-    )
 
 def execute_sql(sql, description="", show_error=True):
     """Execute SQL with error handling"""
