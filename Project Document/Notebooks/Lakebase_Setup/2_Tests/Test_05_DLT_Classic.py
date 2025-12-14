@@ -316,9 +316,10 @@ ORDER BY c.display_order;
 
 results_df = execute_query(query_results_sql, (line_item_ids,))
 
-numeric_columns = ['display_order', 'num_workers', 'runs_per_day', 'avg_runtime_minutes', 'hours_per_month',
+numeric_columns = ['display_order', 'num_workers', 'runs_per_day', 'avg_runtime_minutes', 'days_per_month', 'hours_per_month',
                    'driver_dbu_rate', 'worker_dbu_rate', 'photon_multiplier', 'dbu_per_hour', 'dbu_per_month',
-                   'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'vm_cost_per_month',
+                   'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'total_worker_vm_cost_per_hour', 
+                   'total_vm_cost_per_hour', 'driver_vm_cost_per_month', 'total_worker_vm_cost_per_month', 'vm_cost_per_month',
                    'dbu_price', 'dbu_cost_per_month', 'cost_per_month']
 for col in numeric_columns:
     if col in results_df.columns:
@@ -343,24 +344,43 @@ print(summary_df.head(20).to_string())
 
 # COMMAND ----------
 
-# Display results
+# Display results - COMPREHENSIVE VIEW (like Test_01)
 summary_display_df = results_df[[
     'workload_name', 'cloud', 'region', 'tier',
     'dlt_edition', 'dlt_pipeline_mode', 'photon_enabled',
-    'hours_per_month', 'dbu_per_hour', 'dbu_price',
-    'vm_cost_per_month', 'dbu_cost_per_month', 'cost_per_month'
+    # Node Configuration
+    'driver_node_type', 'worker_node_type', 'num_workers',
+    # Pricing Tiers
+    'driver_pricing_tier', 'worker_pricing_tier',
+    # Usage
+    'hours_per_month',
+    # DBU Calculation
+    'dbu_per_hour', 'dbu_price',
+    # VM Cost Breakdown (Detailed)
+    'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour',
+    'total_worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
+    'driver_vm_cost_per_month', 'total_worker_vm_cost_per_month', 'vm_cost_per_month',
+    # Total Costs
+    'dbu_cost_per_month', 'cost_per_month'
 ]].copy()
 
+# Round numeric columns
 summary_display_df['dbu_per_hour'] = summary_display_df['dbu_per_hour'].round(4)
 summary_display_df['dbu_price'] = summary_display_df['dbu_price'].round(6)
+summary_display_df['driver_vm_cost_per_hour'] = summary_display_df['driver_vm_cost_per_hour'].round(4)
+summary_display_df['worker_vm_cost_per_hour'] = summary_display_df['worker_vm_cost_per_hour'].round(4)
+summary_display_df['total_worker_vm_cost_per_hour'] = summary_display_df['total_worker_vm_cost_per_hour'].round(4)
+summary_display_df['total_vm_cost_per_hour'] = summary_display_df['total_vm_cost_per_hour'].round(4)
+summary_display_df['driver_vm_cost_per_month'] = summary_display_df['driver_vm_cost_per_month'].round(2)
+summary_display_df['total_worker_vm_cost_per_month'] = summary_display_df['total_worker_vm_cost_per_month'].round(2)
 summary_display_df['vm_cost_per_month'] = summary_display_df['vm_cost_per_month'].round(2)
 summary_display_df['dbu_cost_per_month'] = summary_display_df['dbu_cost_per_month'].round(2)
 summary_display_df['cost_per_month'] = summary_display_df['cost_per_month'].round(2)
 
-print("=" * 200)
-print("DLT CLASSIC - COST CALCULATION SUMMARY")
-print("=" * 200)
-print(tabulate(summary_display_df.head(20), headers='keys', tablefmt='grid', showindex=False, maxcolwidths=25))
+print("=" * 250)
+print("DLT CLASSIC - COMPREHENSIVE COST CALCULATION SUMMARY (with Node Details & VM Cost Breakdown)")
+print("=" * 250)
+print(tabulate(summary_display_df.head(20), headers='keys', tablefmt='grid', showindex=False, maxcolwidths=30))
 
 display(summary_display_df)
 
