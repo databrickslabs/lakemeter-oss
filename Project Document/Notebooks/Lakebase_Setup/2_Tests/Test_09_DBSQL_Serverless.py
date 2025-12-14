@@ -9,24 +9,24 @@
 # MAGIC - **Instant startup** with auto-scaling
 # MAGIC - **No VM costs** (serverless compute)
 # MAGIC - **Photon always enabled** (required for serverless)
-# MAGIC - **Not available in STANDARD tier** (PREMIUM/ENTERPRISE only)
+# MAGIC - **Available in ALL tiers** (STANDARD, PREMIUM, ENTERPRISE)
 # MAGIC 
 # MAGIC **Test Scenarios:**
 # MAGIC - **Clouds:** AWS, Azure, GCP
 # MAGIC - **Regions:** 2 per cloud (1 US + 1 Europe)
-# MAGIC - **Tiers:** STANDARD (expect $0), PREMIUM, ENTERPRISE
+# MAGIC - **Tiers:** STANDARD, PREMIUM, ENTERPRISE (all tiers supported)
 # MAGIC - **Warehouse Sizes:** Small, Medium, Large, X-Large
 # MAGIC - **Usage Pattern:** 12 runs/day, 60 min/run, 30 days/month
 # MAGIC 
 # MAGIC **Test Matrix:**
-# MAGIC - **AWS:** 2 regions × 2 tiers × 4 sizes = **16 scenarios** (STANDARD excluded from count)
-# MAGIC - **AZURE:** 2 regions × 1 tier × 4 sizes = **8 scenarios** (PREMIUM only, no ENTERPRISE)
-# MAGIC - **GCP:** 2 regions × 2 tiers × 4 sizes = **16 scenarios**
-# MAGIC - **TOTAL: ~40 scenarios** (plus STANDARD tier validation scenarios)
+# MAGIC - **AWS:** 2 regions × 3 tiers × 4 sizes = **24 scenarios**
+# MAGIC - **AZURE:** 2 regions × 2 tiers × 4 sizes = **16 scenarios** (PREMIUM only, no ENTERPRISE)
+# MAGIC - **GCP:** 2 regions × 3 tiers × 4 sizes = **24 scenarios**
+# MAGIC - **TOTAL: ~64 scenarios**
 # MAGIC 
 # MAGIC **Validation:**
-# MAGIC - ✅ STANDARD tier: $0 costs (serverless not available)
-# MAGIC - ✅ PREMIUM/ENTERPRISE: Positive DBU costs, $0 VM costs
+# MAGIC - ✅ All tiers (STANDARD, PREMIUM, ENTERPRISE): Positive DBU costs
+# MAGIC - ✅ VM costs: $0 for all scenarios (serverless has no VMs)
 # MAGIC - ✅ Photon automatically enabled for all scenarios
 
 # COMMAND ----------
@@ -181,18 +181,24 @@ display(results_df)
 assert results_df['vm_cost_per_month'].sum() == 0, "❌ VM cost should be $0"
 assert len(results_df) == len(test_scenarios), f"❌ Missing scenarios"
 
-# STANDARD tier should have $0 costs (serverless not available)
-standard_tier_results = results_df[results_df['tier'] == 'STANDARD']
-if len(standard_tier_results) > 0:
-    assert (standard_tier_results['cost_per_month'] == 0).all(), "❌ FAIL: STANDARD tier should have $0 costs (serverless not available)"
-    print(f"   ✅ All {len(standard_tier_results)} STANDARD tier scenarios have $0 costs (expected - serverless N/A)")
+# DBSQL Serverless is available in ALL tiers (STANDARD, PREMIUM, ENTERPRISE)
+# All tiers should have positive DBU costs
+assert (results_df['cost_per_month'] > 0).all(), "❌ FAIL: All DBSQL Serverless scenarios should have positive costs"
+print(f"✅ All {len(test_scenarios)} scenarios have positive costs")
 
-# PREMIUM/ENTERPRISE tiers should have positive costs
-premium_enterprise_results = results_df[results_df['tier'].isin(['PREMIUM', 'ENTERPRISE'])]
-if len(premium_enterprise_results) > 0:
-    assert (premium_enterprise_results['cost_per_month'] > 0).all(), "❌ FAIL: PREMIUM/ENTERPRISE should have positive costs"
-    print(f"   ✅ All {len(premium_enterprise_results)} PREMIUM/ENTERPRISE scenarios have positive costs")
-print(f"✅ All {len(test_scenarios)} DBSQL Serverless scenarios validated!")
+# Validate by tier
+tier_summary = results_df.groupby('tier').agg({
+    'cost_per_month': ['count', 'mean', 'min', 'max'],
+    'dbu_cost_per_month': 'mean'
+}).round(2)
+print("\n📊 Cost Summary by Tier:")
+print(tabulate(tier_summary, headers='keys', tablefmt='grid'))
+
+print(f"\n✅ All {len(test_scenarios)} DBSQL Serverless scenarios validated!")
+print(f"   • STANDARD tier: {len(results_df[results_df['tier'] == 'STANDARD'])} scenarios")
+print(f"   • PREMIUM tier: {len(results_df[results_df['tier'] == 'PREMIUM'])} scenarios")
+print(f"   • ENTERPRISE tier: {len(results_df[results_df['tier'] == 'ENTERPRISE'])} scenarios")
 print("✅ VM costs are $0 (correct for serverless)")
+print("✅ DBU costs are positive for all tiers")
 
 # COMMAND ----------
