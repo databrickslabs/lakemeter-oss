@@ -2,15 +2,43 @@
 # MAGIC %md
 # MAGIC # Test Case: FMAPI Proprietary Models (OpenAI, Anthropic, Google)
 # MAGIC 
-# MAGIC **Proprietary Models served by Databricks:**
-# MAGIC - **OpenAI:** gpt-4o, gpt-4o-mini
-# MAGIC - **Anthropic:** claude-sonnet-4-20250514, claude-haiku-4
-# MAGIC - **Google:** gemini-2.5-pro-preview-05-06
+# MAGIC **Objective:** Validate token-based cost calculations for proprietary foundation models served by Databricks
 # MAGIC 
-# MAGIC **Pricing factors:**
-# MAGIC - endpoint_type: global, in_geo
-# MAGIC - context_length: standard, long
-# MAGIC - rate_type: input_token, output_token, cache_read, cache_write
+# MAGIC **FMAPI Proprietary Characteristics:**
+# MAGIC - **Pricing model:** Token-based with multiple rate types
+# MAGIC - **Models tested:**
+# MAGIC   - **OpenAI:** gpt-4o, gpt-4o-mini
+# MAGIC   - **Anthropic:** claude-sonnet-4-20250514, claude-haiku-4
+# MAGIC   - **Google:** gemini-2.5-pro-preview-05-06
+# MAGIC - **Pricing factors:**
+# MAGIC   - **endpoint_type:** global (cross-region), in_geo (regional)
+# MAGIC   - **context_length:** standard, long
+# MAGIC   - **rate_type:** input_token, output_token, cache_read, cache_write
+# MAGIC - **Serverless-only** (no VM costs)
+# MAGIC - **Models hosted by providers, served by Databricks**
+# MAGIC 
+# MAGIC **Test Scenarios:**
+# MAGIC - **Clouds:** AWS, Azure, GCP
+# MAGIC - **Regions:** 2 per cloud (1 US + 1 Europe)
+# MAGIC - **Tiers:** STANDARD, PREMIUM (ENTERPRISE not commonly used for FMAPI)
+# MAGIC - **Models:** 5 proprietary models (2 OpenAI, 2 Anthropic, 1 Google)
+# MAGIC - **Endpoint Types:** global, in_geo
+# MAGIC - **Token Volumes:** 3 usage patterns
+# MAGIC   - Light: 1M input, 500K output tokens/month
+# MAGIC   - Medium: 10M input, 5M output tokens/month
+# MAGIC   - Heavy: 100M input, 50M output tokens/month
+# MAGIC 
+# MAGIC **Test Matrix:**
+# MAGIC - **AWS:** 2 regions × 2 tiers × 5 models × 2 endpoints × 3 volumes = **120 scenarios**
+# MAGIC - **AZURE:** 2 regions × 2 tiers × 5 models × 2 endpoints × 3 volumes = **120 scenarios**
+# MAGIC - **GCP:** 2 regions × 2 tiers × 5 models × 2 endpoints × 3 volumes = **120 scenarios**
+# MAGIC - **TOTAL: ~360 scenarios**
+# MAGIC 
+# MAGIC **Validation:**
+# MAGIC - ✅ Different DBU rates by provider and model
+# MAGIC - ✅ Endpoint type affects pricing (global vs in_geo)
+# MAGIC - ✅ Input + output token costs calculated correctly
+# MAGIC - ✅ Cache read/write pricing for Anthropic models
 
 # COMMAND ----------
 

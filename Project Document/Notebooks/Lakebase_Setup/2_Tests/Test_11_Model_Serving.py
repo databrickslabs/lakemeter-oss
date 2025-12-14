@@ -1,14 +1,36 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Test Case: Model Serving
+# MAGIC # Test Case: Model Serving (Serverless Real-Time Inference)
 # MAGIC 
-# MAGIC **Model Serving Sizes:**
-# MAGIC - **cpu:** CPU-based inference
-# MAGIC - **gpu_small:** Small GPU (1 GPU)
-# MAGIC - **gpu_medium:** Medium GPU (2 GPUs)
-# MAGIC - **gpu_large:** Large GPU (4 GPUs)
+# MAGIC **Objective:** Validate Model Serving cost calculations across CPU and GPU configurations
 # MAGIC 
-# MAGIC **Product type:** SERVERLESS_REAL_TIME_INFERENCE
+# MAGIC **Model Serving Characteristics:**
+# MAGIC - **Product type:** SERVERLESS_REAL_TIME_INFERENCE
+# MAGIC - **Serverless-only** (no VM costs)
+# MAGIC - **Four compute sizes:**
+# MAGIC   - **cpu:** CPU-based inference (lowest DBU rate)
+# MAGIC   - **gpu_small:** Small GPU - 1 GPU (moderate DBU rate)
+# MAGIC   - **gpu_medium:** Medium GPU - 2 GPUs (higher DBU rate)
+# MAGIC   - **gpu_large:** Large GPU - 4 GPUs (highest DBU rate)
+# MAGIC - **Always-on** availability for real-time inference
+# MAGIC 
+# MAGIC **Test Scenarios:**
+# MAGIC - **Clouds:** AWS, Azure, GCP
+# MAGIC - **Regions:** 2 per cloud (1 US + 1 Europe)
+# MAGIC - **Tiers:** STANDARD (expect $0), PREMIUM, ENTERPRISE
+# MAGIC - **Sizes:** cpu, gpu_small, gpu_medium, gpu_large
+# MAGIC - **Usage:** 24 runs/day (always-on), 60 min/run, 30 days/month
+# MAGIC 
+# MAGIC **Test Matrix:**
+# MAGIC - **AWS:** 2 regions × 2 tiers × 4 sizes = **16 scenarios** (STANDARD excluded)
+# MAGIC - **AZURE:** 2 regions × 1 tier × 4 sizes = **8 scenarios** (PREMIUM only)
+# MAGIC - **GCP:** 2 regions × 2 tiers × 4 sizes = **16 scenarios**
+# MAGIC - **TOTAL: ~40 scenarios** (plus STANDARD tier validation)
+# MAGIC 
+# MAGIC **Validation:**
+# MAGIC - ✅ STANDARD tier: $0 costs (serverless not available)
+# MAGIC - ✅ PREMIUM/ENTERPRISE: Positive DBU costs, $0 VM costs
+# MAGIC - ✅ GPU sizes: Higher DBU rates than CPU
 
 # COMMAND ----------
 

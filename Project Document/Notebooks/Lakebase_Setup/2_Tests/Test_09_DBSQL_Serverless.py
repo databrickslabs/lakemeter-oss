@@ -2,10 +2,32 @@
 # MAGIC %md
 # MAGIC # Test Case: DBSQL Serverless Warehouse
 # MAGIC 
+# MAGIC **Objective:** Validate DBSQL Serverless cost calculations across all supported configurations
+# MAGIC 
 # MAGIC **DBSQL Serverless Characteristics:**
 # MAGIC - **Product type:** SERVERLESS_SQL_COMPUTE
-# MAGIC - **Instant startup**, auto-scaling
-# MAGIC - **No VM costs**
+# MAGIC - **Instant startup** with auto-scaling
+# MAGIC - **No VM costs** (serverless compute)
+# MAGIC - **Photon always enabled** (required for serverless)
+# MAGIC - **Not available in STANDARD tier** (PREMIUM/ENTERPRISE only)
+# MAGIC 
+# MAGIC **Test Scenarios:**
+# MAGIC - **Clouds:** AWS, Azure, GCP
+# MAGIC - **Regions:** 2 per cloud (1 US + 1 Europe)
+# MAGIC - **Tiers:** STANDARD (expect $0), PREMIUM, ENTERPRISE
+# MAGIC - **Warehouse Sizes:** Small, Medium, Large, X-Large
+# MAGIC - **Usage Pattern:** 12 runs/day, 60 min/run, 30 days/month
+# MAGIC 
+# MAGIC **Test Matrix:**
+# MAGIC - **AWS:** 2 regions × 2 tiers × 4 sizes = **16 scenarios** (STANDARD excluded from count)
+# MAGIC - **AZURE:** 2 regions × 1 tier × 4 sizes = **8 scenarios** (PREMIUM only, no ENTERPRISE)
+# MAGIC - **GCP:** 2 regions × 2 tiers × 4 sizes = **16 scenarios**
+# MAGIC - **TOTAL: ~40 scenarios** (plus STANDARD tier validation scenarios)
+# MAGIC 
+# MAGIC **Validation:**
+# MAGIC - ✅ STANDARD tier: $0 costs (serverless not available)
+# MAGIC - ✅ PREMIUM/ENTERPRISE: Positive DBU costs, $0 VM costs
+# MAGIC - ✅ Photon automatically enabled for all scenarios
 
 # COMMAND ----------
 
