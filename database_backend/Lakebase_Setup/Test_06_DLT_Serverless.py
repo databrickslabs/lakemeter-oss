@@ -145,9 +145,9 @@ print(f"✅ Inserted {len(line_item_ids)} line items")
 # COMMAND ----------
 
 # Query results
-results_df = execute_query("SELECT c.display_order, c.workload_name, c.cloud, c.region, c.tier, c.serverless_mode, c.dlt_pipeline_mode, c.hours_per_month, c.dbu_per_hour, c.dbu_price, c.vm_cost_per_month, c.dbu_cost_per_month, c.cost_per_month FROM lakemeter.v_line_items_with_costs c WHERE c.line_item_id = ANY(%s::uuid[]) ORDER BY c.display_order;", (line_item_ids,))
+results_df = execute_query("SELECT c.display_order, c.workload_name, c.cloud, c.region, c.tier, c.serverless_mode, c.dlt_pipeline_mode, c.hours_per_month, c.dbu_per_hour, c.price_per_dbu, c.vm_cost_per_month, c.dbu_cost_per_month, c.cost_per_month FROM lakemeter.v_line_items_with_costs c WHERE c.line_item_id = ANY(%s::uuid[]) ORDER BY c.display_order;", (line_item_ids,))
 
-for col in ['display_order', 'hours_per_month', 'dbu_per_hour', 'dbu_price', 'vm_cost_per_month', 'dbu_cost_per_month', 'cost_per_month']:
+for col in ['display_order', 'hours_per_month', 'dbu_per_hour', 'price_per_dbu', 'vm_cost_per_month', 'dbu_cost_per_month', 'cost_per_month']:
     if col in results_df.columns:
         results_df[col] = pd.to_numeric(results_df[col], errors='coerce')
 
@@ -159,7 +159,7 @@ print(f"   Total DBU cost: ${results_df['dbu_cost_per_month'].sum():,.2f}")
 
 # Display
 results_df['dbu_per_hour'] = results_df['dbu_per_hour'].round(4)
-results_df['dbu_price'] = results_df['dbu_price'].round(6)
+results_df['price_per_dbu'] = results_df['price_per_dbu'].round(6)
 results_df['vm_cost_per_month'] = results_df['vm_cost_per_month'].round(2)
 results_df['dbu_cost_per_month'] = results_df['dbu_cost_per_month'].round(2)
 results_df['cost_per_month'] = results_df['cost_per_month'].round(2)
