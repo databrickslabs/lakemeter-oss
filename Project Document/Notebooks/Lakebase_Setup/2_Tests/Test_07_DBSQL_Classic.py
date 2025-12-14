@@ -199,15 +199,16 @@ SELECT
     c.resolved_driver_node_type as driver_node_type,
     c.resolved_worker_node_type as worker_node_type,
     c.dbsql_driver_count as driver_count,
-    c.resolved_num_workers as worker_count,
+    c.resolved_num_workers as num_workers,
     -- Usage
     c.runs_per_day,
     c.avg_runtime_minutes,
     c.days_per_month,
     c.hours_per_month,
-    -- Pricing Tiers (always on_demand for DBSQL)
+    -- Pricing Tiers
     c.driver_pricing_tier,
     c.worker_pricing_tier,
+    c.vm_payment_option,
     -- DBU Calculation
     c.dbu_per_hour,
     c.dbu_per_month,
@@ -220,7 +221,7 @@ SELECT
     c.total_worker_vm_cost_per_month,
     c.vm_cost_per_month,
     -- DBU Pricing
-    c.price_per_dbu as dbu_price,
+    c.price_per_dbu,
     c.product_type_for_pricing,
     c.dbu_cost_per_month,
     -- Total (DBU + VM)

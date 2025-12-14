@@ -192,15 +192,16 @@ SELECT
     c.resolved_driver_node_type as driver_node_type,
     c.resolved_worker_node_type as worker_node_type,
     c.dbsql_driver_count as driver_count,
-    c.resolved_num_workers as worker_count,
+    c.resolved_num_workers as num_workers,
     -- Usage
     c.runs_per_day,
     c.avg_runtime_minutes,
     c.days_per_month,
     c.hours_per_month,
-    -- Pricing Tiers (always on_demand for DBSQL)
+    -- Pricing Tiers
     c.driver_pricing_tier,
     c.worker_pricing_tier,
+    c.vm_payment_option,
     -- DBU Calculation
     c.dbu_per_hour,
     c.dbu_per_month,
@@ -213,7 +214,7 @@ SELECT
     c.total_worker_vm_cost_per_month,
     c.vm_cost_per_month,
     -- DBU Pricing
-    c.price_per_dbu as dbu_price,
+    c.price_per_dbu,
     c.product_type_for_pricing,
     c.dbu_cost_per_month,
     -- Total (DBU + VM)
@@ -227,7 +228,7 @@ ORDER BY c.display_order;
 results_df = execute_query(query_results_sql, (line_item_ids,))
 
 # Convert numeric columns
-numeric_columns = ['dbsql_num_clusters', 'driver_count', 'worker_count', 'hours_per_month', 'dbu_per_hour', 'price_per_dbu', 
+numeric_columns = ['dbsql_num_clusters', 'driver_count', 'num_workers', 'hours_per_month', 'dbu_per_hour', 'price_per_dbu', 
                    'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour', 'total_worker_vm_cost_per_hour', 'total_vm_cost_per_hour',
                    'driver_vm_cost_per_month', 'total_worker_vm_cost_per_month', 'vm_cost_per_month', 'dbu_cost_per_month', 'cost_per_month']
 for col in numeric_columns:
@@ -238,7 +239,7 @@ for col in numeric_columns:
 summary_display_df = results_df[[
     'workload_name', 'cloud', 'region', 'tier',
     'dbsql_warehouse_size', 'dbsql_num_clusters',
-    'driver_node_type', 'worker_node_type', 'worker_count', 'driver_count',
+    'driver_node_type', 'worker_node_type', 'num_workers', 'driver_count',
     'driver_pricing_tier', 'worker_pricing_tier', 'vm_payment_option',
     'hours_per_month', 'dbu_per_hour', 'price_per_dbu',
     'driver_vm_cost_per_hour', 'worker_vm_cost_per_hour',
