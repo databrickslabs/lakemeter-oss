@@ -205,6 +205,7 @@ for key, combo in unique_combos.items():
     execute_query(
         "INSERT INTO lakemeter.estimates (estimate_id, owner_user_id, estimate_name, cloud, region, tier, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);",
         (estimate_id, TEST_USER_ID, f"Test: {combo['cloud']} {combo['region']} {combo['tier']}", 
+         combo['cloud'], combo['region'], combo['tier'], datetime.now(), datetime.now()),
         fetch=False
     )
 
