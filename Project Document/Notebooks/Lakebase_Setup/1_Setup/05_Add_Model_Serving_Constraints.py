@@ -158,18 +158,30 @@ add_constraint_sql = """
 -- PostgreSQL doesn't allow subqueries in CHECK constraints, so we use a trigger instead
 CREATE OR REPLACE FUNCTION lakemeter.validate_model_serving_gpu_type()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_cloud VARCHAR(20);
 BEGIN
     -- Only validate if workload_type is MODEL_SERVING
     IF NEW.workload_type = 'MODEL_SERVING' THEN
+        -- Get cloud from estimates table (cloud column may not be populated yet due to sync trigger)
+        SELECT cloud INTO v_cloud
+        FROM lakemeter.estimates
+        WHERE estimate_id = NEW.estimate_id;
+        
+        -- If no estimate found, skip validation (will fail on FK constraint anyway)
+        IF v_cloud IS NULL THEN
+            RETURN NEW;
+        END IF;
+        
         -- Check if cloud+serverless_size exists in reference table
         IF NOT EXISTS (
             SELECT 1 FROM lakemeter.ref_model_serving_gpu_types
-            WHERE cloud = NEW.cloud
+            WHERE cloud = v_cloud
             AND gpu_type = NEW.serverless_size
             AND is_active = true
         ) THEN
             RAISE EXCEPTION 'Invalid GPU type "%" for cloud "%". Valid GPU types for % can be found in ref_model_serving_gpu_types table.',
-                NEW.serverless_size, NEW.cloud, NEW.cloud;
+                NEW.serverless_size, v_cloud, v_cloud;
         END IF;
     END IF;
     
@@ -182,12 +194,14 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_validate_model_serving_gpu ON lakemeter.line_items;
 
 -- Create trigger on INSERT and UPDATE
+-- Must be BEFORE trigger to reject invalid data before it's inserted
 CREATE TRIGGER trg_validate_model_serving_gpu
     BEFORE INSERT OR UPDATE ON lakemeter.line_items
     FOR EACH ROW
     EXECUTE FUNCTION lakemeter.validate_model_serving_gpu_type();
 
 -- Note: Trigger only validates MODEL_SERVING workload type
+-- Gets cloud from estimates table (not from line_items.cloud which may be NULL)
 -- Vector Search, FMAPI, and other workloads are not affected
 """
 
