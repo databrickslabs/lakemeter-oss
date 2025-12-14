@@ -73,7 +73,7 @@ conn.close()
 # COMMAND ----------
 
 print("\n" + "=" * 100)
-print("🔍 CHECKING: DELTA_LIVE_TABLES_SERVERLESS (current view logic)")
+print("🔍 CHECKING: JOBS_SERVERLESS_COMPUTE (current view logic)")
 print("=" * 100)
 
 conn = get_connection()
@@ -87,7 +87,7 @@ SELECT
     MIN(price_per_dbu) as min_price,
     MAX(price_per_dbu) as max_price
 FROM lakemeter.sync_pricing_dbu_rates
-WHERE product_type = 'DELTA_LIVE_TABLES_SERVERLESS'
+WHERE product_type = 'JOBS_SERVERLESS_COMPUTE'
 GROUP BY cloud;
 """
 
@@ -95,7 +95,7 @@ cursor.execute(sql2)
 results = cursor.fetchall()
 
 if len(results) > 0:
-    print("\n✅ DELTA_LIVE_TABLES_SERVERLESS EXISTS!")
+    print("\n✅ JOBS_SERVERLESS_COMPUTE EXISTS!")
     print("")
     print("Cloud    | Regions | Tiers | Min Price | Max Price")
     print("---------|---------| ------| ----------|-----------")
@@ -103,7 +103,7 @@ if len(results) > 0:
         cloud, num_regions, num_tiers, min_price, max_price = row
         print(f"{cloud:8} | {num_regions:7} | {num_tiers:5} | ${float(min_price):8.4f} | ${float(max_price):8.4f}")
 else:
-    print("\n❌ DELTA_LIVE_TABLES_SERVERLESS NOT FOUND!")
+    print("\n❌ JOBS_SERVERLESS_COMPUTE NOT FOUND!")
     print("   The view is looking for the wrong product_type!")
 
 cursor.close()
@@ -124,7 +124,7 @@ conn = get_connection()
 cursor = conn.cursor()
 
 alternatives = [
-    'DELTA_LIVE_TABLES_SERVERLESS',
+    'JOBS_SERVERLESS_COMPUTE',
     'DLT_SERVERLESS_COMPUTE',
     'DLT_ADVANCED_SERVERLESS_COMPUTE',
     'DLT_PRO_SERVERLESS_COMPUTE',
@@ -209,7 +209,7 @@ conn.close()
 # MAGIC **The correct product_type name** is what you need to use in `1_Setup/02_Create_Views.py`
 # MAGIC 
 # MAGIC **Common fix needed:**
-# MAGIC - If you see `DLT_ADVANCED_SERVERLESS_COMPUTE` instead of `DELTA_LIVE_TABLES_SERVERLESS`
+# MAGIC - If you see `DLT_ADVANCED_SERVERLESS_COMPUTE` instead of `JOBS_SERVERLESS_COMPUTE`
 # MAGIC - Update line ~369 in `02_Create_Views.py`:
 # MAGIC   ```python
 # MAGIC   WHEN f.workload_type = 'DLT' THEN

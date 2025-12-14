@@ -364,7 +364,7 @@ product_type_calc AS (
                 END
             WHEN f.workload_type = 'DLT' THEN
                 CASE 
-                    WHEN f.serverless_enabled THEN 'DELTA_LIVE_TABLES_SERVERLESS'
+                    WHEN f.serverless_enabled THEN 'JOBS_SERVERLESS_COMPUTE'
                     ELSE 'DLT_' || COALESCE(f.dlt_edition, 'CORE') || '_COMPUTE' || 
                          CASE WHEN f.photon_enabled THEN '_(PHOTON)' ELSE '' END
                 END
