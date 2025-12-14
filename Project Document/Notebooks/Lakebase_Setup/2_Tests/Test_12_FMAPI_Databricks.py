@@ -57,7 +57,22 @@ execute_query("INSERT INTO lakemeter.users (user_id, full_name, email, role, is_
               (TEST_USER_ID, f'test_fmapi_databricks_{TEST_RUN_ID}', f'test_{TEST_RUN_ID}@databricks.com', 'admin', True, datetime.now()), fetch=False)
 
 available_regions_df = execute_query("SELECT DISTINCT cloud, region_code FROM lakemeter.sync_ref_sku_region_map WHERE (cloud = 'AWS' AND (region_code LIKE 'us-east-%' OR region_code LIKE 'eu-west-%')) OR (cloud = 'AZURE' AND region_code IN ('eastus', 'westeurope')) OR (cloud = 'GCP' AND (region_code LIKE 'us-central%' OR region_code LIKE 'europe-west%'));")
-region_map = {cloud: available_regions_df[available_regions_df['cloud'] == cloud].iloc[0]['region_code'] for cloud in ['AWS', 'AZURE', 'GCP'] if len(available_regions_df[available_regions_df['cloud'] == cloud]) >= 1}
+
+# Get 1 US + 1 EU region per cloud
+region_map = {}
+for cloud in ['AWS', 'AZURE', 'GCP']:
+    cloud_regions = available_regions_df[available_regions_df['cloud'] == cloud]
+    if len(cloud_regions) >= 2:
+        us_region = cloud_regions[cloud_regions['region_code'].str.contains('us')].iloc[0]['region_code']
+        eu_region = cloud_regions[cloud_regions['region_code'].str.contains('eu')].iloc[0]['region_code']
+        region_map[cloud] = {'us': us_region, 'eu': eu_region}
+
+print("=" * 100)
+print("📊 SELECTED REGIONS (US + EU)")
+print("=" * 100)
+for cloud, regions in region_map.items():
+    print(f"{cloud}: US={regions['us']}, EU={regions['eu']}")
+print("=" * 100)
 
 test_scenarios = []
 scenario_id = 1
@@ -68,18 +83,19 @@ token_volumes = [
 ]
 
 for cloud in ['AWS', 'AZURE', 'GCP']:
-    for tier in ['STANDARD', 'PREMIUM']:
-        for model in models:
-            for volume in token_volumes:
-                region = region_map[cloud]
-                test_scenarios.append({
-                    'scenario_id': scenario_id, 'cloud': cloud, 'region': region, 'tier': tier,
-                    'workload_name': f"{cloud} {tier} {model} {volume['name']}",
-                    'fmapi_model': model,
-                    'fmapi_input_tokens_per_month': volume['input'],
-                    'fmapi_output_tokens_per_month': volume['output']
-                })
-                scenario_id += 1
+    for region_type in ['us', 'eu']:  # Test both US and EU regions
+        region = region_map[cloud][region_type]
+        for tier in ['STANDARD', 'PREMIUM']:
+            for model in models:
+                for volume in token_volumes:
+                    test_scenarios.append({
+                        'scenario_id': scenario_id, 'cloud': cloud, 'region': region, 'tier': tier,
+                        'workload_name': f"{cloud} {tier} {model} {volume['name']}",
+                        'fmapi_model': model,
+                        'fmapi_input_tokens_per_month': volume['input'],
+                        'fmapi_output_tokens_per_month': volume['output']
+                    })
+                    scenario_id += 1
 
 print(f"✅ Generated {len(test_scenarios)} scenarios")
 
