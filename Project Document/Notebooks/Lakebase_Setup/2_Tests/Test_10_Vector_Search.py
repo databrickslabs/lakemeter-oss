@@ -5,30 +5,37 @@
 # MAGIC **Objective:** Validate Vector Search cost calculations for both performance modes
 # MAGIC 
 # MAGIC **Vector Search Characteristics:**
-# MAGIC - **Product type:** VECTOR_SEARCH_ENDPOINT
+# MAGIC - **Product type:** SERVERLESS_REAL_TIME_INFERENCE (corrected from VECTOR_SEARCH_ENDPOINT)
 # MAGIC - **Serverless-only** (no VM costs)
 # MAGIC - **Two modes:**
-# MAGIC   - **standard:** Optimized for query performance (higher DBU rate)
-# MAGIC   - **storage_optimized:** Lower cost, slightly higher latency (lower DBU rate)
+# MAGIC   - **standard:** Optimized for query performance, **2 million vectors per unit**
+# MAGIC   - **storage_optimized:** Lower cost, higher capacity, **64 million vectors per unit**
 # MAGIC - **Always-on** usage pattern (24/7 availability)
+# MAGIC - **Pricing:** Based on DBU per hour
+# MAGIC 
+# MAGIC **Vector Capacity:**
+# MAGIC - **Standard mode:** 2M vectors/unit → Testing with 10M, 50M, 100M vectors
+# MAGIC - **Storage-optimized mode:** 64M vectors/unit → Testing with 64M, 256M, 512M vectors
 # MAGIC 
 # MAGIC **Test Scenarios:**
 # MAGIC - **Clouds:** AWS, Azure, GCP
 # MAGIC - **Regions:** 2 per cloud (1 US + 1 Europe)
 # MAGIC - **Tiers:** STANDARD (expect $0), PREMIUM, ENTERPRISE
-# MAGIC - **Modes:** standard, storage_optimized
+# MAGIC - **Modes:** standard (2M vectors/unit), storage_optimized (64M vectors/unit)
+# MAGIC - **Vector Capacities:** 3 sizes per mode (small, medium, large)
 # MAGIC - **Usage:** 24 runs/day (always-on), 60 min/run, 30 days/month
 # MAGIC 
 # MAGIC **Test Matrix:**
-# MAGIC - **AWS:** 2 regions × 2 tiers × 2 modes = **8 scenarios** (STANDARD excluded)
-# MAGIC - **AZURE:** 2 regions × 1 tier × 2 modes = **4 scenarios** (PREMIUM only)
-# MAGIC - **GCP:** 2 regions × 2 tiers × 2 modes = **8 scenarios**
-# MAGIC - **TOTAL: ~20 scenarios** (plus STANDARD tier validation)
+# MAGIC - **AWS:** 2 regions × 2 tiers × 2 modes × 3 sizes = **24 scenarios** (STANDARD excluded)
+# MAGIC - **AZURE:** 2 regions × 1 tier × 2 modes × 3 sizes = **12 scenarios** (PREMIUM only)
+# MAGIC - **GCP:** 2 regions × 2 tiers × 2 modes × 3 sizes = **24 scenarios**
+# MAGIC - **TOTAL: ~60 scenarios** (plus STANDARD tier validation)
 # MAGIC 
 # MAGIC **Validation:**
 # MAGIC - ✅ STANDARD tier: $0 costs (serverless not available)
 # MAGIC - ✅ PREMIUM/ENTERPRISE: Positive DBU costs, $0 VM costs
 # MAGIC - ✅ storage_optimized mode: Lower DBU rate than standard mode
+# MAGIC - ✅ Vector capacity correctly reflected in test notes
 
 # COMMAND ----------
 
@@ -89,7 +96,22 @@ print("=" * 100)
 
 test_scenarios = []
 scenario_id = 1
-vector_modes = ['standard', 'storage_optimized']
+
+# Vector capacity configurations:
+# - Standard mode: 2M vectors per unit
+# - Storage-optimized mode: 64M vectors per unit
+vector_configs = {
+    'standard': [
+        {'capacity_millions': 10, 'label': 'Small'},   # 10M vectors (5 units)
+        {'capacity_millions': 50, 'label': 'Medium'},  # 50M vectors (25 units)
+        {'capacity_millions': 100, 'label': 'Large'},  # 100M vectors (50 units)
+    ],
+    'storage_optimized': [
+        {'capacity_millions': 64, 'label': 'Small'},    # 64M vectors (1 unit)
+        {'capacity_millions': 256, 'label': 'Medium'},  # 256M vectors (4 units)
+        {'capacity_millions': 512, 'label': 'Large'},   # 512M vectors (8 units)
+    ]
+}
 
 for cloud in ['AWS', 'AZURE', 'GCP']:
     for region_type in ['us', 'eu']:  # Test both US and EU regions
@@ -97,14 +119,21 @@ for cloud in ['AWS', 'AZURE', 'GCP']:
         for tier in ['STANDARD', 'PREMIUM', 'ENTERPRISE']:
             if cloud == 'AZURE' and tier == 'ENTERPRISE':
                 continue
-            for mode in vector_modes:
-                test_scenarios.append({
-                    'scenario_id': scenario_id, 'cloud': cloud, 'region': region, 'tier': tier,
-                    'workload_name': f"{cloud} {tier} Vector Search {mode.upper()}",
-                    'vector_search_mode': mode, 'serverless_product': 'vector_search', 'serverless_size': mode,
-                    'runs_per_day': 24, 'avg_runtime_minutes': 60, 'days_per_month': 30
-                })
-                scenario_id += 1
+            for mode, configs in vector_configs.items():
+                for config in configs:
+                    capacity = config['capacity_millions']
+                    label = config['label']
+                    test_scenarios.append({
+                        'scenario_id': scenario_id, 'cloud': cloud, 'region': region, 'tier': tier,
+                        'workload_name': f"{cloud} {tier} Vector Search {mode.upper()} {label}",
+                        'vector_search_mode': mode, 
+                        'serverless_product': 'vector_search', 
+                        'serverless_size': mode,
+                        'vector_capacity_millions': capacity,
+                        'runs_per_day': 24, 'avg_runtime_minutes': 60, 'days_per_month': 30,
+                        'notes': f"Vector Search {mode} mode - {capacity}M vectors ({label})"
+                    })
+                    scenario_id += 1
 
 print(f"✅ Generated {len(test_scenarios)} scenarios")
 
@@ -124,7 +153,7 @@ for scenario in test_scenarios:
     line_item_ids.append(line_item_id)
     estimate_key = f"{scenario['cloud']}_{scenario['region']}_{scenario['tier']}"
     execute_query("""INSERT INTO lakemeter.line_items (line_item_id, estimate_id, display_order, workload_name, workload_type, serverless_enabled, photon_enabled, vector_search_mode, serverless_product, serverless_size, runs_per_day, avg_runtime_minutes, days_per_month, vm_pricing_tier, vm_payment_option, notes, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
-                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'VECTOR_SEARCH', True, True, scenario['vector_search_mode'], 'vector_search', scenario['serverless_size'], scenario['runs_per_day'], scenario['avg_runtime_minutes'], scenario['days_per_month'], None, None, f"Vector Search {scenario['vector_search_mode']}", datetime.now(), datetime.now()), fetch=False)
+                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'VECTOR_SEARCH', True, True, scenario['vector_search_mode'], 'vector_search', scenario['serverless_size'], scenario['runs_per_day'], scenario['avg_runtime_minutes'], scenario['days_per_month'], None, None, scenario['notes'], datetime.now(), datetime.now()), fetch=False)
 
 print(f"✅ Created {len(line_item_ids)} line items")
 
