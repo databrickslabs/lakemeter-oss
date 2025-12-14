@@ -301,8 +301,24 @@ dbu_calc AS (
                           AND warehouse_size = c.dbsql_warehouse_size), 0)
                 * COALESCE(c.dbsql_num_clusters, 1)
             
-            -- Serverless products
-            WHEN c.workload_type IN ('VECTOR_SEARCH', 'MODEL_SERVING') THEN
+            -- Vector Search: Calculate units with CEILING, then multiply by base rate
+            WHEN c.workload_type = 'VECTOR_SEARCH' THEN
+                COALESCE((SELECT dbu_rate FROM lakemeter.sync_product_serverless_rates 
+                          WHERE cloud = c.cloud 
+                          AND product = 'vector_search'
+                          AND size_or_model = c.vector_search_mode), 0)
+                * CASE 
+                    -- Standard mode: 2M vectors per unit
+                    WHEN c.vector_search_mode = 'standard' THEN 
+                        CEILING(COALESCE(c.vector_capacity_millions, 0) / 2.0)
+                    -- Storage-optimized mode: 64M vectors per unit
+                    WHEN c.vector_search_mode = 'storage_optimized' THEN 
+                        CEILING(COALESCE(c.vector_capacity_millions, 0) / 64.0)
+                    ELSE 1
+                  END
+            
+            -- Model Serving: Base rate only (no capacity calculation)
+            WHEN c.workload_type = 'MODEL_SERVING' THEN
                 COALESCE((SELECT dbu_rate FROM lakemeter.sync_product_serverless_rates 
                           WHERE cloud = c.cloud 
                           AND product = LOWER(c.serverless_product)
@@ -455,7 +471,7 @@ SELECT
     dbsql_driver_count,
     autoscale_enabled, autoscale_min_workers, autoscale_max_workers, photon_enabled,
     dlt_edition, dlt_pipeline_mode, dbsql_warehouse_type, dbsql_warehouse_size, dbsql_num_clusters,
-    serverless_product, serverless_size, vector_search_mode,
+    serverless_product, serverless_size, vector_search_mode, vector_capacity_millions,
     fmapi_provider, fmapi_model, fmapi_endpoint_type, fmapi_context_length,
     fmapi_input_tokens_per_month, fmapi_output_tokens_per_month,
     lakebase_cu, lakebase_storage_gb, lakebase_ha_enabled, lakebase_backup_retention_days,
