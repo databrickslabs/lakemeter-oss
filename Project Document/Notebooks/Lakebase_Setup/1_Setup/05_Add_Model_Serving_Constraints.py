@@ -137,9 +137,16 @@ print("\n✅ Reference table populated!")
 # MAGIC 
 # MAGIC **Type:** Trigger (not constraint) - Only validates MODEL_SERVING workloads
 # MAGIC 
-# MAGIC **Why trigger instead of constraint:**
-# MAGIC - PostgreSQL doesn't allow subqueries in CHECK constraints
-# MAGIC - Triggers provide conditional validation logic
+# MAGIC **Validation approach (Simplified):**
+# MAGIC - Checks if GPU type exists in reference table (any cloud)
+# MAGIC - Does NOT validate cloud-specific GPU types
+# MAGIC - Application layer should handle cloud-specific validation
+# MAGIC 
+# MAGIC **Why simplified?**
+# MAGIC - Prevents typos (e.g., "gpu_small" instead of "gpu_small_t4")
+# MAGIC - Ensures GPU type exists in pricing table
+# MAGIC - Simpler and more reliable than cloud-specific validation
+# MAGIC - Cloud-specific validation is better handled by application/UI
 # MAGIC 
 # MAGIC **Note:** 
 # MAGIC - Only validates NEW inserts and updates (existing data is NOT checked)
@@ -155,33 +162,20 @@ print("=" * 80)
 
 add_constraint_sql = """
 -- Create trigger function to validate MODEL_SERVING GPU types
--- PostgreSQL doesn't allow subqueries in CHECK constraints, so we use a trigger instead
+-- Simplified: Just check if GPU type exists (any cloud), not cloud-specific
 CREATE OR REPLACE FUNCTION lakemeter.validate_model_serving_gpu_type()
 RETURNS TRIGGER AS $$
-DECLARE
-    v_cloud VARCHAR(20);
 BEGIN
     -- Only validate if workload_type is MODEL_SERVING
     IF NEW.workload_type = 'MODEL_SERVING' THEN
-        -- Get cloud from estimates table (cloud column may not be populated yet due to sync trigger)
-        SELECT cloud INTO v_cloud
-        FROM lakemeter.estimates
-        WHERE estimate_id = NEW.estimate_id;
-        
-        -- If no estimate found, skip validation (will fail on FK constraint anyway)
-        IF v_cloud IS NULL THEN
-            RETURN NEW;
-        END IF;
-        
-        -- Check if cloud+serverless_size exists in reference table
+        -- Check if serverless_size exists in reference table (any cloud)
         IF NOT EXISTS (
             SELECT 1 FROM lakemeter.ref_model_serving_gpu_types
-            WHERE cloud = v_cloud
-            AND gpu_type = NEW.serverless_size
+            WHERE gpu_type = NEW.serverless_size
             AND is_active = true
         ) THEN
-            RAISE EXCEPTION 'Invalid GPU type "%" for cloud "%". Valid GPU types for % can be found in ref_model_serving_gpu_types table.',
-                NEW.serverless_size, v_cloud, v_cloud;
+            RAISE EXCEPTION 'Invalid GPU type "%". Must be one of the valid GPU types in ref_model_serving_gpu_types table. Common types: cpu, gpu_small_t4, gpu_medium_a10g_1x, gpu_xlarge_a100_80gb_8x, etc.',
+                NEW.serverless_size;
         END IF;
     END IF;
     
@@ -194,25 +188,31 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_validate_model_serving_gpu ON lakemeter.line_items;
 
 -- Create trigger on INSERT and UPDATE
--- Must be BEFORE trigger to reject invalid data before it's inserted
 CREATE TRIGGER trg_validate_model_serving_gpu
     BEFORE INSERT OR UPDATE ON lakemeter.line_items
     FOR EACH ROW
     EXECUTE FUNCTION lakemeter.validate_model_serving_gpu_type();
 
--- Note: Trigger only validates MODEL_SERVING workload type
--- Gets cloud from estimates table (not from line_items.cloud which may be NULL)
--- Vector Search, FMAPI, and other workloads are not affected
+-- Note: 
+-- - Trigger validates MODEL_SERVING workload type only
+-- - Checks if GPU type exists in reference table (ANY cloud)
+-- - Does NOT validate cloud-specific GPU types (application layer handles that)
+-- - Prevents typos and ensures GPU type exists
+-- - Vector Search, FMAPI, and other workloads are not affected
 """
 
 result = execute_sql(add_constraint_sql, "Created trigger validate_model_serving_gpu_type", show_error=True)
 
 if result:
     print("\n✅ Trigger added successfully!")
-    print("   • Only valid cloud/GPU combinations can be inserted for MODEL_SERVING")
-    print("   • Prevents selecting AWS GPUs when cloud=AZURE, etc.")
+    print("   • Validates GPU types for MODEL_SERVING workloads")
+    print("   • Prevents typos (e.g., 'gpu_small' instead of 'gpu_small_t4')")
+    print("   • Ensures GPU type exists in reference table (any cloud)")
     print("   • Other workload types (VECTOR_SEARCH, FMAPI, etc.) are NOT affected")
     print("   • Trigger validates on INSERT and UPDATE operations")
+    print("\n⚠️  Note: Trigger does NOT validate cloud-specific GPU availability")
+    print("   (e.g., doesn't prevent AWS-only GPUs on Azure)")
+    print("   → Application/UI layer should handle cloud-specific filtering")
 else:
     print("\n⚠️  Trigger could not be added.")
     print("   Possible reasons:")
@@ -232,10 +232,10 @@ else:
 # COMMAND ----------
 
 print("=" * 80)
-print("🧪 TESTING TRIGGER")
+print("🧪 TESTING TRIGGER (Simplified Validation)")
 print("=" * 80)
 
-print("Testing trigger with invalid cloud/GPU combination...")
+print("Testing trigger with invalid GPU type (not in reference table)...")
 print("(This should fail with trigger exception)")
 
 # Test the trigger with proper setup
@@ -245,13 +245,13 @@ INSERT INTO lakemeter.users (user_id, full_name, email, role, is_active, created
 VALUES ('00000000-0000-0000-0000-000000000001', 'Test User', 'test_trigger@example.com', 'admin', true, NOW(), NOW())
 ON CONFLICT (user_id) DO NOTHING;
 
--- Step 2: Create a test estimate (AZURE cloud)
+-- Step 2: Create a test estimate
 INSERT INTO lakemeter.estimates (estimate_id, owner_user_id, estimate_name, cloud, region, tier, created_at, updated_at)
-VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Test GPU Trigger', 'AZURE', 'eastus', 'PREMIUM', NOW(), NOW())
+VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Test GPU Trigger', 'AWS', 'us-east-1', 'PREMIUM', NOW(), NOW())
 ON CONFLICT (estimate_id) DO NOTHING;
 
--- Step 3: Try to insert INVALID GPU type (AWS-specific GPU on AZURE cloud)
--- This should FAIL with trigger exception: "Invalid GPU type gpu_small_t4 for cloud AZURE"
+-- Step 3: Try to insert COMPLETELY INVALID GPU type (typo/doesn't exist)
+-- This should FAIL with trigger exception: "Invalid GPU type gpu_invalid_typo"
 INSERT INTO lakemeter.line_items (
     line_item_id, estimate_id, display_order, workload_name, workload_type, 
     serverless_enabled, photon_enabled, serverless_product, serverless_size,
@@ -260,7 +260,7 @@ INSERT INTO lakemeter.line_items (
     gen_random_uuid(),
     '00000000-0000-0000-0000-000000000002',
     1, 'Test Invalid GPU', 'MODEL_SERVING',
-    TRUE, TRUE, 'model_serving', 'gpu_small_t4',  -- AWS-only GPU on AZURE ❌
+    TRUE, TRUE, 'model_serving', 'gpu_invalid_typo',  -- Doesn't exist in table ❌
     24, 60, 30, NOW(), NOW()
 );
 """
@@ -269,28 +269,30 @@ result = execute_sql(test_trigger_sql, "Test trigger with invalid GPU", show_err
 
 if not result:
     print("\n✅ Trigger is working! (Invalid GPU insertion failed as expected)")
-    print("   • AWS GPU 'gpu_small_t4' was correctly rejected for AZURE cloud")
+    print("   • GPU type 'gpu_invalid_typo' was correctly rejected (not in reference table)")
 else:
     print("\n⚠️  Trigger may not be active (Invalid GPU insertion succeeded)")
     
-    # If trigger didn't fire, test with valid GPU to confirm trigger isn't blocking everything
-    print("\n   Testing with VALID GPU to confirm trigger allows valid data...")
-    test_valid_sql = """
-    INSERT INTO lakemeter.line_items (
-        line_item_id, estimate_id, display_order, workload_name, workload_type, 
-        serverless_enabled, photon_enabled, serverless_product, serverless_size,
-        runs_per_day, avg_runtime_minutes, days_per_month, created_at, updated_at
-    ) VALUES (
-        gen_random_uuid(),
-        '00000000-0000-0000-0000-000000000002',
-        2, 'Test Valid GPU', 'MODEL_SERVING',
-        TRUE, TRUE, 'model_serving', 'cpu',  -- Valid for all clouds ✅
-        24, 60, 30, NOW(), NOW()
-    );
-    """
-    valid_result = execute_sql(test_valid_sql, "Test with valid GPU (cpu)", show_error=True)
-    if valid_result:
-        print("   ✅ Valid GPU 'cpu' was accepted (trigger allows valid data)")
+# Test with valid GPU to confirm trigger allows valid data
+print("\n   Testing with VALID GPU to confirm trigger allows valid data...")
+test_valid_sql = """
+INSERT INTO lakemeter.line_items (
+    line_item_id, estimate_id, display_order, workload_name, workload_type, 
+    serverless_enabled, photon_enabled, serverless_product, serverless_size,
+    runs_per_day, avg_runtime_minutes, days_per_month, created_at, updated_at
+) VALUES (
+    gen_random_uuid(),
+    '00000000-0000-0000-0000-000000000002',
+    2, 'Test Valid GPU', 'MODEL_SERVING',
+    TRUE, TRUE, 'model_serving', 'cpu',  -- Valid (exists in table) ✅
+    24, 60, 30, NOW(), NOW()
+);
+"""
+valid_result = execute_sql(test_valid_sql, "Test with valid GPU (cpu)", show_error=True)
+if valid_result:
+    print("   ✅ Valid GPU 'cpu' was accepted (trigger allows valid data)")
+else:
+    print("   ❌ Valid GPU 'cpu' was rejected (trigger may be too strict)")
     
 # Cleanup test data
 print("\n🧹 Cleaning up test data...")
@@ -308,22 +310,30 @@ print("✅ Test data cleaned up")
 # MAGIC ## Summary
 # MAGIC 
 # MAGIC ✅ **What was created:**
-# MAGIC - `ref_model_serving_gpu_types` table with valid cloud/GPU combinations
-# MAGIC - Validation trigger on `line_items` to prevent invalid GPU combinations (if enabled)
+# MAGIC - `ref_model_serving_gpu_types` table with all valid GPU types
+# MAGIC - Validation trigger on `line_items` to prevent typos and invalid GPU types (if enabled)
 # MAGIC 
-# MAGIC 📊 **Valid combinations:**
-# MAGIC - AWS: cpu, gpu_small_t4, gpu_medium_a10g_*, gpu_xlarge/2xlarge/4xlarge_a100_80gb_*
-# MAGIC - AZURE: cpu, gpu_medium_a10g_*, gpu_xlarge_a100_40gb/80gb_*
-# MAGIC - GCP: cpu, gpu_small_t4, gpu_medium_g2_standard_8, gpu_xlarge/2xlarge_a100_80gb_*
+# MAGIC 📊 **Valid GPU types (all clouds combined):**
+# MAGIC - **cpu** (all clouds)
+# MAGIC - **gpu_small_t4** (AWS, GCP)
+# MAGIC - **gpu_medium_a10g_1x/4x/8x** (AWS, Azure)
+# MAGIC - **gpu_medium_g2_standard_8** (GCP)
+# MAGIC - **gpu_xlarge_a100_40gb_8x** (Azure)
+# MAGIC - **gpu_xlarge/2xlarge/4xlarge_a100_80gb_*** (AWS, GCP)
 # MAGIC 
-# MAGIC 🔒 **Trigger behavior:**
-# MAGIC - **Type:** BEFORE INSERT OR UPDATE trigger with conditional logic
+# MAGIC 🔒 **Trigger behavior (Simplified):**
+# MAGIC - **Type:** BEFORE INSERT OR UPDATE trigger
 # MAGIC - **Scope:** Only validates MODEL_SERVING workload type
+# MAGIC - **Validation:** Checks if GPU type exists in reference table (ANY cloud)
+# MAGIC - **Does NOT validate:** Cloud-specific GPU availability
 # MAGIC - **Impact:** Other workloads (VECTOR_SEARCH, FMAPI, etc.) are NOT affected
-# MAGIC - Prevents inserting AWS GPU types when cloud=AZURE for MODEL_SERVING
-# MAGIC - Prevents inserting Azure GPU types when cloud=AWS for MODEL_SERVING
-# MAGIC - Prevents inserting GCP GPU types when cloud=AZURE for MODEL_SERVING
-# MAGIC - Provides clear error message with invalid GPU type and cloud
+# MAGIC - **Benefits:**
+# MAGIC   - Prevents typos (e.g., "gpu_small" instead of "gpu_small_t4")
+# MAGIC   - Ensures GPU type exists in pricing table
+# MAGIC   - Simple and reliable validation
+# MAGIC - **Application layer responsibility:**
+# MAGIC   - Validate cloud-specific GPU availability (e.g., don't show AWS-only GPUs for Azure)
+# MAGIC   - This is better handled by UI/frontend logic
 # MAGIC 
 # MAGIC ⚠️  **Note:** If trigger creation fails, it's optional. You can skip it and rely on application-level validation.
 
