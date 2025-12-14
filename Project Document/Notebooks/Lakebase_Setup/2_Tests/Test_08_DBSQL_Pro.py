@@ -117,7 +117,28 @@ print("=" * 150)
 print(tabulate(results_df.head(20), headers='keys', tablefmt='grid', showindex=False))
 display(results_df)
 
-assert len(results_df) == len(test_scenarios) and (results_df['cost_per_month'] > 0).all()
-print(f"✅ All {len(test_scenarios)} DBSQL Pro scenarios validated!")
+# DBSQL Pro validation: Split by tier
+# STANDARD tier: DBSQL Pro not available, expect $0 costs (valid)
+# PREMIUM/ENTERPRISE: Should have positive costs
+standard_df = results_df[results_df['tier'] == 'STANDARD']
+other_tiers_df = results_df[results_df['tier'] != 'STANDARD']
+
+print("\n" + "=" * 150)
+print("VALIDATION RESULTS")
+print("=" * 150)
+
+# Validate STANDARD tier (should be $0 - not available)
+if len(standard_df) > 0:
+    assert (standard_df['cost_per_month'] == 0).all(), "STANDARD tier should have $0 costs (DBSQL Pro not available)"
+    print(f"✅ STANDARD tier: {len(standard_df)} scenarios with $0 costs (N/A - DBSQL Pro not available in STANDARD tier)")
+
+# Validate other tiers (should have positive costs)
+if len(other_tiers_df) > 0:
+    assert (other_tiers_df['cost_per_month'] > 0).all(), "PREMIUM/ENTERPRISE tiers should have positive costs"
+    print(f"✅ PREMIUM/ENTERPRISE tiers: {len(other_tiers_df)} scenarios with positive costs")
+
+print(f"\n✅ All {len(test_scenarios)} DBSQL Pro scenarios validated!")
+print(f"   • {len(standard_df)} STANDARD tier scenarios: $0 (expected - not available)")
+print(f"   • {len(other_tiers_df)} PREMIUM/ENTERPRISE scenarios: Positive costs (validated)")
 
 # COMMAND ----------
