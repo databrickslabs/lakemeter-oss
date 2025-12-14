@@ -8,7 +8,7 @@
 # MAGIC - **Serverless modes:** standard (1x), performance (2x multiplier)
 # MAGIC - **NO VM costs**
 # MAGIC - **Photon always enabled**
-# MAGIC - **Product type:** DELTA_LIVE_TABLES_SERVERLESS
+# MAGIC - **Product type:** JOBS_SERVERLESS_COMPUTE
 # MAGIC - **Pipeline modes:** CONTINUOUS, TRIGGERED
 # MAGIC 
 # MAGIC **Test Matrix:**

@@ -29,7 +29,7 @@ ORDER BY product_type, tier, region
 LIMIT 20;
 
 -- 3. Check what we're currently looking for in the view
--- The view logic uses: 'DELTA_LIVE_TABLES_SERVERLESS'
+-- The view logic uses: 'JOBS_SERVERLESS_COMPUTE'
 -- Let's see if that exists:
 SELECT 
     cloud,
@@ -38,14 +38,14 @@ SELECT
     MIN(price_per_dbu) as min_price,
     MAX(price_per_dbu) as max_price
 FROM lakemeter_pricing.lakemeter.sync_pricing_dbu_rates
-WHERE product_type = 'DELTA_LIVE_TABLES_SERVERLESS'
+WHERE product_type = 'JOBS_SERVERLESS_COMPUTE'
 GROUP BY cloud;
 
 -- If above returns 0 rows, try these variations:
 SELECT DISTINCT product_type
 FROM lakemeter_pricing.lakemeter.sync_pricing_dbu_rates
 WHERE product_type IN (
-    'DELTA_LIVE_TABLES_SERVERLESS',
+    'JOBS_SERVERLESS_COMPUTE',
     'DLT_SERVERLESS_COMPUTE',
     'DLT_ADVANCED_SERVERLESS_COMPUTE',
     'DLT_PRO_SERVERLESS_COMPUTE',
@@ -59,7 +59,7 @@ WHERE product_type IN (
 -- This is what needs to be used in 02_Create_Views.py
 --
 -- Common possibilities:
---   - DELTA_LIVE_TABLES_SERVERLESS (current assumption)
+--   - JOBS_SERVERLESS_COMPUTE (current assumption)
 --   - DLT_SERVERLESS_COMPUTE
 --   - DLT_ADVANCED_SERVERLESS_COMPUTE
 --   - DLT_PRO_SERVERLESS_COMPUTE

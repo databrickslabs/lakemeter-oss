@@ -238,7 +238,7 @@ if len(line_items_df) > 0:
         print(f"{'─' * 80}")
         
         # Expected product_type for DLT Serverless
-        product_type = 'DELTA_LIVE_TABLES_SERVERLESS'
+        product_type = 'JOBS_SERVERLESS_COMPUTE'
         
         dbu_pricing_sql = """
         SELECT 
@@ -362,7 +362,7 @@ if len(line_items_df) > 0:
     dbu_price_sql = """
     SELECT price_per_dbu
     FROM lakemeter.sync_pricing_dbu_rates
-    WHERE cloud = %s AND region = %s AND tier = %s AND product_type = 'DELTA_LIVE_TABLES_SERVERLESS';
+    WHERE cloud = %s AND region = %s AND tier = %s AND product_type = 'JOBS_SERVERLESS_COMPUTE';
     """
     price_result = query_sql(dbu_price_sql, (first_item['cloud'], first_item['region'], first_item['tier']))
     

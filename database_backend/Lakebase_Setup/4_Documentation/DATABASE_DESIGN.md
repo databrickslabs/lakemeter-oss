@@ -1223,7 +1223,7 @@ Response:
 |---------------|---------------------------|-------------------------|----------------------------|
 | JOBS | JOBS_COMPUTE | JOBS_COMPUTE_(PHOTON) | JOBS_SERVERLESS_COMPUTE |
 | ALL_PURPOSE | ALL_PURPOSE_COMPUTE | ALL_PURPOSE_COMPUTE_(PHOTON) | ALL_PURPOSE_SERVERLESS_COMPUTE |
-| DLT | DLT_{edition}_COMPUTE | DLT_{edition}_COMPUTE_(PHOTON) | DELTA_LIVE_TABLES_SERVERLESS |
+| DLT | DLT_{edition}_COMPUTE | DLT_{edition}_COMPUTE_(PHOTON) | JOBS_SERVERLESS_COMPUTE |
 | DBSQL | SQL_COMPUTE / SQL_PRO_COMPUTE | *(N/A)* | SERVERLESS_SQL_COMPUTE |
 | VECTOR_SEARCH | *(N/A)* | *(N/A)* | VECTOR_SEARCH_ENDPOINT |
 | MODEL_SERVING | *(N/A)* | *(N/A)* | SERVERLESS_REAL_TIME_INFERENCE |
@@ -1283,7 +1283,7 @@ The product type for DBU price lookup depends on `workload_type`, `serverless_en
 | `ALL_PURPOSE` | **true** | **true** | `ALL_PURPOSE_SERVERLESS_COMPUTE` | Direct DBU lookup |
 | `DLT` | false | false | `DLT_{edition}_COMPUTE` | `sync_ref_instance_dbu_rates` |
 | `DLT` | false | true | `DLT_{edition}_COMPUTE_(PHOTON)` | `sync_ref_instance_dbu_rates` |
-| `DLT` | **true** | **true** | `DELTA_LIVE_TABLES_SERVERLESS` | Direct DBU lookup |
+| `DLT` | **true** | **true** | `JOBS_SERVERLESS_COMPUTE` | Direct DBU lookup |
 | `DBSQL` | *(via warehouse_type)* | *(N/A)* | `SQL_COMPUTE` / `SQL_PRO_COMPUTE` / `SERVERLESS_SQL_COMPUTE` | `sync_product_dbsql_rates` |
 | `VECTOR_SEARCH` | *(always)* | *(N/A)* | `VECTOR_SEARCH_ENDPOINT` | `sync_product_serverless_rates` |
 | `MODEL_SERVING` | *(always)* | *(N/A)* | `SERVERLESS_REAL_TIME_INFERENCE` | `sync_product_serverless_rates` |

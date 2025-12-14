@@ -441,7 +441,7 @@ workload_type_inserts = [
     """INSERT INTO lakemeter.ref_workload_types VALUES
     ('DLT', 'Delta Live Tables', 'Declarative ETL pipelines (Classic or Serverless)',
      true, true, true, true, true, false, false, false, false, false, true, true, false, false,
-     'DLT_CORE_COMPUTE', 'DLT_CORE_COMPUTE_(PHOTON)', 'DELTA_LIVE_TABLES_SERVERLESS', 3)
+     'DLT_CORE_COMPUTE', 'DLT_CORE_COMPUTE_(PHOTON)', 'JOBS_SERVERLESS_COMPUTE', 3)
     ON CONFLICT (workload_type) DO NOTHING""",
     
     """INSERT INTO lakemeter.ref_workload_types VALUES
