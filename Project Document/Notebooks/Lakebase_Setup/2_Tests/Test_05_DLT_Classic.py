@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Test Case: DLT (Delta Live Tables) Classic Compute
 # MAGIC 
-# MAGIC **Objective:** Validate DLT cost calculations with classic compute
+# MAGIC **Objective:** Validate DLT cost calculations with classic compute across ALL payment options
 # MAGIC 
 # MAGIC **DLT-Specific Features:**
 # MAGIC - **Editions:** CORE, PRO, ADVANCED (different DBU rates)
@@ -10,8 +10,23 @@
 # MAGIC - **Product Types:** DLT_CORE_COMPUTE, DLT_PRO_COMPUTE, DLT_ADVANCED_COMPUTE
 # MAGIC - **Photon:** Optional (separate product type with (PHOTON) suffix)
 # MAGIC 
+# MAGIC **VM Payment Options Tested:**
+# MAGIC - **AWS (8 combinations):**
+# MAGIC   - On-Demand (driver + worker)
+# MAGIC   - Spot (driver=on_demand, worker=spot)
+# MAGIC   - Reserved 1 Year: No Upfront, Partial Upfront, All Upfront
+# MAGIC   - Reserved 3 Year: No Upfront, Partial Upfront, All Upfront
+# MAGIC - **Azure/GCP (4 combinations):**
+# MAGIC   - On-Demand
+# MAGIC   - Spot
+# MAGIC   - Reserved 1 Year
+# MAGIC   - Reserved 3 Year
+# MAGIC 
 # MAGIC **Test Matrix:**
-# MAGIC - 3 clouds × 2 regions × 3 tiers × 3 editions × 2 photon × 2 modes = ~216 scenarios
+# MAGIC - **AWS:** 2 regions × 3 tiers × 3 editions × 2 photon × 2 modes × 8 payment options = **576 scenarios**
+# MAGIC - **AZURE:** 2 regions × 2 tiers × 3 editions × 2 photon × 2 modes × 4 payment options = **192 scenarios**
+# MAGIC - **GCP:** 2 regions × 3 tiers × 3 editions × 2 photon × 2 modes × 4 payment options = **288 scenarios**
+# MAGIC - **TOTAL: ~1,056 scenarios** (Azure ENTERPRISE excluded)
 
 # COMMAND ----------
 
