@@ -100,7 +100,7 @@ print(f"✅ Created {len(line_item_ids)} line items")
 
 # COMMAND ----------
 
-results_df = execute_query("SELECT c.workload_name, c.cloud, c.tier, c.serverless_size, c.dbu_per_hour, c.price_per_dbu, c.dbu_cost_per_month, c.cost_per_month FROM lakemeter.v_line_items_with_costs c WHERE c.line_item_id = ANY(%s::uuid[]) ORDER BY c.display_order;", (line_item_ids,))
+results_df = execute_query("SELECT c.workload_name, c.cloud, c.region, c.tier, c.serverless_size, c.dbu_per_hour, c.price_per_dbu, c.dbu_cost_per_month, c.cost_per_month FROM lakemeter.v_line_items_with_costs c WHERE c.line_item_id = ANY(%s::uuid[]) ORDER BY c.display_order;", (line_item_ids,))
 
 for col in ['dbu_per_hour', 'price_per_dbu', 'dbu_cost_per_month', 'cost_per_month']:
     if col in results_df.columns:
