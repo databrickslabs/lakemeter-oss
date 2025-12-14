@@ -133,13 +133,17 @@ print("\n✅ Reference table populated!")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 4: Add CHECK Constraint to line_items (Optional)
+# MAGIC ## Step 4: Add Validation Trigger to line_items (Optional)
 # MAGIC 
-# MAGIC **Type:** CHECK constraint (not FK) - Only validates MODEL_SERVING workloads
+# MAGIC **Type:** Trigger (not constraint) - Only validates MODEL_SERVING workloads
 # MAGIC 
-# MAGIC **WARNING:** This will fail if there are existing MODEL_SERVING line_items with invalid cloud/GPU combinations.
+# MAGIC **Why trigger instead of constraint:**
+# MAGIC - PostgreSQL doesn't allow subqueries in CHECK constraints
+# MAGIC - Triggers provide conditional validation logic
 # MAGIC 
-# MAGIC **Note:** Other workload types (VECTOR_SEARCH, FMAPI, etc.) are NOT affected by this constraint.
+# MAGIC **Note:** 
+# MAGIC - Only validates NEW inserts and updates (existing data is NOT checked)
+# MAGIC - Other workload types (VECTOR_SEARCH, FMAPI, etc.) are NOT affected
 # MAGIC 
 # MAGIC **Recommendation:** Run Test_11_Model_Serving first to ensure all GPU types are in the reference table.
 
@@ -150,47 +154,61 @@ print("⚠️  ADDING CONSTRAINT TO line_items")
 print("=" * 80)
 
 add_constraint_sql = """
--- Add CHECK constraint for MODEL_SERVING workloads only
--- This ensures cloud + serverless_size combination is valid ONLY for MODEL_SERVING
--- Other workload types (VECTOR_SEARCH, etc.) are not affected
-ALTER TABLE lakemeter.line_items
-ADD CONSTRAINT chk_line_items_model_serving_gpu
-CHECK (
-    -- If not MODEL_SERVING, constraint passes
-    workload_type != 'MODEL_SERVING' 
-    OR 
-    -- If MODEL_SERVING, validate cloud+serverless_size exists in reference table
-    (workload_type = 'MODEL_SERVING' AND 
-     EXISTS (
-         SELECT 1 FROM lakemeter.ref_model_serving_gpu_types 
-         WHERE cloud = line_items.cloud 
-         AND gpu_type = line_items.serverless_size
-         AND is_active = true
-     )
-    )
-);
+-- Create trigger function to validate MODEL_SERVING GPU types
+-- PostgreSQL doesn't allow subqueries in CHECK constraints, so we use a trigger instead
+CREATE OR REPLACE FUNCTION lakemeter.validate_model_serving_gpu_type()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Only validate if workload_type is MODEL_SERVING
+    IF NEW.workload_type = 'MODEL_SERVING' THEN
+        -- Check if cloud+serverless_size exists in reference table
+        IF NOT EXISTS (
+            SELECT 1 FROM lakemeter.ref_model_serving_gpu_types
+            WHERE cloud = NEW.cloud
+            AND gpu_type = NEW.serverless_size
+            AND is_active = true
+        ) THEN
+            RAISE EXCEPTION 'Invalid GPU type "%" for cloud "%". Valid GPU types for % can be found in ref_model_serving_gpu_types table.',
+                NEW.serverless_size, NEW.cloud, NEW.cloud;
+        END IF;
+    END IF;
+    
+    -- If not MODEL_SERVING or validation passed, allow the operation
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Note: CHECK constraint with subquery validates only MODEL_SERVING rows
+-- Drop trigger if exists
+DROP TRIGGER IF EXISTS trg_validate_model_serving_gpu ON lakemeter.line_items;
+
+-- Create trigger on INSERT and UPDATE
+CREATE TRIGGER trg_validate_model_serving_gpu
+    BEFORE INSERT OR UPDATE ON lakemeter.line_items
+    FOR EACH ROW
+    EXECUTE FUNCTION lakemeter.validate_model_serving_gpu_type();
+
+-- Note: Trigger only validates MODEL_SERVING workload type
 -- Vector Search, FMAPI, and other workloads are not affected
 """
 
-result = execute_sql(add_constraint_sql, "Added chk_line_items_model_serving_gpu constraint", show_error=True)
+result = execute_sql(add_constraint_sql, "Created trigger validate_model_serving_gpu_type", show_error=True)
 
 if result:
-    print("\n✅ Constraint added successfully!")
+    print("\n✅ Trigger added successfully!")
     print("   • Only valid cloud/GPU combinations can be inserted for MODEL_SERVING")
     print("   • Prevents selecting AWS GPUs when cloud=AZURE, etc.")
     print("   • Other workload types (VECTOR_SEARCH, FMAPI, etc.) are NOT affected")
+    print("   • Trigger validates on INSERT and UPDATE operations")
 else:
-    print("\n⚠️  Constraint could not be added.")
+    print("\n⚠️  Trigger could not be added.")
     print("   Possible reasons:")
-    print("   1. Existing MODEL_SERVING line_items with invalid cloud/GPU combinations")
-    print("   2. Sync triggers haven't populated 'cloud' column yet")
-    print("   3. GPU type not in reference table")
+    print("   1. Permission issues creating functions/triggers")
+    print("   2. Syntax errors in trigger definition")
     print("\n💡 To fix:")
-    print("   1. Run Test_11_Model_Serving to populate all GPU types")
-    print("   2. Delete or update existing MODEL_SERVING line_items with invalid GPU types")
-    print("   3. Re-run this notebook")
+    print("   1. Check if lakemeter_sync_role has CREATE FUNCTION permission")
+    print("   2. Re-run this notebook")
+    print("\n⚠️  Note: Existing line_items will NOT be validated.")
+    print("   The trigger only validates NEW inserts and updates.")
 
 # COMMAND ----------
 
@@ -200,37 +218,43 @@ else:
 # COMMAND ----------
 
 print("=" * 80)
-print("🧪 TESTING CONSTRAINT")
+print("🧪 TESTING TRIGGER")
 print("=" * 80)
 
-test_constraint_sql = """
--- This should FAIL (AWS GPU type with AZURE cloud)
-INSERT INTO lakemeter.estimates (estimate_id, owner_user_id, estimate_name, cloud, region, tier)
-VALUES (gen_random_uuid(), gen_random_uuid(), 'Test Constraint', 'AZURE', 'eastus', 'PREMIUM');
+print("Testing trigger with invalid cloud/GPU combination...")
+print("(This should fail with trigger exception)")
 
--- This should FAIL (invalid cloud/GPU combination)
+# Test the trigger
+test_trigger_sql = """
+-- Create a test estimate
+INSERT INTO lakemeter.estimates (estimate_id, owner_user_id, estimate_name, cloud, region, tier, created_at, updated_at)
+VALUES (gen_random_uuid(), gen_random_uuid(), 'Test Trigger', 'AZURE', 'eastus', 'PREMIUM', NOW(), NOW());
+
+-- Try to insert invalid GPU type (AWS-specific GPU on AZURE cloud)
+-- This should FAIL with trigger exception
 INSERT INTO lakemeter.line_items (
-    line_item_id, estimate_id, workload_type, cloud, serverless_size
+    line_item_id, estimate_id, display_order, workload_name, workload_type, 
+    cloud, serverless_enabled, photon_enabled, serverless_product, serverless_size,
+    runs_per_day, avg_runtime_minutes, days_per_month, created_at, updated_at
 ) VALUES (
     gen_random_uuid(),
-    (SELECT estimate_id FROM lakemeter.estimates WHERE estimate_name = 'Test Constraint' LIMIT 1),
-    'MODEL_SERVING',
-    'AZURE',
-    'gpu_small_t4'  -- This is AWS-specific, should fail for AZURE
+    (SELECT estimate_id FROM lakemeter.estimates WHERE estimate_name = 'Test Trigger' LIMIT 1),
+    1, 'Test Invalid GPU', 'MODEL_SERVING',
+    'AZURE', TRUE, TRUE, 'model_serving', 'gpu_small_t4',  -- AWS GPU on AZURE ❌
+    24, 60, 30, NOW(), NOW()
 );
-
--- Rollback the test
-ROLLBACK;
 """
 
-print("Testing constraint with invalid cloud/GPU combination...")
-print("(This should fail with foreign key violation)")
-result = execute_sql(test_constraint_sql, "Test constraint", show_error=True)
+result = execute_sql(test_trigger_sql, "Test trigger", show_error=True)
 
 if not result:
-    print("\n✅ Constraint is working! (Test insertion failed as expected)")
+    print("\n✅ Trigger is working! (Test insertion failed as expected)")
+    print("   • Invalid GPU type for cloud was rejected")
 else:
-    print("\n⚠️  Constraint may not be active (Test insertion succeeded)")
+    print("\n⚠️  Trigger may not be active (Test insertion succeeded)")
+    print("   • Cleaning up test data...")
+    cleanup_sql = "DELETE FROM lakemeter.estimates WHERE estimate_name = 'Test Trigger';"
+    execute_sql(cleanup_sql, "Cleanup test data", show_error=False)
 
 # COMMAND ----------
 
@@ -239,20 +263,21 @@ else:
 # MAGIC 
 # MAGIC ✅ **What was created:**
 # MAGIC - `ref_model_serving_gpu_types` table with valid cloud/GPU combinations
-# MAGIC - CHECK constraint on `line_items` to prevent invalid GPU combinations (if enabled)
+# MAGIC - Validation trigger on `line_items` to prevent invalid GPU combinations (if enabled)
 # MAGIC 
 # MAGIC 📊 **Valid combinations:**
 # MAGIC - AWS: cpu, gpu_small_t4, gpu_medium_a10g_*, gpu_xlarge/2xlarge/4xlarge_a100_80gb_*
 # MAGIC - AZURE: cpu, gpu_medium_a10g_*, gpu_xlarge_a100_40gb/80gb_*
 # MAGIC - GCP: cpu, gpu_small_t4, gpu_medium_g2_standard_8, gpu_xlarge/2xlarge_a100_80gb_*
 # MAGIC 
-# MAGIC 🔒 **CHECK Constraint behavior:**
-# MAGIC - **Type:** CHECK constraint (not FK) with conditional logic
+# MAGIC 🔒 **Trigger behavior:**
+# MAGIC - **Type:** BEFORE INSERT OR UPDATE trigger with conditional logic
 # MAGIC - **Scope:** Only validates MODEL_SERVING workload type
 # MAGIC - **Impact:** Other workloads (VECTOR_SEARCH, FMAPI, etc.) are NOT affected
 # MAGIC - Prevents inserting AWS GPU types when cloud=AZURE for MODEL_SERVING
 # MAGIC - Prevents inserting Azure GPU types when cloud=AWS for MODEL_SERVING
 # MAGIC - Prevents inserting GCP GPU types when cloud=AZURE for MODEL_SERVING
+# MAGIC - Provides clear error message with invalid GPU type and cloud
 # MAGIC 
-# MAGIC ⚠️  **Note:** If constraint fails, it's optional. You can skip it and rely on application-level validation.
+# MAGIC ⚠️  **Note:** If trigger creation fails, it's optional. You can skip it and rely on application-level validation.
 
