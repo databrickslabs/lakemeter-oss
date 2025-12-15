@@ -334,6 +334,7 @@ CREATE TABLE lakemeter.line_items (
     fmapi_model VARCHAR(100),
     fmapi_endpoint_type VARCHAR(20),
     fmapi_context_length VARCHAR(20),
+    fmapi_provisioned_type VARCHAR(50), -- 'pay_per_token', 'provisioned_entry', 'provisioned_scaling'
     fmapi_input_tokens_per_month BIGINT,
     fmapi_output_tokens_per_month BIGINT,
     
