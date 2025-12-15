@@ -54,6 +54,31 @@ from datetime import datetime
 import pandas as pd
 from tabulate import tabulate
 
+# Helper function to execute SQL queries
+def execute_query(query, params=None, fetch=True):
+    """Execute a SQL query and return results as DataFrame (if fetch=True)"""
+    conn = get_lakebase_connection()
+    try:
+        with conn.cursor() as cur:
+            if params:
+                cur.execute(query, params)
+            else:
+                cur.execute(query)
+            
+            if fetch:
+                columns = [desc[0] for desc in cur.description] if cur.description else []
+                results = cur.fetchall()
+                return pd.DataFrame(results, columns=columns)
+            else:
+                conn.commit()
+                return True
+    except Exception as e:
+        conn.rollback()
+        print(f"Error executing query: {e}")
+        raise
+    finally:
+        conn.close()
+
 # COMMAND ----------
 
 # MAGIC %md
