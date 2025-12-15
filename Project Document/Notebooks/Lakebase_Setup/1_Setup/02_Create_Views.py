@@ -436,7 +436,10 @@ product_type_calc AS (
             WHEN f.workload_type = 'MODEL_SERVING' THEN 'SERVERLESS_REAL_TIME_INFERENCE'
             WHEN f.workload_type = 'FMAPI_DATABRICKS' THEN 'SERVERLESS_REAL_TIME_INFERENCE'
             WHEN f.workload_type = 'FMAPI_PROPRIETARY' THEN 
-                UPPER(f.fmapi_provider) || '_MODEL_SERVING'
+                CASE 
+                    WHEN f.fmapi_provider = 'google' THEN 'GEMINI_MODEL_SERVING'
+                    ELSE UPPER(f.fmapi_provider) || '_MODEL_SERVING'
+                END
             WHEN f.workload_type = 'LAKEBASE' THEN 'DATABASE_SERVERLESS_COMPUTE'
             ELSE 'JOBS_COMPUTE'
         END as product_type_for_pricing
