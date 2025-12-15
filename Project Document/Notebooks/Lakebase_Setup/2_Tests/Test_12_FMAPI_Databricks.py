@@ -52,7 +52,6 @@ import psycopg2
 import uuid
 from datetime import datetime
 import pandas as pd
-from tabulate import tabulate
 
 # Helper function to execute SQL queries
 def execute_query(query, params=None, fetch=True):
@@ -108,8 +107,8 @@ scenario_id = 1
 # Token-based scenarios (pay per token)
 # ✅ Using actual model names from sync_product_fmapi_databricks
 token_models = [
-    {'model': 'llama-3-1-8b', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'Llama 3.1 8B (Small)'},
-    {'model': 'llama-3-2-1b', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'Llama 3.2 1B (Tiny)'},
+    {'model': 'llama-3-1-8b', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'Llama 3.1 8B'},
+    {'model': 'llama-3-2-3b', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'Llama 3.2 3B'},
     {'model': 'bge-large', 'input_tokens': 10000000, 'output_tokens': 0, 'label': 'BGE Large (Embedding)'},
     {'model': 'gte', 'input_tokens': 10000000, 'output_tokens': 0, 'label': 'GTE (Embedding)'},
 ]
@@ -326,31 +325,39 @@ print("TOKEN-BASED SCENARIOS (Pay Per Token)")
 print("=" * 150)
 
 token_results = results_df[results_df['fmapi_provisioned_type'] == 'pay_per_token'].head(30)
-print(tabulate(token_results[[
+token_display = token_results[[
     'cloud', 'region', 'tier', 'fmapi_model', 
     'fmapi_input_tokens_per_month', 'fmapi_output_tokens_per_month',
     'dbu_per_month', 'dbu_price', 'cost_per_month'
-]], headers='keys', tablefmt='grid', showindex=False))
+]].copy()
+token_display['fmapi_input_tokens_per_month'] = token_display['fmapi_input_tokens_per_month'].apply(lambda x: f"{x/1e6:.1f}M")
+token_display['fmapi_output_tokens_per_month'] = token_display['fmapi_output_tokens_per_month'].apply(lambda x: f"{x/1e6:.1f}M")
+token_display.columns = ['Cloud', 'Region', 'Tier', 'Model', 'Input Tokens', 'Output Tokens', 'DBU/Month', 'DBU Price', 'Cost/Month']
+display(token_display)
 
 print("\n" + "=" * 150)
 print("PROVISIONED THROUGHPUT - ENTRY")
 print("=" * 150)
 
 entry_results = results_df[results_df['fmapi_provisioned_type'] == 'provisioned_entry'].head(30)
-print(tabulate(entry_results[[
+entry_display = entry_results[[
     'cloud', 'region', 'tier', 'fmapi_model',
     'hours_per_month', 'dbu_per_hour', 'dbu_per_month', 'dbu_price', 'cost_per_month'
-]], headers='keys', tablefmt='grid', showindex=False))
+]].copy()
+entry_display.columns = ['Cloud', 'Region', 'Tier', 'Model', 'Hours/Month', 'DBU/Hour', 'DBU/Month', 'DBU Price', 'Cost/Month']
+display(entry_display)
 
 print("\n" + "=" * 150)
 print("PROVISIONED THROUGHPUT - SCALING")
 print("=" * 150)
 
 scaling_results = results_df[results_df['fmapi_provisioned_type'] == 'provisioned_scaling'].head(30)
-print(tabulate(scaling_results[[
+scaling_display = scaling_results[[
     'cloud', 'region', 'tier', 'fmapi_model',
     'hours_per_month', 'dbu_per_hour', 'dbu_per_month', 'dbu_price', 'cost_per_month'
-]], headers='keys', tablefmt='grid', showindex=False))
+]].copy()
+scaling_display.columns = ['Cloud', 'Region', 'Tier', 'Model', 'Hours/Month', 'DBU/Hour', 'DBU/Month', 'DBU Price', 'Cost/Month']
+display(scaling_display)
 
 # COMMAND ----------
 
@@ -378,9 +385,11 @@ print(f"   • Total: {len(results_df)}")
 zero_cost_results = results_df[results_df['cost_per_month'] == 0]
 if len(zero_cost_results) > 0:
     print(f"\n⚠️  Found {len(zero_cost_results)} scenarios with $0 costs:")
-    print(tabulate(zero_cost_results[[
+    zero_display = zero_cost_results[[
         'cloud', 'tier', 'fmapi_model', 'fmapi_provisioned_type', 'cost_per_month'
-    ]].head(10), headers='keys', tablefmt='grid', showindex=False))
+    ]].head(10).copy()
+    zero_display.columns = ['Cloud', 'Tier', 'Model', 'Provisioned Type', 'Cost/Month']
+    display(zero_display)
     
     # Check if $0 is expected (STANDARD tier might not support some models)
     standard_zero = zero_cost_results[zero_cost_results['tier'] == 'STANDARD']
