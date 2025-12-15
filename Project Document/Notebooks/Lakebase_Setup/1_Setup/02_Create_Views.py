@@ -220,8 +220,19 @@ hours_calc AS (
         -- Hours calculation: runs_per_day * (avg_runtime_minutes / 60) * days_per_month
         -- Consistent formula for all hourly workloads
         CASE 
+            -- FMAPI token-based: No hours needed (uses tokens)
+            WHEN li.workload_type IN ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY') 
+                 AND COALESCE(li.fmapi_provisioned_type, 'pay_per_token') = 'pay_per_token' THEN 0
+            
+            -- FMAPI provisioned throughput: Calculate hours (hourly charge)
+            WHEN li.workload_type IN ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY') 
+                 AND li.fmapi_provisioned_type IN ('provisioned_entry', 'provisioned_scaling') THEN
+                COALESCE(li.runs_per_day, 0) * (COALESCE(li.avg_runtime_minutes, 0) / 60.0) * COALESCE(li.days_per_month, 30)
+            
+            -- All other workloads: Calculate hours normally
             WHEN li.workload_type NOT IN ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY') THEN
                 COALESCE(li.runs_per_day, 0) * (COALESCE(li.avg_runtime_minutes, 0) / 60.0) * COALESCE(li.days_per_month, 30)
+            
             ELSE 0
         END as hours_per_month
     FROM lakemeter.line_items li
