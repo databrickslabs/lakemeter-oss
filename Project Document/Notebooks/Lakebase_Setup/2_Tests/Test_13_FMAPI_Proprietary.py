@@ -7,26 +7,31 @@
 # MAGIC ## Providers & Models Covered:
 # MAGIC 
 # MAGIC ### **OpenAI** (served by Databricks)
-# MAGIC - **Models:** gpt-5 (short/long context), gpt-5-mini
+# MAGIC - **Models:** gpt-5 (global/in_geo), gpt-5-mini
 # MAGIC - **Pricing:** Pay-per-token (input/output tokens)
-# MAGIC - **Options:** global/in_geo endpoint, short/long context
+# MAGIC - **Context:** `'all'` (OpenAI uses this single value, not 'short'/'long')
+# MAGIC - **Options:** global/in_geo endpoint
 # MAGIC 
 # MAGIC ### **Anthropic** (served by Databricks)
 # MAGIC - **Models:** claude-sonnet-4, claude-opus-4, claude-haiku-4-5
 # MAGIC - **Pricing:** Pay-per-token (input/output tokens)
-# MAGIC - **Options:** global/in_geo endpoint, short/long context
+# MAGIC - **Context:** `'short'` and `'long'`
+# MAGIC - **Options:** global/in_geo endpoint
 # MAGIC 
-# MAGIC ### **Google** (served by Databricks)
+# MAGIC ### **Google/Gemini** (served by Databricks)
 # MAGIC - **Models:** gemini-2-5-pro, gemini-2-5-flash
 # MAGIC - **Pricing:** Pay-per-token (input/output tokens)
-# MAGIC - **Options:** global/in_geo endpoint, short/long context
+# MAGIC - **Context:** `'short'` and `'long'`
+# MAGIC - **Options:** global/in_geo endpoint
 # MAGIC 
 # MAGIC ## Test Matrix:
 # MAGIC - **Clouds:** AWS, Azure, GCP
 # MAGIC - **Tiers:** STANDARD, PREMIUM, ENTERPRISE (Azure has no ENTERPRISE)
 # MAGIC - **Regions:** At least one US and one Europe region per cloud
 # MAGIC - **Endpoint Types:** global, in_geo
-# MAGIC - **Context Lengths:** short, long (pricing table uses these, NOT 'standard'!)
+# MAGIC - **Context Lengths:** 
+# MAGIC   - OpenAI: `'all'` ⚠️ (different from other providers!)
+# MAGIC   - Anthropic/Google: `'short'`, `'long'`
 # MAGIC - **Total Scenarios:** ~128 (8 model configs × 2 regions × (AWS:3 tiers + Azure:2 tiers + GCP:3 tiers))
 # MAGIC 
 # MAGIC ## Validation:
@@ -104,17 +109,19 @@ scenario_id = 1
 
 # Proprietary model configurations
 # Using ACTUAL model names and context_length values from sync_product_fmapi_proprietary table
-# NOTE: Pricing table uses 'short' and 'long', NOT 'standard'!
+# NOTE: Different providers use different context_length values!
+#   - OpenAI: 'all' (not 'short'/'long')
+#   - Anthropic/Google: 'short' and 'long'
 proprietary_models = [
-    # OpenAI models
+    # OpenAI models (context_length = 'all')
     {'provider': 'openai', 'model': 'gpt-5', 'input_tokens': 10000000, 'output_tokens': 5000000, 
-     'endpoint': 'global', 'context': 'short', 'label': 'GPT-5 (Global, Short)'},
+     'endpoint': 'global', 'context': 'all', 'label': 'GPT-5 (Global)'},
     {'provider': 'openai', 'model': 'gpt-5', 'input_tokens': 10000000, 'output_tokens': 5000000, 
-     'endpoint': 'global', 'context': 'long', 'label': 'GPT-5 (Global, Long)'},
+     'endpoint': 'in_geo', 'context': 'all', 'label': 'GPT-5 (In-Geo)'},
     {'provider': 'openai', 'model': 'gpt-5-mini', 'input_tokens': 10000000, 'output_tokens': 5000000,
-     'endpoint': 'in_geo', 'context': 'short', 'label': 'GPT-5 Mini (In-Geo, Short)'},
+     'endpoint': 'in_geo', 'context': 'all', 'label': 'GPT-5 Mini (In-Geo)'},
     
-    # Anthropic models
+    # Anthropic models (context_length = 'short' or 'long')
     {'provider': 'anthropic', 'model': 'claude-sonnet-4', 'input_tokens': 10000000, 'output_tokens': 5000000,
      'endpoint': 'global', 'context': 'short', 'label': 'Claude Sonnet 4 (Global, Short)'},
     {'provider': 'anthropic', 'model': 'claude-opus-4', 'input_tokens': 10000000, 'output_tokens': 5000000,
@@ -122,7 +129,7 @@ proprietary_models = [
     {'provider': 'anthropic', 'model': 'claude-haiku-4-5', 'input_tokens': 10000000, 'output_tokens': 5000000,
      'endpoint': 'in_geo', 'context': 'short', 'label': 'Claude Haiku 4.5 (In-Geo, Short)'},
     
-    # Google models
+    # Google models (context_length = 'short' or 'long')
     {'provider': 'google', 'model': 'gemini-2-5-pro', 'input_tokens': 10000000, 'output_tokens': 5000000,
      'endpoint': 'global', 'context': 'short', 'label': 'Gemini 2.5 Pro (Global, Short)'},
     {'provider': 'google', 'model': 'gemini-2-5-flash', 'input_tokens': 10000000, 'output_tokens': 5000000,
@@ -452,12 +459,17 @@ print(f"\n✅ All test data cleaned up!")
 # MAGIC 
 # MAGIC ✅ **Test completed successfully!**
 # MAGIC 
-# MAGIC - **8 model configurations** tested across OpenAI, Anthropic, and Google
+# MAGIC - **8 model configurations** tested across OpenAI, Anthropic, and Google/Gemini
 # MAGIC - **Token-based pricing** validated (pay per token)
-# MAGIC - **Context lengths:** short and long (NOT 'standard' - pricing table uses 'short'/'long')
+# MAGIC - **Context lengths:** 
+# MAGIC   - OpenAI: `'all'` ⚠️ (different from other providers!)
+# MAGIC   - Anthropic/Google: `'short'` and `'long'`
 # MAGIC - **Endpoint types:** global and in_geo
 # MAGIC - All PREMIUM/ENTERPRISE scenarios have positive costs
 # MAGIC - Proper provider/model combinations validated by trigger
 # MAGIC - DBU rates correctly looked up from sync_product_fmapi_proprietary
+# MAGIC - Product types: OPENAI_MODEL_SERVING, ANTHROPIC_MODEL_SERVING, GEMINI_MODEL_SERVING
 # MAGIC 
-# MAGIC **Note:** The pricing table uses `context_length` values of `'short'` and `'long'`, not `'standard'`!
+# MAGIC **Important Notes:**
+# MAGIC - OpenAI uses `context_length = 'all'`, not `'short'`/`'long'`!
+# MAGIC - Google uses product_type = `GEMINI_MODEL_SERVING`, not `GOOGLE_MODEL_SERVING`!
