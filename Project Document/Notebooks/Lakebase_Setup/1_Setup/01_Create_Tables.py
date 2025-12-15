@@ -339,10 +339,10 @@ CREATE TABLE lakemeter.line_items (
     fmapi_output_tokens_per_month BIGINT,
     
     -- Lakebase config
-    lakebase_cu INT,
-    lakebase_storage_gb INT,
-    lakebase_ha_enabled BOOLEAN DEFAULT false,
-    lakebase_backup_retention_days INT DEFAULT 7,
+    lakebase_cu INT,                          -- CU per node (1, 2, 4, 8)
+    lakebase_storage_gb INT,                  -- Storage in GB
+    lakebase_ha_nodes INT DEFAULT 1,          -- Total number of nodes (1-3, 1=no HA)
+    lakebase_backup_retention_days INT DEFAULT 7,  -- Backup retention (0=no backup, 1-35 days)
     
     -- Usage/frequency
     runs_per_day INT,
@@ -781,6 +781,12 @@ business_logic_constraints = [
     ADD CONSTRAINT chk_lakebase_backup_range 
     CHECK (lakebase_backup_retention_days >= 0 AND lakebase_backup_retention_days <= 35)
     """, "Lakebase backup: 0-35 days (0 = no backup)"),
+    
+    ("chk_lakebase_ha_nodes_range", """
+    ALTER TABLE lakemeter.line_items 
+    ADD CONSTRAINT chk_lakebase_ha_nodes_range 
+    CHECK (lakebase_ha_nodes >= 1 AND lakebase_ha_nodes <= 3)
+    """, "Lakebase HA nodes: 1-3 (1=no HA, 2-3=HA enabled)"),
 ]
 
 for i, (name, sql, desc) in enumerate(business_logic_constraints, 1):

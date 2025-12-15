@@ -7,36 +7,43 @@
 # MAGIC **LAKEBASE Characteristics:**
 # MAGIC - **Product type:** DATABASE_SERVERLESS_COMPUTE
 # MAGIC - **Sizing:** Compute Units (CU) instead of instance types
-# MAGIC   - **1 CU = 1 DBU per hour**
-# MAGIC   - Available sizes: 1, 2, 4, 8 CU
+# MAGIC   - **1 CU = 1 DBU per hour PER NODE**
+# MAGIC   - Available sizes: 1, 2, 4, 8 CU per node
+# MAGIC   - **Total DBU = CU per node × number of HA nodes**
 # MAGIC - **No VM costs** (serverless database)
 # MAGIC - **No instance types** (uses CU-based sizing)
 # MAGIC - **Additional features:**
 # MAGIC   - **storage_gb:** Database storage size (100 GB default)
-# MAGIC   - **ha_enabled:** High Availability (multi-AZ) option
-# MAGIC   - **backup_retention_days:** Backup retention period (7 days default)
+# MAGIC   - **ha_nodes:** Number of HA nodes (1-3, where 1=no HA, max=3)
+# MAGIC   - **backup_retention_days:** Backup retention period (0=no backup, 1-35 days)
 # MAGIC 
 # MAGIC **Test Scenarios:**
 # MAGIC - **Clouds:** AWS, Azure, GCP
 # MAGIC - **Regions:** 2 per cloud (1 US + 1 Europe)
 # MAGIC - **Tiers:** STANDARD, PREMIUM (ENTERPRISE not commonly used)
-# MAGIC - **CU Sizes:** 1, 2, 4, 8 CU
-# MAGIC - **High Availability:** Enabled, Disabled
+# MAGIC - **CU Sizes:** 1, 2, 4, 8 CU per node
+# MAGIC - **HA Nodes:** 1 (no HA), 2, 3 (max 3 nodes)
 # MAGIC - **Usage Patterns:**
 # MAGIC   - Standard: 8 runs/day, 60 min/run (8 hours/day)
 # MAGIC   - Always-on: 24 runs/day, 60 min/run (24 hours/day)
 # MAGIC 
 # MAGIC **Test Matrix:**
-# MAGIC - **AWS:** 2 regions × 2 tiers × 4 CU × 2 HA × 2 usage = **64 scenarios**
-# MAGIC - **AZURE:** 2 regions × 2 tiers × 4 CU × 2 HA × 2 usage = **64 scenarios**
-# MAGIC - **GCP:** 2 regions × 2 tiers × 4 CU × 2 HA × 2 usage = **64 scenarios**
-# MAGIC - **TOTAL: ~192 scenarios**
+# MAGIC - **AWS:** 2 regions × 2 tiers × 4 CU × 3 HA nodes × 2 usage = **96 scenarios**
+# MAGIC - **AZURE:** 2 regions × 2 tiers × 4 CU × 3 HA nodes × 2 usage = **96 scenarios**
+# MAGIC - **GCP:** 2 regions × 2 tiers × 4 CU × 3 HA nodes × 2 usage = **96 scenarios**
+# MAGIC - **TOTAL: ~288 scenarios**
 # MAGIC 
 # MAGIC **Validation:**
-# MAGIC - ✅ DBU cost = CU size × hours × DBU rate
+# MAGIC - ✅ Total DBU per hour = CU per node × number of HA nodes
+# MAGIC - ✅ DBU cost = Total DBU per hour × hours × DBU rate
 # MAGIC - ✅ No VM costs (serverless)
-# MAGIC - ✅ HA enabled scenarios may have different configurations
+# MAGIC - ✅ HA nodes (2-3) increase total CU proportionally
 # MAGIC - ✅ Different usage patterns (8h vs 24h) affect monthly costs
+# MAGIC 
+# MAGIC **Example Calculations:**
+# MAGIC - 2 CU, 1 node (no HA), 8h/day → 2 DBU/hr × 240 hr/month = 480 DBU/month
+# MAGIC - 2 CU, 2 nodes (HA), 8h/day → 4 DBU/hr × 240 hr/month = 960 DBU/month
+# MAGIC - 2 CU, 3 nodes (max HA), 8h/day → 6 DBU/hr × 240 hr/month = 1440 DBU/month
 
 # COMMAND ----------
 
@@ -98,7 +105,7 @@ print("=" * 100)
 test_scenarios = []
 scenario_id = 1
 cu_sizes = [1, 2, 4, 8]
-ha_options = [False, True]
+ha_nodes_options = [1, 2, 3]  # 1=no HA, 2-3=HA enabled (max 3 nodes)
 usage_patterns = [{'runs': 8, 'mins': 60}, {'runs': 24, 'mins': 60}]
 
 for cloud in ['AWS', 'AZURE', 'GCP']:
@@ -106,15 +113,16 @@ for cloud in ['AWS', 'AZURE', 'GCP']:
         region = region_map[cloud][region_type]
         for tier in ['STANDARD', 'PREMIUM']:
             for cu in cu_sizes:
-                for ha in ha_options:
+                for ha_nodes in ha_nodes_options:
                     for usage in usage_patterns:
+                        ha_label = f'{ha_nodes}N' if ha_nodes == 1 else f'{ha_nodes}N-HA'
                         test_scenarios.append({
                             'scenario_id': scenario_id, 'cloud': cloud, 'region': region, 'tier': tier,
-                            'workload_name': f"{cloud} {tier} {cu}CU {'HA' if ha else 'NoHA'} {usage['runs']}h",
+                            'workload_name': f"{cloud} {tier} {cu}CU {ha_label} {usage['runs']}h",
                             'lakebase_cu': cu,
                             'lakebase_storage_gb': 100,
-                            'lakebase_ha_enabled': ha,
-                            'lakebase_backup_retention_days': 7 if ha else 0,
+                            'lakebase_ha_nodes': ha_nodes,
+                            'lakebase_backup_retention_days': 7 if ha_nodes > 1 else 0,  # Backup only for HA
                             'runs_per_day': usage['runs'],
                             'avg_runtime_minutes': usage['mins'],
                             'days_per_month': 30
@@ -138,8 +146,8 @@ for scenario in test_scenarios:
     line_item_id = str(uuid.uuid4())
     line_item_ids.append(line_item_id)
     estimate_key = f"{scenario['cloud']}_{scenario['region']}_{scenario['tier']}"
-    execute_query("""INSERT INTO lakemeter.line_items (line_item_id, estimate_id, display_order, workload_name, workload_type, serverless_enabled, photon_enabled, lakebase_cu, lakebase_storage_gb, lakebase_ha_enabled, lakebase_backup_retention_days, runs_per_day, avg_runtime_minutes, days_per_month, vm_pricing_tier, vm_payment_option, notes, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
-                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'LAKEBASE', True, True, scenario['lakebase_cu'], scenario['lakebase_storage_gb'], scenario['lakebase_ha_enabled'], scenario['lakebase_backup_retention_days'], scenario['runs_per_day'], scenario['avg_runtime_minutes'], scenario['days_per_month'], None, None, "LAKEBASE", datetime.now(), datetime.now()), fetch=False)
+    execute_query("""INSERT INTO lakemeter.line_items (line_item_id, estimate_id, display_order, workload_name, workload_type, serverless_enabled, photon_enabled, lakebase_cu, lakebase_storage_gb, lakebase_ha_nodes, lakebase_backup_retention_days, runs_per_day, avg_runtime_minutes, days_per_month, vm_pricing_tier, vm_payment_option, notes, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
+                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'LAKEBASE', True, True, scenario['lakebase_cu'], scenario['lakebase_storage_gb'], scenario['lakebase_ha_nodes'], scenario['lakebase_backup_retention_days'], scenario['runs_per_day'], scenario['avg_runtime_minutes'], scenario['days_per_month'], None, None, "LAKEBASE", datetime.now(), datetime.now()), fetch=False)
 
 print(f"✅ Created {len(line_item_ids)} line items")
 
@@ -157,7 +165,7 @@ SELECT
     -- Configuration
     c.lakebase_cu,
     c.lakebase_storage_gb,
-    c.lakebase_ha_enabled,
+    c.lakebase_ha_nodes,
     c.lakebase_backup_retention_days,
     c.serverless_enabled,
     -- Usage
