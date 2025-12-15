@@ -65,7 +65,6 @@ populate_databricks_sql = """
 INSERT INTO lakemeter.ref_fmapi_databricks_models (model_name, description, is_active)
 SELECT DISTINCT model, 'Databricks-hosted model', true
 FROM lakemeter.sync_product_fmapi_databricks
-WHERE is_active = true
 ON CONFLICT (model_name) DO NOTHING;
 """
 
@@ -93,7 +92,6 @@ populate_proprietary_sql = """
 INSERT INTO lakemeter.ref_fmapi_proprietary_models (provider, model_name, description, is_active)
 SELECT DISTINCT provider, model, 'Proprietary model served by Databricks', true
 FROM lakemeter.sync_product_fmapi_proprietary
-WHERE is_active = true
 ON CONFLICT (provider, model_name) DO NOTHING;
 """
 
