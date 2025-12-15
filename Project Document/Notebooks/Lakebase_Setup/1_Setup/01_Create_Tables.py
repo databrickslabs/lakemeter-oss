@@ -779,8 +779,8 @@ business_logic_constraints = [
     ("chk_lakebase_backup_range", """
     ALTER TABLE lakemeter.line_items 
     ADD CONSTRAINT chk_lakebase_backup_range 
-    CHECK (lakebase_backup_retention_days >= 1 AND lakebase_backup_retention_days <= 35)
-    """, "Lakebase backup: 1-35 days"),
+    CHECK (lakebase_backup_retention_days >= 0 AND lakebase_backup_retention_days <= 35)
+    """, "Lakebase backup: 0-35 days (0 = no backup)"),
 ]
 
 for i, (name, sql, desc) in enumerate(business_logic_constraints, 1):
