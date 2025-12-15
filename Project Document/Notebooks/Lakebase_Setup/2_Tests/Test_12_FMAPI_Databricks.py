@@ -7,10 +7,11 @@
 # MAGIC ## Pricing Types Covered:
 # MAGIC 
 # MAGIC ### 1. **Pay-Per-Token** (Serverless Inference)
-# MAGIC - **Models:** llama-3.1-8b-instruct, dbrx-instruct, bge-large-en-v1.5, gte
+# MAGIC - **Models:** llama-3-1-8b, llama-4-maverick, bge-large, gte
 # MAGIC - **Rate Type:** input_token, output_token
 # MAGIC - **Calculation:** (tokens / 1,000,000) × DBU rate
 # MAGIC - **Use Case:** Variable workloads, prototyping, low/unpredictable traffic
+# MAGIC - **Note:** Llama 3.2 models (3B, 1B) do NOT support pay-per-token (provisioned only)
 # MAGIC 
 # MAGIC ### 2. **Provisioned Throughput - Entry** (Reserved Capacity)
 # MAGIC - **Models:** llama-3.1-70b-instruct, gemma-3-12b
@@ -105,10 +106,11 @@ test_scenarios = []
 scenario_id = 1
 
 # Token-based scenarios (pay per token)
-# ✅ Using actual model names from sync_product_fmapi_databricks
+# ✅ Using models that SUPPORT pay-per-token pricing
+# ❌ Excluded: llama-3-2-3b, llama-3-2-1b (provisioned throughput only, no pay-per-token)
 token_models = [
     {'model': 'llama-3-1-8b', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'Llama 3.1 8B'},
-    {'model': 'llama-3-2-3b', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'Llama 3.2 3B'},
+    {'model': 'llama-4-maverick', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'Llama 4 Maverick'},
     {'model': 'bge-large', 'input_tokens': 10000000, 'output_tokens': 0, 'label': 'BGE Large (Embedding)'},
     {'model': 'gte', 'input_tokens': 10000000, 'output_tokens': 0, 'label': 'GTE (Embedding)'},
 ]
