@@ -335,9 +335,9 @@ dbu_calc AS (
                           AND product = LOWER(c.serverless_product)
                           AND size_or_model = c.serverless_size), 0)
             
-            -- Lakebase
+            -- Lakebase: Total CU = CU per node × number of HA nodes
             WHEN c.workload_type = 'LAKEBASE' THEN
-                COALESCE(c.lakebase_cu, 0)
+                COALESCE(c.lakebase_cu, 0) * COALESCE(c.lakebase_ha_nodes, 1)
             
             ELSE 0
         END as dbu_per_hour
@@ -504,7 +504,7 @@ SELECT
     serverless_product, serverless_size, vector_search_mode, vector_capacity_millions,
     fmapi_provider, fmapi_model, fmapi_endpoint_type, fmapi_context_length, fmapi_provisioned_type,
     fmapi_input_tokens_per_month, fmapi_output_tokens_per_month,
-    lakebase_cu, lakebase_storage_gb, lakebase_ha_enabled, lakebase_backup_retention_days,
+    lakebase_cu, lakebase_storage_gb, lakebase_ha_nodes, lakebase_backup_retention_days,
     runs_per_day, avg_runtime_minutes, days_per_month,
     driver_pricing_tier, worker_pricing_tier, vm_pricing_tier, vm_payment_option, spot_percentage,
     notes, created_at, updated_at,
