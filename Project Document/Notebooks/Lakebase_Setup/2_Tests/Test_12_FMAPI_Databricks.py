@@ -106,19 +106,21 @@ test_scenarios = []
 scenario_id = 1
 
 # Token-based scenarios (pay per token)
+# ✅ Using actual model names from sync_product_fmapi_databricks
 token_models = [
-    {'model': 'llama-3.1-8b-instruct', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'Llama 3.1 8B (Small)'},
-    {'model': 'dbrx-instruct', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'DBRX Instruct'},
-    {'model': 'bge-large-en-v1.5', 'input_tokens': 10000000, 'output_tokens': 0, 'label': 'BGE Large (Embedding)'},
+    {'model': 'llama-3-1-8b', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'Llama 3.1 8B (Small)'},
+    {'model': 'llama-3-2-1b', 'input_tokens': 10000000, 'output_tokens': 5000000, 'label': 'Llama 3.2 1B (Tiny)'},
+    {'model': 'bge-large', 'input_tokens': 10000000, 'output_tokens': 0, 'label': 'BGE Large (Embedding)'},
     {'model': 'gte', 'input_tokens': 10000000, 'output_tokens': 0, 'label': 'GTE (Embedding)'},
 ]
 
 # Provisioned throughput scenarios (hourly)
+# ✅ Using actual model names from sync_product_fmapi_databricks
 provisioned_models = [
-    {'model': 'llama-3.1-70b-instruct', 'type': 'provisioned_entry', 'label': 'Llama 3.1 70B (Entry)'},
+    {'model': 'llama-3-3-70b', 'type': 'provisioned_entry', 'label': 'Llama 3.3 70B (Entry)'},
     {'model': 'gemma-3-12b', 'type': 'provisioned_entry', 'label': 'Gemma 3 12B (Entry)'},
     {'model': 'gpt-oss-120b', 'type': 'provisioned_scaling', 'label': 'GPT-OSS 120B (Scaling)'},
-    {'model': 'gemma-3-12b', 'type': 'provisioned_scaling', 'label': 'Gemma 3 12B (Scaling)'},
+    {'model': 'gpt-oss-20b', 'type': 'provisioned_scaling', 'label': 'GPT-OSS 20B (Scaling)'},
 ]
 
 print(f"\n📋 Generating scenarios...")
