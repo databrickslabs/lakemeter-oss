@@ -15,7 +15,9 @@
 # MAGIC ### **Anthropic** (served by Databricks)
 # MAGIC - **Models:** claude-sonnet-4, claude-opus-4, claude-haiku-4-5
 # MAGIC - **Pricing:** Pay-per-token (input/output tokens)
-# MAGIC - **Context:** `'short'` and `'long'`
+# MAGIC - **Context:** ⚠️ **VARIES BY MODEL:**
+# MAGIC   - `claude-sonnet-4`: Uses `'short'` and `'long'`
+# MAGIC   - `claude-opus-4`, `claude-haiku-4-5`: Use `'all'` (like OpenAI!)
 # MAGIC - **Options:** global/in_geo endpoint
 # MAGIC 
 # MAGIC ### **Google/Gemini** (served by Databricks)
@@ -29,9 +31,12 @@
 # MAGIC - **Tiers:** STANDARD, PREMIUM, ENTERPRISE (Azure has no ENTERPRISE)
 # MAGIC - **Regions:** At least one US and one Europe region per cloud
 # MAGIC - **Endpoint Types:** global, in_geo
-# MAGIC - **Context Lengths:** 
-# MAGIC   - OpenAI: `'all'` ⚠️ (different from other providers!)
-# MAGIC   - Anthropic/Google: `'short'`, `'long'`
+# MAGIC - **Context Lengths:** ⚠️ **VARIES BY PROVIDER AND MODEL:**
+# MAGIC   - OpenAI: `'all'` (all models)
+# MAGIC   - Anthropic: **MIXED**
+# MAGIC     - `claude-sonnet-4`: `'short'`, `'long'`
+# MAGIC     - `claude-opus-4`, `claude-haiku-4-5`: `'all'`
+# MAGIC   - Google: `'short'`, `'long'` (all models)
 # MAGIC - **Total Scenarios:** ~128 (8 model configs × 2 regions × (AWS:3 tiers + Azure:2 tiers + GCP:3 tiers))
 # MAGIC 
 # MAGIC ## Validation:
@@ -121,13 +126,16 @@ proprietary_models = [
     {'provider': 'openai', 'model': 'gpt-5-mini', 'input_tokens': 10000000, 'output_tokens': 5000000,
      'endpoint': 'in_geo', 'context': 'all', 'label': 'GPT-5 Mini (In-Geo)'},
     
-    # Anthropic models (context_length = 'short' or 'long')
+    # Anthropic models 
+    # NOTE: Different models use different context_length values!
+    # - claude-sonnet-4: 'short', 'long'
+    # - claude-opus-4, claude-haiku-4-5: 'all' (like OpenAI!)
     {'provider': 'anthropic', 'model': 'claude-sonnet-4', 'input_tokens': 10000000, 'output_tokens': 5000000,
      'endpoint': 'global', 'context': 'short', 'label': 'Claude Sonnet 4 (Global, Short)'},
     {'provider': 'anthropic', 'model': 'claude-opus-4', 'input_tokens': 10000000, 'output_tokens': 5000000,
-     'endpoint': 'global', 'context': 'long', 'label': 'Claude Opus 4 (Global, Long)'},
+     'endpoint': 'global', 'context': 'all', 'label': 'Claude Opus 4 (Global, All)'},
     {'provider': 'anthropic', 'model': 'claude-haiku-4-5', 'input_tokens': 10000000, 'output_tokens': 5000000,
-     'endpoint': 'in_geo', 'context': 'short', 'label': 'Claude Haiku 4.5 (In-Geo, Short)'},
+     'endpoint': 'in_geo', 'context': 'all', 'label': 'Claude Haiku 4.5 (In-Geo, All)'},
     
     # Google models (context_length = 'short' or 'long')
     {'provider': 'google', 'model': 'gemini-2-5-pro', 'input_tokens': 10000000, 'output_tokens': 5000000,
@@ -461,9 +469,12 @@ print(f"\n✅ All test data cleaned up!")
 # MAGIC 
 # MAGIC - **8 model configurations** tested across OpenAI, Anthropic, and Google/Gemini
 # MAGIC - **Token-based pricing** validated (pay per token)
-# MAGIC - **Context lengths:** 
-# MAGIC   - OpenAI: `'all'` ⚠️ (different from other providers!)
-# MAGIC   - Anthropic/Google: `'short'` and `'long'`
+# MAGIC - **Context lengths:** ⚠️ **CRITICAL - VARIES BY PROVIDER/MODEL:**
+# MAGIC   - OpenAI (all models): `'all'`
+# MAGIC   - Anthropic: **MIXED** by model
+# MAGIC     - `claude-sonnet-4`: `'short'`, `'long'`
+# MAGIC     - `claude-opus-4`, `claude-haiku-4-5`: `'all'`
+# MAGIC   - Google (all models): `'short'`, `'long'`
 # MAGIC - **Endpoint types:** global and in_geo
 # MAGIC - All PREMIUM/ENTERPRISE scenarios have positive costs
 # MAGIC - Proper provider/model combinations validated by trigger
@@ -471,5 +482,9 @@ print(f"\n✅ All test data cleaned up!")
 # MAGIC - Product types: OPENAI_MODEL_SERVING, ANTHROPIC_MODEL_SERVING, GEMINI_MODEL_SERVING
 # MAGIC 
 # MAGIC **Important Notes:**
-# MAGIC - OpenAI uses `context_length = 'all'`, not `'short'`/`'long'`!
+# MAGIC - **Context length values are MODEL-SPECIFIC, not just provider-specific!**
+# MAGIC   - OpenAI (all): `'all'`
+# MAGIC   - Anthropic `claude-sonnet-4`: `'short'`/`'long'`
+# MAGIC   - Anthropic `claude-opus-4`, `claude-haiku-4-5`: `'all'`
+# MAGIC   - Google (all): `'short'`/`'long'`
 # MAGIC - Google uses product_type = `GEMINI_MODEL_SERVING`, not `GOOGLE_MODEL_SERVING`!
