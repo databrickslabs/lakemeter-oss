@@ -333,21 +333,37 @@ dbu_calc AS (
     FROM classic_compute c
 ),
 
--- Calculate FMAPI token-based DBU
+-- Calculate FMAPI DBU (both token-based and provisioned throughput)
 fmapi_calc AS (
     SELECT 
         d.*,
         CASE 
-            WHEN d.workload_type = 'FMAPI_DATABRICKS' THEN
+            WHEN d.workload_type = 'FMAPI_DATABRICKS' AND COALESCE(d.fmapi_provisioned_type, 'pay_per_token') = 'pay_per_token' THEN
+                -- Token-based pricing (pay per token)
                 COALESCE((
                     SELECT (d.fmapi_input_tokens_per_month / COALESCE(f.input_divisor, 1000000) * f.dbu_rate)
                     FROM lakemeter.sync_product_fmapi_databricks f 
-                    WHERE f.model = d.fmapi_model AND f.rate_type = 'input_token'
+                    WHERE f.cloud = d.cloud
+                    AND f.model = d.fmapi_model 
+                    AND f.rate_type = 'input_token'
                 ), 0) +
                 COALESCE((
                     SELECT (d.fmapi_output_tokens_per_month / COALESCE(f.input_divisor, 1000000) * f.dbu_rate)
                     FROM lakemeter.sync_product_fmapi_databricks f 
-                    WHERE f.model = d.fmapi_model AND f.rate_type = 'output_token'
+                    WHERE f.cloud = d.cloud
+                    AND f.model = d.fmapi_model 
+                    AND f.rate_type = 'output_token'
+                ), 0)
+            
+            WHEN d.workload_type = 'FMAPI_DATABRICKS' AND d.fmapi_provisioned_type IN ('provisioned_entry', 'provisioned_scaling') THEN
+                -- Provisioned throughput pricing (hourly)
+                COALESCE((
+                    SELECT f.dbu_rate * d.hours_per_month
+                    FROM lakemeter.sync_product_fmapi_databricks f 
+                    WHERE f.cloud = d.cloud
+                    AND f.model = d.fmapi_model 
+                    AND f.rate_type = d.fmapi_provisioned_type
+                    AND f.is_hourly = TRUE
                 ), 0)
             
             WHEN d.workload_type = 'FMAPI_PROPRIETARY' THEN
@@ -472,7 +488,7 @@ SELECT
     autoscale_enabled, autoscale_min_workers, autoscale_max_workers, photon_enabled,
     dlt_edition, dlt_pipeline_mode, dbsql_warehouse_type, dbsql_warehouse_size, dbsql_num_clusters,
     serverless_product, serverless_size, vector_search_mode, vector_capacity_millions,
-    fmapi_provider, fmapi_model, fmapi_endpoint_type, fmapi_context_length,
+    fmapi_provider, fmapi_model, fmapi_endpoint_type, fmapi_context_length, fmapi_provisioned_type,
     fmapi_input_tokens_per_month, fmapi_output_tokens_per_month,
     lakebase_cu, lakebase_storage_gb, lakebase_ha_enabled, lakebase_backup_retention_days,
     runs_per_day, avg_runtime_minutes, days_per_month,
