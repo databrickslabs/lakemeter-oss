@@ -4,11 +4,13 @@ import React, { useState, useEffect } from "react";
 import {
   workloadOptions,
   dltEditionOptions,
+  dltPipelineModeOptions,
   warehouseTypeOptions,
   warehouseSizeOptions,
   serverlessSizeOptions,
   fmapiProviderOptions,
   fmapiModelOptions,
+  fmapiEndpointTypeOptions,
   pricingTierOptions,
   paymentOptionOptions,
 } from "@/lib/dropdown-options";
@@ -211,17 +213,17 @@ export default function Home() {
 
   // Helper function to determine which fields to show based on workload type
   const filterRowsByWorkloadType = (rows: TableRow[], workloadType: string): TableRow[] => {
-    // Define field mappings based on screenshot
+    // Define field mappings based on required attributes
     const fieldMappings: Record<string, string[]> = {
-      ALL_PURPOSE: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "hours_per_day"],
-      JOBS_CLASSIC: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "runs_per_day", "avg_runtime_minutes"],
-      JOBS_SERVERLESS: ["workload_type", "runs_per_day", "avg_runtime_minutes"],
-      DLT: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "dlt_edition", "hours_per_day"],
-      DBSQL: ["workload_type", "dbsql_warehouse_type", "dbsql_warehouse_size", "hours_per_day"],
+      ALL_PURPOSE: ["workload_type", "serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "hours_per_day", "days_per_month"],
+      JOBS_CLASSIC: ["workload_type", "serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "runs_per_day", "avg_runtime_minutes", "vm_pricing_tier"],
+      JOBS_SERVERLESS: ["workload_type", "serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "runs_per_day", "avg_runtime_minutes"],
+      DLT: ["workload_type", "serverless_enabled", "photon_enabled", "dlt_edition", "dlt_pipeline_mode", "driver_node_type", "worker_node_type", "num_workers", "hours_per_day", "vm_pricing_tier", "vm_payment_option"],
+      DBSQL: ["workload_type", "dbsql_warehouse_type", "dbsql_warehouse_size", "hours_per_day", "days_per_month"],
       VECTOR_SEARCH: ["workload_type", "serverless_size", "hours_per_day"],
       MODEL_SERVING: ["workload_type", "serverless_size", "hours_per_day"],
-      FMAPI_DATABRICKS: ["workload_type", "fmapi_model", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
-      FMAPI_PROPRIETARY: ["workload_type", "fmapi_provider", "fmapi_model", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
+      FMAPI_DATABRICKS: ["workload_type", "fmapi_provider", "fmapi_model", "fmapi_endpoint_type", "fmapi_context_length", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
+      FMAPI_PROPRIETARY: ["workload_type", "fmapi_provider", "fmapi_model", "fmapi_endpoint_type", "fmapi_context_length", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
     };
 
     const relevantFields = fieldMappings[workloadType] || [];
@@ -240,11 +242,13 @@ export default function Home() {
     const optionsMap: Record<string, any[]> = {
       workload_type: workloadOptions,
       dlt_edition: dltEditionOptions,
+      dlt_pipeline_mode: dltPipelineModeOptions,
       dbsql_warehouse_type: warehouseTypeOptions,
       dbsql_warehouse_size: warehouseSizeOptions,
       serverless_size: serverlessSizeOptions,
       fmapi_provider: fmapiProviderOptions,
       fmapi_model: fmapiModelOptions,
+      fmapi_endpoint_type: fmapiEndpointTypeOptions,
       vm_pricing_tier: pricingTierOptions,
       vm_payment_option: paymentOptionOptions,
     };
@@ -256,18 +260,26 @@ export default function Home() {
   const formatLabel = (attribute: string): string => {
     const labelMap: Record<string, string> = {
       workload_type: "Workload Type",
+      serverless_enabled: "Serverless",
+      photon_enabled: "Photon",
       driver_node_type: "Driver",
       worker_node_type: "Workers",
-      photon_enabled: "Photon",
+      num_workers: "# Workers",
       hours_per_day: "Hours per Day",
+      days_per_month: "Days per Month",
       runs_per_day: "Runs per Day",
       avg_runtime_minutes: "Avg Runtime",
+      vm_pricing_tier: "VM Pricing Tier",
+      vm_payment_option: "VM Payment Option",
       dlt_edition: "DLT Edition",
+      dlt_pipeline_mode: "Pipeline Mode",
       dbsql_warehouse_type: "Warehouse Type",
       dbsql_warehouse_size: "Warehouse Size",
       serverless_size: "Serverless Size",
       fmapi_provider: "FMAPI Provider",
       fmapi_model: "FMAPI Model",
+      fmapi_endpoint_type: "Endpoint Type",
+      fmapi_context_length: "Context Length",
       fmapi_input_tokens_per_month: "Input Tokens",
       fmapi_output_tokens_per_month: "Output Tokens",
     };
@@ -292,22 +304,24 @@ export default function Home() {
     const tables = allWorkloadTypes.map(workloadType => {
       // Create dummy columns to get the field mapping
       const fieldMappings: Record<string, string[]> = {
-        ALL_PURPOSE: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "hours_per_day"],
-        JOBS_CLASSIC: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "runs_per_day", "avg_runtime_minutes"],
-        JOBS_SERVERLESS: ["workload_type", "runs_per_day", "avg_runtime_minutes"],
-        DLT: ["workload_type", "driver_node_type", "worker_node_type", "photon_enabled", "dlt_edition", "hours_per_day"],
-        DBSQL: ["workload_type", "dbsql_warehouse_type", "dbsql_warehouse_size", "hours_per_day"],
+        ALL_PURPOSE: ["workload_type", "serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "hours_per_day", "days_per_month"],
+        JOBS_CLASSIC: ["workload_type", "serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "runs_per_day", "avg_runtime_minutes", "vm_pricing_tier"],
+        JOBS_SERVERLESS: ["workload_type", "serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "runs_per_day", "avg_runtime_minutes"],
+        DLT: ["workload_type", "serverless_enabled", "photon_enabled", "dlt_edition", "dlt_pipeline_mode", "driver_node_type", "worker_node_type", "num_workers", "hours_per_day", "vm_pricing_tier", "vm_payment_option"],
+        DBSQL: ["workload_type", "dbsql_warehouse_type", "dbsql_warehouse_size", "hours_per_day", "days_per_month"],
         VECTOR_SEARCH: ["workload_type", "serverless_size", "hours_per_day"],
         MODEL_SERVING: ["workload_type", "serverless_size", "hours_per_day"],
-        FMAPI_DATABRICKS: ["workload_type", "fmapi_model", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
-        FMAPI_PROPRIETARY: ["workload_type", "fmapi_provider", "fmapi_model", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
+        FMAPI_DATABRICKS: ["workload_type", "fmapi_provider", "fmapi_model", "fmapi_endpoint_type", "fmapi_context_length", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
+        FMAPI_PROPRIETARY: ["workload_type", "fmapi_provider", "fmapi_model", "fmapi_endpoint_type", "fmapi_context_length", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
       };
 
       const columns: TableRow[] = (fieldMappings[workloadType] || []).map(attr => ({
         attribute: attr,
-        inputType: attr === "photon_enabled" ? "checkbox" :
+        inputType: attr === "photon_enabled" || attr === "serverless_enabled" ? "checkbox" :
                    attr === "driver_node_type" || attr === "worker_node_type" ? "text" :
-                   attr.includes("token") || attr.includes("runtime") || attr.includes("hours") || attr.includes("runs") ? "text" : "dropdown",
+                   attr.includes("token") || attr.includes("runtime") || attr.includes("hours") ||
+                   attr.includes("runs") || attr === "num_workers" || attr === "days_per_month" ||
+                   attr === "fmapi_context_length" ? "text" : "dropdown",
         defaultValue: ""
       }));
 
@@ -483,17 +497,17 @@ export default function Home() {
                       <table className="w-full">
                         <thead>
                           <tr className="bg-gray-100 dark:bg-gray-700">
-                            {table.columns.map((col, colIndex) => (
-                              <th key={colIndex} className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                                {formatLabel(col.attribute)}
-                              </th>
-                            ))}
                             {/* Check if any row has accordion data */}
                             {table.dataRows.some(row => row.user_input || row.agent_response) && (
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                              <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
                                 Details
                               </th>
                             )}
+                            {table.columns.map((col, colIndex) => (
+                              <th key={colIndex} className="px-3 py-2 text-left text-[10px] font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                                {formatLabel(col.attribute)}
+                              </th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
@@ -508,6 +522,18 @@ export default function Home() {
                                   className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${hasAccordionData ? 'cursor-pointer' : ''}`}
                                   onClick={() => hasAccordionData && toggleRow(table.workloadType, rowIndex)}
                                 >
+                                  {hasAccordionData && (
+                                    <td className="px-3 py-2 text-xs">
+                                      <svg
+                                        className={`w-4 h-4 text-gray-500 transition-transform ${isRowExpanded ? 'rotate-180' : ''}`}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    </td>
+                                  )}
                                   {table.columns.map((col, colIndex) => {
                                     const cellData = dataRow[col.attribute];
                                     const value = cellData?.value;
@@ -516,12 +542,12 @@ export default function Home() {
                                     return (
                                       <td
                                         key={colIndex}
-                                        className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300"
+                                        className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300"
                                         onClick={(e) => e.stopPropagation()}
                                       >
                                         {inputType === "dropdown" ? (
                                           <select
-                                            className="w-full min-w-[150px] p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
+                                            className="w-full min-w-[150px] p-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
                                             defaultValue={value}
                                           >
                                             <option value="">Select...</option>
@@ -532,33 +558,31 @@ export default function Home() {
                                             ))}
                                           </select>
                                         ) : inputType === "checkbox" ? (
-                                          <input
-                                            type="checkbox"
-                                            defaultChecked={value}
-                                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                          />
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const target = e.currentTarget;
+                                              const newChecked = target.getAttribute('data-checked') === 'true' ? 'false' : 'true';
+                                              target.setAttribute('data-checked', newChecked);
+                                              const span = target.querySelector('span');
+                                              if (span) span.setAttribute('data-checked', newChecked);
+                                            }}
+                                            data-checked={value ? 'true' : 'false'}
+                                            className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 data-[checked=true]:bg-blue-600 data-[checked=false]:bg-gray-300 dark:data-[checked=false]:bg-gray-600"
+                                          >
+                                            <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform data-[checked=true]:translate-x-6 data-[checked=false]:translate-x-1"
+                                                  data-checked={value ? 'true' : 'false'} />
+                                          </button>
                                         ) : (
                                           <input
                                             type="text"
                                             defaultValue={value}
-                                            className="w-full min-w-[120px] p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
+                                            className="w-full min-w-[120px] p-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
                                           />
                                         )}
                                       </td>
                                     );
                                   })}
-                                  {hasAccordionData && (
-                                    <td className="px-4 py-4 text-sm">
-                                      <svg
-                                        className={`w-5 h-5 text-gray-500 transition-transform ${isRowExpanded ? 'rotate-180' : ''}`}
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                      </svg>
-                                    </td>
-                                  )}
                                 </tr>
                                 {hasAccordionData && isRowExpanded && (
                                   <tr key={`${rowIndex}-expanded`}>
