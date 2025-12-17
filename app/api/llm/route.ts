@@ -6,7 +6,7 @@ import { config } from '@/lib/config';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt_text, prompt_path } = body;
+    const { prompt_text, prompt_path, openai_model, use_responses_api } = body;
 
     if (!prompt_text) {
       return NextResponse.json(
@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
       // api_key: config.anthropicApiKey, // Anthropic
       api_key: config.openaiApiKey, // OpenAI
       base_url: config.openaiBaseUrl, // OpenAI Base URL (optional)
-      model: config.openaiModel, // OpenAI Model
-      use_responses_api: config.useResponsesApi, // Use responses API flag
+      model: openai_model || config.openaiModel, // Use provided model or fall back to config
+      use_responses_api: use_responses_api !== undefined ? use_responses_api : config.useResponsesApi, // Use provided flag or fall back to config
     };
 
     // Path to Python script
