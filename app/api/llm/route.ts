@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
       // api_key: config.anthropicApiKey, // Anthropic
       api_key: config.openaiApiKey, // OpenAI
       base_url: config.openaiBaseUrl, // OpenAI Base URL (optional)
+      model: config.openaiModel, // OpenAI Model
+      use_responses_api: config.useResponsesApi, // Use responses API flag
     };
 
     // Path to Python script
