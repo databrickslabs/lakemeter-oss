@@ -26,7 +26,7 @@ import mlflow
 # )
 
 
-def call_openai_api(prompt_text: str, prompt_path: str, api_key: str, base_url: str = None) -> dict:
+def call_openai_api(prompt_text: str, prompt_path: str, api_key: str, base_url: str = None, use_responses_api: bool = False, model: str = "databricks-gpt-5-1") -> dict:
     """
     Call OpenAI API with the given prompt
 
@@ -35,6 +35,8 @@ def call_openai_api(prompt_text: str, prompt_path: str, api_key: str, base_url: 
         prompt_path: MLflow prompt registry path (e.g., "prompts:/users.fajar_muharandy.lakemeter/1")
         api_key: OpenAI API key
         base_url: Optional custom base URL for OpenAI API (e.g., Azure OpenAI, local models)
+        use_responses_api: If True, use client.responses.create instead of client.chat.completions.create
+        model: Model name to use (defaults to "databricks-gpt-5-1")
 
     Returns:
         dict: Response containing the parsed JSON or error information
@@ -70,25 +72,62 @@ def call_openai_api(prompt_text: str, prompt_path: str, api_key: str, base_url: 
             "role": "user",
             "content": prompt_text
         })
-        
-        # Call the API
-        response = client.chat.completions.create(
-            model="databricks-gpt-5-1",
-            max_tokens=1024,
-            messages=messages,
-            temperature=0
-        )
-        
-        # Extract response text
+
+        # Call the API based on the selected method
         response_text = ""
-        if response.choices and len(response.choices) > 0:
-            response_text = response.choices[0].message.content.strip()
-        
-        # Store original response and finish reason for debugging
-        debug_info = {
-            "raw_response": response_text,
-            "finish_reason": response.choices[0].finish_reason if response.choices else ""
-        }
+        debug_info = {}
+
+        if use_responses_api:
+            # Use client.responses.create (for Databricks custom endpoints)
+            input_messages = []
+            if system_prompt:
+                input_messages.append({
+                    "role": "system",
+                    "content": system_prompt
+                })
+            input_messages.append({
+                "role": "user",
+                "content": prompt_text
+            })
+
+            response = client.responses.create(
+                model=model,
+                input=input_messages
+            )
+
+            # Extract response text from response.output[].content[].text
+            if response.output and len(response.output) > 0:
+                output_message = response.output[0]
+                if hasattr(output_message, 'content') and output_message.content:
+                    for content_item in output_message.content:
+                        if hasattr(content_item, 'text'):
+                            response_text = content_item.text.strip()
+                            break
+
+            # Store debug info for responses API
+            debug_info = {
+                "raw_response": response_text,
+                "api_type": "responses"
+            }
+        else:
+            # Use standard client.chat.completions.create
+            response = client.chat.completions.create(
+                model=model,
+                max_tokens=1024,
+                messages=messages,
+                temperature=0
+            )
+
+            # Extract response text
+            if response.choices and len(response.choices) > 0:
+                response_text = response.choices[0].message.content.strip()
+
+            # Store original response and finish reason for debugging
+            debug_info = {
+                "raw_response": response_text,
+                "finish_reason": response.choices[0].finish_reason if response.choices else "",
+                "api_type": "chat_completions"
+            }
         
         # Remove markdown code blocks if present
         cleaned_response = response_text.replace("```json\n", "").replace("```json", "")
@@ -122,7 +161,7 @@ def call_openai_api(prompt_text: str, prompt_path: str, api_key: str, base_url: 
 def main():
     """
     Main function to handle CLI execution
-    Expects JSON input via stdin with: prompt_text, prompt_path, api_key, base_url (optional)
+    Expects JSON input via stdin with: prompt_text, prompt_path, api_key, base_url (optional), use_responses_api (optional), model (optional)
     Outputs JSON response to stdout
     """
     try:
@@ -133,6 +172,8 @@ def main():
         prompt_path = input_data.get("prompt_path", "")
         api_key = input_data.get("api_key", "")
         base_url = input_data.get("base_url", "")
+        use_responses_api = input_data.get("use_responses_api", False)
+        model = input_data.get("model", "databricks-gpt-5-1")
 
         if not prompt_text:
             result = {
@@ -146,7 +187,7 @@ def main():
             }
         else:
             # Call the API with prompt_path and optional base_url
-            result = call_openai_api(prompt_text, prompt_path, api_key, base_url if base_url else None)
+            result = call_openai_api(prompt_text, prompt_path, api_key, base_url if base_url else None, use_responses_api, model)
         
         # Output result as JSON
         print(json.dumps(result, indent=2))
