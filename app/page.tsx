@@ -14,6 +14,8 @@ import {
   pricingTierOptions,
   paymentOptionOptions,
 } from "@/lib/dropdown-options";
+import Header from "@/components/Header";
+import { Check, ChevronDown, Info, Layers } from "lucide-react";
 
 interface TableRow {
   attribute: string;
@@ -63,6 +65,14 @@ export default function Home() {
 
   // State to track which rows are expanded (format: "workloadType-rowIndex")
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // State for agent selection
+  const [selectedAgent, setSelectedAgent] = useState<string>("Knowledge Assistant Agent");
+  const [openaiModel, setOpenaiModel] = useState<string>("ka-5cb2e157-endpoint");
+  const [useResponsesApi, setUseResponsesApi] = useState<boolean>(true);
+
+  // State for prompt configuration accordion
+  const [isPromptConfigExpanded, setIsPromptConfigExpanded] = useState<boolean>(true);
 
   // Fetch available prompts on component mount
   useEffect(() => {
@@ -121,6 +131,8 @@ export default function Home() {
           body: JSON.stringify({
             prompt_text: promptText,
             prompt_path: fullPromptPath,
+            openai_model: openaiModel,
+            use_responses_api: useResponsesApi,
           }),
         });
 
@@ -156,12 +168,15 @@ export default function Home() {
     const workloadTypeRow = tableStructure.find(row => row.attribute === "workload_type");
     const workloadType = workloadTypeRow?.defaultValue || "JOBS_CLASSIC";
 
-    // Filter rows based on workload type and field mappings
+    // Filter rows based on workload type and field mappings (for column definitions)
     const filteredColumns = filterRowsByWorkloadType(tableStructure, workloadType);
 
-    // Create a data row from the filtered columns
+    // Create a data row from ALL attributes (not just filtered ones)
     const dataRow: TableDataRow = {};
-    filteredColumns.forEach(col => {
+    tableStructure.forEach(col => {
+      // Skip hidden fields for now, we'll handle them separately
+      if (col.hidden) return;
+
       dataRow[col.attribute] = {
         value: col.defaultValue,
         inputType: col.inputType
@@ -374,266 +389,285 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-8">
-          Prompt Input & Data Table
-        </h1>
+    <div className="min-h-screen bg-[#F9FAFB]">
+      <Header />
 
-        {/* Prompt Path Dropdown Field */}
-        <div className="mb-6">
-          <label htmlFor="promptPath" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Prompt Path
-          </label>
-          <select
-            id="promptPath"
-            value={promptPath}
-            onChange={(e) => setPromptPath(e.target.value)}
-            disabled={isLoadingPrompts}
-            className="w-full p-3 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
-          >
-            {isLoadingPrompts ? (
-              <option value="">Loading prompts...</option>
-            ) : promptOptions.length > 0 ? (
-              promptOptions.map((path) => (
-                <option key={path} value={path}>
-                  {path}
-                </option>
-              ))
-            ) : (
-              <option value="">No prompts available</option>
-            )}
-          </select>
-        </div>
-
-        {/* Prompt Version Input Field */}
-        <div className="mb-6">
-          <label htmlFor="promptVersion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Prompt Version
-          </label>
-          <input
-            id="promptVersion"
-            type="text"
-            value={promptVersion}
-            onChange={(e) => setPromptVersion(e.target.value)}
-            placeholder="1"
-            className="w-full p-3 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 transition-all"
-          />
-        </div>
-
-        {/* Large Text Input Field */}
-        <div className="mb-8">
-          <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Enter Your Prompt
-          </label>
-          <textarea
-            id="prompt"
-            value={promptText}
-            onChange={(e) => setPromptText(e.target.value)}
-            placeholder="Type your prompt here..."
-            className="w-full min-h-[200px] p-4 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100 resize-y transition-all"
-            rows={8}
-          />
-          <button
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className="mt-4 px-6 py-2 text-base font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors shadow-md hover:shadow-lg"
-          >
-            {isLoading ? "Processing..." : "Submit"}
-          </button>
-        </div>
-
-        {/* Render Tables by Workload Type */}
-        <div className="mt-8 space-y-4">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">
-            Configuration Tables
-          </h2>
-          {getAllWorkloadTypeDefinitions().map((table, tableIndex) => {
-            // Safety check: skip tables with invalid structure
-            if (!table.columns || !Array.isArray(table.columns)) {
-              return null;
-            }
-
-            const hasData = table.dataRows && table.dataRows.length > 0;
-            const isExpanded = expandedTables.has(table.workloadType);
-
-            return (
-              <div
-                key={table.workloadType}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-all duration-500 ease-in-out"
-                style={{
-                  animation: hasData ? 'slideIn 0.5s ease-out' : 'none'
-                }}
-              >
-                <div
-                  className={`px-6 py-3 flex justify-between items-center cursor-pointer ${
-                    hasData ? 'bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-800' : 'bg-gray-400 dark:bg-gray-600'
-                  }`}
-                  onClick={() => hasData && toggleTable(table.workloadType)}
-                >
-                  <h3 className="text-xl font-semibold text-white">
-                    {workloadOptions.find(opt => opt.value === table.workloadType)?.label || table.workloadType}
-                    {hasData && <span className="ml-2 text-sm">({table.dataRows.length} row{table.dataRows.length !== 1 ? 's' : ''})</span>}
-                  </h3>
-                  {hasData && (
-                    <svg
-                      className={`w-6 h-6 text-white transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  )}
+      {/* Main Content */}
+      <div className="p-6">
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Workloads */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Workloads Section */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-gray-400" />
+                  <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Workloads</h2>
+                  <span className="text-xs text-gray-500">({tableData.reduce((sum, t) => sum + t.dataRows.length, 0)})</span>
                 </div>
+              </div>
 
-                <div
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                    hasData && isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  {hasData && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-gray-100 dark:bg-gray-700">
-                            {/* Check if any row has accordion data */}
-                            {table.dataRows.some(row => row.user_input || row.agent_response) && (
-                              <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                                Details
-                              </th>
-                            )}
-                            {table.columns.map((col, colIndex) => (
-                              <th key={colIndex} className="px-3 py-2 text-left text-[10px] font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
-                                {formatLabel(col.attribute)}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {table.dataRows.map((dataRow, rowIndex) => {
+              <div className="space-y-3">
+                {getAllWorkloadTypeDefinitions().map((table) => {
+                  const hasData = table.dataRows && table.dataRows.length > 0;
+                  const isExpanded = expandedTables.has(table.workloadType);
+
+                  if (!hasData) return null;
+
+                  return (
+                    <div key={table.workloadType} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => toggleTable(table.workloadType)}
+                        className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Layers className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm font-medium text-gray-900">
+                            {workloadOptions.find(opt => opt.value === table.workloadType)?.label || table.workloadType}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({table.dataRows.length} item{table.dataRows.length !== 1 ? 's' : ''})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="p-4 bg-white border-t border-gray-200">
+                          {table.dataRows.map((row, rowIndex) => {
+                            // Define required attributes per workload type
+                            const requiredAttributesMap: Record<string, string[]> = {
+                              ALL_PURPOSE: ["serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "runs_per_day", "avg_runtime_minutes", "days_per_month", "vm_pricing_tier", "vm_payment_option", "spot_percentage"],
+                              JOBS_CLASSIC: ["serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "runs_per_day", "avg_runtime_minutes", "days_per_month", "vm_pricing_tier"],
+                              JOBS_SERVERLESS: ["serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "runs_per_day", "avg_runtime_minutes"],
+                              DLT: ["serverless_enabled", "photon_enabled", "dlt_edition", "dlt_pipeline_mode", "driver_node_type", "worker_node_type", "num_workers", "runs_per_day", "avg_runtime_minutes", "days_per_month", "vm_pricing_tier"],
+                              DBSQL: ["dbsql_warehouse_type", "dbsql_warehouse_size", "dbsql_num_clusters", "runs_per_day", "avg_runtime_minutes", "days_per_month"],
+                              VECTOR_SEARCH: ["serverless_product", "serverless_size", "runs_per_day", "avg_runtime_minutes", "days_per_month"],
+                              MODEL_SERVING: ["serverless_product", "serverless_size", "runs_per_day", "avg_runtime_minutes", "days_per_month"],
+                              FMAPI_DATABRICKS: ["fmapi_model", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
+                              FMAPI_PROPRIETARY: ["fmapi_provider", "fmapi_model", "fmapi_endpoint_type", "fmapi_context_length", "fmapi_input_tokens_per_month", "fmapi_output_tokens_per_month"],
+                            };
+
+                            const requiredAttributes = requiredAttributesMap[table.workloadType] || [];
+                            const attributes: { label: string; value: string }[] = [];
+
+                            // Iterate through required attributes for this workload type
+                            requiredAttributes.forEach(key => {
+                              const cellData = row[key];
+                              // Get value from cellData.value if it exists
+                              const value = cellData?.value !== undefined ? cellData.value : null;
+
+                              // Check if value exists and is not empty string
+                              if (value !== undefined && value !== null && value !== "" && value !== false) {
+                                attributes.push({
+                                  label: formatLabel(key),
+                                  value: typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)
+                                });
+                              }
+                            });
+
+                            // Check if we have user_input or agent_response
+                            const hasAccordionData = row.user_input || row.agent_response;
                             const rowKey = `${table.workloadType}-${rowIndex}`;
                             const isRowExpanded = expandedRows.has(rowKey);
-                            const hasAccordionData = dataRow.user_input || dataRow.agent_response;
 
                             return (
-                              <React.Fragment key={rowIndex}>
-                                <tr
-                                  className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${hasAccordionData ? 'cursor-pointer' : ''}`}
-                                  onClick={() => hasAccordionData && toggleRow(table.workloadType, rowIndex)}
-                                >
-                                  {hasAccordionData && (
-                                    <td className="px-3 py-2 text-xs">
-                                      <svg
-                                        className={`w-4 h-4 text-gray-500 transition-transform ${isRowExpanded ? 'rotate-180' : ''}`}
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                      </svg>
-                                    </td>
+                              <div key={rowIndex} className={`${rowIndex > 0 ? 'mt-4 pt-4 border-t border-gray-100' : ''}`}>
+                                <div className="space-y-2">
+                                  {attributes.map((attr, attrIndex) => (
+                                    <div key={attrIndex} className="flex items-center justify-between text-xs">
+                                      <span className="text-gray-600">{attr.label}:</span>
+                                      <span className="font-medium text-gray-900">{attr.value}</span>
+                                    </div>
+                                  ))}
+                                  {attributes.length === 0 && (
+                                    <div className="text-xs text-gray-500 italic">No configuration data</div>
                                   )}
-                                  {table.columns.map((col, colIndex) => {
-                                    const cellData = dataRow[col.attribute];
-                                    const value = cellData?.value;
-                                    const inputType = cellData?.inputType || col.inputType;
+                                </div>
 
-                                    return (
-                                      <td
-                                        key={colIndex}
-                                        className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {inputType === "dropdown" ? (
-                                          <select
-                                            className="w-full min-w-[150px] p-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
-                                            defaultValue={value}
-                                          >
-                                            <option value="">Select...</option>
-                                            {getDropdownOptions(col.attribute).map((option: any, optIdx: number) => (
-                                              <option key={optIdx} value={option.value}>
-                                                {option.label}
-                                              </option>
-                                            ))}
-                                          </select>
-                                        ) : inputType === "checkbox" ? (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              const target = e.currentTarget;
-                                              const newChecked = target.getAttribute('data-checked') === 'true' ? 'false' : 'true';
-                                              target.setAttribute('data-checked', newChecked);
-                                              const span = target.querySelector('span');
-                                              if (span) span.setAttribute('data-checked', newChecked);
-                                            }}
-                                            data-checked={value ? 'true' : 'false'}
-                                            className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 data-[checked=true]:bg-blue-600 data-[checked=false]:bg-gray-300 dark:data-[checked=false]:bg-gray-600"
-                                          >
-                                            <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform data-[checked=true]:translate-x-6 data-[checked=false]:translate-x-1"
-                                                  data-checked={value ? 'true' : 'false'} />
-                                          </button>
-                                        ) : (
-                                          <input
-                                            type="text"
-                                            defaultValue={value}
-                                            className="w-full min-w-[120px] p-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
-                                          />
-                                        )}
-                                      </td>
-                                    );
-                                  })}
-                                </tr>
-                                {hasAccordionData && isRowExpanded && (
-                                  <tr key={`${rowIndex}-expanded`}>
-                                    <td colSpan={table.columns.length + 1} className="px-4 py-4 bg-gray-50 dark:bg-gray-900">
-                                      <div className="space-y-4">
-                                        {dataRow.user_input && (
+                                {/* Accordion for user_input and agent_response */}
+                                {hasAccordionData && (
+                                  <div className="mt-3">
+                                    <button
+                                      onClick={() => toggleRow(table.workloadType, rowIndex)}
+                                      className="flex items-center gap-2 text-xs text-[#FF5F1F] hover:text-[#E54E0F] font-medium transition-colors"
+                                    >
+                                      <ChevronDown className={`h-3 w-3 transition-transform ${isRowExpanded ? 'rotate-180' : ''}`} />
+                                      <span>{isRowExpanded ? 'Hide Details' : 'Show Details'}</span>
+                                    </button>
+
+                                    {isRowExpanded && (
+                                      <div className="mt-3 space-y-3 pl-5 border-l-2 border-gray-200">
+                                        {row.user_input && (
                                           <div>
-                                            <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">User Input:</h4>
-                                            <div className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                              {dataRow.user_input}
-                                            </div>
+                                            <h5 className="text-xs font-semibold text-gray-700 mb-1">User Input:</h5>
+                                            <p className="text-xs text-gray-600 leading-relaxed">{row.user_input}</p>
                                           </div>
                                         )}
-                                        {dataRow.agent_response && (
+                                        {row.agent_response && (
                                           <div>
-                                            <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Agent Response:</h4>
-                                            <div className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                              {dataRow.agent_response}
-                                            </div>
+                                            <h5 className="text-xs font-semibold text-gray-700 mb-1">Agent Response:</h5>
+                                            <p className="text-xs text-gray-600 leading-relaxed">{row.agent_response}</p>
                                           </div>
                                         )}
                                       </div>
-                                    </td>
-                                  </tr>
+                                    )}
+                                  </div>
                                 )}
-                              </React.Fragment>
+                              </div>
                             );
                           })}
-                        </tbody>
-                      </table>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          </div>
+
+          {/* Right Column - Configuration & Prompt */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Cloud Provider Configuration */}
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden sticky top-24">
+              <button
+                onClick={() => setIsPromptConfigExpanded(!isPromptConfigExpanded)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-gray-400" />
+                  <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Prompt Configuration</h2>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isPromptConfigExpanded ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isPromptConfigExpanded && (
+                <div className="px-6 pb-6 space-y-4 border-t border-gray-200 pt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Select Agent</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { name: "Knowledge Assistant Agent", line1: "Knowledge", line2: "Assistant", model: "ka-5cb2e157-endpoint", useResponses: true },
+                      { name: "System Prompt Agent", line1: "System", line2: "Prompt", model: "databricks-gpt-5-1", useResponses: false },
+                      { name: "Tools Calling Agent", line1: "Tools", line2: "Calling", model: "mas-3096a75e-endpoint", useResponses: true }
+                    ].map((agent) => (
+                      <button
+                        key={agent.name}
+                        onClick={() => {
+                          setSelectedAgent(agent.name);
+                          setOpenaiModel(agent.model);
+                          setUseResponsesApi(agent.useResponses);
+                        }}
+                        className={`relative py-3 px-2 border-2 rounded-lg font-semibold text-xs transition-all text-center ${
+                          selectedAgent === agent.name
+                            ? "border-[#FF5F1F] bg-[#FEF3EE] text-[#FF5F1F]"
+                            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                        }`}
+                      >
+                        {selectedAgent === agent.name && (
+                          <Check className="absolute top-1 right-1 h-3 w-3 text-[#FF5F1F]" />
+                        )}
+                        <div className="flex flex-col items-center leading-tight">
+                          <span>{agent.line1}</span>
+                          <span>{agent.line2}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="promptPath" className="block text-sm font-medium text-gray-700 mb-2">
+                    Prompt Path
+                  </label>
+                  <select
+                    id="promptPath"
+                    value={promptPath}
+                    onChange={(e) => setPromptPath(e.target.value)}
+                    disabled={isLoadingPrompts}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5F1F] focus:border-[#FF5F1F] bg-white disabled:bg-gray-100 disabled:cursor-not-allowed appearance-none"
+                  >
+                    {isLoadingPrompts ? (
+                      <option value="">Loading prompts...</option>
+                    ) : promptOptions.length > 0 ? (
+                      promptOptions.map((path) => (
+                        <option key={path} value={path}>
+                          {path}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">No prompts available</option>
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="promptVersion" className="block text-sm font-medium text-gray-700 mb-2">
+                    Prompt Version
+                  </label>
+                  <input
+                    id="promptVersion"
+                    type="text"
+                    value={promptVersion}
+                    onChange={(e) => setPromptVersion(e.target.value)}
+                    placeholder="1"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5F1F] focus:border-[#FF5F1F] bg-white"
+                  />
+                </div>
+                </div>
+              )}
+            </div>
+
+            {/* Workload Description */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <Info className="h-4 w-4 text-gray-400" />
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Workload Description</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
+                    Enter Your Prompt
+                  </label>
+                  <textarea
+                    id="prompt"
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    placeholder="Type your prompt here..."
+                    className="w-full min-h-[200px] px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5F1F] focus:border-[#FF5F1F] bg-white resize-y"
+                    rows={8}
+                  />
+                </div>
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={isLoading}
+                  className="w-full px-4 py-2 text-sm font-medium text-white bg-[#FF5F1F] hover:bg-[#E54E0F] disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  {isLoading ? "Processing..." : "Submit"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Debug: Last LLM Response */}
+        {/* Debug Section */}
         {lastLLMResponse && (
-          <div className="mt-8 p-4 bg-yellow-50 dark:bg-yellow-900 rounded-lg">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">
+          <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h2 className="text-sm font-semibold text-gray-900 mb-2">
               Debug: Last LLM Response
             </h2>
-            <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+            <div className="text-xs text-gray-700 space-y-2">
               <div>
                 <p className="font-semibold mb-1">Stop Reason: <span className="font-normal">{lastStopReason || "N/A"}</span></p>
               </div>
               <div>
                 <p className="font-semibold mb-1">Response:</p>
-                <pre className="p-2 bg-white dark:bg-gray-800 rounded overflow-auto text-xs whitespace-pre-wrap">
+                <pre className="p-2 bg-white rounded overflow-auto text-xs whitespace-pre-wrap max-h-60">
                   {lastLLMResponse}
                 </pre>
               </div>
