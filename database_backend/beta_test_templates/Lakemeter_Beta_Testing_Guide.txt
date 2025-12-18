@@ -49,7 +49,7 @@ KEY FEATURES TO TEST
 
 • Create Estimate - Start new cost estimate
 • Add Line Items - Add multiple workload lines manually
-• AI Copilot - Use AI to help configure workloads
+• AI Copilot - Get AI suggestions to help configure workloads (manual selection required)
 • Save Estimate - Save work for later
 • Export to Excel - Download estimate as spreadsheet
 • Login & View Saved Estimates - Access saved work
@@ -151,22 +151,41 @@ Test Checkpoints:
 
 STEP 3: USE AI COPILOT (10 minutes)
 
-Test the AI Copilot feature to help configure workloads.
+Test the AI Copilot feature to get configuration suggestions.
+
+IMPORTANT: AI Copilot provides suggestions only. You must manually select and apply the recommended configurations in the frontend.
+
+Workflow:
+1. Enter workload description in AI Copilot
+2. Review AI's configuration suggestions
+3. Manually select/apply suggested values in the frontend form
+4. Add line item to estimate
 
 Try these prompts:
 
 1. "Add a nightly ETL job that processes 500GB of data, runs for 2 hours"
+   - Review AI suggestions (workload type, instance types, etc.)
+   - Manually select suggested configurations
+   - Add to estimate
 
 2. "Add 50 business analysts querying data 8 hours per day"
+   - Review AI suggestions
+   - Manually apply to frontend
+   - Add to estimate
 
 3. "Add a streaming workload processing Kafka data 24/7"
+   - Review AI suggestions
+   - Manually configure based on suggestions
+   - Add to estimate
 
 Test Checkpoints:
 □ Does AI understand the workload description?
 □ Does AI recommend appropriate workload type?
 □ Does AI suggest reasonable instance types and configurations?
-□ Can you edit AI recommendations before adding?
-□ Are costs calculated correctly?
+□ Are suggestions clear and actionable?
+□ Can you easily transfer suggestions to the frontend form?
+□ Can you edit AI suggestions before applying?
+□ After manual application, are costs calculated correctly?
 
 
 STEP 4: SAVE & EXPORT (5 minutes)
@@ -236,8 +255,9 @@ TAB 1: FEATURE TESTING
 Rate each feature from 1-5:
 • Create Estimate
 • Add Line Items Manually
-• AI Copilot Understanding
-• AI Copilot Recommendations
+• AI Copilot Understanding - Does AI understand workload descriptions?
+• AI Copilot Recommendations - Are suggestions accurate and helpful?
+• AI Copilot to Frontend - Is it easy to apply suggestions manually?
 • Edit/Delete Line Items
 • Cost Accuracy
 • Cost Breakdown Clarity
@@ -289,6 +309,8 @@ CRITICAL ISSUES (Report Immediately)
 
 HIGH PRIORITY
 □ AI Copilot doesn't understand workload descriptions
+□ AI Copilot suggestions are inaccurate or unhelpful
+□ Difficult to manually apply AI suggestions to frontend
 □ Costs inaccurate for specific workload types
 □ Salesforce tagging not working
 □ Excel export missing important details
@@ -342,7 +364,7 @@ Standard Calculator Workflow:
 6. Export to Excel/PDF
 
 Lakemeter Additions:
-• AI Copilot to assist with workload configuration
+• AI Copilot to provide configuration suggestions (manual application required)
 • Databricks-specific knowledge (DBUs, SKUs, multipliers)
 • Salesforce integration for customer/opportunity tracking
 
