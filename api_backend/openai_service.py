@@ -129,10 +129,30 @@ def call_openai_api(prompt_text: str, prompt_path: str, api_key: str, base_url: 
                 "api_type": "chat_completions"
             }
         
-        # Remove markdown code blocks if present
-        cleaned_response = response_text.replace("```json\n", "").replace("```json", "")
-        cleaned_response = cleaned_response.replace("```\n", "").replace("```", "").strip()
-        
+        # Extract JSON from response (handle markdown code blocks and additional text)
+        cleaned_response = response_text
+
+        # Method 1: Try to extract JSON from markdown code block
+        if "```json" in response_text:
+            # Find the start of the JSON block
+            json_start = response_text.find("```json")
+            if json_start != -1:
+                # Move past the ```json marker
+                json_start = response_text.find("\n", json_start) + 1
+                # Find the end marker
+                json_end = response_text.find("```", json_start)
+                if json_end != -1:
+                    cleaned_response = response_text[json_start:json_end].strip()
+
+        # Method 2: If no markdown block, try to find JSON by looking for { and }
+        if cleaned_response == response_text:
+            # Find the first occurrence of { and last occurrence of }
+            first_brace = cleaned_response.find("{")
+            last_brace = cleaned_response.rfind("}")
+
+            if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+                cleaned_response = cleaned_response[first_brace:last_brace + 1].strip()
+
         # Parse JSON response
         try:
             json_response = json.loads(cleaned_response)
@@ -146,6 +166,7 @@ def call_openai_api(prompt_text: str, prompt_path: str, api_key: str, base_url: 
                 "success": False,
                 "error": f"JSON parse error: {str(parse_error)}",
                 "raw_response": response_text,
+                "cleaned_attempt": cleaned_response,
                 "debug": debug_info
             }
             
