@@ -1,0 +1,171 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LAKEMETER BUG REPORT - GOOGLE SHEET SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create a simple Google Sheet for bug tracking.
+
+
+STEP 1: CREATE GOOGLE SHEET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Go to https://sheets.google.com
+2. Create new spreadsheet
+3. Name it: "Lakemeter Beta - Bug Reports"
+
+
+STEP 2: SET UP COLUMNS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Row 1 Headers (make bold, center aligned, light blue background):
+
+Column A: Date
+Column B: Reporter Name
+Column C: Severity
+Column D: What You Did
+Column E: What Went Wrong
+Column F: Expected Behavior
+Column G: Screenshot Link
+Column H: Status
+Column I: Notes
+
+
+STEP 3: ADD DATA VALIDATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Column C (Severity):
+Data validation dropdown with options:
+• Critical
+• High
+• Medium
+• Low
+
+Column H (Status):
+Data validation dropdown with options:
+• Open
+• In Progress
+• Fixed
+• Won't Fix
+• Duplicate
+
+
+STEP 4: ADD CONDITIONAL FORMATTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For Severity column (C):
+• If "Critical" → Red background, white text
+• If "High" → Orange background
+• If "Medium" → Yellow background
+• If "Low" → Light gray background
+
+For Status column (H):
+• If "Open" → White background
+• If "In Progress" → Light blue background
+• If "Fixed" → Light green background
+• If "Won't Fix" → Gray background
+
+
+STEP 5: SET COLUMN WIDTHS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+A (Date): 100px
+B (Reporter): 120px
+C (Severity): 80px
+D (What You Did): 250px
+E (What Went Wrong): 250px
+F (Expected): 200px
+G (Screenshot): 150px
+H (Status): 100px
+I (Notes): 200px
+
+
+STEP 6: ADD INSTRUCTIONS ROW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Insert 2 rows at the very top, merge all columns, add:
+
+"LAKEMETER BUG REPORTS
+Instructions: Add one row per bug. Include screenshots if possible 
+(upload to Google Drive and paste link). Use severity levels to 
+prioritize: Critical = blocks testing, High = major issue, 
+Medium = annoying, Low = minor."
+
+Make this bold, larger font (12pt), center aligned.
+
+
+STEP 7: ADD EXAMPLE ROW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Row 3 (first data row) - Example:
+
+Date: 2024-12-18
+Reporter Name: John Smith
+Severity: High
+What You Did: Added JOBS Classic line item with 10 workers
+What Went Wrong: Cost shows $0 instead of calculated amount
+Expected Behavior: Should show ~$500/month based on configuration
+Screenshot Link: [link to screenshot]
+Status: Open
+Notes: Tried with multiple instance types, same issue
+
+
+STEP 8: FREEZE AND PROTECT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Freeze rows 1-3 (instructions + header + example)
+• Don't protect - allow everyone to edit
+
+
+STEP 9: SHARE SETTINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Share settings:
+• "Anyone with the link can EDIT"
+• Copy the sharing link
+
+
+STEP 10: SCREENSHOT INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add a second sheet tab named "Screenshot Instructions" with:
+
+"HOW TO ADD SCREENSHOTS
+
+Option 1: Google Drive (Recommended)
+1. Take screenshot
+2. Upload to Google Drive
+3. Right-click → Get link → Copy link
+4. Paste link in Screenshot Link column
+
+Option 2: Paste Directly
+1. Take screenshot
+2. Right-click in the cell
+3. Select 'Insert image in cell'
+4. Paste screenshot
+
+Option 3: Image URL
+1. Upload screenshot to any image host
+2. Copy URL
+3. Paste in Screenshot Link column"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINAL CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Sheet created with proper name
+□ All column headers added and formatted
+□ Data validation added (Severity, Status)
+□ Conditional formatting applied
+□ Column widths adjusted
+□ Instructions row added at top
+□ Example row added
+□ Rows frozen (1-3)
+□ Sheet shared with edit permissions
+□ Screenshot instructions tab added
+□ Share link copied for email
+
+
+TIME TO SET UP: 10 minutes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
