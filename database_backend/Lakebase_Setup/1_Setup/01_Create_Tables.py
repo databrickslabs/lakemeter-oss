@@ -1,11 +1,11 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Lakemeter - Create Application Tables
-# MAGIC 
+# MAGIC
 # MAGIC **Purpose:** Creates all application tables for the Lakemeter cost estimation app
-# MAGIC 
+# MAGIC
 # MAGIC **Connects to:** Lakebase (PostgreSQL)
-# MAGIC 
+# MAGIC
 # MAGIC **Tables Created:**
 # MAGIC - users
 # MAGIC - templates  
@@ -16,13 +16,13 @@
 # MAGIC - conversation_messages
 # MAGIC - decision_records
 # MAGIC - sharing
-# MAGIC 
+# MAGIC
 # MAGIC **Constraints Added:**
 # MAGIC - Cloud/Tier validation (~32 constraints)
 # MAGIC - Business logic constraints (8)
 # MAGIC - Enum value constraints (15)
 # MAGIC - Triggers for auto-sync
-# MAGIC 
+# MAGIC
 # MAGIC **Run Order:**
 # MAGIC 1. Run this notebook FIRST
 # MAGIC 2. Run Pricing_Sync notebooks
@@ -32,25 +32,17 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1. Install Dependencies & Connect to Lakebase
+# MAGIC ## 1. Load Configuration & Import Libraries
 
 # COMMAND ----------
 
-# Install required packages
-%pip install psycopg2-binary --quiet
-dbutils.library.restartPython()
+# Load Lakebase configuration
+%run ../00_Lakebase_Config
 
 # COMMAND ----------
 
 import psycopg2
 from datetime import datetime
-
-# Lakebase connection details
-LAKEBASE_HOST = "instance-364041a4-0aae-44df-bbc6-37ac84169dfe.database.cloud.databricks.com"
-LAKEBASE_PORT = 5432
-LAKEBASE_DATABASE = "lakemeter_pricing"
-LAKEBASE_USER = "lakemeter_sync_role"
-LAKEBASE_PASSWORD = "***REMOVED_DATABASE_CREDENTIAL***"
 
 # COMMAND ----------
 
@@ -274,9 +266,10 @@ CREATE TABLE lakemeter.estimates (
     estimate_id UUID PRIMARY KEY,
     estimate_name VARCHAR(500),
     owner_user_id UUID REFERENCES lakemeter.users(user_id),
-    customer_sfdc_id VARCHAR(18),
+    sfdc_account_id VARCHAR(255),      -- Salesforce account ID
     customer_name VARCHAR(255),
-    uco_opportunity_id VARCHAR(18),
+    uco_id VARCHAR(255),                -- Use Case Opportunity ID (from metric_store.fct_salesforce_use_case__core)
+    opportunity_id VARCHAR(255),        -- Salesforce opportunity ID (from sfdc_bronze.hourly_opportunity)
     cloud VARCHAR(20),
     region VARCHAR(50),
     tier VARCHAR(20),
@@ -318,49 +311,47 @@ CREATE TABLE lakemeter.line_items (
     driver_node_type VARCHAR(100),
     worker_node_type VARCHAR(100),
     num_workers INT,
-    autoscale_enabled BOOLEAN DEFAULT false,
-    autoscale_min_workers INT,
-    autoscale_max_workers INT,
     
     -- DLT config
     dlt_edition VARCHAR(20),
-    dlt_pipeline_mode VARCHAR(20),
     
     -- DBSQL config
     dbsql_warehouse_type VARCHAR(20),
     dbsql_warehouse_size VARCHAR(20),
     dbsql_num_clusters INT DEFAULT 1,
+    dbsql_vm_pricing_tier VARCHAR(20) DEFAULT 'on_demand',
+    dbsql_vm_payment_option VARCHAR(20) DEFAULT 'NA',
     
     -- Serverless products
-    serverless_product VARCHAR(50),
-    serverless_size VARCHAR(50),
     vector_search_mode VARCHAR(50),
+    vector_capacity_millions DECIMAL(10,2),  -- Vector Search: capacity in millions of vectors (supports fractional)
+    model_serving_gpu_type VARCHAR(50),      -- Model Serving: GPU type (e.g., gpu_medium_a10g_1x, cpu_medium_2x)
     
     -- FMAPI config
     fmapi_provider VARCHAR(50),
     fmapi_model VARCHAR(100),
     fmapi_endpoint_type VARCHAR(20),
     fmapi_context_length VARCHAR(20),
-    fmapi_input_tokens_per_month BIGINT,
-    fmapi_output_tokens_per_month BIGINT,
+    fmapi_rate_type VARCHAR(20),             -- Direct rate_type from pricing table: 'input_token', 'output_token', 'cache_read', 'cache_write', 'batch_inference'
+    fmapi_quantity BIGINT,                   -- Quantity (tokens for token-based, hours for batch_inference)
     
     -- Lakebase config
-    lakebase_cu INT,
-    lakebase_storage_gb INT,
-    lakebase_ha_enabled BOOLEAN DEFAULT false,
-    lakebase_backup_retention_days INT DEFAULT 7,
+    lakebase_cu INT,                          -- CU per node (1, 2, 4, 8)
+    lakebase_storage_gb INT,                  -- Storage in GB
+    lakebase_ha_nodes INT DEFAULT 1,          -- Total number of nodes (1-3, 1=no HA)
+    lakebase_backup_retention_days INT DEFAULT 7,  -- Backup retention (0=no backup, 1-35 days)
     
     -- Usage/frequency
     runs_per_day INT,
     avg_runtime_minutes INT,
     days_per_month INT DEFAULT 30,
+    hours_per_month DECIMAL(10,2),  -- Optional: if NULL, calculate from runs_per_day × (avg_runtime_minutes/60) × days_per_month
     
     -- VM pricing (separate for driver/worker)
     driver_pricing_tier VARCHAR(20),
     worker_pricing_tier VARCHAR(20),
-    vm_pricing_tier VARCHAR(20) DEFAULT 'on_demand',
-    vm_payment_option VARCHAR(20),
-    spot_percentage INT,
+    driver_payment_option VARCHAR(20) DEFAULT 'NA',  -- Payment option for driver: NA (Azure/GCP), no_upfront, partial_upfront, all_upfront (AWS reserved)
+    worker_payment_option VARCHAR(20) DEFAULT 'NA',  -- Payment option for worker: NA (Azure/GCP), no_upfront, partial_upfront, all_upfront (AWS reserved)
     
     -- Extensible config
     workload_config JSON,
@@ -785,8 +776,14 @@ business_logic_constraints = [
     ("chk_lakebase_backup_range", """
     ALTER TABLE lakemeter.line_items 
     ADD CONSTRAINT chk_lakebase_backup_range 
-    CHECK (lakebase_backup_retention_days >= 1 AND lakebase_backup_retention_days <= 35)
-    """, "Lakebase backup: 1-35 days"),
+    CHECK (lakebase_backup_retention_days >= 0 AND lakebase_backup_retention_days <= 35)
+    """, "Lakebase backup: 0-35 days (0 = no backup)"),
+    
+    ("chk_lakebase_ha_nodes_range", """
+    ALTER TABLE lakemeter.line_items 
+    ADD CONSTRAINT chk_lakebase_ha_nodes_range 
+    CHECK (lakebase_ha_nodes >= 1 AND lakebase_ha_nodes <= 3)
+    """, "Lakebase HA nodes: 1-3 (1=no HA, 2-3=HA enabled)"),
 ]
 
 for i, (name, sql, desc) in enumerate(business_logic_constraints, 1):
@@ -961,4 +958,3 @@ print("   1. Run Pricing_Sync notebooks to create sync_* tables")
 print("   2. Run 04_Add_Sync_Constraints to add region + instance validation")
 print("   3. Run 02_Create_Views to create cost calculation views")
 print("=" * 80)
-

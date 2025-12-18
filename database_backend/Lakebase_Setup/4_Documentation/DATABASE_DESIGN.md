@@ -283,12 +283,12 @@ These tables are **synced from Unity Catalog Delta tables** to Lakebase via CDC.
 
 ### 4. `sync_product_serverless_rates`
 
-**Purpose:** Serverless product rates (Vector Search, Model Serving, AI Gateway).
+**Purpose:** Serverless product rates (Vector Search, Model Serving).
 
 | Column | Type | PK | Description |
 |--------|------|:--:|-------------|
 | `cloud` | VARCHAR(20) | ✓ | AWS, AZURE, GCP |
-| `product` | VARCHAR(50) | ✓ | vector_search, model_serving, ai_gateway |
+| `product` | VARCHAR(50) | ✓ | vector_search, model_serving |
 | `size_or_model` | VARCHAR(100) | ✓ | cpu, gpu_small, standard |
 | `dbu_rate` | DECIMAL(10,4) | | DBU per unit |
 | `rate_type` | VARCHAR(20) | | hourly, per_token, per_request |
@@ -345,6 +345,8 @@ These tables are **synced from Unity Catalog Delta tables** to Lakebase via CDC.
 ### 6. `sync_product_fmapi_proprietary`
 
 **Purpose:** Proprietary FMAPI rates (OpenAI, Anthropic, Google) served by Databricks.
+
+> **Important:** These proprietary models (GPT, Claude, Gemini) are **served BY Databricks**, NOT via AI Gateway. Databricks hosts and manages access to these models directly.
 
 | Column | Type | PK | Description |
 |--------|------|:--:|-------------|
@@ -731,42 +733,40 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | `driver_node_type` | VARCHAR(100) | | | Instance type (for sizing estimation, even for serverless) |
 | `worker_node_type` | VARCHAR(100) | | | Instance type (for sizing estimation, even for serverless) |
 | `num_workers` | INT | | | Number of workers (0-1000) |
-| `autoscale_enabled` | BOOLEAN | | | Toggle autoscaling |
-| `autoscale_min_workers` | INT | | | Min workers (if autoscale) |
-| `autoscale_max_workers` | INT | | | Max workers (if autoscale) |
 | **DLT Config** *(DLT only)* |
 | `dlt_edition` | VARCHAR(20) | | | CORE, PRO, ADVANCED |
-| `dlt_pipeline_mode` | VARCHAR(20) | | | TRIGGERED, CONTINUOUS |
 | **DBSQL Config** *(DBSQL only)* |
 | `dbsql_warehouse_type` | VARCHAR(20) | | | CLASSIC, PRO, SERVERLESS |
 | `dbsql_warehouse_size` | VARCHAR(20) | | | 2X-Small to 4X-Large |
 | `dbsql_num_clusters` | INT | | | Number of clusters for scaling (1-100, default 1) |
 | **Serverless Products** *(VECTOR_SEARCH, MODEL_SERVING)* |
-| `serverless_product` | VARCHAR(50) | | | vector_search, model_serving |
-| `serverless_size` | VARCHAR(50) | | | cpu, gpu_small, gpu_medium |
 | `vector_search_mode` | VARCHAR(50) | | | standard, storage_optimized (**for VECTOR_SEARCH only**) |
+| `vector_capacity_millions` | DECIMAL(10,2) | | | Vector Search capacity in millions (supports fractional) |
+| `model_serving_gpu_type` | VARCHAR(50) | | | GPU type: gpu_medium_a10g_1x, cpu_medium_2x (**for MODEL_SERVING only**) |
 | **FMAPI Config** *(FMAPI_DATABRICKS, FMAPI_PROPRIETARY)* |
 | `fmapi_provider` | VARCHAR(50) | | | databricks, openai, anthropic, google |
 | `fmapi_model` | VARCHAR(100) | | | gpt-4o, claude-sonnet-4, llama-3.1-70b |
 | `fmapi_endpoint_type` | VARCHAR(20) | | | global, in_geo |
-| `fmapi_context_length` | VARCHAR(20) | | | standard, long |
-| `fmapi_input_tokens_per_month` | BIGINT | | | Estimated input tokens |
-| `fmapi_output_tokens_per_month` | BIGINT | | | Estimated output tokens |
+| `fmapi_context_length` | VARCHAR(20) | | | all, short, long (provider-specific) |
+| `fmapi_pricing_type` | VARCHAR(50) | | | pay_per_token, provisioned_entry, provisioned_scaling |
+| `fmapi_rate_type` | VARCHAR(20) | | | Direct from pricing table: input_token, output_token, cache_read, cache_write, batch_inference, provisioned_entry, provisioned_scaling |
+| `fmapi_quantity` | BIGINT | | | Quantity (tokens for token-based rates, hours for hourly rates like batch_inference or provisioned) |
+| `fmapi_provisioned_units` | INT | | | Number of provisioned units (for provisioned throughput) |
 | **Lakebase Config** *(LAKEBASE only)* |
-| `lakebase_cu` | INT | | | Compute Units: 1, 2, 4, 8 (**1 CU = 1 DBU**) |
+| `lakebase_cu` | INT | | | Compute Units per node: 1, 2, 4, 8 (**1 CU = 1 DBU**) |
 | `lakebase_storage_gb` | INT | | | Storage size in GB (100-10000) |
-| `lakebase_ha_enabled` | BOOLEAN | | | High availability (multi-AZ) toggle |
-| `lakebase_backup_retention_days` | INT | | | Backup retention days (1-35, default 7) |
+| `lakebase_ha_nodes` | INT | | | Total number of nodes (1=no HA, 2-3=HA enabled, max 3) |
+| `lakebase_backup_retention_days` | INT | | | Backup retention days (0=no backup, 1-35 days, default 7) |
 | **Usage/Frequency** *(Consistent for all hourly workloads)* |
 | `runs_per_day` | INT | | | Number of runs per day |
 | `avg_runtime_minutes` | INT | | | Average runtime per run (in minutes) |
 | `days_per_month` | INT | | | Days per month (default 30) |
+| `hours_per_month` | DECIMAL(10,2) | | | Total hours per month (optional: if NULL, auto-calculate from above fields; for 24/7 services, set to 720) |
 | **VM Pricing** *(Classic compute only - ignored when serverless_enabled=true)* |
 | `driver_pricing_tier` | VARCHAR(20) | | | Driver: on_demand, reserved_1y, reserved_3y (NEVER spot) |
 | `worker_pricing_tier` | VARCHAR(20) | | | Worker: on_demand, spot, reserved_1y, reserved_3y |
-| `vm_pricing_tier` | VARCHAR(20) | | | DEPRECATED: Fallback if driver/worker tiers not set |
-| `vm_payment_option` | VARCHAR(20) | | | no_upfront, partial_upfront, all_upfront (AWS only) |
-| `spot_percentage` | INT | | | DEPRECATED: No longer used |
+| `driver_payment_option` | VARCHAR(20) | | | Driver: NA (Azure/GCP), no_upfront, partial_upfront, all_upfront (AWS reserved) |
+| `worker_payment_option` | VARCHAR(20) | | | Worker: NA (Azure/GCP), no_upfront, partial_upfront, all_upfront (AWS reserved) |
 | **Metadata** |
 | `workload_config` | JSON | | | Extensible config for future workload types |
 | `notes` | TEXT | | | SA custom notes |
