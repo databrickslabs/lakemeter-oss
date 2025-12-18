@@ -1,0 +1,5 @@
+Date,Tester Name,Endpoint,Severity,Description,Expected Result,Actual Result,Status
+2024-12-18,Example User,/api/v1/calculate/jobs-classic,High,Example: Returns $0 cost for valid config,Should return ~$500/month,$0,Open
+,,,,,,,
+,,,,,,,
+
