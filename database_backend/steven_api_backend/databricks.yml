@@ -1,0 +1,15 @@
+resources:
+  apps:
+    lakemeter-api:
+      name: lakemeter-api
+      description: Lakemeter Cost Calculator API
+      resources:
+        - name: cpu-basic
+          description: Basic CPU resources
+          cpu: "1"
+          memory: 2Gi
+      permissions:
+        - level: CAN_USE
+          group_name: users
+
+
