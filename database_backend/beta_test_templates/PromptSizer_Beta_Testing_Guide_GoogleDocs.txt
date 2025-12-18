@@ -1,0 +1,198 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROMPTSIZER BETA TESTING GUIDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 WHAT IS PROMPTSIZER?
+An AI-powered tool that helps you estimate Databricks costs. Simply describe your workload in natural language, and the AI will recommend configurations and calculate costs.
+
+⏱️ Time Required: 20-30 minutes
+🎯 What You'll Do: Test 3+ workload scenarios, check AI recommendations, compare costs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1: ACCESS THE TOOL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+App URL: [To be provided by team]
+
+Open the URL in your browser and login if required.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2: TEST BASIC SCENARIOS (10-15 MINUTES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Test at least 3 different workload types from the list below:
+
+
+📊 EXAMPLE SCENARIOS TO TRY
+────────────────────────────────────────────────────────────────
+
+1. DATA INGESTION
+   Example: "We need to ingest data from Salesforce every hour, processing about 5GB per run"
+
+2. ETL JOBS
+   Example: "Nightly ETL job processing 500GB of data, takes about 2 hours to run, 6 days a week"
+
+3. SQL ANALYTICS
+   Example: "50 business analysts running SQL queries 8 hours a day, typical queries take 30 seconds"
+
+4. ML TRAINING
+   Example: "Train a machine learning model on 1TB dataset weekly, takes 4 hours per training run"
+
+5. REAL-TIME STREAMING
+   Example: "Process Kafka streams 24/7, handling 100K events per second"
+
+6. INTERACTIVE NOTEBOOKS
+   Example: "10 data scientists exploring data in notebooks, average 6 hours per day per person"
+
+
+💡 HOW TO TEST
+────────────────────────────────────────────────────────────────
+1. Paste a workload description into PromptSizer
+2. Click "Analyze Workload"
+3. Review the AI's recommendations (SKU, instance types, costs)
+4. Check if it makes sense for the described workload
+5. Note any issues or surprises
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3: TEST MANUAL EDITING (5 MINUTES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After AI suggests a configuration, try editing:
+
+• Change the instance type (e.g., from m5.xlarge to m5.2xlarge)
+• Change number of workers
+• Change run frequency (runs per day)
+• Toggle Photon on/off
+• Switch between Classic and Serverless
+
+✅ Check: Do costs update correctly when you make changes?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4: TEST EDGE CASES (5 MINUTES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Try to break it! Test with:
+
+• Very vague description: "I need to process data"
+• Very detailed description with specific requirements
+• Unrealistic requirements: "Process 1 billion records per second"
+• Multiple workloads in one prompt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5: COMPARE WITH REAL COSTS (IF POSSIBLE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If you have experience with actual Databricks costs:
+
+• Describe a workload similar to one you know
+• Compare PromptSizer's estimate with actual costs
+• Note: ±10% difference is excellent, ±20% is acceptable
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT TO RECORD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 USE THE SHARED GOOGLE SHEET: [Link to be provided]
+
+The Google Sheet has 4 tabs:
+
+TAB 1: USER SCENARIOS
+Track which scenarios you tested and whether they worked correctly
+
+TAB 2: FEATURE TESTING
+Rate different features (AI understanding, recommendations, cost accuracy) from 1-5
+
+TAB 3: ISSUES FOUND
+Report any bugs or problems you encounter
+
+Severity Levels:
+• CRITICAL: Can't use the tool at all
+• HIGH: Feature doesn't work or gives wrong results
+• MEDIUM: Confusing or annoying
+• LOW: Minor issue or suggestion
+
+TAB 4: OVERALL FEEDBACK
+Your overall impressions and whether you'd use this with customers
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT WE'RE LOOKING FOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 CRITICAL ISSUES (Report Immediately!)
+────────────────────────────────────────────────────────────────
+☐ AI gives completely wrong recommendations
+☐ Costs are wildly incorrect (>50% off)
+☐ Tool crashes or freezes
+☐ Can't edit configurations
+☐ Export doesn't work
+
+
+💡 HIGH VALUE FEEDBACK
+────────────────────────────────────────────────────────────────
+☐ "AI didn't understand this type of workload..."
+☐ "Costs are off for this scenario..."
+☐ "I wish it could do..."
+☐ "This part was confusing..."
+
+
+✨ NICE TO HAVE
+────────────────────────────────────────────────────────────────
+☐ UI/UX suggestions
+☐ Missing workload types
+☐ Additional features you'd want
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUCCESS CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You've completed beta testing when you've:
+
+☐ Tested at least 3 different workload scenarios
+☐ Tried editing AI recommendations manually
+☐ Filled in all 4 tabs in the Google Sheet
+☐ Noted any major issues or bugs
+☐ Provided overall feedback (would you use it?)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUICK FEEDBACK OPTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If you don't have time for the full Google Sheet, just answer these 5 questions:
+
+1. What scenarios did you test?
+2. What worked well?
+3. What didn't work?
+4. Any wildly incorrect costs?
+5. Would you use this with customers? Why/why not?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FAQ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: How accurate should costs be?
+A: Within ±10% of actual costs is great. Within ±20% is acceptable for beta.
+
+Q: What if I don't know Databricks costs?
+A: That's fine! Just test if AI understands your workload and recommendations seem reasonable.
+
+Q: How long should testing take?
+A: 20-30 minutes minimum. More is better!
+
+Q: What if I find bugs?
+A: Note them in Tab 3 (Issues Found). Critical bugs - let team know immediately!
+
+Q: Can I test multiple times?
+A: Yes! Try different workload descriptions and see if you get consistent results.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🙏 THANK YOU FOR HELPING US IMPROVE PROMPTSIZER!
+
+Your feedback will directly shape the final product.
+
+Questions? Contact: [Team contact to be provided]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PromptSizer Beta Testing Guide • Version 1.0 • December 2024
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
