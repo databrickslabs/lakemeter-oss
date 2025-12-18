@@ -1,0 +1,12 @@
+command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+
+env:
+  - name: LAKEBASE_INSTANCE_NAME
+    value: lakemeter-db
+  - name: LAKEBASE_DATABASE_NAME
+    value: lakemeter_pricing
+  - name: DB_POOL_SIZE
+    value: "5"
+  - name: DB_MAX_OVERFLOW
+    value: "10"
+
