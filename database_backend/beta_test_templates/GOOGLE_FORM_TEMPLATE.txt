@@ -95,14 +95,36 @@ Required: Yes
 SECTION 5: WHAT YOU WANT TO SEE MOST
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Question 10: What are the top 1-3 improvements or features you want to see?
-Type: Paragraph text
-Placeholder: List your top priorities for improvements
+Question 10: Which features do you want to see MOST in the next release? (Select top 3)
+Type: Checkboxes
+Options (select maximum 3):
+□ AI Copilot auto-populates frontend (no manual selection needed)
+□ Lakeflow Connect workload type
+□ Delta Sharing cost calculation
+□ Storage cost estimation (Vector Search, Lakebase)
+□ Data Transfer & Connectivity costs
+□ AI Gateway cost calculation
+□ Multi-estimate comparison (side-by-side)
+□ Cost optimization recommendations
+□ Copy/duplicate existing estimates
+□ Import from CSV/Excel
+□ Share estimate via link
+□ Historical pricing data / trends
+□ Cost alerts and budgeting
+□ Customer templates library
+□ Mobile-friendly interface
+Other: [text box]
 Required: Yes
+Validation: Maximum 3 selections
 
-Question 11: What would make Lakemeter more useful for your work?
+Question 11: What are the top improvements you want for existing features?
 Type: Paragraph text
-Placeholder: Describe how Lakemeter could better fit your workflow
+Placeholder: Describe improvements to current features (e.g., "Better AI suggestions for X", "Easier way to Y")
+Required: No
+
+Question 12: What would make Lakemeter more useful for your customer conversations?
+Type: Paragraph text
+Placeholder: Describe how Lakemeter could better fit your workflow with customers
 Required: No
 
 
@@ -110,15 +132,15 @@ Required: No
 SECTION 6: ADDITIONAL COMMENTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Question 12: What worked best?
+Question 13: What worked best?
 Type: Paragraph text
 Required: No
 
-Question 13: What was most confusing or frustrating?
+Question 14: What was most confusing or frustrating?
 Type: Paragraph text
 Required: No
 
-Question 14: Any other comments or suggestions?
+Question 15: Any other comments or suggestions?
 Type: Paragraph text
 Required: No
 
