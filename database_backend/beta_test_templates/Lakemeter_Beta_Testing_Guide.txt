@@ -57,6 +57,44 @@ KEY FEATURES TO TEST
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT IS NOT COVERED (OUT OF SCOPE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The following Databricks products and features are NOT included in this beta release:
+
+DATA INGESTION & CONNECTIVITY
+1. Lakeflow Connect - Connector-based data ingestion
+10. Data Transfer & Connectivity costs
+
+DATA MANAGEMENT
+2. Delta Sharing costs (Views, Materialized Views, Streaming Tables)
+11. Storage costs (Vector Search indices, Lakebase storage)
+12. Clean Room
+
+AI & ML FEATURES
+3. ai_parse_documents function
+4. AI Gateway
+5. AI Evaluation
+6. Shutterstock ImageAI
+7. Agent Bricks
+
+PLATFORM SERVICES
+8. Platform Add-ons
+9. Databricks Managed Services:
+   - Lakehouse Monitoring
+   - Predictive Optimization
+   - Fine-Grained Access Control (FGAC)
+   - Data Classification
+
+OTHER
+13. All Beta products (not generally available)
+
+NOTES
+• For general ai_queries, use FMAPI workload type with batch inference rate type
+• AI Copilot provides configuration suggestions only - you must manually select and apply configurations in the frontend. Automatic population will be available in a future release.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TESTING INSTRUCTIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
