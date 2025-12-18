@@ -266,9 +266,13 @@ CREATE TABLE lakemeter.estimates (
     estimate_id UUID PRIMARY KEY,
     estimate_name VARCHAR(500),
     owner_user_id UUID REFERENCES lakemeter.users(user_id),
-    customer_sfdc_id VARCHAR(18),
     customer_name VARCHAR(255),
-    uco_opportunity_id VARCHAR(18),
+    
+    -- Salesforce linking
+    sfdc_account_id VARCHAR(255),      -- Salesforce account ID
+    uco_id VARCHAR(255),                -- Use Case Opportunity ID (from metric_store.fct_salesforce_use_case__core)
+    opportunity_id VARCHAR(255),        -- Salesforce opportunity ID (from sfdc_bronze.hourly_opportunity)
+    
     cloud VARCHAR(20),
     region VARCHAR(50),
     tier VARCHAR(20),
