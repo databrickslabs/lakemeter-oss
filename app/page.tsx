@@ -72,7 +72,7 @@ export default function Home() {
   const [useResponsesApi, setUseResponsesApi] = useState<boolean>(true);
 
   // State for prompt configuration accordion
-  const [isPromptConfigExpanded, setIsPromptConfigExpanded] = useState<boolean>(true);
+  const [isPromptConfigExpanded, setIsPromptConfigExpanded] = useState<boolean>(false);
 
   // Fetch available prompts on component mount
   useEffect(() => {
@@ -553,7 +553,7 @@ export default function Home() {
                     {[
                       { name: "Knowledge Assistant Agent", line1: "Knowledge", line2: "Assistant", model: "ka-5cb2e157-endpoint", useResponses: true },
                       { name: "System Prompt Agent", line1: "System", line2: "Prompt", model: "databricks-gpt-5-1", useResponses: false },
-                      { name: "Tools Calling Agent", line1: "Tools", line2: "Calling", model: "mas-3096a75e-endpoint", useResponses: true }
+                      { name: "Multi Agent", line1: "Multi", line2: "Agent", model: "mas-939838ed-endpoint", useResponses: true }
                     ].map((agent) => (
                       <button
                         key={agent.name}
@@ -571,6 +571,11 @@ export default function Home() {
                           else if (agent.name === "System Prompt Agent") {
                             setPromptPath("prompts:/lakemeter_catalog.lakemeter.fajar_prompt");
                             setPromptVersion("17");
+                          }
+                          // Set default prompt path and version for Multi Agent
+                          else if (agent.name === "Multi Agent") {
+                            setPromptPath("prompts:/lakemeter_catalog.lakemeter.fajar_multi_agents_prompt");
+                            setPromptVersion("1");
                           }
                         }}
                         className={`relative py-3 px-2 border-2 rounded-lg font-semibold text-xs transition-all text-center ${
@@ -599,7 +604,7 @@ export default function Home() {
                     id="promptPath"
                     value={promptPath}
                     onChange={(e) => setPromptPath(e.target.value)}
-                    disabled={isLoadingPrompts}
+                    disabled={isLoadingPrompts || selectedAgent !== "System Prompt Agent"}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5F1F] focus:border-[#FF5F1F] bg-white disabled:bg-gray-100 disabled:cursor-not-allowed appearance-none"
                   >
                     {isLoadingPrompts ? (
@@ -626,7 +631,8 @@ export default function Home() {
                     value={promptVersion}
                     onChange={(e) => setPromptVersion(e.target.value)}
                     placeholder="1"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5F1F] focus:border-[#FF5F1F] bg-white"
+                    disabled={selectedAgent !== "System Prompt Agent"}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF5F1F] focus:border-[#FF5F1F] bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                 </div>
                 </div>
