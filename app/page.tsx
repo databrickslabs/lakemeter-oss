@@ -438,7 +438,7 @@ export default function Home() {
                       {isExpanded && (
                         <div className="p-4 bg-white border-t border-gray-200">
                           {table.dataRows.map((row, rowIndex) => {
-                            // Define required attributes per workload type
+                            // Define required attributes per workload type (in display order)
                             const requiredAttributesMap: Record<string, string[]> = {
                               ALL_PURPOSE: ["serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "runs_per_day", "avg_runtime_minutes", "days_per_month", "vm_pricing_tier", "vm_payment_option", "spot_percentage"],
                               JOBS_CLASSIC: ["serverless_enabled", "photon_enabled", "driver_node_type", "worker_node_type", "num_workers", "runs_per_day", "avg_runtime_minutes", "days_per_month", "vm_pricing_tier"],
@@ -454,7 +454,7 @@ export default function Home() {
                             const requiredAttributes = requiredAttributesMap[table.workloadType] || [];
                             const attributes: { label: string; value: string }[] = [];
 
-                            // Iterate through required attributes for this workload type
+                            // Iterate through required attributes in the specified order
                             requiredAttributes.forEach(key => {
                               const cellData = row[key];
                               // Get value from cellData.value if it exists
@@ -476,15 +476,15 @@ export default function Home() {
 
                             return (
                               <div key={rowIndex} className={`${rowIndex > 0 ? 'mt-4 pt-4 border-t border-gray-100' : ''}`}>
-                                <div className="space-y-2">
+                                <div className="grid grid-cols-4 gap-4">
                                   {attributes.map((attr, attrIndex) => (
-                                    <div key={attrIndex} className="flex items-center justify-between text-xs">
-                                      <span className="text-gray-600">{attr.label}:</span>
-                                      <span className="font-medium text-gray-900">{attr.value}</span>
+                                    <div key={attrIndex} className="flex flex-col">
+                                      <span className="text-sm text-gray-600 mb-1">{attr.label}</span>
+                                      <span className="text-sm font-medium text-gray-900">{attr.value}</span>
                                     </div>
                                   ))}
                                   {attributes.length === 0 && (
-                                    <div className="text-xs text-gray-500 italic">No configuration data</div>
+                                    <div className="col-span-4 text-xs text-gray-500 italic">No configuration data</div>
                                   )}
                                 </div>
 
@@ -530,9 +530,10 @@ export default function Home() {
           </div>
 
           {/* Right Column - Configuration & Prompt */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 space-y-6">
             {/* Cloud Provider Configuration */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden sticky top-24">
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
               <button
                 onClick={() => setIsPromptConfigExpanded(!isPromptConfigExpanded)}
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
@@ -560,6 +561,17 @@ export default function Home() {
                           setSelectedAgent(agent.name);
                           setOpenaiModel(agent.model);
                           setUseResponsesApi(agent.useResponses);
+
+                          // Set default prompt path and version for Knowledge Assistant agent
+                          if (agent.name === "Knowledge Assistant Agent") {
+                            setPromptPath("prompts:/lakemeter_catalog.lakemeter.fajar_ka_agent_prompt");
+                            setPromptVersion("2");
+                          }
+                          // Set default prompt path and version for System Prompt agent
+                          else if (agent.name === "System Prompt Agent") {
+                            setPromptPath("prompts:/lakemeter_catalog.lakemeter.fajar_prompt");
+                            setPromptVersion("17");
+                          }
                         }}
                         className={`relative py-3 px-2 border-2 rounded-lg font-semibold text-xs transition-all text-center ${
                           selectedAgent === agent.name
@@ -651,6 +663,7 @@ export default function Home() {
                   {isLoading ? "Processing..." : "Submit"}
                 </button>
               </div>
+            </div>
             </div>
           </div>
         </div>
