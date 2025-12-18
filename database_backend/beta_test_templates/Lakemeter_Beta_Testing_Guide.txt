@@ -247,10 +247,10 @@ Test Checkpoints:
 FEEDBACK SUBMISSION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Use the shared Google Sheet: [Link to be provided]
+QUICK FEEDBACK (5 minutes)
+Fill out this Google Form: [Link to be provided]
 
-Just fill in these 4 sections:
-
+The form covers:
 1. HIGH-LEVEL RATING
    • Overall experience (1-5 scale)
    • Would you use this with customers? (Yes/No)
@@ -261,13 +261,20 @@ Just fill in these 4 sections:
    • Cost accuracy
    • Save/Export functionality
 
-3. BUGS DISCOVERED
-   • List any issues you found
-   • Note severity: Critical / High / Medium / Low
-
-4. WHAT YOU WANT TO SEE MOST
+3. WHAT YOU WANT TO SEE MOST
    • Top 1-3 improvements or features needed
    • What would make this more useful for your work?
+
+
+BUG REPORTING (if you found issues)
+Use this Google Sheet for detailed bug reports: [Link to be provided]
+
+Include:
+• Screenshot of the issue (if applicable)
+• What you did
+• What went wrong
+• Expected behavior
+• Severity: Critical / High / Medium / Low
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

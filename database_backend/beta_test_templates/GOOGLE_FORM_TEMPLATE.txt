@@ -1,0 +1,143 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LAKEMETER BETA FEEDBACK - GOOGLE FORM TEMPLATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create a Google Form with these questions:
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 1: BASIC INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Question 1: Your Name
+Type: Short answer
+Required: Yes
+
+Question 2: Your Role
+Type: Short answer
+Example: Solution Architect, SE, CSM
+Required: Yes
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 2: HIGH-LEVEL RATING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Question 3: Overall experience with Lakemeter
+Type: Linear scale (1-5)
+1 = Poor
+5 = Excellent
+Required: Yes
+
+Question 4: Would you use Lakemeter with customers?
+Type: Multiple choice
+Options:
+• Yes, definitely
+• Yes, with some improvements
+• Maybe
+• No, not in current state
+Required: Yes
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 3: LOW-LEVEL RATINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Question 5: Ease of use
+Type: Linear scale (1-5)
+1 = Very difficult
+5 = Very easy
+Required: Yes
+
+Question 6: AI Copilot quality
+Type: Linear scale (1-5)
+1 = Not helpful
+5 = Very helpful
+Required: Yes
+
+Question 7: Cost accuracy
+Type: Linear scale (1-5)
+1 = Very inaccurate
+5 = Very accurate
+Required: Yes
+
+Question 8: Save/Export functionality
+Type: Linear scale (1-5)
+1 = Doesn't work well
+5 = Works perfectly
+Required: Yes
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 4: WHAT YOU TESTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Question 9: Which workload types did you test? (Select all that apply)
+Type: Checkboxes
+Options:
+□ JOBS Classic
+□ JOBS Serverless
+□ All-Purpose Classic
+□ All-Purpose Serverless
+□ DBSQL Classic/Pro
+□ DBSQL Serverless
+□ DLT Classic
+□ DLT Serverless
+□ Model Serving
+□ FMAPI Databricks
+□ FMAPI Proprietary
+□ Vector Search
+□ Lakebase
+Required: Yes
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 5: WHAT YOU WANT TO SEE MOST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Question 10: What are the top 1-3 improvements or features you want to see?
+Type: Paragraph text
+Placeholder: List your top priorities for improvements
+Required: Yes
+
+Question 11: What would make Lakemeter more useful for your work?
+Type: Paragraph text
+Placeholder: Describe how Lakemeter could better fit your workflow
+Required: No
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 6: ADDITIONAL COMMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Question 12: What worked best?
+Type: Paragraph text
+Required: No
+
+Question 13: What was most confusing or frustrating?
+Type: Paragraph text
+Required: No
+
+Question 14: Any other comments or suggestions?
+Type: Paragraph text
+Required: No
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORM SETTINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Limit to 1 response per person: No (allow multiple submissions)
+• Allow response editing: Yes
+• Collect email addresses: Yes (to follow up if needed)
+• Show progress bar: Yes
+• Shuffle question order: No
+
+Confirmation Message:
+"Thank you for your feedback! If you found any bugs, please also fill out the bug report sheet: [link]"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ESTIMATED TIME TO COMPLETE: 5-7 minutes
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
