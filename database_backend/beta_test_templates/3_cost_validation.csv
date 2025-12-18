@@ -1,5 +1,0 @@
-Workload Type,Cloud,Region,Config Summary,API Cost ($/month),Actual Cost ($/month),Difference %,Match?,Notes
-JOBS Classic,AWS,us-east-1,"m5.xlarge, 10 workers, 160h",821.52,850.00,-3.3%,Yes,Close enough
-,,,,,,,,
-,,,,,,,,
-
