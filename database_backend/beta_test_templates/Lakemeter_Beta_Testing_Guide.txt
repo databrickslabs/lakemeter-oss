@@ -244,100 +244,44 @@ Test Checkpoints:
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WHAT TO RECORD
+FEEDBACK SUBMISSION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Please use the shared Google Sheet: [Link to be provided]
+Use the shared Google Sheet: [Link to be provided]
 
-The spreadsheet contains 4 tabs:
+Just fill in these 4 sections:
 
-TAB 1: FEATURE TESTING
-Rate each feature from 1-5:
-• Create Estimate
-• Add Line Items Manually
-• AI Copilot Understanding - Does AI understand workload descriptions?
-• AI Copilot Recommendations - Are suggestions accurate and helpful?
-• AI Copilot to Frontend - Is it easy to apply suggestions manually?
-• Edit/Delete Line Items
-• Cost Accuracy
-• Cost Breakdown Clarity
-• Save Estimate
-• Export to Excel
-• View Saved Estimates
-• Salesforce Tagging
+1. HIGH-LEVEL RATING
+   • Overall experience (1-5 scale)
+   • Would you use this with customers? (Yes/No)
 
-TAB 2: WORKLOAD TYPES TESTED
-Track which workload types you tested:
-• All 13 workload types listed
-• Note if configuration was correct
-• Note if costs were accurate
-• Add comments for each tested
+2. LOW-LEVEL RATING (Rate 1-5)
+   • Ease of use
+   • AI Copilot quality
+   • Cost accuracy
+   • Save/Export functionality
 
-TAB 3: ISSUES FOUND
-Report bugs and problems:
-• Date
-• What you did
-• What went wrong
-• What you expected
-• Severity: Critical / High / Medium / Low
+3. BUGS DISCOVERED
+   • List any issues you found
+   • Note severity: Critical / High / Medium / Low
 
-Severity Definitions:
-• Critical: Cannot use the tool
-• High: Feature broken or wrong results
-• Medium: Confusing or annoying
-• Low: Minor issue or suggestion
-
-TAB 4: OVERALL FEEDBACK
-• Ease of use rating (1-5)
-• AI Copilot quality rating (1-5)
-• Would you use this with customers? (Yes/No)
-• What worked best?
-• What needs improvement?
-• Missing features?
+4. WHAT YOU WANT TO SEE MOST
+   • Top 1-3 improvements or features needed
+   • What would make this more useful for your work?
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PRIORITY FEEDBACK
+TESTING COMPLETE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-CRITICAL ISSUES (Report Immediately)
-□ Cannot create estimates
-□ Cannot add line items
-□ Costs wildly incorrect (>50% off)
-□ Cannot save or export
-□ Tool crashes or freezes
+Minimum requirements:
+□ Created 1-2 estimates with multiple line items
+□ Tested at least 3-5 different workload types
+□ Tried AI Copilot suggestions
+□ Tested save and export
+□ Filled in Google Sheet feedback
 
-HIGH PRIORITY
-□ AI Copilot doesn't understand workload descriptions
-□ AI Copilot suggestions are inaccurate or unhelpful
-□ Difficult to manually apply AI suggestions to frontend
-□ Costs inaccurate for specific workload types
-□ Salesforce tagging not working
-□ Excel export missing important details
-□ Confusing UI or unclear workflow
-
-NICE TO HAVE
-□ UI/UX improvements
-□ Additional workload types needed
-□ Feature requests
-□ Comparison feedback (vs AWS/Azure/GCP calculators)
-
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SUCCESS CHECKLIST
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-You have completed beta testing when you have:
-
-□ Created at least 2 estimates
-□ Added at least 5 line items manually (different workload types)
-□ Used AI Copilot to add at least 3 line items
-□ Saved an estimate
-□ Exported an estimate to Excel
-□ Viewed saved estimates list
-□ Tagged an estimate with Salesforce account/opportunity
-□ Filled in all 4 tabs in Google Sheet
-□ Noted any critical issues
+That's it! Thank you for your time.
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -370,29 +314,20 @@ Lakemeter Additions:
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FREQUENTLY ASKED QUESTIONS
+QUICK QUESTIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Q: How many line items should I test?
-A: At least 5-8 covering different workload types (Classic, Serverless, DBSQL, AI/ML).
+Q: How long will this take?
+A: 30-40 minutes for basic testing. More if you want to explore thoroughly.
 
-Q: How accurate should costs be?
-A: Within ±10% is excellent. Within ±20% is acceptable for beta.
+Q: How many workload types should I test?
+A: At least 3-5. Focus on ones you know well.
 
-Q: What if AI Copilot gives wrong recommendations?
-A: Record the exact prompt and what was wrong in Tab 3 (Issues Found).
+Q: What if I find a bug?
+A: Note it in the Google Sheet. If critical, contact the team immediately.
 
-Q: Should I test all 13 workload types?
-A: Try to test at least 6-8. Focus on workload types you know well.
-
-Q: Can I create multiple estimates?
-A: Yes. Test different customer scenarios if time permits.
-
-Q: What if I find a critical bug?
-A: Record in Google Sheet AND contact the team immediately.
-
-Q: How long should testing take?
-A: 30-40 minutes minimum. More comprehensive testing is valuable.
+Q: What if costs seem wrong?
+A: Note which workload type and configuration in the feedback sheet.
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
