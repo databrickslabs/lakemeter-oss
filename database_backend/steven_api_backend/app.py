@@ -85,14 +85,6 @@ app = FastAPI(
             "description": "Salesforce accounts, opportunities, and use cases"
         },
         {
-            "name": "Workload Configuration",
-            "description": "Workload types, DBSQL configs, DLT editions, etc."
-        },
-        {
-            "name": "Model Serving & FMAPI",
-            "description": "GPU types, FMAPI models (Databricks & Proprietary)"
-        },
-        {
             "name": "Cost Calculation",
             "description": "Calculate costs for various workload types (JOBS, DBSQL, DLT, etc.)"
         }
