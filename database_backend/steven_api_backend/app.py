@@ -4743,14 +4743,22 @@ async def calculate_vector_search_cost(
     Calculate cost for Vector Search workload.
     
     **Vector Search Modes:**
-    - **standard**: Standard Vector Search mode
-    - **storage_optimized**: Storage-optimized mode for cost efficiency
+    - **standard**: Standard Vector Search mode (2M vectors per unit)
+    - **storage_optimized**: Storage-optimized mode for cost efficiency (64M vectors per unit)
     
     **Formula:**
     ```
-    DBU/Hour = vector_capacity_millions × mode_dbu_rate
+    Units Used = CEILING(vector_capacity_millions / divisor)
+      where divisor = 2 for standard, 64 for storage_optimized
+    
+    DBU/Hour = units_used × mode_dbu_rate
     Total Cost = DBU/Hour × hours_per_month × dbu_price
     ```
+    
+    **Examples:**
+    - 10M vectors in standard mode → CEILING(10/2) = 5 units
+    - 3M vectors in standard mode → CEILING(3/2) = 2 units
+    - 100M vectors in storage_optimized → CEILING(100/64) = 2 units
     
     **Example Request:**
     ```json
@@ -4761,6 +4769,22 @@ async def calculate_vector_search_cost(
       "mode": "standard",
       "vector_capacity_millions": 10,
       "hours_per_month": 730
+    }
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+      "usage": {
+        "hours_per_month": 730,
+        "units_used": 5
+      },
+      "dbu_calculation": {
+        "dbu_per_hour": ...,
+        "dbu_per_month": ...,
+        "dbu_price": ...,
+        "dbu_cost_per_month": ...
+      }
     }
     ```
     """
@@ -4779,6 +4803,15 @@ async def calculate_vector_search_cost(
     error = await validate_vector_search_mode(request.mode, db)
     if error:
         raise HTTPException(status_code=400, detail=error["error"])
+    
+    # Calculate units used based on mode
+    import math
+    if request.mode.lower() == 'standard':
+        units_used = math.ceil(request.vector_capacity_millions / 2)
+    elif request.mode.lower() == 'storage_optimized':
+        units_used = math.ceil(request.vector_capacity_millions / 64)
+    else:
+        units_used = 0  # Fallback for unknown modes
     
     try:
         query = text("""
@@ -4819,7 +4852,10 @@ async def calculate_vector_search_cost(
                     "mode": request.mode,
                     "vector_capacity_millions": request.vector_capacity_millions
                 },
-                "usage": {"hours_per_month": float(row[1])},
+                "usage": {
+                    "hours_per_month": float(row[1]),
+                    "units_used": units_used
+                },
                 "dbu_calculation": {
                     "dbu_per_hour": float(row[0]),
                     "dbu_per_month": float(row[2]),
