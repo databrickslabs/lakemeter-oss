@@ -1,5 +1,4 @@
 import logging
-import math
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Query, Depends, HTTPException, Request
@@ -307,6 +306,262 @@ async def get_tiers(
             }
     except Exception as e:
         logger.error(f"Error fetching tiers: {e}")
+        return {
+            "success": False,
+            "error": {"message": str(e), "code": "DATABASE_ERROR"}
+        }
+
+@app.get("/api/v1/salesforce/accounts", tags=["Salesforce"])
+async def get_salesforce_accounts(
+    name: str = Query(None, description="Search by account name (partial match, case-insensitive)"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of results per page (max 1000)"),
+    offset: int = Query(0, ge=0, description="Number of results to skip"),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Get Salesforce accounts with pagination.
+    - Without 'name' param: returns paginated list of all accounts
+    - With 'name' param: returns accounts matching the search term
+    - Use 'limit' and 'offset' for pagination
+    """
+    try:
+        # Get total count first
+        if name:
+            count_query = text("""
+                SELECT COUNT(DISTINCT salesforce_account_id) as total
+                FROM lakemeter.sync_salesforce_account
+                WHERE LOWER(salesforce_account_name) LIKE LOWER(:search_term)
+            """)
+            count_result = await db.execute(count_query, {"search_term": f"%{name}%"})
+        else:
+            count_query = text("""
+                SELECT COUNT(DISTINCT salesforce_account_id) as total
+                FROM lakemeter.sync_salesforce_account
+            """)
+            count_result = await db.execute(count_query)
+        
+        total_count = count_result.scalar()
+        
+        # Get paginated results
+        if name:
+            query = text("""
+                SELECT DISTINCT 
+                    salesforce_account_id as value,
+                    salesforce_account_name as label
+                FROM lakemeter.sync_salesforce_account
+                WHERE LOWER(salesforce_account_name) LIKE LOWER(:search_term)
+                ORDER BY salesforce_account_name
+                LIMIT :limit OFFSET :offset
+            """)
+            result = await db.execute(query, {
+                "search_term": f"%{name}%",
+                "limit": limit,
+                "offset": offset
+            })
+        else:
+            query = text("""
+                SELECT DISTINCT 
+                    salesforce_account_id as value,
+                    salesforce_account_name as label
+                FROM lakemeter.sync_salesforce_account
+                ORDER BY salesforce_account_name
+                LIMIT :limit OFFSET :offset
+            """)
+            result = await db.execute(query, {"limit": limit, "offset": offset})
+        
+        results = result.fetchall()
+        
+        return {
+            "success": True,
+            "data": {
+                "total": total_count,
+                "count": len(results),
+                "limit": limit,
+                "offset": offset,
+                "has_more": (offset + len(results)) < total_count,
+                "accounts": [
+                    {
+                        "account_id": r.value,
+                        "account_name": r.label
+                    }
+                    for r in results
+                ]
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error fetching Salesforce accounts: {e}")
+        return {
+            "success": False,
+            "error": {"message": str(e), "code": "DATABASE_ERROR"}
+        }
+
+@app.get("/api/v1/salesforce/accounts/by-name/{account_name}", tags=["Salesforce"])
+async def get_salesforce_account_id(
+    account_name: str,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Get Salesforce account ID by exact account name.
+    Returns 404 if not found.
+    """
+    try:
+        query = text("""
+            SELECT DISTINCT 
+                salesforce_account_id,
+                salesforce_account_name
+            FROM lakemeter.sync_salesforce_account
+            WHERE LOWER(salesforce_account_name) = LOWER(:account_name)
+            LIMIT 1
+        """)
+        result = await db.execute(query, {"account_name": account_name})
+        row = result.fetchone()
+        
+        if row:
+            return {
+                "success": True,
+                "data": {
+                    "salesforce_account_id": row.salesforce_account_id,
+                    "salesforce_account_name": row.salesforce_account_name
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"No Salesforce account found with name '{account_name}'"
+                }
+            }
+    except Exception as e:
+        logger.error(f"Error fetching Salesforce account ID: {e}")
+        return {
+            "success": False,
+            "error": {"message": str(e), "code": "DATABASE_ERROR"}
+        }
+
+@app.get("/api/v1/salesforce/opportunities", tags=["Salesforce"])
+async def get_salesforce_opportunities(
+    account_id: str = Query(..., description="Filter by Salesforce account ID (required)"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of results per page (max 1000)"),
+    offset: int = Query(0, ge=0, description="Number of results to skip"),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Get Salesforce opportunities for a specific account with pagination.
+    Returns list of opportunities (id, name) filtered by accountid.
+    """
+    try:
+        # Get total count
+        count_query = text("""
+            SELECT COUNT(DISTINCT id) as total
+            FROM lakemeter.sync_salesforce_opportunity
+            WHERE accountid = :account_id
+        """)
+        count_result = await db.execute(count_query, {"account_id": account_id})
+        total_count = count_result.scalar()
+        
+        # Get paginated results
+        query = text("""
+            SELECT DISTINCT 
+                id as value,
+                name as label,
+                accountid
+            FROM lakemeter.sync_salesforce_opportunity
+            WHERE accountid = :account_id
+            ORDER BY name
+            LIMIT :limit OFFSET :offset
+        """)
+        result = await db.execute(query, {
+            "account_id": account_id,
+            "limit": limit,
+            "offset": offset
+        })
+        results = result.fetchall()
+        
+        return {
+            "success": True,
+            "data": {
+                "account_id": account_id,
+                "total": total_count,
+                "count": len(results),
+                "limit": limit,
+                "offset": offset,
+                "has_more": (offset + len(results)) < total_count,
+                "opportunities": [
+                    {
+                        "opportunity_id": r.value,
+                        "opportunity_name": r.label,
+                        "account_id": r.accountid
+                    }
+                    for r in results
+                ]
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error fetching Salesforce opportunities: {e}")
+        return {
+            "success": False,
+            "error": {"message": str(e), "code": "DATABASE_ERROR"}
+        }
+
+@app.get("/api/v1/salesforce/usecases", tags=["Salesforce"])
+async def get_salesforce_usecases(
+    customer_id: str = Query(..., description="Filter by Salesforce account ID (customer_id)"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of results per page (max 1000)"),
+    offset: int = Query(0, ge=0, description="Number of results to skip"),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Get Salesforce use cases for a specific account with pagination.
+    Returns list of use cases filtered by customer_id (salesforce_account_id).
+    """
+    try:
+        # Get total count
+        count_query = text("""
+            SELECT COUNT(DISTINCT salesforce_use_case_id) as total
+            FROM lakemeter.sync_salesforce_usecase
+            WHERE customer_id = :customer_id
+        """)
+        count_result = await db.execute(count_query, {"customer_id": customer_id})
+        total_count = count_result.scalar()
+        
+        # Get paginated results
+        query = text("""
+            SELECT DISTINCT 
+                salesforce_use_case_id,
+                salesforce_use_case_name
+            FROM lakemeter.sync_salesforce_usecase
+            WHERE customer_id = :customer_id
+            ORDER BY salesforce_use_case_name
+            LIMIT :limit OFFSET :offset
+        """)
+        result = await db.execute(query, {
+            "customer_id": customer_id,
+            "limit": limit,
+            "offset": offset
+        })
+        results = result.fetchall()
+        
+        return {
+            "success": True,
+            "data": {
+                "customer_id": customer_id,
+                "total": total_count,
+                "count": len(results),
+                "limit": limit,
+                "offset": offset,
+                "has_more": (offset + len(results)) < total_count,
+                "usecases": [
+                    {
+                        "salesforce_use_case_id": r.salesforce_use_case_id,
+                        "salesforce_use_case_name": r.salesforce_use_case_name
+                    }
+                    for r in results
+                ]
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error fetching Salesforce use cases: {e}")
         return {
             "success": False,
             "error": {"message": str(e), "code": "DATABASE_ERROR"}
@@ -4550,6 +4805,7 @@ async def calculate_vector_search_cost(
         raise HTTPException(status_code=400, detail=error["error"])
     
     # Calculate units used based on mode
+    import math
     if request.mode.lower() == 'standard':
         units_used = math.ceil(request.vector_capacity_millions / 2)
     elif request.mode.lower() == 'storage_optimized':
