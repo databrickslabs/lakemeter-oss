@@ -759,7 +759,8 @@ async def get_dbsql_warehouse_types(
 @app.get("/api/v1/dbsql/warehouse-sizes", tags=["DBSQL"])
 async def get_dbsql_warehouse_sizes(
     cloud: str = Query(..., description="Cloud provider: AWS, AZURE, GCP (required)"),
-    warehouse_size: str = Query(None, description="Filter by warehouse size (e.g., 'Medium', 'X-Small')"),
+    warehouse_type: str = Query(None, description="Filter by warehouse type: CLASSIC, PRO, SERVERLESS (optional, case-insensitive)"),
+    warehouse_size: str = Query(None, description="Filter by warehouse size (e.g., 'Medium', 'X-Small') (optional, case-insensitive)"),
     min_vcpus: int = Query(None, ge=1, description="Minimum total worker vCPUs"),
     max_vcpus: int = Query(None, ge=1, description="Maximum total worker vCPUs"),
     min_memory_gb: float = Query(None, ge=0, description="Minimum total worker memory in GB"),
@@ -770,7 +771,7 @@ async def get_dbsql_warehouse_sizes(
 ):
     """
     Get all DBSQL warehouse sizes with hardware specifications and computing power.
-    Supports filtering by warehouse size, vCPU range, memory range, and DBU rate range.
+    Supports filtering by warehouse type, warehouse size, vCPU range, memory range, and DBU rate range.
     
     **Computing Power:**
     - `total_worker_vcpus`: Sum of all worker vCPUs (driver excluded)
@@ -783,14 +784,17 @@ async def get_dbsql_warehouse_sizes(
     - Actual serverless compute is managed by Databricks
     
     **Filters:**
-    - `warehouse_size`: Exact match (case-insensitive)
+    - `warehouse_type`: CLASSIC, PRO, SERVERLESS (optional, validated)
+    - `warehouse_size`: Exact match (optional, validated against available sizes)
     - `min_vcpus`, `max_vcpus`: Filter by total worker vCPUs range
     - `min_memory_gb`, `max_memory_gb`: Filter by total worker memory range
     - `min_dbu_rate`, `max_dbu_rate`: Filter by DBU per hour range
     
     **Example Requests:**
     - `/api/v1/dbsql/warehouse-sizes?cloud=AWS` - Get all AWS warehouses
+    - `/api/v1/dbsql/warehouse-sizes?cloud=AWS&warehouse_type=SERVERLESS` - Get only SERVERLESS warehouses
     - `/api/v1/dbsql/warehouse-sizes?cloud=AWS&warehouse_size=Medium` - Get Medium size only
+    - `/api/v1/dbsql/warehouse-sizes?cloud=AWS&warehouse_type=PRO&warehouse_size=Large` - Get PRO Large
     - `/api/v1/dbsql/warehouse-sizes?cloud=AWS&min_vcpus=32&max_vcpus=128` - Get warehouses with 32-128 total worker vCPUs
     - `/api/v1/dbsql/warehouse-sizes?cloud=AWS&min_dbu_rate=10&max_dbu_rate=50` - Get warehouses with 10-50 DBU/hour
     
@@ -820,6 +824,21 @@ async def get_dbsql_warehouse_sizes(
     error = await validate_cloud(cloud)
     if error:
         return error
+    
+    # Validate warehouse_type if provided
+    if warehouse_type:
+        error = await validate_warehouse_type(warehouse_type, db)
+        if error:
+            return error
+    
+    # Validate warehouse_size if provided
+    # Note: We need to check all warehouse types if warehouse_type not specified
+    if warehouse_size:
+        # Get a valid warehouse_type to validate against (use the first available)
+        type_to_validate = warehouse_type if warehouse_type else "CLASSIC"
+        error = await validate_warehouse_size(cloud, type_to_validate, warehouse_size, db)
+        if error:
+            return error
     
     try:
         query = text("""
@@ -908,6 +927,9 @@ async def get_dbsql_warehouse_sizes(
             total_worker_memory_gb = (r.worker_memory_gb * r.worker_count) if r.worker_memory_gb and r.worker_count else None
             
             # Apply filters
+            if warehouse_type and r.warehouse_type.upper() != warehouse_type.upper():
+                continue
+            
             if warehouse_size and r.warehouse_size.upper() != warehouse_size.upper():
                 continue
             
@@ -960,6 +982,8 @@ async def get_dbsql_warehouse_sizes(
         
         # Build filters object for response
         filters = {}
+        if warehouse_type:
+            filters["warehouse_type"] = warehouse_type.upper()
         if warehouse_size:
             filters["warehouse_size"] = warehouse_size
         if min_vcpus is not None:
