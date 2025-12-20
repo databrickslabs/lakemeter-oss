@@ -759,10 +759,18 @@ async def get_dbsql_warehouse_types(
 @app.get("/api/v1/dbsql/warehouse-sizes", tags=["DBSQL"])
 async def get_dbsql_warehouse_sizes(
     cloud: str = Query(..., description="Cloud provider: AWS, AZURE, GCP (required)"),
+    warehouse_size: str = Query(None, description="Filter by warehouse size (e.g., 'Medium', 'X-Small')"),
+    min_vcpus: int = Query(None, ge=1, description="Minimum total worker vCPUs"),
+    max_vcpus: int = Query(None, ge=1, description="Maximum total worker vCPUs"),
+    min_memory_gb: float = Query(None, ge=0, description="Minimum total worker memory in GB"),
+    max_memory_gb: float = Query(None, ge=0, description="Maximum total worker memory in GB"),
+    min_dbu_rate: float = Query(None, ge=0, description="Minimum DBU per hour"),
+    max_dbu_rate: float = Query(None, ge=0, description="Maximum DBU per hour"),
     db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get all DBSQL warehouse sizes with hardware specifications and computing power.
+    Supports filtering by warehouse size, vCPU range, memory range, and DBU rate range.
     
     **Computing Power:**
     - `total_worker_vcpus`: Sum of all worker vCPUs (driver excluded)
@@ -773,6 +781,18 @@ async def get_dbsql_warehouse_sizes(
     - SERVERLESS warehouses use PRO hardware specifications
     - Marked with `is_estimated: true`
     - Actual serverless compute is managed by Databricks
+    
+    **Filters:**
+    - `warehouse_size`: Exact match (case-insensitive)
+    - `min_vcpus`, `max_vcpus`: Filter by total worker vCPUs range
+    - `min_memory_gb`, `max_memory_gb`: Filter by total worker memory range
+    - `min_dbu_rate`, `max_dbu_rate`: Filter by DBU per hour range
+    
+    **Example Requests:**
+    - `/api/v1/dbsql/warehouse-sizes?cloud=AWS` - Get all AWS warehouses
+    - `/api/v1/dbsql/warehouse-sizes?cloud=AWS&warehouse_size=Medium` - Get Medium size only
+    - `/api/v1/dbsql/warehouse-sizes?cloud=AWS&min_vcpus=32&max_vcpus=128` - Get warehouses with 32-128 total worker vCPUs
+    - `/api/v1/dbsql/warehouse-sizes?cloud=AWS&min_dbu_rate=10&max_dbu_rate=50` - Get warehouses with 10-50 DBU/hour
     
     **Example Response:**
     ```json
@@ -880,12 +900,34 @@ async def get_dbsql_warehouse_sizes(
         result = await db.execute(query, {"cloud": cloud.upper()})
         results = result.fetchall()
         
-        # Build response with hardware details
+        # Build response with hardware details and apply filters
         sizes = []
         for r in results:
             # Calculate total worker resources (driver NOT included)
             total_worker_vcpus = (r.worker_vcpus * r.worker_count) if r.worker_vcpus and r.worker_count else None
             total_worker_memory_gb = (r.worker_memory_gb * r.worker_count) if r.worker_memory_gb and r.worker_count else None
+            
+            # Apply filters
+            if warehouse_size and r.warehouse_size.upper() != warehouse_size.upper():
+                continue
+            
+            if min_vcpus is not None and (total_worker_vcpus is None or total_worker_vcpus < min_vcpus):
+                continue
+            
+            if max_vcpus is not None and (total_worker_vcpus is None or total_worker_vcpus > max_vcpus):
+                continue
+            
+            if min_memory_gb is not None and (total_worker_memory_gb is None or total_worker_memory_gb < min_memory_gb):
+                continue
+            
+            if max_memory_gb is not None and (total_worker_memory_gb is None or total_worker_memory_gb > max_memory_gb):
+                continue
+            
+            if min_dbu_rate is not None and (r.dbu_per_hour is None or float(r.dbu_per_hour) < min_dbu_rate):
+                continue
+            
+            if max_dbu_rate is not None and (r.dbu_per_hour is None or float(r.dbu_per_hour) > max_dbu_rate):
+                continue
             
             # Add (estimated) suffix for serverless instance types
             driver_instance_display = r.driver_instance_type
@@ -916,10 +958,28 @@ async def get_dbsql_warehouse_sizes(
             }
             sizes.append(size_data)
         
+        # Build filters object for response
+        filters = {}
+        if warehouse_size:
+            filters["warehouse_size"] = warehouse_size
+        if min_vcpus is not None:
+            filters["min_vcpus"] = min_vcpus
+        if max_vcpus is not None:
+            filters["max_vcpus"] = max_vcpus
+        if min_memory_gb is not None:
+            filters["min_memory_gb"] = min_memory_gb
+        if max_memory_gb is not None:
+            filters["max_memory_gb"] = max_memory_gb
+        if min_dbu_rate is not None:
+            filters["min_dbu_rate"] = min_dbu_rate
+        if max_dbu_rate is not None:
+            filters["max_dbu_rate"] = max_dbu_rate
+        
         return {
             "success": True,
             "data": {
                 "cloud": cloud.upper(),
+                "filters": filters if filters else None,
                 "count": len(sizes),
                 "sizes": sizes
             }
