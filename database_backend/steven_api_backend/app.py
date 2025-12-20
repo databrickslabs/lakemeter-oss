@@ -1,4 +1,5 @@
 import logging
+import math
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Query, Depends, HTTPException, Request
@@ -298,262 +299,6 @@ async def get_tiers(
             }
     except Exception as e:
         logger.error(f"Error fetching tiers: {e}")
-        return {
-            "success": False,
-            "error": {"message": str(e), "code": "DATABASE_ERROR"}
-        }
-
-@app.get("/api/v1/salesforce/accounts", tags=["Salesforce"])
-async def get_salesforce_accounts(
-    name: str = Query(None, description="Search by account name (partial match, case-insensitive)"),
-    limit: int = Query(100, ge=1, le=1000, description="Number of results per page (max 1000)"),
-    offset: int = Query(0, ge=0, description="Number of results to skip"),
-    db: AsyncSession = Depends(get_async_db)
-):
-    """
-    Get Salesforce accounts with pagination.
-    - Without 'name' param: returns paginated list of all accounts
-    - With 'name' param: returns accounts matching the search term
-    - Use 'limit' and 'offset' for pagination
-    """
-    try:
-        # Get total count first
-        if name:
-            count_query = text("""
-                SELECT COUNT(DISTINCT salesforce_account_id) as total
-                FROM lakemeter.sync_salesforce_account
-                WHERE LOWER(salesforce_account_name) LIKE LOWER(:search_term)
-            """)
-            count_result = await db.execute(count_query, {"search_term": f"%{name}%"})
-        else:
-            count_query = text("""
-                SELECT COUNT(DISTINCT salesforce_account_id) as total
-                FROM lakemeter.sync_salesforce_account
-            """)
-            count_result = await db.execute(count_query)
-        
-        total_count = count_result.scalar()
-        
-        # Get paginated results
-        if name:
-            query = text("""
-                SELECT DISTINCT 
-                    salesforce_account_id as value,
-                    salesforce_account_name as label
-                FROM lakemeter.sync_salesforce_account
-                WHERE LOWER(salesforce_account_name) LIKE LOWER(:search_term)
-                ORDER BY salesforce_account_name
-                LIMIT :limit OFFSET :offset
-            """)
-            result = await db.execute(query, {
-                "search_term": f"%{name}%",
-                "limit": limit,
-                "offset": offset
-            })
-        else:
-            query = text("""
-                SELECT DISTINCT 
-                    salesforce_account_id as value,
-                    salesforce_account_name as label
-                FROM lakemeter.sync_salesforce_account
-                ORDER BY salesforce_account_name
-                LIMIT :limit OFFSET :offset
-            """)
-            result = await db.execute(query, {"limit": limit, "offset": offset})
-        
-        results = result.fetchall()
-        
-        return {
-            "success": True,
-            "data": {
-                "total": total_count,
-                "count": len(results),
-                "limit": limit,
-                "offset": offset,
-                "has_more": (offset + len(results)) < total_count,
-                "accounts": [
-                    {
-                        "account_id": r.value,
-                        "account_name": r.label
-                    }
-                    for r in results
-                ]
-            }
-        }
-    except Exception as e:
-        logger.error(f"Error fetching Salesforce accounts: {e}")
-        return {
-            "success": False,
-            "error": {"message": str(e), "code": "DATABASE_ERROR"}
-        }
-
-@app.get("/api/v1/salesforce/accounts/by-name/{account_name}", tags=["Salesforce"])
-async def get_salesforce_account_id(
-    account_name: str,
-    db: AsyncSession = Depends(get_async_db)
-):
-    """
-    Get Salesforce account ID by exact account name.
-    Returns 404 if not found.
-    """
-    try:
-        query = text("""
-            SELECT DISTINCT 
-                salesforce_account_id,
-                salesforce_account_name
-            FROM lakemeter.sync_salesforce_account
-            WHERE LOWER(salesforce_account_name) = LOWER(:account_name)
-            LIMIT 1
-        """)
-        result = await db.execute(query, {"account_name": account_name})
-        row = result.fetchone()
-        
-        if row:
-            return {
-                "success": True,
-                "data": {
-                    "salesforce_account_id": row.salesforce_account_id,
-                    "salesforce_account_name": row.salesforce_account_name
-                }
-            }
-        else:
-            return {
-                "success": False,
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": f"No Salesforce account found with name '{account_name}'"
-                }
-            }
-    except Exception as e:
-        logger.error(f"Error fetching Salesforce account ID: {e}")
-        return {
-            "success": False,
-            "error": {"message": str(e), "code": "DATABASE_ERROR"}
-        }
-
-@app.get("/api/v1/salesforce/opportunities", tags=["Salesforce"])
-async def get_salesforce_opportunities(
-    account_id: str = Query(..., description="Filter by Salesforce account ID (required)"),
-    limit: int = Query(100, ge=1, le=1000, description="Number of results per page (max 1000)"),
-    offset: int = Query(0, ge=0, description="Number of results to skip"),
-    db: AsyncSession = Depends(get_async_db)
-):
-    """
-    Get Salesforce opportunities for a specific account with pagination.
-    Returns list of opportunities (id, name) filtered by accountid.
-    """
-    try:
-        # Get total count
-        count_query = text("""
-            SELECT COUNT(DISTINCT id) as total
-            FROM lakemeter.sync_salesforce_opportunity
-            WHERE accountid = :account_id
-        """)
-        count_result = await db.execute(count_query, {"account_id": account_id})
-        total_count = count_result.scalar()
-        
-        # Get paginated results
-        query = text("""
-            SELECT DISTINCT 
-                id as value,
-                name as label,
-                accountid
-            FROM lakemeter.sync_salesforce_opportunity
-            WHERE accountid = :account_id
-            ORDER BY name
-            LIMIT :limit OFFSET :offset
-        """)
-        result = await db.execute(query, {
-            "account_id": account_id,
-            "limit": limit,
-            "offset": offset
-        })
-        results = result.fetchall()
-        
-        return {
-            "success": True,
-            "data": {
-                "account_id": account_id,
-                "total": total_count,
-                "count": len(results),
-                "limit": limit,
-                "offset": offset,
-                "has_more": (offset + len(results)) < total_count,
-                "opportunities": [
-                    {
-                        "opportunity_id": r.value,
-                        "opportunity_name": r.label,
-                        "account_id": r.accountid
-                    }
-                    for r in results
-                ]
-            }
-        }
-    except Exception as e:
-        logger.error(f"Error fetching Salesforce opportunities: {e}")
-        return {
-            "success": False,
-            "error": {"message": str(e), "code": "DATABASE_ERROR"}
-        }
-
-@app.get("/api/v1/salesforce/usecases", tags=["Salesforce"])
-async def get_salesforce_usecases(
-    customer_id: str = Query(..., description="Filter by Salesforce account ID (customer_id)"),
-    limit: int = Query(100, ge=1, le=1000, description="Number of results per page (max 1000)"),
-    offset: int = Query(0, ge=0, description="Number of results to skip"),
-    db: AsyncSession = Depends(get_async_db)
-):
-    """
-    Get Salesforce use cases for a specific account with pagination.
-    Returns list of use cases filtered by customer_id (salesforce_account_id).
-    """
-    try:
-        # Get total count
-        count_query = text("""
-            SELECT COUNT(DISTINCT salesforce_use_case_id) as total
-            FROM lakemeter.sync_salesforce_usecase
-            WHERE customer_id = :customer_id
-        """)
-        count_result = await db.execute(count_query, {"customer_id": customer_id})
-        total_count = count_result.scalar()
-        
-        # Get paginated results
-        query = text("""
-            SELECT DISTINCT 
-                salesforce_use_case_id,
-                salesforce_use_case_name
-            FROM lakemeter.sync_salesforce_usecase
-            WHERE customer_id = :customer_id
-            ORDER BY salesforce_use_case_name
-            LIMIT :limit OFFSET :offset
-        """)
-        result = await db.execute(query, {
-            "customer_id": customer_id,
-            "limit": limit,
-            "offset": offset
-        })
-        results = result.fetchall()
-        
-        return {
-            "success": True,
-            "data": {
-                "customer_id": customer_id,
-                "total": total_count,
-                "count": len(results),
-                "limit": limit,
-                "offset": offset,
-                "has_more": (offset + len(results)) < total_count,
-                "usecases": [
-                    {
-                        "salesforce_use_case_id": r.salesforce_use_case_id,
-                        "salesforce_use_case_name": r.salesforce_use_case_name
-                    }
-                    for r in results
-                ]
-            }
-        }
-    except Exception as e:
-        logger.error(f"Error fetching Salesforce use cases: {e}")
         return {
             "success": False,
             "error": {"message": str(e), "code": "DATABASE_ERROR"}
@@ -1013,46 +758,170 @@ async def get_dbsql_warehouse_types(
 
 @app.get("/api/v1/dbsql/warehouse-sizes", tags=["DBSQL"])
 async def get_dbsql_warehouse_sizes(
+    cloud: str = Query(..., description="Cloud provider: AWS, AZURE, GCP (required)"),
     db: AsyncSession = Depends(get_async_db)
 ):
     """
-    Get all distinct DBSQL warehouse sizes with their DBU per hour rates.
-    Returns all sizes from sync_product_dbsql_rates (no filtering).
+    Get all DBSQL warehouse sizes with hardware specifications and computing power.
+    
+    **Computing Power:**
+    - `total_worker_vcpus`: Sum of all worker vCPUs (driver excluded)
+    - `total_worker_memory_gb`: Sum of all worker memory (driver excluded)
+    - Driver resources are separate and do NOT affect totals
+    
+    **Serverless Estimation:**
+    - SERVERLESS warehouses use PRO hardware specifications
+    - Marked with `is_estimated: true`
+    - Actual serverless compute is managed by Databricks
+    
+    **Example Response:**
+    ```json
+    {
+      "warehouse_size": "Medium",
+      "warehouse_type": "PRO",
+      "dbu_per_hour": 24,
+      "hardware": {
+        "driver_count": 1,
+        "worker_count": 8,
+        "driver_instance_type": "i3.8xlarge",
+        "worker_instance_type": "i3.2xlarge",
+        "driver_vcpus": 64,
+        "driver_memory_gb": 488,
+        "worker_vcpus_each": 8,
+        "worker_memory_gb_each": 61,
+        "total_worker_vcpus": 64,
+        "total_worker_memory_gb": 488
+      },
+      "is_estimated": false
+    }
+    ```
     """
+    # Validate cloud
+    error = await validate_cloud(cloud)
+    if error:
+        return error
+    
     try:
         query = text("""
-            SELECT DISTINCT 
-                warehouse_size,
-                dbu_per_hour,
-                CASE UPPER(warehouse_size)
-                    WHEN '2X-SMALL' THEN 1
-                    WHEN 'X-SMALL' THEN 2
-                    WHEN 'SMALL' THEN 3
-                    WHEN 'MEDIUM' THEN 4
-                    WHEN 'LARGE' THEN 5
-                    WHEN 'X-LARGE' THEN 6
-                    WHEN '2X-LARGE' THEN 7
-                    WHEN '3X-LARGE' THEN 8
-                    WHEN '4X-LARGE' THEN 9
-                    ELSE 10
-                END as size_order
-            FROM lakemeter.sync_product_dbsql_rates
-            ORDER BY size_order
+            WITH hardware_data AS (
+                SELECT 
+                    rates.cloud,
+                    rates.warehouse_type,
+                    rates.warehouse_size,
+                    rates.dbu_per_hour,
+                    COALESCE(
+                        config.driver_count,
+                        pro_config.driver_count
+                    ) as driver_count,
+                    COALESCE(
+                        config.worker_count,
+                        pro_config.worker_count
+                    ) as worker_count,
+                    COALESCE(
+                        config.driver_instance_type,
+                        pro_config.driver_instance_type
+                    ) as driver_instance_type,
+                    COALESCE(
+                        config.worker_instance_type,
+                        pro_config.worker_instance_type
+                    ) as worker_instance_type,
+                    CASE 
+                        WHEN UPPER(rates.warehouse_type) = 'SERVERLESS' THEN TRUE
+                        ELSE FALSE
+                    END as is_estimated,
+                    CASE UPPER(rates.warehouse_size)
+                        WHEN '2X-SMALL' THEN 1
+                        WHEN 'X-SMALL' THEN 2
+                        WHEN 'SMALL' THEN 3
+                        WHEN 'MEDIUM' THEN 4
+                        WHEN 'LARGE' THEN 5
+                        WHEN 'X-LARGE' THEN 6
+                        WHEN '2X-LARGE' THEN 7
+                        WHEN '3X-LARGE' THEN 8
+                        WHEN '4X-LARGE' THEN 9
+                        ELSE 10
+                    END as size_order
+                FROM lakemeter.sync_product_dbsql_rates rates
+                LEFT JOIN lakemeter.sync_ref_dbsql_warehouse_config config
+                    ON rates.cloud = config.cloud
+                    AND rates.warehouse_type = config.warehouse_type
+                    AND rates.warehouse_size = config.warehouse_size
+                LEFT JOIN lakemeter.sync_ref_dbsql_warehouse_config pro_config
+                    ON rates.cloud = pro_config.cloud
+                    AND pro_config.warehouse_type = 'pro'
+                    AND rates.warehouse_size = pro_config.warehouse_size
+                WHERE UPPER(rates.cloud) = UPPER(:cloud)
+            )
+            SELECT 
+                hd.cloud,
+                hd.warehouse_type,
+                hd.warehouse_size,
+                hd.dbu_per_hour,
+                hd.driver_count,
+                hd.worker_count,
+                hd.driver_instance_type,
+                hd.worker_instance_type,
+                hd.is_estimated,
+                hd.size_order,
+                di.vcpus as driver_vcpus,
+                di.memory_gb as driver_memory_gb,
+                wi.vcpus as worker_vcpus,
+                wi.memory_gb as worker_memory_gb
+            FROM hardware_data hd
+            LEFT JOIN lakemeter.sync_ref_instance_dbu_rates di
+                ON hd.cloud = di.cloud
+                AND hd.driver_instance_type = di.instance_type
+            LEFT JOIN lakemeter.sync_ref_instance_dbu_rates wi
+                ON hd.cloud = wi.cloud
+                AND hd.worker_instance_type = wi.instance_type
+            ORDER BY hd.size_order, hd.warehouse_type
         """)
-        result = await db.execute(query)
+        
+        result = await db.execute(query, {"cloud": cloud.upper()})
         results = result.fetchall()
+        
+        # Build response with hardware details
+        sizes = []
+        for r in results:
+            # Calculate total worker resources (driver NOT included)
+            total_worker_vcpus = (r.worker_vcpus * r.worker_count) if r.worker_vcpus and r.worker_count else None
+            total_worker_memory_gb = (r.worker_memory_gb * r.worker_count) if r.worker_memory_gb and r.worker_count else None
+            
+            # Add (estimated) suffix for serverless instance types
+            driver_instance_display = r.driver_instance_type
+            worker_instance_display = r.worker_instance_type
+            if r.is_estimated:
+                if driver_instance_display:
+                    driver_instance_display = f"{driver_instance_display} (estimated)"
+                if worker_instance_display:
+                    worker_instance_display = f"{worker_instance_display} (estimated)"
+            
+            size_data = {
+                "warehouse_size": r.warehouse_size,
+                "warehouse_type": r.warehouse_type,
+                "dbu_per_hour": float(r.dbu_per_hour) if r.dbu_per_hour else None,
+                "hardware": {
+                    "driver_count": r.driver_count,
+                    "worker_count": r.worker_count,
+                    "driver_instance_type": driver_instance_display,
+                    "worker_instance_type": worker_instance_display,
+                    "driver_vcpus": r.driver_vcpus,
+                    "driver_memory_gb": float(r.driver_memory_gb) if r.driver_memory_gb else None,
+                    "worker_vcpus_each": r.worker_vcpus,
+                    "worker_memory_gb_each": float(r.worker_memory_gb) if r.worker_memory_gb else None,
+                    "total_worker_vcpus": total_worker_vcpus,
+                    "total_worker_memory_gb": float(total_worker_memory_gb) if total_worker_memory_gb else None
+                },
+                "is_estimated": r.is_estimated
+            }
+            sizes.append(size_data)
         
         return {
             "success": True,
             "data": {
-                "count": len(results),
-                "sizes": [
-                    {
-                        "warehouse_size": r.warehouse_size,
-                        "dbu_per_hour": float(r.dbu_per_hour) if r.dbu_per_hour else None
-                    }
-                    for r in results
-                ]
+                "cloud": cloud.upper(),
+                "count": len(sizes),
+                "sizes": sizes
             }
         }
     except Exception as e:
@@ -4797,7 +4666,6 @@ async def calculate_vector_search_cost(
         raise HTTPException(status_code=400, detail=error["error"])
     
     # Calculate units used based on mode
-    import math
     if request.mode.lower() == 'standard':
         units_used = math.ceil(request.vector_capacity_millions / 2)
     elif request.mode.lower() == 'storage_optimized':
