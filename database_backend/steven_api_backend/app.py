@@ -3053,10 +3053,18 @@ async def calculate_all_purpose_classic_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(
+            workload_type="ALL_PURPOSE",
+            serverless_enabled=False,
+            photon_enabled=request.photon_enabled
+        )
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "ALL_PURPOSE_COMPUTE",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
@@ -3889,10 +3897,17 @@ async def calculate_dbsql_classic_pro_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(
+            workload_type="DBSQL",
+            dbsql_warehouse_type=request.warehouse_type
+        )
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "DBSQL_CLASSIC_PRO",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
@@ -4439,10 +4454,19 @@ async def calculate_dlt_classic_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(
+            workload_type="DLT",
+            serverless_enabled=False,
+            photon_enabled=request.photon_enabled,
+            dlt_edition=request.dlt_edition
+        )
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "DLT",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
@@ -4720,10 +4744,17 @@ async def calculate_dlt_serverless_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(
+            workload_type="DLT",
+            serverless_enabled=True
+        )
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "DLT_SERVERLESS",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
@@ -4888,10 +4919,14 @@ async def calculate_vector_search_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(workload_type="VECTOR_SEARCH")
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "VECTOR_SEARCH",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
@@ -5038,10 +5073,14 @@ async def calculate_model_serving_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(workload_type="MODEL_SERVING")
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "MODEL_SERVING",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
@@ -5361,10 +5400,14 @@ async def calculate_fmapi_databricks_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(workload_type="FMAPI_DATABRICKS")
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "FMAPI_DATABRICKS",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
@@ -5515,10 +5558,17 @@ async def calculate_fmapi_proprietary_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(
+            workload_type="FMAPI_PROPRIETARY",
+            fmapi_provider=request.provider
+        )
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "FMAPI_PROPRIETARY",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
@@ -5642,10 +5692,14 @@ async def calculate_lakebase_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(workload_type="LAKEBASE")
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "LAKEBASE",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
