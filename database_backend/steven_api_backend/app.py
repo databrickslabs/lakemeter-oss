@@ -3325,10 +3325,17 @@ async def calculate_jobs_serverless_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(
+            workload_type="JOBS",
+            serverless_enabled=True
+        )
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "JOBS_SERVERLESS",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
@@ -3590,10 +3597,17 @@ async def calculate_all_purpose_serverless_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(
+            workload_type="ALL_PURPOSE",
+            serverless_enabled=True
+        )
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "ALL_PURPOSE_SERVERLESS",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
@@ -4125,10 +4139,17 @@ async def calculate_dbsql_serverless_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(
+            workload_type="DBSQL",
+            dbsql_warehouse_type="SERVERLESS"
+        )
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "DBSQL_SERVERLESS",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
