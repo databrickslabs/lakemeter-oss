@@ -111,6 +111,80 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
+# Helper function to determine SKU type from workload configuration
+def get_sku_type(
+    workload_type: str,
+    serverless_enabled: bool = False,
+    photon_enabled: bool = False,
+    dlt_edition: str = None,
+    dbsql_warehouse_type: str = None,
+    fmapi_provider: str = None
+) -> str:
+    """
+    Determine the SKU product type based on workload configuration.
+    Maps workload_type + configuration to the product_type used for DBU pricing.
+    
+    Based on database logic in sync_ref_workload_types and v_line_items_with_costs view.
+    """
+    workload_upper = workload_type.upper()
+    
+    if workload_upper == 'JOBS':
+        if serverless_enabled:
+            return 'JOBS_SERVERLESS_COMPUTE'
+        elif photon_enabled:
+            return 'JOBS_COMPUTE_(PHOTON)'
+        else:
+            return 'JOBS_COMPUTE'
+    
+    elif workload_upper == 'ALL_PURPOSE':
+        if serverless_enabled:
+            return 'INTERACTIVE_SERVERLESS_COMPUTE'
+        elif photon_enabled:
+            return 'ALL_PURPOSE_COMPUTE_(PHOTON)'
+        else:
+            return 'ALL_PURPOSE_COMPUTE'
+    
+    elif workload_upper == 'DLT':
+        if serverless_enabled:
+            return 'DELTA_LIVE_TABLES_SERVERLESS'
+        else:
+            edition = (dlt_edition or 'CORE').upper()
+            base = f'DLT_{edition}_COMPUTE'
+            if photon_enabled:
+                return f'{base}_(PHOTON)'
+            else:
+                return base
+    
+    elif workload_upper == 'DBSQL':
+        warehouse_type_upper = (dbsql_warehouse_type or 'CLASSIC').upper()
+        if warehouse_type_upper == 'SERVERLESS':
+            return 'SERVERLESS_SQL_COMPUTE'
+        elif warehouse_type_upper == 'PRO':
+            return 'SQL_PRO_COMPUTE'
+        else:
+            return 'SQL_COMPUTE'
+    
+    elif workload_upper == 'VECTOR_SEARCH':
+        return 'VECTOR_SEARCH_ENDPOINT'
+    
+    elif workload_upper == 'MODEL_SERVING':
+        return 'SERVERLESS_REAL_TIME_INFERENCE'
+    
+    elif workload_upper == 'FMAPI_DATABRICKS':
+        return 'SERVERLESS_REAL_TIME_INFERENCE'
+    
+    elif workload_upper == 'FMAPI_PROPRIETARY':
+        if fmapi_provider:
+            return f'{fmapi_provider.upper()}_MODEL_SERVING'
+        else:
+            return 'MODEL_SERVING'  # Fallback
+    
+    elif workload_upper == 'LAKEBASE':
+        return 'DATABASE_SERVERLESS_COMPUTE'
+    
+    else:
+        return 'JOBS_COMPUTE'  # Default fallback
+
 @app.get("/", tags=["System"])
 def root():
     return {
@@ -2673,10 +2747,18 @@ async def calculate_jobs_classic_cost(
         if not row:
             raise HTTPException(status_code=500, detail="No calculation result returned")
         
+        # Determine SKU type
+        sku_type = get_sku_type(
+            workload_type="JOBS",
+            serverless_enabled=False,
+            photon_enabled=request.photon_enabled
+        )
+        
         return {
             "success": True,
             "data": {
                 "workload_type": "JOBS_CLASSIC",
+                "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(),
                     "region": request.region,
