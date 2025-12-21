@@ -17,3 +17,7 @@ env:
     value: 'lakemeter'
   - name: 'DATABRICKS_TOKEN'
     valueFrom: secret
+  - name: 'OPENAI_MODEL'
+    value: 'ka-5cb2e157-endpoint'
+  - name: 'USE_RESPONSES_API'
+    value: true
