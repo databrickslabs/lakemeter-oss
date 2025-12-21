@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Prompt Sizer",
-  description: "Databricks FE Prompt Sizer",
+  title: "Lakemeter",
+  description: "Databricks FE Lakemeter",
 };
 
 export default function RootLayout({
