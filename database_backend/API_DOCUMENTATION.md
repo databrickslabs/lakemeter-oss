@@ -505,7 +505,7 @@ All calculation endpoints follow this pattern:
 
 **Endpoint**: `POST /api/v1/calculate/vector-search`
 
-**Description**: Calculate cost for Vector Search.
+**Description**: Calculate cost for Vector Search including storage costs.
 
 **Request Body:**
 ```json
@@ -513,9 +513,76 @@ All calculation endpoints follow this pattern:
   "cloud": "AWS | AZURE | GCP",
   "region": "string",
   "tier": "STANDARD | PREMIUM | ENTERPRISE",
-  "mode": "standard | performance",
+  "mode": "standard | storage_optimized",
   "vector_capacity_millions": "float (≥0)",
-  "hours_per_month": "float (≥0, default: 730)"
+  "hours_per_month": "float (≥0, default: 730)",
+  "storage_gb": "float (≥0, default: 0)"
+}
+```
+
+**Units Calculation:**
+- **standard**: 2M vectors per unit → `units_used = CEILING(vector_capacity_millions / 2)`
+- **storage_optimized**: 64M vectors per unit → `units_used = CEILING(vector_capacity_millions / 64)`
+
+**Storage Calculation:**
+- Free storage: 20 GB per unit
+- Billable storage: `MAX(0, storage_gb - (units_used × 20))`
+- Storage cost: `billable_storage_gb × price_per_gb_per_month`
+
+**Example Request:**
+```json
+{
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "mode": "standard",
+  "vector_capacity_millions": 10,
+  "hours_per_month": 730,
+  "storage_gb": 200
+}
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "workload_type": "VECTOR_SEARCH",
+    "sku_type": "VECTOR_SEARCH_ENDPOINT",
+    "configuration": {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "mode": "standard",
+      "vector_capacity_millions": 10,
+      "storage_gb": 200
+    },
+    "usage": {
+      "hours_per_month": 730,
+      "units_used": 5
+    },
+    "dbu_calculation": {
+      "dbu_per_hour": 2.5,
+      "dbu_per_month": 1825,
+      "dbu_price": 0.07,
+      "dbu_cost_per_month": 127.75
+    },
+    "storage_calculation": {
+      "total_storage_gb": 200,
+      "free_storage_gb": 100,
+      "billable_storage_gb": 100,
+      "price_per_gb_per_month": 0.023,
+      "storage_cost_per_month": 2.30
+    },
+    "total_cost": {
+      "cost_per_month": 130.05,
+      "breakdown": {
+        "dbu_cost": 127.75,
+        "storage_cost": 2.30
+      },
+      "note": "Vector Search is serverless - no VM costs"
+    }
+  }
 }
 ```
 
