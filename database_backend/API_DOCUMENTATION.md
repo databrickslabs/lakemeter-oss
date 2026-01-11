@@ -569,6 +569,7 @@ All calculation endpoints follow this pattern:
     },
     "storage_calculation": {
       "total_storage_gb": 200,
+      "free_storage_per_unit_gb": 20,
       "free_storage_gb": 100,
       "billable_storage_gb": 100,
       "price_per_gb_per_month": 0.023,
@@ -592,7 +593,7 @@ All calculation endpoints follow this pattern:
 
 **Endpoint**: `POST /api/v1/calculate/lakebase`
 
-**Description**: Calculate cost for Lakebase (managed PostgreSQL).
+**Description**: Calculate cost for Lakebase (managed PostgreSQL) including storage costs.
 
 **Request Body:**
 ```json
@@ -602,11 +603,79 @@ All calculation endpoints follow this pattern:
   "tier": "STANDARD | PREMIUM | ENTERPRISE",
   "cu_size": "integer (1, 2, 4, or 8)",
   "num_nodes": "integer (1-3 for HA)",
-  "hours_per_month": "float (≥0, default: 730)"
+  "hours_per_month": "float (≥0, default: 730)",
+  "storage_gb": "float (0-8192, default: 0)"
 }
 ```
 
-**Formula**: `DBU/Hour = cu_size × num_nodes`
+**Formula:**
+```
+DBU/Hour = cu_size × num_nodes
+DBU Cost = DBU/Hour × hours_per_month × dbu_price
+
+Storage (no free tier):
+Total DSU = storage_gb × 15 (each GB consumes 15 DSU)
+Storage Cost = Total DSU × price_per_dsu
+
+Total Cost = DBU Cost + Storage Cost
+```
+
+**Example Request:**
+```json
+{
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "cu_size": 4,
+  "num_nodes": 2,
+  "hours_per_month": 730,
+  "storage_gb": 500
+}
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "workload_type": "LAKEBASE",
+    "sku_type": "DATABASE_SERVERLESS_COMPUTE",
+    "configuration": {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "cu_size": 4,
+      "num_nodes": 2,
+      "storage_gb": 500
+    },
+    "usage": {
+      "hours_per_month": 730
+    },
+    "dbu_calculation": {
+      "dbu_per_hour": 8,
+      "dbu_per_month": 5840,
+      "dbu_price": 0.07,
+      "dbu_cost_per_month": 408.80
+    },
+    "storage_calculation": {
+      "storage_gb": 500,
+      "max_storage_gb": 8192,
+      "dsu_per_gb": 15,
+      "total_dsu": 7500,
+      "price_per_dsu": 0.023,
+      "storage_cost_per_month": 172.50
+    },
+    "total_cost": {
+      "cost_per_month": 581.30,
+      "breakdown": {
+        "dbu_cost": 408.80,
+        "storage_cost": 172.50
+      },
+      "note": "Lakebase is serverless - no VM costs"
+    }
+  }
+}
+```
 
 ---
 
