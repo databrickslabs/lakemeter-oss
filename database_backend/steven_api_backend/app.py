@@ -5907,6 +5907,41 @@ async def calculate_lakebase_cost(
         }
 
 
+@app.get("/api/v1/databricks-apps/sizes", tags=["Databricks Apps"])
+async def get_databricks_apps_sizes():
+    """
+    Get available sizes for Databricks Apps.
+    
+    **Sizes:**
+    - **medium**: 0.5 DBU per hour
+    - **large**: 1.0 DBU per hour
+    
+    **Example Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "count": 2,
+        "sizes": [
+          {"size": "medium", "dbu_per_hour": 0.5},
+          {"size": "large", "dbu_per_hour": 1.0}
+        ]
+      }
+    }
+    ```
+    """
+    return {
+        "success": True,
+        "data": {
+            "count": 2,
+            "sizes": [
+                {"size": "medium", "dbu_per_hour": 0.5},
+                {"size": "large", "dbu_per_hour": 1.0}
+            ]
+        }
+    }
+
+
 # Request Model for Databricks Apps
 class DatabricksAppsCalculationRequest(BaseModel):
     """Request model for Databricks Apps cost calculation"""
@@ -5917,7 +5952,7 @@ class DatabricksAppsCalculationRequest(BaseModel):
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
 
 
-@app.post("/api/v1/calculate/databricks-apps", tags=["Cost Calculation"])
+@app.post("/api/v1/calculate/databricks-apps", tags=["Databricks Apps"])
 async def calculate_databricks_apps_cost(
     request: DatabricksAppsCalculationRequest,
     db: AsyncSession = Depends(get_async_db)
