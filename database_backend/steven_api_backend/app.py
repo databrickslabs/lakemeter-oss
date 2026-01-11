@@ -6552,3 +6552,156 @@ async def calculate_ai_parse_cost(
                 "traceback": traceback.format_exc()
             }
         }
+
+
+# Shutterstock ImageAI constants
+SHUTTERSTOCK_DBU_PER_IMAGE = 0.857
+
+
+# Request Model for Shutterstock ImageAI
+class ShutterstockImageAICalculationRequest(BaseModel):
+    """Request model for Shutterstock ImageAI cost calculation"""
+    cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
+    region: str = Field(..., description="Region code (e.g., us-east-1)")
+    tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
+    num_images: int = Field(..., description="Number of images to process", ge=1)
+
+
+@app.get("/api/v1/shutterstock-imageai/info", tags=["Shutterstock ImageAI"])
+async def get_shutterstock_imageai_info():
+    """
+    Get information about Shutterstock ImageAI pricing.
+    
+    **Example Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "dbu_per_image": 0.857,
+        "description": "Shutterstock ImageAI - image generation/processing"
+      }
+    }
+    ```
+    """
+    return {
+        "success": True,
+        "data": {
+            "dbu_per_image": SHUTTERSTOCK_DBU_PER_IMAGE,
+            "description": "Shutterstock ImageAI - image generation/processing"
+        }
+    }
+
+
+@app.post("/api/v1/calculate/shutterstock-imageai", tags=["Cost Calculation"])
+async def calculate_shutterstock_imageai_cost(
+    request: ShutterstockImageAICalculationRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Calculate cost for Shutterstock ImageAI.
+    
+    **Formula:**
+    ```
+    Total DBU = num_images × 0.857 DBU/image
+    Cost = Total DBU × dbu_rate
+    ```
+    
+    **Example Request:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "num_images": 1000
+    }
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+      "calculation": {
+        "dbu_per_image": 0.857,
+        "total_dbu": 857,
+        "dbu_rate": 0.07,
+        "cost": 59.99
+      }
+    }
+    ```
+    """
+    # Validate cloud, region, tier
+    error = await validate_cloud(request.cloud)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    error = await validate_region(request.cloud, request.region, db)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    error = await validate_tier(request.cloud, request.tier, db)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    try:
+        # Get DBU rate from database (SERVERLESS_REAL_TIME_INFERENCE)
+        query = text("""
+            SELECT price_per_dbu
+            FROM lakemeter.sync_pricing_dbu_rates
+            WHERE product_type = 'SERVERLESS_REAL_TIME_INFERENCE'
+              AND cloud = :cloud
+              AND region = :region
+              AND tier = :tier
+            LIMIT 1
+        """)
+        
+        result = await db.execute(query, {
+            "cloud": request.cloud.upper(),
+            "region": request.region,
+            "tier": request.tier.upper()
+        })
+        
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail={
+                "code": "PRICING_NOT_FOUND",
+                "message": f"No pricing data found for {request.cloud.upper()}/{request.region}/{request.tier.upper()}",
+                "field": "region"
+            })
+        
+        dbu_rate = float(row[0])
+        total_dbu = request.num_images * SHUTTERSTOCK_DBU_PER_IMAGE
+        total_cost = total_dbu * dbu_rate
+        
+        return {
+            "success": True,
+            "data": {
+                "workload_type": "SHUTTERSTOCK_IMAGEAI",
+                "configuration": {
+                    "cloud": request.cloud.upper(),
+                    "region": request.region,
+                    "tier": request.tier.upper(),
+                    "num_images": request.num_images
+                },
+                "calculation": {
+                    "dbu_per_image": SHUTTERSTOCK_DBU_PER_IMAGE,
+                    "total_dbu": total_dbu,
+                    "dbu_rate": dbu_rate,
+                    "cost": total_cost
+                },
+                "total_cost": {
+                    "cost": total_cost
+                }
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": {
+                "code": "CALCULATION_ERROR",
+                "message": str(e),
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }
+        }
