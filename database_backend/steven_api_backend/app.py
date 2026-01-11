@@ -5686,7 +5686,7 @@ class LakebaseCalculationRequest(BaseModel):
     cu_size: int = Field(..., description="Compute unit size: 1, 2, 4, or 8", ge=1, le=8)
     num_nodes: int = Field(..., description="Number of nodes: 1-3 for HA", ge=1, le=3)
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
-    storage_gb: float = Field(0, description="Storage in GB (max 8192 GB = 8 TB, no free tier)", ge=0, le=8192)
+    storage_gb: float = Field(0, description="Storage in GB (max 8 TB = 8192 GB, no free tier)", ge=0)
 
 
 @app.post("/api/v1/calculate/lakebase", tags=["Cost Calculation"])
@@ -5776,13 +5776,14 @@ async def calculate_lakebase_cost(
     MAX_STORAGE_GB = 8192  # 8 TB
     DSU_PER_GB = 15  # Each GB consumes 15 DSU
     
-    # Validate storage (also validated in Pydantic, but explicit check for clear error)
+    # Validate storage with clear error message
     if request.storage_gb > MAX_STORAGE_GB:
         raise HTTPException(status_code=400, detail={
-            "code": "INVALID_STORAGE_SIZE",
-            "message": f"Storage cannot exceed {MAX_STORAGE_GB} GB (8 TB)",
+            "code": "STORAGE_EXCEEDS_LIMIT",
+            "message": f"Storage cannot exceed 8 TB (8192 GB). You requested {request.storage_gb} GB.",
             "field": "storage_gb",
-            "max_value": MAX_STORAGE_GB
+            "max_value_gb": MAX_STORAGE_GB,
+            "max_value_tb": 8
         })
     
     # Calculate storage costs (no free tier for Lakebase)
@@ -6079,6 +6080,178 @@ async def calculate_databricks_apps_cost(
                 "total_cost": {
                     "cost_per_month": dbu_cost_per_month,
                     "note": "Databricks Apps is serverless - no VM costs"
+                }
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": {
+                "code": "CALCULATION_ERROR",
+                "message": str(e),
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }
+        }
+
+
+# Request Model for Clean Room
+class CleanRoomCalculationRequest(BaseModel):
+    """Request model for Clean Room cost calculation"""
+    cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
+    region: str = Field(..., description="Region code (e.g., us-east-1, southeastasia)")
+    tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
+    num_collaborators: int = Field(..., description="Number of collaborators (1-10, excludes the org setting up the clean room)", ge=1)
+    days_per_month: int = Field(30, description="Days per month (default: 30)", ge=1, le=31)
+
+
+@app.get("/api/v1/clean-room/info", tags=["Clean Room"])
+async def get_clean_room_info():
+    """
+    Get information about Clean Room pricing.
+    
+    **Note:** The number of collaborators excludes the organization that sets up the clean room.
+    Minimum is 1 collaborator, maximum is 10.
+    
+    **Example Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "min_collaborators": 1,
+        "max_collaborators": 10,
+        "note": "Excludes the organization that sets up the clean room"
+      }
+    }
+    ```
+    """
+    return {
+        "success": True,
+        "data": {
+            "min_collaborators": 1,
+            "max_collaborators": 10,
+            "note": "Excludes the organization that sets up the clean room"
+        }
+    }
+
+
+@app.post("/api/v1/calculate/clean-room", tags=["Cost Calculation"])
+async def calculate_clean_room_cost(
+    request: CleanRoomCalculationRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Calculate cost for Clean Room.
+    
+    **Formula:**
+    ```
+    Cost = num_collaborators × days_per_month × rate_per_collaborator_per_day
+    ```
+    
+    **Note:** Number of collaborators excludes the organization that sets up the clean room.
+    
+    **Example Request:**
+    ```json
+    {
+      "cloud": "AZURE",
+      "region": "southeastasia",
+      "tier": "PREMIUM",
+      "num_collaborators": 3,
+      "days_per_month": 30
+    }
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+      "calculation": {
+        "rate_per_collaborator_per_day": 5.00,
+        "total_collaborator_days": 90,
+        "cost_per_month": 450.00
+      },
+      "total_cost": {
+        "cost_per_month": 450.00,
+        "note": "Excludes the organization that sets up the clean room"
+      }
+    }
+    ```
+    """
+    # Validate cloud, region, tier
+    error = await validate_cloud(request.cloud)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    error = await validate_region(request.cloud, request.region, db)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    error = await validate_tier(request.cloud, request.tier, db)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    # Validate num_collaborators (1-10)
+    MAX_COLLABORATORS = 10
+    if request.num_collaborators > MAX_COLLABORATORS:
+        raise HTTPException(status_code=400, detail={
+            "code": "COLLABORATORS_EXCEEDS_LIMIT",
+            "message": f"Number of collaborators cannot exceed {MAX_COLLABORATORS}. You requested {request.num_collaborators}. Note: The organization setting up the clean room is not counted.",
+            "field": "num_collaborators",
+            "min_value": 1,
+            "max_value": MAX_COLLABORATORS
+        })
+    
+    try:
+        # Get rate from database
+        query = text("""
+            SELECT price_per_dbu as rate_per_collaborator_per_day
+            FROM lakemeter.sync_pricing_dbu_rates
+            WHERE product_type = 'CLEAN_ROOMS_COLLABORATOR'
+              AND cloud = :cloud
+              AND region = :region
+              AND tier = :tier
+            LIMIT 1
+        """)
+        
+        result = await db.execute(query, {
+            "cloud": request.cloud.upper(),
+            "region": request.region,
+            "tier": request.tier.upper()
+        })
+        
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail={
+                "code": "PRICING_NOT_FOUND",
+                "message": f"No Clean Room pricing data found for {request.cloud.upper()}/{request.region}/{request.tier.upper()}",
+                "field": "region"
+            })
+        
+        rate_per_collaborator_per_day = float(row[0])
+        total_collaborator_days = request.num_collaborators * request.days_per_month
+        cost_per_month = total_collaborator_days * rate_per_collaborator_per_day
+        
+        return {
+            "success": True,
+            "data": {
+                "workload_type": "CLEAN_ROOM",
+                "configuration": {
+                    "cloud": request.cloud.upper(),
+                    "region": request.region,
+                    "tier": request.tier.upper(),
+                    "num_collaborators": request.num_collaborators,
+                    "days_per_month": request.days_per_month
+                },
+                "calculation": {
+                    "rate_per_collaborator_per_day": rate_per_collaborator_per_day,
+                    "total_collaborator_days": total_collaborator_days,
+                    "cost_per_month": cost_per_month
+                },
+                "total_cost": {
+                    "cost_per_month": cost_per_month,
+                    "note": "Excludes the organization that sets up the clean room"
                 }
             }
         }
