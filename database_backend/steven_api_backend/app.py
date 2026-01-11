@@ -5686,6 +5686,7 @@ class LakebaseCalculationRequest(BaseModel):
     cu_size: int = Field(..., description="Compute unit size: 1, 2, 4, or 8", ge=1, le=8)
     num_nodes: int = Field(..., description="Number of nodes: 1-3 for HA", ge=1, le=3)
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
+    storage_gb: float = Field(0, description="Storage in GB (max 8192 GB = 8 TB, no free tier)", ge=0, le=8192)
 
 
 @app.post("/api/v1/calculate/lakebase", tags=["Cost Calculation"])
@@ -5698,11 +5699,18 @@ async def calculate_lakebase_cost(
     
     **CU Sizes:** 1, 2, 4, 8  
     **Nodes:** 1-3 (for high availability)
+    **Storage:** 0 - 8192 GB (8 TB max), no free tier
     
     **Formula:**
     ```
     DBU/Hour = cu_size × num_nodes
-    Total Cost = DBU/Hour × hours_per_month × dbu_price
+    DBU Cost = DBU/Hour × hours_per_month × dbu_price
+    
+    Storage:
+    Total DSU = storage_gb × 15 (each GB consumes 15 DSU)
+    Storage Cost = Total DSU × price_per_dsu
+    
+    Total Cost = DBU Cost + Storage Cost
     ```
     
     **Example Request:**
@@ -5713,7 +5721,33 @@ async def calculate_lakebase_cost(
       "tier": "PREMIUM",
       "cu_size": 4,
       "num_nodes": 2,
-      "hours_per_month": 730
+      "hours_per_month": 730,
+      "storage_gb": 500
+    }
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+      "dbu_calculation": {
+        "dbu_per_hour": 8,
+        "dbu_cost_per_month": 408.80
+      },
+      "storage_calculation": {
+        "storage_gb": 500,
+        "max_storage_gb": 8192,
+        "dsu_per_gb": 15,
+        "total_dsu": 7500,
+        "price_per_dsu": 0.023,
+        "storage_cost_per_month": 172.50
+      },
+      "total_cost": {
+        "cost_per_month": 581.30,
+        "breakdown": {
+          "dbu_cost": 408.80,
+          "storage_cost": 172.50
+        }
+      }
     }
     ```
     """
@@ -5737,6 +5771,51 @@ async def calculate_lakebase_cost(
     error = await validate_lakebase_num_nodes(request.num_nodes, db)
     if error:
         raise HTTPException(status_code=400, detail=error["error"])
+    
+    # Storage constants for Lakebase
+    MAX_STORAGE_GB = 8192  # 8 TB
+    DSU_PER_GB = 15  # Each GB consumes 15 DSU
+    
+    # Validate storage (also validated in Pydantic, but explicit check for clear error)
+    if request.storage_gb > MAX_STORAGE_GB:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_STORAGE_SIZE",
+            "message": f"Storage cannot exceed {MAX_STORAGE_GB} GB (8 TB)",
+            "field": "storage_gb",
+            "max_value": MAX_STORAGE_GB
+        })
+    
+    # Calculate storage costs (no free tier for Lakebase)
+    total_dsu = request.storage_gb * DSU_PER_GB
+    storage_cost_per_month = 0.0
+    price_per_dsu = 0.0
+    
+    if request.storage_gb > 0:
+        try:
+            # Get DSU price from database
+            storage_price_query = text("""
+                SELECT price_per_dbu as price_per_dsu 
+                FROM lakemeter.sync_pricing_dbu_rates
+                WHERE product_type = 'DATABRICKS_STORAGE' 
+                  AND usage_unit = 'DSU'
+                  AND cloud = :cloud 
+                  AND region = :region
+                  AND tier = :tier
+                LIMIT 1
+            """)
+            storage_result = await db.execute(storage_price_query, {
+                "cloud": request.cloud.upper(),
+                "region": request.region,
+                "tier": request.tier.upper()
+            })
+            storage_row = storage_result.fetchone()
+            if storage_row:
+                price_per_dsu = float(storage_row[0])
+                storage_cost_per_month = total_dsu * price_per_dsu
+            else:
+                logger.warning(f"No storage price found for Lakebase: {request.cloud.upper()}/{request.region}/{request.tier.upper()}")
+        except Exception as e:
+            logger.warning(f"Could not fetch storage price for Lakebase: {e}")
     
     try:
         query = text("""
@@ -5771,6 +5850,10 @@ async def calculate_lakebase_cost(
         # Determine SKU type
         sku_type = get_sku_type(workload_type="LAKEBASE")
         
+        # Calculate total cost including storage
+        dbu_cost_per_month = float(row[4])
+        total_cost_per_month = dbu_cost_per_month + storage_cost_per_month
+        
         return {
             "success": True,
             "data": {
@@ -5781,17 +5864,30 @@ async def calculate_lakebase_cost(
                     "region": request.region,
                     "tier": request.tier.upper(),
                     "cu_size": request.cu_size,
-                    "num_nodes": request.num_nodes
+                    "num_nodes": request.num_nodes,
+                    "storage_gb": request.storage_gb
                 },
                 "usage": {"hours_per_month": float(row[1])},
                 "dbu_calculation": {
                     "dbu_per_hour": float(row[0]),
                     "dbu_per_month": float(row[2]),
                     "dbu_price": float(row[3]),
-                    "dbu_cost_per_month": float(row[4])
+                    "dbu_cost_per_month": dbu_cost_per_month
+                },
+                "storage_calculation": {
+                    "storage_gb": request.storage_gb,
+                    "max_storage_gb": MAX_STORAGE_GB,
+                    "dsu_per_gb": DSU_PER_GB,
+                    "total_dsu": total_dsu,
+                    "price_per_dsu": price_per_dsu,
+                    "storage_cost_per_month": storage_cost_per_month
                 },
                 "total_cost": {
-                    "cost_per_month": float(row[11]),
+                    "cost_per_month": total_cost_per_month,
+                    "breakdown": {
+                        "dbu_cost": dbu_cost_per_month,
+                        "storage_cost": storage_cost_per_month
+                    },
                     "note": "Lakebase is serverless - no VM costs"
                 }
             }
