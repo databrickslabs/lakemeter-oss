@@ -679,6 +679,77 @@ Total Cost = DBU Cost + Storage Cost
 
 ---
 
+## 1️⃣4️⃣ Databricks Apps
+
+**Endpoint**: `POST /api/v1/calculate/databricks-apps`
+
+**Description**: Calculate cost for Databricks Apps.
+
+**Request Body:**
+```json
+{
+  "cloud": "AWS | AZURE | GCP",
+  "region": "string",
+  "tier": "STANDARD | PREMIUM | ENTERPRISE",
+  "size": "medium | large",
+  "hours_per_month": "float (≥0, default: 730)"
+}
+```
+
+**Sizes:**
+| Size | DBU/Hour |
+|------|----------|
+| medium | 0.5 |
+| large | 1.0 |
+
+**Formula:**
+```
+DBU/Hour = 0.5 (medium) or 1.0 (large)
+DBU Cost = DBU/Hour × hours_per_month × dbu_price
+```
+
+**Example Request:**
+```json
+{
+  "cloud": "AZURE",
+  "region": "southeastasia",
+  "tier": "PREMIUM",
+  "size": "medium",
+  "hours_per_month": 730
+}
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "workload_type": "DATABRICKS_APPS",
+    "configuration": {
+      "cloud": "AZURE",
+      "region": "southeastasia",
+      "tier": "PREMIUM",
+      "size": "medium"
+    },
+    "usage": {
+      "hours_per_month": 730
+    },
+    "dbu_calculation": {
+      "dbu_per_hour": 0.5,
+      "dbu_per_month": 365,
+      "dbu_price": 0.55,
+      "dbu_cost_per_month": 200.75
+    },
+    "total_cost": {
+      "cost_per_month": 200.75,
+      "note": "Databricks Apps is serverless - no VM costs"
+    }
+  }
+}
+```
+
+---
+
 ## ⚠️ Error Handling
 
 All endpoints return consistent error format:
