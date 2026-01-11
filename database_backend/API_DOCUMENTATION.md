@@ -45,8 +45,12 @@ headers = {"Authorization": f"Bearer {token}"}
 - **DLT**: Classic, Serverless
 - **Model Serving**: GPU-based
 - **FMAPI**: Databricks, Proprietary
-- **Vector Search**: By mode
-- **Lakebase**: PostgreSQL
+- **Vector Search**: By mode (with storage)
+- **Lakebase**: PostgreSQL (with storage)
+- **Databricks Apps**: Medium, Large sizes
+- **Clean Room**: Collaborator-based
+- **AI Parse**: Pages/complexity-based
+- **Shutterstock ImageAI**: Image-based
 
 ---
 
@@ -886,6 +890,66 @@ Cost = DBU × dbu_rate
 ```
 
 **Reference Endpoint:** `GET /api/v1/ai-parse/complexities` - Returns complexity levels with DBU estimates
+
+---
+
+## 1️⃣7️⃣ Shutterstock ImageAI
+
+**Endpoint**: `POST /api/v1/calculate/shutterstock-imageai`
+
+**Description**: Calculate cost for Shutterstock ImageAI image generation/processing.
+
+**Formula:**
+```
+Total DBU = num_images × 0.857 DBU/image
+Cost = Total DBU × dbu_rate (SERVERLESS_REAL_TIME_INFERENCE)
+```
+
+**Request Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `cloud` | string | ✅ | AWS, AZURE, GCP |
+| `region` | string | ✅ | Region code (e.g., us-east-1) |
+| `tier` | string | ✅ | STANDARD, PREMIUM, ENTERPRISE |
+| `num_images` | integer | ✅ | Number of images to process (min: 1) |
+
+**Example Request:**
+```json
+{
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "num_images": 1000
+}
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "workload_type": "SHUTTERSTOCK_IMAGEAI",
+    "configuration": {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "num_images": 1000
+    },
+    "calculation": {
+      "dbu_per_image": 0.857,
+      "total_dbu": 857,
+      "dbu_rate": 0.07,
+      "cost": 59.99
+    },
+    "total_cost": {
+      "cost": 59.99
+    }
+  }
+}
+```
+
+**Reference Endpoint:** `GET /api/v1/shutterstock-imageai/info` - Returns DBU per image rate
 
 ---
 
