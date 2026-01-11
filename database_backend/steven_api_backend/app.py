@@ -4916,50 +4916,52 @@ async def calculate_vector_search_cost(
     
     # Calculate storage costs
     # Free storage: 20 GB per unit
-    free_storage_gb = units_used * 20
+    FREE_STORAGE_PER_UNIT = 20
+    free_storage_gb = units_used * FREE_STORAGE_PER_UNIT
     billable_storage_gb = max(0, request.storage_gb - free_storage_gb)
     
-    # Get storage price from database
+    # Get storage price from database (always query, even if no billable storage)
     storage_cost_per_month = 0.0
     price_per_gb_per_month = 0.0
     
-    if billable_storage_gb > 0:
-        try:
-            # Get sku_region for the given region
-            sku_region_query = text("""
-                SELECT sku_region FROM lakemeter.sync_ref_sku_region_map
-                WHERE cloud = :cloud AND region_code = :region
-                LIMIT 1
-            """)
-            sku_result = await db.execute(sku_region_query, {
-                "cloud": request.cloud.upper(),
-                "region": request.region
-            })
-            sku_row = sku_result.fetchone()
-            sku_region = sku_row[0] if sku_row else request.region
-            
-            # Get storage price
-            storage_price_query = text("""
-                SELECT price_per_dbu as price_per_gb_per_month 
-                FROM lakemeter.sync_pricing_dbu_rates
-                WHERE product_type = 'DATABRICKS_STORAGE' 
-                  AND usage_unit = 'DSU'
-                  AND cloud = :cloud 
-                  AND region = :sku_region
-                  AND tier = :tier
-                LIMIT 1
-            """)
-            storage_result = await db.execute(storage_price_query, {
-                "cloud": request.cloud.upper(),
-                "sku_region": sku_region,
-                "tier": request.tier.upper()
-            })
-            storage_row = storage_result.fetchone()
-            if storage_row:
-                price_per_gb_per_month = float(storage_row[0])
-                storage_cost_per_month = billable_storage_gb * price_per_gb_per_month
-        except Exception as e:
-            logger.warning(f"Could not fetch storage price: {e}")
+    try:
+        # Get sku_region for the given region
+        sku_region_query = text("""
+            SELECT sku_region FROM lakemeter.sync_ref_sku_region_map
+            WHERE cloud = :cloud AND region_code = :region
+            LIMIT 1
+        """)
+        sku_result = await db.execute(sku_region_query, {
+            "cloud": request.cloud.upper(),
+            "region": request.region
+        })
+        sku_row = sku_result.fetchone()
+        sku_region = sku_row[0] if sku_row else request.region
+        
+        # Get storage price
+        storage_price_query = text("""
+            SELECT price_per_dbu as price_per_gb_per_month 
+            FROM lakemeter.sync_pricing_dbu_rates
+            WHERE product_type = 'DATABRICKS_STORAGE' 
+              AND usage_unit = 'DSU'
+              AND cloud = :cloud 
+              AND region = :sku_region
+              AND tier = :tier
+            LIMIT 1
+        """)
+        storage_result = await db.execute(storage_price_query, {
+            "cloud": request.cloud.upper(),
+            "sku_region": sku_region,
+            "tier": request.tier.upper()
+        })
+        storage_row = storage_result.fetchone()
+        if storage_row:
+            price_per_gb_per_month = float(storage_row[0])
+            storage_cost_per_month = billable_storage_gb * price_per_gb_per_month
+        else:
+            logger.warning(f"No storage price found for {request.cloud.upper()}/{sku_region}/{request.tier.upper()}")
+    except Exception as e:
+        logger.warning(f"Could not fetch storage price: {e}")
     
     try:
         query = text("""
@@ -5021,6 +5023,7 @@ async def calculate_vector_search_cost(
                 },
                 "storage_calculation": {
                     "total_storage_gb": request.storage_gb,
+                    "free_storage_per_unit_gb": FREE_STORAGE_PER_UNIT,
                     "free_storage_gb": free_storage_gb,
                     "billable_storage_gb": billable_storage_gb,
                     "price_per_gb_per_month": price_per_gb_per_month,
