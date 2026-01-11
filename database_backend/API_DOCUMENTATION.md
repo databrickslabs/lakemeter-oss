@@ -750,6 +750,71 @@ DBU Cost = DBU/Hour × hours_per_month × dbu_price
 
 ---
 
+## 1️⃣5️⃣ Clean Room
+
+**Endpoint**: `POST /api/v1/calculate/clean-room`
+
+**Description**: Calculate cost for Clean Room collaborators.
+
+**Request Body:**
+```json
+{
+  "cloud": "AWS | AZURE | GCP",
+  "region": "string",
+  "tier": "STANDARD | PREMIUM | ENTERPRISE",
+  "num_collaborators": "integer (1-10)",
+  "days_per_month": "integer (1-31, default: 30)"
+}
+```
+
+**Note:** Number of collaborators excludes the organization that sets up the clean room. Minimum is 1, maximum is 10.
+
+**Formula:**
+```
+Cost = num_collaborators × days_per_month × rate_per_collaborator_per_day
+```
+
+**Example Request:**
+```json
+{
+  "cloud": "AZURE",
+  "region": "southeastasia",
+  "tier": "PREMIUM",
+  "num_collaborators": 3,
+  "days_per_month": 30
+}
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "workload_type": "CLEAN_ROOM",
+    "configuration": {
+      "cloud": "AZURE",
+      "region": "southeastasia",
+      "tier": "PREMIUM",
+      "num_collaborators": 3,
+      "days_per_month": 30
+    },
+    "calculation": {
+      "rate_per_collaborator_per_day": 5.00,
+      "total_collaborator_days": 90,
+      "cost_per_month": 450.00
+    },
+    "total_cost": {
+      "cost_per_month": 450.00,
+      "note": "Excludes the organization that sets up the clean room"
+    }
+  }
+}
+```
+
+**Reference Endpoint:** `GET /api/v1/clean-room/info` - Returns min/max collaborators
+
+---
+
 ## ⚠️ Error Handling
 
 All endpoints return consistent error format:
