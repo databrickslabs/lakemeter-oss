@@ -4925,33 +4925,20 @@ async def calculate_vector_search_cost(
     price_per_gb_per_month = 0.0
     
     try:
-        # Get sku_region for the given region
-        sku_region_query = text("""
-            SELECT sku_region FROM lakemeter.sync_ref_sku_region_map
-            WHERE cloud = :cloud AND region_code = :region
-            LIMIT 1
-        """)
-        sku_result = await db.execute(sku_region_query, {
-            "cloud": request.cloud.upper(),
-            "region": request.region
-        })
-        sku_row = sku_result.fetchone()
-        sku_region = sku_row[0] if sku_row else request.region
-        
-        # Get storage price
+        # Get storage price (region column uses region_code, not sku_region)
         storage_price_query = text("""
             SELECT price_per_dbu as price_per_gb_per_month 
             FROM lakemeter.sync_pricing_dbu_rates
             WHERE product_type = 'DATABRICKS_STORAGE' 
               AND usage_unit = 'DSU'
               AND cloud = :cloud 
-              AND region = :sku_region
+              AND region = :region
               AND tier = :tier
             LIMIT 1
         """)
         storage_result = await db.execute(storage_price_query, {
             "cloud": request.cloud.upper(),
-            "sku_region": sku_region,
+            "region": request.region,
             "tier": request.tier.upper()
         })
         storage_row = storage_result.fetchone()
@@ -4959,7 +4946,7 @@ async def calculate_vector_search_cost(
             price_per_gb_per_month = float(storage_row[0])
             storage_cost_per_month = billable_storage_gb * price_per_gb_per_month
         else:
-            logger.warning(f"No storage price found for {request.cloud.upper()}/{sku_region}/{request.tier.upper()}")
+            logger.warning(f"No storage price found for {request.cloud.upper()}/{request.region}/{request.tier.upper()}")
     except Exception as e:
         logger.warning(f"Could not fetch storage price: {e}")
     
