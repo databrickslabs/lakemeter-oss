@@ -5905,3 +5905,158 @@ async def calculate_lakebase_cost(
                 "traceback": traceback.format_exc()
             }
         }
+
+
+# Request Model for Databricks Apps
+class DatabricksAppsCalculationRequest(BaseModel):
+    """Request model for Databricks Apps cost calculation"""
+    cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
+    region: str = Field(..., description="Region code (e.g., us-east-1, southeastasia)")
+    tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
+    size: str = Field(..., description="App size: medium or large")
+    hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
+
+
+@app.post("/api/v1/calculate/databricks-apps", tags=["Cost Calculation"])
+async def calculate_databricks_apps_cost(
+    request: DatabricksAppsCalculationRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Calculate cost for Databricks Apps workload.
+    
+    **Sizes:**
+    - **medium**: 0.5 DBU per hour
+    - **large**: 1.0 DBU per hour
+    
+    **Formula:**
+    ```
+    DBU/Hour = 0.5 (medium) or 1.0 (large)
+    DBU Cost = DBU/Hour × hours_per_month × dbu_price
+    ```
+    
+    **Example Request:**
+    ```json
+    {
+      "cloud": "AZURE",
+      "region": "southeastasia",
+      "tier": "PREMIUM",
+      "size": "medium",
+      "hours_per_month": 730
+    }
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+      "dbu_calculation": {
+        "dbu_per_hour": 0.5,
+        "dbu_per_month": 365,
+        "dbu_price": 0.55,
+        "dbu_cost_per_month": 200.75
+      },
+      "total_cost": {
+        "cost_per_month": 200.75
+      }
+    }
+    ```
+    """
+    # Validate cloud, region, tier
+    error = await validate_cloud(request.cloud)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    error = await validate_region(request.cloud, request.region, db)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    error = await validate_tier(request.cloud, request.tier, db)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    # Validate size
+    VALID_SIZES = ["medium", "large"]
+    DBU_RATES = {
+        "medium": 0.5,
+        "large": 1.0
+    }
+    
+    if request.size.lower() not in VALID_SIZES:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_SIZE",
+            "message": f"Invalid size '{request.size}'. Must be one of: {', '.join(VALID_SIZES)}",
+            "field": "size",
+            "allowed_values": VALID_SIZES
+        })
+    
+    # Calculate DBU
+    dbu_per_hour = DBU_RATES[request.size.lower()]
+    dbu_per_month = dbu_per_hour * request.hours_per_month
+    
+    try:
+        # Get DBU price from database
+        query = text("""
+            SELECT price_per_dbu
+            FROM lakemeter.sync_pricing_dbu_rates
+            WHERE product_type ILIKE '%ALL_PURPOSE_SERVERLESS_COMPUTE%'
+              AND cloud = :cloud
+              AND region = :region
+              AND tier = :tier
+            LIMIT 1
+        """)
+        
+        result = await db.execute(query, {
+            "cloud": request.cloud.upper(),
+            "region": request.region,
+            "tier": request.tier.upper()
+        })
+        
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail={
+                "code": "PRICING_NOT_FOUND",
+                "message": f"No pricing data found for {request.cloud.upper()}/{request.region}/{request.tier.upper()}",
+                "field": "region"
+            })
+        
+        dbu_price = float(row[0])
+        dbu_cost_per_month = dbu_per_month * dbu_price
+        
+        return {
+            "success": True,
+            "data": {
+                "workload_type": "DATABRICKS_APPS",
+                "configuration": {
+                    "cloud": request.cloud.upper(),
+                    "region": request.region,
+                    "tier": request.tier.upper(),
+                    "size": request.size.lower()
+                },
+                "usage": {
+                    "hours_per_month": request.hours_per_month
+                },
+                "dbu_calculation": {
+                    "dbu_per_hour": dbu_per_hour,
+                    "dbu_per_month": dbu_per_month,
+                    "dbu_price": dbu_price,
+                    "dbu_cost_per_month": dbu_cost_per_month
+                },
+                "total_cost": {
+                    "cost_per_month": dbu_cost_per_month,
+                    "note": "Databricks Apps is serverless - no VM costs"
+                }
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": {
+                "code": "CALCULATION_ERROR",
+                "message": str(e),
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }
+        }
