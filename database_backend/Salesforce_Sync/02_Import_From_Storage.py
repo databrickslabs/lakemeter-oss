@@ -1,7 +1,7 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Import Salesforce Data via UC Volume
-# MAGIC 
+# MAGIC
 # MAGIC **Strategy:** Download parquet → Upload to UC Volume → Read with Spark
 
 # COMMAND ----------
@@ -20,9 +20,9 @@ dbutils.library.restartPython()
 # COMMAND ----------
 
 # Azure Storage
-STORAGE_ACCOUNT = "lakemeter"
+STORAGE_ACCOUNT = "lakemeterprodsteven"
 CONTAINER = "lakemeter"
-STORAGE_KEY = "wR3j2JLw79dVMBM734A4WcojQuDye6dVJCMgy8BMLlQWo5d3aKhZ78GHLLDZfycwnmwB7aI/L7rI+AStIbJbtA=="
+STORAGE_KEY = "PDNtAAtkRNecLvKSpgbzVYUBauufOkCzdg3K1050PRFkffKhTIFrw0nUn2PMiuyGtYvayaTS6l9y+ASt8SD+bA=="
 TABLE_PREFIX = "sf_"
 
 # UC Volume path
@@ -161,7 +161,7 @@ for table_name in TABLES:
 
 # MAGIC %md
 # MAGIC ## Done!
-# MAGIC 
+# MAGIC
 # MAGIC Tables created:
 # MAGIC - `lakemeter_catalog.lakemeter.dim_salesforce_account`
 # MAGIC - `lakemeter_catalog.lakemeter.fct_salesforce_use_case`

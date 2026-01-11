@@ -1,13 +1,13 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Sync Salesforce Tables to Azure Storage
-# MAGIC 
+# MAGIC
 # MAGIC **Run this notebook in LOGFOOD workspace** (`adb-2548836972759138`)
-# MAGIC 
+# MAGIC
 # MAGIC This notebook:
 # MAGIC 1. Reads Salesforce tables from Unity Catalog
 # MAGIC 2. Writes to Azure Storage (lakemeter container) as Parquet
-# MAGIC 
+# MAGIC
 # MAGIC Then run `02_Import_From_Storage` in **Lakemeter workspace** to load into Lakebase.
 
 # COMMAND ----------
@@ -18,9 +18,9 @@
 # COMMAND ----------
 
 # Azure Storage Configuration
-STORAGE_ACCOUNT = "lakemeter"
+STORAGE_ACCOUNT = "lakemeterprodsteven"
 CONTAINER = "lakemeter"
-STORAGE_KEY = "wR3j2JLw79dVMBM734A4WcojQuDye6dVJCMgy8BMLlQWo5d3aKhZ78GHLLDZfycwnmwB7aI/L7rI+AStIbJbtA=="
+STORAGE_KEY = "PDNtAAtkRNecLvKSpgbzVYUBauufOkCzdg3K1050PRFkffKhTIFrw0nUn2PMiuyGtYvayaTS6l9y+ASt8SD+bA=="
 
 # Storage path - write directly to container root with sf_ prefix
 STORAGE_PATH = f"abfss://{CONTAINER}@{STORAGE_ACCOUNT}.dfs.core.windows.net"
@@ -33,28 +33,25 @@ TABLES_TO_SYNC = [
     {
         "source": "main.metric_store.dim_salesforce_account",
         "target": "dim_salesforce_account",
-        "columns": ["dim_salesforce_account_region", "salesforce_account_id", "salesforce_account_name", "ds"],
-        "distinct": True,
-        "max_ds": True  # Filter to latest ds only
+        "columns": ["salesforce_account_id", "salesforce_account_name"],
+        "distinct": True
     },
     {
         "source": "main.metric_store.fct_salesforce_use_case__core",
         "target": "fct_salesforce_use_case",
-        "columns": ["customer_id", "salesforce_use_case_id", "estimated_quarterly_dollars", "dim_business_unit_latest", "dim_canonical_customer_name", "dim_salesforce_use_case_id", "salesforce_use_case_name", "ds", "ts", "uuid"],
-        "distinct": False,
-        "max_ds": False
+        "columns": ["customer_id", "salesforce_use_case_id", "dim_canonical_customer_name", "dim_salesforce_use_case_id", "salesforce_use_case_name"],
+        "distinct": True
     },
     {
         "source": "main.sfdc_bronze.hourly_opportunity",
         "target": "hourly_opportunity",
         "columns": ["id", "name", "accountid"],
-        "distinct": False,
-        "max_ds": False
+        "distinct": True
     }
 ]
 
 # Number of output files (partitions)
-NUM_OUTPUT_FILES = 4
+NUM_OUTPUT_FILES = 4  # Reasonable number for Spark to read
 
 print(f"✅ Storage Account: {STORAGE_ACCOUNT}")
 print(f"✅ Container: {CONTAINER}")
@@ -127,8 +124,6 @@ print("✅ Cleanup complete")
 
 import traceback
 
-from pyspark.sql.functions import col, max as spark_max
-
 def sync_table_to_storage(table_config):
     """Sync a single table from Unity Catalog to Azure Storage"""
     
@@ -136,7 +131,6 @@ def sync_table_to_storage(table_config):
     target = table_config["target"]
     columns = table_config["columns"]
     use_distinct = table_config.get("distinct", False)
-    use_max_ds = table_config.get("max_ds", False)
     output_path = f"{STORAGE_PATH}/{TABLE_PREFIX}{target}"
     
     print(f"\n📥 Syncing: {source}")
@@ -146,13 +140,6 @@ def sync_table_to_storage(table_config):
     print(f"   Reading from Unity Catalog...")
     df = spark.table(source).select(*columns)
     
-    # Filter to max(ds) if specified
-    if use_max_ds and "ds" in columns:
-        print(f"   Filtering to max(ds)...")
-        max_ds_value = df.agg(spark_max("ds")).collect()[0][0]
-        print(f"   Max ds: {max_ds_value}")
-        df = df.filter(col("ds") == max_ds_value)
-    
     # Apply distinct if needed
     if use_distinct:
         print(f"   Applying DISTINCT...")
@@ -161,7 +148,7 @@ def sync_table_to_storage(table_config):
     row_count = df.count()
     print(f"   Found {row_count:,} rows")
     
-    # Coalesce to control number of output files
+    # Coalesce to fixed number of output files
     df = df.coalesce(NUM_OUTPUT_FILES)
     
     # Write to storage as Parquet (overwrite mode)
@@ -219,7 +206,7 @@ for table_config in TABLES_TO_SYNC:
 
 # MAGIC %md
 # MAGIC ## Done!
-# MAGIC 
+# MAGIC
 # MAGIC Data exported to Azure Storage as Parquet:
 # MAGIC ```
 # MAGIC abfss://lakemeter@lakemeter.dfs.core.windows.net/salesforce_sync/
@@ -227,5 +214,5 @@ for table_config in TABLES_TO_SYNC:
 # MAGIC ├── fct_salesforce_use_case/    (4 parquet files)
 # MAGIC └── hourly_opportunity/         (4 parquet files)
 # MAGIC ```
-# MAGIC 
+# MAGIC
 # MAGIC **Next Step:** Run `02_Import_From_Storage` in **Lakemeter workspace** to load into Lakebase.
