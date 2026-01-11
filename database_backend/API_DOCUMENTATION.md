@@ -815,6 +815,80 @@ Cost = num_collaborators × days_per_month × rate_per_collaborator_per_day
 
 ---
 
+## 1️⃣6️⃣ AI Parse
+
+**Endpoint**: `POST /api/v1/calculate/ai-parse`
+
+**Description**: Calculate cost for AI Parse document processing.
+
+**Two Calculation Methods:**
+
+### Method 1: Direct DBU
+```json
+{
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "dbu_quantity": 500
+}
+```
+
+### Method 2: Pages + Complexity
+```json
+{
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "num_pages": 10000,
+  "complexity": "medium"
+}
+```
+
+**Complexity Levels:**
+| Complexity | Description | DBU/1k pages |
+|------------|-------------|--------------|
+| `low_text` | Simple text (Receipts, W2s) | 12.5 |
+| `low_images` | Simple images + captions | 22.5 |
+| `medium` | Text + tables + images (Company 10Ks) | 62.5 |
+| `high` | Complex diagrams (Engineering diagrams) | 87.5 |
+
+**Formula (Pages-based):**
+```
+DBU = (num_pages / 1000) × dbu_per_1k_pages
+Cost = DBU × dbu_rate
+```
+
+**Example Response (Pages-based):**
+```json
+{
+  "success": true,
+  "data": {
+    "workload_type": "AI_PARSE",
+    "configuration": {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "calculation_method": "pages_based",
+      "num_pages": 10000,
+      "complexity": "medium"
+    },
+    "calculation": {
+      "dbu_per_1k_pages": 62.5,
+      "total_dbu": 625,
+      "dbu_rate": 0.07,
+      "cost": 43.75
+    },
+    "total_cost": {
+      "cost": 43.75
+    }
+  }
+}
+```
+
+**Reference Endpoint:** `GET /api/v1/ai-parse/complexities` - Returns complexity levels with DBU estimates
+
+---
+
 ## ⚠️ Error Handling
 
 All endpoints return consistent error format:
