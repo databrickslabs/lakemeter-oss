@@ -4811,6 +4811,7 @@ class VectorSearchCalculationRequest(BaseModel):
     mode: str = Field(..., description="Vector Search mode: standard or storage_optimized")
     vector_capacity_millions: float = Field(..., description="Vector capacity in millions", ge=0)
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
+    storage_gb: float = Field(0, description="Total storage in GB (first 20 GB per unit is free)", ge=0)
 
 
 @app.post("/api/v1/calculate/vector-search", tags=["Cost Calculation"])
@@ -4831,13 +4832,20 @@ async def calculate_vector_search_cost(
       where divisor = 2 for standard, 64 for storage_optimized
     
     DBU/Hour = units_used × mode_dbu_rate
-    Total Cost = DBU/Hour × hours_per_month × dbu_price
+    DBU Cost = DBU/Hour × hours_per_month × dbu_price
+    
+    Storage:
+    Free Storage = units_used × 20 GB
+    Billable Storage = MAX(0, storage_gb - free_storage_gb)
+    Storage Cost = billable_storage_gb × price_per_gb_per_month
+    
+    Total Cost = DBU Cost + Storage Cost
     ```
     
     **Examples:**
-    - 10M vectors in standard mode → CEILING(10/2) = 5 units
-    - 3M vectors in standard mode → CEILING(3/2) = 2 units
-    - 100M vectors in storage_optimized → CEILING(100/64) = 2 units
+    - 10M vectors in standard mode → CEILING(10/2) = 5 units → 100 GB free storage
+    - 3M vectors in standard mode → CEILING(3/2) = 2 units → 40 GB free storage
+    - 100M vectors in storage_optimized → CEILING(100/64) = 2 units → 40 GB free storage
     
     **Example Request:**
     ```json
@@ -4847,7 +4855,8 @@ async def calculate_vector_search_cost(
       "tier": "PREMIUM",
       "mode": "standard",
       "vector_capacity_millions": 10,
-      "hours_per_month": 730
+      "hours_per_month": 730,
+      "storage_gb": 200
     }
     ```
     
@@ -4863,6 +4872,20 @@ async def calculate_vector_search_cost(
         "dbu_per_month": ...,
         "dbu_price": ...,
         "dbu_cost_per_month": ...
+      },
+      "storage_calculation": {
+        "total_storage_gb": 200,
+        "free_storage_gb": 100,
+        "billable_storage_gb": 100,
+        "price_per_gb_per_month": 0.023,
+        "storage_cost_per_month": 2.30
+      },
+      "total_cost": {
+        "cost_per_month": ...,
+        "breakdown": {
+          "dbu_cost": ...,
+          "storage_cost": 2.30
+        }
       }
     }
     ```
@@ -4890,6 +4913,53 @@ async def calculate_vector_search_cost(
         units_used = math.ceil(request.vector_capacity_millions / 64)
     else:
         units_used = 0  # Fallback for unknown modes
+    
+    # Calculate storage costs
+    # Free storage: 20 GB per unit
+    free_storage_gb = units_used * 20
+    billable_storage_gb = max(0, request.storage_gb - free_storage_gb)
+    
+    # Get storage price from database
+    storage_cost_per_month = 0.0
+    price_per_gb_per_month = 0.0
+    
+    if billable_storage_gb > 0:
+        try:
+            # Get sku_region for the given region
+            sku_region_query = text("""
+                SELECT sku_region FROM lakemeter.sync_ref_sku_region_map
+                WHERE cloud = :cloud AND region_code = :region
+                LIMIT 1
+            """)
+            sku_result = await db.execute(sku_region_query, {
+                "cloud": request.cloud.upper(),
+                "region": request.region
+            })
+            sku_row = sku_result.fetchone()
+            sku_region = sku_row[0] if sku_row else request.region
+            
+            # Get storage price
+            storage_price_query = text("""
+                SELECT price_per_dbu as price_per_gb_per_month 
+                FROM lakemeter.sync_pricing_dbu_rates
+                WHERE product_type = 'DATABRICKS_STORAGE' 
+                  AND usage_unit = 'DSU'
+                  AND cloud = :cloud 
+                  AND region = :sku_region
+                  AND tier = :tier
+                LIMIT 1
+            """)
+            storage_result = await db.execute(storage_price_query, {
+                "cloud": request.cloud.upper(),
+                "sku_region": sku_region,
+                "tier": request.tier.upper()
+            })
+            storage_row = storage_result.fetchone()
+            if storage_row:
+                price_per_gb_per_month = float(storage_row[0])
+                storage_cost_per_month = billable_storage_gb * price_per_gb_per_month
+        except Exception as e:
+            logger.warning(f"Could not fetch storage price: {e}")
     
     try:
         query = text("""
@@ -4922,6 +4992,10 @@ async def calculate_vector_search_cost(
         # Determine SKU type
         sku_type = get_sku_type(workload_type="VECTOR_SEARCH")
         
+        # Calculate total cost including storage
+        dbu_cost_per_month = float(row[4])
+        total_cost_per_month = dbu_cost_per_month + storage_cost_per_month
+        
         return {
             "success": True,
             "data": {
@@ -4932,7 +5006,8 @@ async def calculate_vector_search_cost(
                     "region": request.region,
                     "tier": request.tier.upper(),
                     "mode": request.mode,
-                    "vector_capacity_millions": request.vector_capacity_millions
+                    "vector_capacity_millions": request.vector_capacity_millions,
+                    "storage_gb": request.storage_gb
                 },
                 "usage": {
                     "hours_per_month": float(row[1]),
@@ -4942,10 +5017,21 @@ async def calculate_vector_search_cost(
                     "dbu_per_hour": float(row[0]),
                     "dbu_per_month": float(row[2]),
                     "dbu_price": float(row[3]),
-                    "dbu_cost_per_month": float(row[4])
+                    "dbu_cost_per_month": dbu_cost_per_month
+                },
+                "storage_calculation": {
+                    "total_storage_gb": request.storage_gb,
+                    "free_storage_gb": free_storage_gb,
+                    "billable_storage_gb": billable_storage_gb,
+                    "price_per_gb_per_month": price_per_gb_per_month,
+                    "storage_cost_per_month": storage_cost_per_month
                 },
                 "total_cost": {
-                    "cost_per_month": float(row[11]),
+                    "cost_per_month": total_cost_per_month,
+                    "breakdown": {
+                        "dbu_cost": dbu_cost_per_month,
+                        "storage_cost": storage_cost_per_month
+                    },
                     "note": "Vector Search is serverless - no VM costs"
                 }
             }
