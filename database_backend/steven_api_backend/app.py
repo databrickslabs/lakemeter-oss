@@ -6268,3 +6268,287 @@ async def calculate_clean_room_cost(
                 "traceback": traceback.format_exc()
             }
         }
+
+
+# AI Parse complexity levels with DBU per 1000 pages
+AI_PARSE_COMPLEXITIES = {
+    "low_text": {
+        "description": "Simple text w/o caption (Receipts, W2s)",
+        "dbu_range": "10-15",
+        "dbu_min": 10,
+        "dbu_max": 15,
+        "dbu_midpoint": 12.5
+    },
+    "low_images": {
+        "description": "Simple images + captions",
+        "dbu_range": "20-25",
+        "dbu_min": 20,
+        "dbu_max": 25,
+        "dbu_midpoint": 22.5
+    },
+    "medium": {
+        "description": "Text + tables + images + captions (Company 10Ks)",
+        "dbu_range": "60-65",
+        "dbu_min": 60,
+        "dbu_max": 65,
+        "dbu_midpoint": 62.5
+    },
+    "high": {
+        "description": "Complex diagrams + captions (Engineering diagrams)",
+        "dbu_range": "85-90",
+        "dbu_min": 85,
+        "dbu_max": 90,
+        "dbu_midpoint": 87.5
+    }
+}
+
+
+# Request Model for AI Parse
+class AIParseCalculationRequest(BaseModel):
+    """Request model for AI Parse cost calculation"""
+    cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
+    region: str = Field(..., description="Region code (e.g., us-east-1)")
+    tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
+    
+    # Method 1: Direct DBU
+    dbu_quantity: Optional[float] = Field(None, description="Total DBU (for direct calculation)", ge=0)
+    
+    # Method 2: Pages + Complexity
+    num_pages: Optional[int] = Field(None, description="Number of pages to parse", ge=0)
+    complexity: Optional[str] = Field(None, description="Complexity: low_text, low_images, medium, high")
+
+
+@app.get("/api/v1/ai-parse/complexities", tags=["AI Parse"])
+async def get_ai_parse_complexities():
+    """
+    Get available complexity levels for AI Parse with DBU estimates.
+    
+    **Complexity Levels:**
+    - **low_text**: Simple text (Receipts, W2s) - 10-15 DBU/1k pages
+    - **low_images**: Simple images + captions - 20-25 DBU/1k pages
+    - **medium**: Text + tables + images (Company 10Ks) - 60-65 DBU/1k pages
+    - **high**: Complex diagrams (Engineering diagrams) - 85-90 DBU/1k pages
+    
+    **Example Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "count": 4,
+        "complexities": [
+          {"complexity": "low_text", "description": "...", "dbu_range": "10-15", "dbu_midpoint": 12.5}
+        ]
+      }
+    }
+    ```
+    """
+    complexities_list = [
+        {
+            "complexity": key,
+            "description": val["description"],
+            "dbu_range": val["dbu_range"],
+            "dbu_midpoint": val["dbu_midpoint"]
+        }
+        for key, val in AI_PARSE_COMPLEXITIES.items()
+    ]
+    
+    return {
+        "success": True,
+        "data": {
+            "count": len(complexities_list),
+            "complexities": complexities_list
+        }
+    }
+
+
+@app.post("/api/v1/calculate/ai-parse", tags=["Cost Calculation"])
+async def calculate_ai_parse_cost(
+    request: AIParseCalculationRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Calculate cost for AI Parse.
+    
+    **Two calculation methods:**
+    
+    **Method 1 - Direct DBU:** Provide `dbu_quantity`
+    ```
+    Cost = dbu_quantity × dbu_rate
+    ```
+    
+    **Method 2 - Pages-based:** Provide `num_pages` + `complexity`
+    ```
+    DBU = (num_pages / 1000) × dbu_per_1k_pages (midpoint)
+    Cost = DBU × dbu_rate
+    ```
+    
+    **Complexity levels:**
+    - low_text: 12.5 DBU/1k pages (Receipts, W2s)
+    - low_images: 22.5 DBU/1k pages (Image with caption)
+    - medium: 62.5 DBU/1k pages (Company 10Ks)
+    - high: 87.5 DBU/1k pages (Engineering diagrams)
+    
+    **Example Request (Pages-based):**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "num_pages": 10000,
+      "complexity": "medium"
+    }
+    ```
+    
+    **Example Request (DBU-based):**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "dbu_quantity": 500
+    }
+    ```
+    """
+    # Validate cloud, region, tier
+    error = await validate_cloud(request.cloud)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    error = await validate_region(request.cloud, request.region, db)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    error = await validate_tier(request.cloud, request.tier, db)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    # Validate input: must provide either dbu_quantity OR (num_pages + complexity)
+    has_dbu = request.dbu_quantity is not None
+    has_pages = request.num_pages is not None and request.complexity is not None
+    
+    if not has_dbu and not has_pages:
+        raise HTTPException(status_code=400, detail={
+            "code": "MISSING_PARAMETERS",
+            "message": "Must provide either 'dbu_quantity' OR ('num_pages' + 'complexity')",
+            "options": [
+                {"method": "dbu_based", "required": ["dbu_quantity"]},
+                {"method": "pages_based", "required": ["num_pages", "complexity"]}
+            ]
+        })
+    
+    if has_dbu and has_pages:
+        raise HTTPException(status_code=400, detail={
+            "code": "CONFLICTING_PARAMETERS",
+            "message": "Cannot provide both 'dbu_quantity' AND ('num_pages' + 'complexity'). Choose one method.",
+            "options": [
+                {"method": "dbu_based", "required": ["dbu_quantity"]},
+                {"method": "pages_based", "required": ["num_pages", "complexity"]}
+            ]
+        })
+    
+    # Validate complexity if using pages-based method
+    if has_pages:
+        if request.complexity.lower() not in AI_PARSE_COMPLEXITIES:
+            raise HTTPException(status_code=400, detail={
+                "code": "INVALID_COMPLEXITY",
+                "message": f"Invalid complexity '{request.complexity}'. Must be one of: {', '.join(AI_PARSE_COMPLEXITIES.keys())}",
+                "field": "complexity",
+                "allowed_values": list(AI_PARSE_COMPLEXITIES.keys())
+            })
+    
+    try:
+        # Get DBU rate from database (SERVERLESS_REAL_TIME_INFERENCE)
+        query = text("""
+            SELECT price_per_dbu
+            FROM lakemeter.sync_pricing_dbu_rates
+            WHERE product_type = 'SERVERLESS_REAL_TIME_INFERENCE'
+              AND cloud = :cloud
+              AND region = :region
+              AND tier = :tier
+            LIMIT 1
+        """)
+        
+        result = await db.execute(query, {
+            "cloud": request.cloud.upper(),
+            "region": request.region,
+            "tier": request.tier.upper()
+        })
+        
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail={
+                "code": "PRICING_NOT_FOUND",
+                "message": f"No AI Parse pricing data found for {request.cloud.upper()}/{request.region}/{request.tier.upper()}",
+                "field": "region"
+            })
+        
+        dbu_rate = float(row[0])
+        
+        # Calculate based on method
+        if has_dbu:
+            # Method 1: Direct DBU
+            calculation_method = "dbu_based"
+            total_dbu = request.dbu_quantity
+            dbu_per_1k_pages = None
+            num_pages = None
+            complexity = None
+            complexity_info = None
+        else:
+            # Method 2: Pages-based
+            calculation_method = "pages_based"
+            complexity = request.complexity.lower()
+            complexity_info = AI_PARSE_COMPLEXITIES[complexity]
+            dbu_per_1k_pages = complexity_info["dbu_midpoint"]
+            num_pages = request.num_pages
+            total_dbu = (num_pages / 1000) * dbu_per_1k_pages
+        
+        total_cost = total_dbu * dbu_rate
+        
+        # Build response
+        response_data = {
+            "workload_type": "AI_PARSE",
+            "configuration": {
+                "cloud": request.cloud.upper(),
+                "region": request.region,
+                "tier": request.tier.upper(),
+                "calculation_method": calculation_method
+            },
+            "calculation": {
+                "total_dbu": total_dbu,
+                "dbu_rate": dbu_rate,
+                "cost": total_cost
+            },
+            "total_cost": {
+                "cost": total_cost
+            }
+        }
+        
+        # Add method-specific details
+        if calculation_method == "pages_based":
+            response_data["configuration"]["num_pages"] = num_pages
+            response_data["configuration"]["complexity"] = complexity
+            response_data["calculation"]["dbu_per_1k_pages"] = dbu_per_1k_pages
+            response_data["calculation"]["complexity_info"] = {
+                "description": complexity_info["description"],
+                "dbu_range": complexity_info["dbu_range"]
+            }
+        else:
+            response_data["configuration"]["dbu_quantity"] = request.dbu_quantity
+        
+        return {
+            "success": True,
+            "data": response_data
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": {
+                "code": "CALCULATION_ERROR",
+                "message": str(e),
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }
+        }
