@@ -5952,7 +5952,7 @@ class DatabricksAppsCalculationRequest(BaseModel):
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
 
 
-@app.post("/api/v1/calculate/databricks-apps", tags=["Databricks Apps"])
+@app.post("/api/v1/calculate/databricks-apps", tags=["Cost Calculation"])
 async def calculate_databricks_apps_cost(
     request: DatabricksAppsCalculationRequest,
     db: AsyncSession = Depends(get_async_db)
