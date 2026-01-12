@@ -52,6 +52,7 @@ headers = {"Authorization": f"Bearer {token}"}
 - **AI Parse**: Pages/complexity-based
 - **Shutterstock ImageAI**: Image-based
 - **Databricks Support**: Tier-based (no regional pricing)
+- **Enhanced Security**: Cloud-based percentage of product spend
 
 ---
 
@@ -1019,6 +1020,69 @@ Annual Cost = MAX(minimum_annual, annual_product_commit × percentage)
 ```
 
 **Reference Endpoint:** `GET /api/v1/databricks-support/tiers` - Returns all support tiers with pricing info
+
+---
+
+## 1️⃣9️⃣ Enhanced Security and Compliance
+
+**Endpoint**: `POST /api/v1/calculate/enhanced-security`
+
+**Description**: Calculate cost for the Enhanced Security and Compliance add-on. Provides enhanced security and controls for your compliance needs.
+
+**Pricing Note:** Product spend is calculated based on product spend at list price incurred in the specific workspaces where the add-on is enabled, before the application of any discounts, usage credits, add-on uplifts, or support fees.
+
+**Formula:**
+```
+Add-on Cost = product_spend × percentage
+```
+
+**Rates by Cloud:**
+
+| Cloud | Percentage |
+|-------|------------|
+| AWS | 15% |
+| Azure | 10% |
+| GCP | 15% |
+
+**Request Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `cloud` | string | ✅ | AWS, AZURE, GCP |
+| `product_spend` | number | ✅ | Product spend at list price (before discounts) in USD |
+
+**Example Request:**
+```json
+{
+  "cloud": "AWS",
+  "product_spend": 100000
+}
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "workload_type": "ENHANCED_SECURITY_COMPLIANCE",
+    "description": "Enhanced Security and Compliance - Provides enhanced security and controls for your compliance needs",
+    "pricing_note": "Product spend is calculated based on product spend at list price...",
+    "configuration": {
+      "cloud": "AWS",
+      "product_spend": 100000
+    },
+    "calculation": {
+      "percentage": 15,
+      "addon_cost": 15000
+    },
+    "total_cost": {
+      "cost": 15000
+    }
+  }
+}
+```
+
+**Reference Endpoint:** `GET /api/v1/enhanced-security/info` - Returns add-on description and rates by cloud
 
 ---
 
