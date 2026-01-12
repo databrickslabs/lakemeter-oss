@@ -7231,22 +7231,22 @@ class LakeflowConnectCalculationRequest(BaseModel):
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     
-    # Ingestion pipeline (Serverless DLT) - requires instance types for DBU calculation
-    ingestion_driver_node_type: str = Field(..., description="Driver instance type for ingestion (e.g., m5.xlarge)")
-    ingestion_worker_node_type: str = Field(..., description="Worker instance type for ingestion (e.g., m5.xlarge)")
-    ingestion_num_workers: int = Field(1, description="Number of workers for ingestion pipeline", ge=0)
-    ingestion_serverless_mode: str = Field("standard", description="Serverless mode: standard or performance")
+    # ===== INGESTION PIPELINE (Serverless DLT) - Required for both saas and database =====
+    pipeline_driver_node_type: str = Field(..., description="Pipeline driver instance type (e.g., m5.xlarge)")
+    pipeline_worker_node_type: str = Field(..., description="Pipeline worker instance type (e.g., m5.xlarge)")
+    pipeline_num_workers: int = Field(1, description="Number of pipeline workers", ge=0)
+    pipeline_serverless_mode: str = Field("standard", description="Serverless mode: standard or performance")
     
-    # Ingestion pipeline usage - provide EITHER run-based OR hours-based
-    ingestion_runs_per_day: Optional[int] = Field(None, ge=0, description="Number of pipeline runs per day")
-    ingestion_avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes")
-    ingestion_days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (default: 30)")
-    ingestion_hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (alternative to run-based)")
+    # Pipeline usage - provide EITHER run-based OR hours-based
+    pipeline_runs_per_day: Optional[int] = Field(None, ge=0, description="Number of pipeline runs per day")
+    pipeline_avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes")
+    pipeline_days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (default: 30)")
+    pipeline_hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (alternative to run-based)")
     
-    # Gateway options - only for database type (defaults provided)
+    # ===== INGESTION GATEWAY (Classic DLT Advanced) - Only for database type =====
     gateway_hours_per_month: float = Field(730, description="Gateway hours per month (default: 730 = 24/7)", ge=0)
-    gateway_driver_instance: Optional[str] = Field(None, description="Override default driver instance type")
-    gateway_worker_instance: Optional[str] = Field(None, description="Override default worker instance type")
+    gateway_driver_instance: Optional[str] = Field(None, description="Override default driver (AWS: r5n.2xlarge, Azure: Standard_E8d_v4, GCP: n2-highmem-8)")
+    gateway_worker_instance: Optional[str] = Field(None, description="Override default worker (AWS: m5.large, Azure: Standard_F4s, GCP: n2-standard-4)")
     gateway_num_workers: int = Field(1, description="Number of gateway workers (default: 1)", ge=1)
 
 
@@ -7300,72 +7300,73 @@ async def calculate_lakeflow_connect_cost(
     
     Gateway runs 24/7 (730 hours) by default.
     
-    **Example Request - SaaS Connector (Hours-based):**
+    **Example Request - SaaS Connector (Pipeline Hours-based):**
     ```json
     {
       "connector_type": "saas",
       "cloud": "AWS",
       "region": "us-east-1",
       "tier": "PREMIUM",
-      "ingestion_driver_node_type": "m5.xlarge",
-      "ingestion_worker_node_type": "m5.xlarge",
-      "ingestion_num_workers": 2,
-      "ingestion_serverless_mode": "standard",
-      "ingestion_hours_per_month": 100
+      "pipeline_driver_node_type": "m5.xlarge",
+      "pipeline_worker_node_type": "m5.xlarge",
+      "pipeline_num_workers": 2,
+      "pipeline_serverless_mode": "standard",
+      "pipeline_hours_per_month": 100
     }
     ```
     
-    **Example Request - SaaS Connector (Run-based):**
+    **Example Request - SaaS Connector (Pipeline Run-based):**
     ```json
     {
       "connector_type": "saas",
       "cloud": "AWS",
       "region": "us-east-1",
       "tier": "PREMIUM",
-      "ingestion_driver_node_type": "m5.xlarge",
-      "ingestion_worker_node_type": "m5.xlarge",
-      "ingestion_num_workers": 2,
-      "ingestion_serverless_mode": "standard",
-      "ingestion_runs_per_day": 4,
-      "ingestion_avg_runtime_minutes": 30,
-      "ingestion_days_per_month": 30
+      "pipeline_driver_node_type": "m5.xlarge",
+      "pipeline_worker_node_type": "m5.xlarge",
+      "pipeline_num_workers": 2,
+      "pipeline_serverless_mode": "standard",
+      "pipeline_runs_per_day": 4,
+      "pipeline_avg_runtime_minutes": 30,
+      "pipeline_days_per_month": 30
     }
     ```
     
-    **Example Request - Database Source:**
+    **Example Request - Database Source (with Gateway defaults):**
     ```json
     {
       "connector_type": "database",
       "cloud": "AWS",
       "region": "us-east-1",
       "tier": "PREMIUM",
-      "ingestion_driver_node_type": "m5.xlarge",
-      "ingestion_worker_node_type": "m5.xlarge",
-      "ingestion_num_workers": 2,
-      "ingestion_serverless_mode": "standard",
-      "ingestion_hours_per_month": 100,
+      "pipeline_driver_node_type": "m5.xlarge",
+      "pipeline_worker_node_type": "m5.xlarge",
+      "pipeline_num_workers": 2,
+      "pipeline_serverless_mode": "standard",
+      "pipeline_hours_per_month": 100,
       "gateway_hours_per_month": 730,
       "gateway_num_workers": 1
     }
     ```
+    Note: Gateway uses cloud defaults (AWS: r5n.2xlarge driver + m5.large worker) when not specified.
     """
     connector_type = request.connector_type.lower()
     cloud_upper = request.cloud.upper()
     
-    # Validate ingestion usage parameters - must provide EITHER run-based OR direct hours
+    # Validate pipeline usage parameters - must provide EITHER run-based OR direct hours
     has_run_params = all([
-        request.ingestion_runs_per_day is not None,
-        request.ingestion_avg_runtime_minutes is not None
+        request.pipeline_runs_per_day is not None,
+        request.pipeline_avg_runtime_minutes is not None
     ])
-    has_hours = request.ingestion_hours_per_month is not None
+    has_hours = request.pipeline_hours_per_month is not None
     
     if not has_run_params and not has_hours:
         raise HTTPException(
             status_code=400,
             detail={
-                "code": "MISSING_INGESTION_USAGE_PARAMETERS",
-                "message": "Must provide either (ingestion_runs_per_day + ingestion_avg_runtime_minutes) OR ingestion_hours_per_month",
-                "required": "Either ['ingestion_runs_per_day', 'ingestion_avg_runtime_minutes'] or ['ingestion_hours_per_month']"
+                "code": "MISSING_PIPELINE_USAGE_PARAMETERS",
+                "message": "Must provide either (pipeline_runs_per_day + pipeline_avg_runtime_minutes) OR pipeline_hours_per_month",
+                "required": "Either ['pipeline_runs_per_day', 'pipeline_avg_runtime_minutes'] or ['pipeline_hours_per_month']"
             }
         )
     
@@ -7373,9 +7374,9 @@ async def calculate_lakeflow_connect_cost(
         raise HTTPException(
             status_code=400,
             detail={
-                "code": "CONFLICTING_INGESTION_USAGE_PARAMETERS",
-                "message": "Cannot provide both run-based parameters and ingestion_hours_per_month. Choose one method.",
-                "conflict": "Provided both run-based parameters AND ingestion_hours_per_month"
+                "code": "CONFLICTING_PIPELINE_USAGE_PARAMETERS",
+                "message": "Cannot provide both run-based parameters and pipeline_hours_per_month. Choose one method.",
+                "conflict": "Provided both run-based parameters AND pipeline_hours_per_month"
             }
         )
     
@@ -7414,24 +7415,24 @@ async def calculate_lakeflow_connect_cost(
                 cloud=request.cloud,
                 region=request.region,
                 tier=request.tier,
-                driver_node_type=request.ingestion_driver_node_type,
-                worker_node_type=request.ingestion_worker_node_type,
-                num_workers=request.ingestion_num_workers,
-                serverless_mode=request.ingestion_serverless_mode,
-                runs_per_day=request.ingestion_runs_per_day,
-                avg_runtime_minutes=request.ingestion_avg_runtime_minutes,
-                days_per_month=request.ingestion_days_per_month or 30
+                driver_node_type=request.pipeline_driver_node_type,
+                worker_node_type=request.pipeline_worker_node_type,
+                num_workers=request.pipeline_num_workers,
+                serverless_mode=request.pipeline_serverless_mode,
+                runs_per_day=request.pipeline_runs_per_day,
+                avg_runtime_minutes=request.pipeline_avg_runtime_minutes,
+                days_per_month=request.pipeline_days_per_month or 30
             )
         else:
             dlt_serverless_request = DLTServerlessCalculationRequest(
                 cloud=request.cloud,
                 region=request.region,
                 tier=request.tier,
-                driver_node_type=request.ingestion_driver_node_type,
-                worker_node_type=request.ingestion_worker_node_type,
-                num_workers=request.ingestion_num_workers,
-                serverless_mode=request.ingestion_serverless_mode,
-                hours_per_month=request.ingestion_hours_per_month
+                driver_node_type=request.pipeline_driver_node_type,
+                worker_node_type=request.pipeline_worker_node_type,
+                num_workers=request.pipeline_num_workers,
+                serverless_mode=request.pipeline_serverless_mode,
+                hours_per_month=request.pipeline_hours_per_month
             )
         
         dlt_result = await calculate_dlt_serverless_cost(dlt_serverless_request, db)
@@ -7448,10 +7449,10 @@ async def calculate_lakeflow_connect_cost(
         
         ingestion_pipeline_result = {
             "type": "Serverless DLT",
-            "driver_node_type": request.ingestion_driver_node_type,
-            "worker_node_type": request.ingestion_worker_node_type,
-            "num_workers": request.ingestion_num_workers,
-            "serverless_mode": request.ingestion_serverless_mode,
+            "driver_node_type": request.pipeline_driver_node_type,
+            "worker_node_type": request.pipeline_worker_node_type,
+            "num_workers": request.pipeline_num_workers,
+            "serverless_mode": request.pipeline_serverless_mode,
             "usage": dlt_data["usage"],
             "dbu_per_hour": dlt_data["dbu_calculation"]["dbu_per_hour"],
             "total_dbu": dlt_data["dbu_calculation"]["dbu_per_month"],
