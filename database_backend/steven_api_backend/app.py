@@ -7380,7 +7380,7 @@ async def calculate_lakeflow_connect_cost(
             })
         
         dlt_data = dlt_result["data"]
-        ingestion_cost = dlt_data["total_cost"]["dbu_cost"]
+        ingestion_cost = dlt_data["dbu_calculation"]["dbu_cost_per_month"]
         
         ingestion_pipeline_result = {
             "type": "Serverless DLT",
@@ -7389,9 +7389,9 @@ async def calculate_lakeflow_connect_cost(
             "num_workers": request.ingestion_num_workers,
             "serverless_mode": request.ingestion_serverless_mode,
             "hours_per_month": request.ingestion_hours_per_month,
-            "dbu_per_hour": dlt_data["calculation"]["dbu_per_hour"],
-            "total_dbu": dlt_data["calculation"]["dbu_per_month"],
-            "dbu_rate": dlt_data["calculation"]["dbu_price"],
+            "dbu_per_hour": dlt_data["dbu_calculation"]["dbu_per_hour"],
+            "total_dbu": dlt_data["dbu_calculation"]["dbu_per_month"],
+            "dbu_rate": dlt_data["dbu_calculation"]["dbu_price"],
             "cost": ingestion_cost
         }
         
