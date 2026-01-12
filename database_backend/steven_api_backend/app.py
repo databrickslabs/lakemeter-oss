@@ -7344,11 +7344,11 @@ async def calculate_lakeflow_connect_cost(
         # 1. Calculate Ingestion Pipeline (Serverless DLT) - Both types use this
         # =====================================================================
         
-        # Get Serverless DLT DBU rate
+        # Get Serverless Pipelines DBU rate (PIPELINES_SERVERLESS_COMPUTE)
         serverless_query = text("""
             SELECT price_per_dbu
             FROM lakemeter.sync_pricing_dbu_rates
-            WHERE product_type = 'DLT_SERVERLESS'
+            WHERE product_type = 'PIPELINES_SERVERLESS_COMPUTE'
               AND cloud = :cloud
               AND region = :region
               AND tier = :tier
@@ -7368,7 +7368,8 @@ async def calculate_lakeflow_connect_cost(
             })
         
         serverless_dbu_rate = float(row[0])
-        serverless_dbu_per_hour = 2.0  # Serverless DLT rate
+        # Serverless DLT uses a simplified DBU calculation - 1 DBU per hour baseline
+        serverless_dbu_per_hour = 1.0
         ingestion_total_dbu = request.ingestion_hours_per_month * serverless_dbu_per_hour
         ingestion_cost = ingestion_total_dbu * serverless_dbu_rate
         
@@ -7400,11 +7401,11 @@ async def calculate_lakeflow_connect_cost(
                     "message": f"No default gateway configuration for cloud: {cloud_upper}"
                 })
             
-            # Get Classic DLT Advanced DBU rate
+            # Get Classic DLT Advanced DBU rate (DLT_ADVANCED_COMPUTE)
             classic_query = text("""
                 SELECT price_per_dbu
                 FROM lakemeter.sync_pricing_dbu_rates
-                WHERE product_type = 'DLT_ADVANCED'
+                WHERE product_type = 'DLT_ADVANCED_COMPUTE'
                   AND cloud = :cloud
                   AND region = :region
                   AND tier = :tier
