@@ -7573,7 +7573,7 @@ async def calculate_lakeflow_connect_cost(
             classic_dbu_rate = float(row[0])
             
             # Get driver VM info and cost
-            driver_info = await get_instance_info(cloud_upper, driver_instance, request.region, db)
+            driver_info = await get_instance_info(cloud_upper, driver_instance, db)
             if not driver_info:
                 raise HTTPException(status_code=404, detail={
                     "code": "INSTANCE_NOT_FOUND",
@@ -7581,7 +7581,7 @@ async def calculate_lakeflow_connect_cost(
                 })
             
             # Get worker VM info and cost
-            worker_info = await get_instance_info(cloud_upper, worker_instance, request.region, db)
+            worker_info = await get_instance_info(cloud_upper, worker_instance, db)
             if not worker_info:
                 raise HTTPException(status_code=404, detail={
                     "code": "INSTANCE_NOT_FOUND",
