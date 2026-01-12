@@ -53,6 +53,7 @@ headers = {"Authorization": f"Bearer {token}"}
 - **Shutterstock ImageAI**: Image-based
 - **Databricks Support**: Tier-based (no regional pricing)
 - **Enhanced Security**: Cloud-based percentage of product spend
+- **Lakeflow Connect**: SaaS connectors and database sources
 
 ---
 
@@ -1083,6 +1084,103 @@ Add-on Cost = product_spend × percentage
 ```
 
 **Reference Endpoint:** `GET /api/v1/enhanced-security/info` - Returns add-on description and rates by cloud
+
+---
+
+## 2️⃣0️⃣ Lakeflow Connect
+
+**Endpoint**: `POST /api/v1/calculate/lakeflow-connect`
+
+**Description**: Calculate cost for Lakeflow Connect data ingestion.
+
+**Connector Types:**
+
+| Type | Description | Examples | Components |
+|------|-------------|----------|------------|
+| `saas` | SaaS Connector | Salesforce, Workday, Google Analytics | Serverless DLT only |
+| `database` | Database Source | MSSQL, MySQL, Postgres, Oracle | Serverless DLT + Ingestion Gateway |
+
+**Gateway Defaults (per cloud):**
+
+| Cloud | Driver | Worker |
+|-------|--------|--------|
+| AWS | r5n.2xlarge (8 vCPU, 64 GB) | m5.large (2 vCPU, 8 GB) |
+| Azure | Standard_E8d_v4 (8 vCPU, 64 GB) | Standard_F4s (4 vCPU, 8 GB) |
+| GCP | n2-highmem-8 (8 vCPU, 64 GB) | n2-standard-4 (4 vCPU, 16 GB) |
+
+**Note:** Gateway runs 24/7 (730 hours/month) by default unless manually stopped. Configuration is 1 driver + 1 worker by default.
+
+**Request Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `connector_type` | string | ✅ | - | saas or database |
+| `cloud` | string | ✅ | - | AWS, AZURE, GCP |
+| `region` | string | ✅ | - | Region code |
+| `tier` | string | ✅ | - | STANDARD, PREMIUM, ENTERPRISE |
+| `ingestion_hours_per_month` | number | ✅ | - | Pipeline runtime hours |
+| `gateway_hours_per_month` | number | ❌ | 730 | Gateway uptime (database only) |
+| `gateway_driver_instance` | string | ❌ | per cloud | Override driver instance |
+| `gateway_worker_instance` | string | ❌ | per cloud | Override worker instance |
+| `gateway_num_workers` | integer | ❌ | 1 | Number of workers |
+
+**Example Request (SaaS):**
+```json
+{
+  "connector_type": "saas",
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "ingestion_hours_per_month": 100
+}
+```
+
+**Example Request (Database):**
+```json
+{
+  "connector_type": "database",
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "ingestion_hours_per_month": 100
+}
+```
+
+**Example Response (Database):**
+```json
+{
+  "success": true,
+  "data": {
+    "workload_type": "LAKEFLOW_CONNECT",
+    "connector_type": "database",
+    "connector_description": "Database Source",
+    "ingestion_pipeline": {
+      "type": "Serverless DLT",
+      "hours_per_month": 100,
+      "dbu_per_hour": 2.0,
+      "total_dbu": 200,
+      "cost": 40.00
+    },
+    "ingestion_gateway": {
+      "type": "Classic DLT Advanced Edition",
+      "driver_instance": "r5n.2xlarge",
+      "worker_instance": "m5.large",
+      "num_workers": 1,
+      "hours_per_month": 730,
+      "dbu_cost": 292.00,
+      "vm_cost": 350.40,
+      "cost": 642.40
+    },
+    "total_cost": {
+      "ingestion_pipeline": 40.00,
+      "ingestion_gateway": 642.40,
+      "total": 682.40
+    }
+  }
+}
+```
+
+**Reference Endpoint:** `GET /api/v1/lakeflow-connect/info` - Returns connector types and gateway defaults
 
 ---
 

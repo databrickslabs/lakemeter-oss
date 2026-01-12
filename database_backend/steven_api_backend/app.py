@@ -6179,8 +6179,8 @@ async def get_databricks_apps_sizes():
     Get available sizes for Databricks Apps.
     
     **Sizes:**
-    - **medium**: 0.5 DBU per hour
-    - **large**: 1.0 DBU per hour
+    - **medium**: 2 vCPU, 6 GB memory, 0.5 DBU per hour
+    - **large**: 4 vCPU, 12 GB memory, 1.0 DBU per hour
     
     **Example Response:**
     ```json
@@ -6189,8 +6189,8 @@ async def get_databricks_apps_sizes():
       "data": {
         "count": 2,
         "sizes": [
-          {"size": "medium", "dbu_per_hour": 0.5},
-          {"size": "large", "dbu_per_hour": 1.0}
+          {"size": "medium", "vcpu": 2, "memory_gb": 6, "dbu_per_hour": 0.5},
+          {"size": "large", "vcpu": 4, "memory_gb": 12, "dbu_per_hour": 1.0}
         ]
       }
     }
@@ -6201,8 +6201,8 @@ async def get_databricks_apps_sizes():
         "data": {
             "count": 2,
             "sizes": [
-                {"size": "medium", "dbu_per_hour": 0.5},
-                {"size": "large", "dbu_per_hour": 1.0}
+                {"size": "medium", "vcpu": 2, "memory_gb": 6, "dbu_per_hour": 0.5},
+                {"size": "large", "vcpu": 4, "memory_gb": 12, "dbu_per_hour": 1.0}
             ]
         }
     }
@@ -7182,3 +7182,318 @@ async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationR
             }
         }
     }
+
+
+# ============================================================================
+# Lakeflow Connect
+# ============================================================================
+
+# Default gateway configuration per cloud (can be overridden)
+LAKEFLOW_GATEWAY_DEFAULTS = {
+    "AWS": {
+        "driver_instance": "r5n.2xlarge",
+        "driver_specs": "8 vCPU, 64 GB, encryption (Nitro) supported",
+        "worker_instance": "m5.large",
+        "worker_specs": "2 vCPU, 8 GB, encryption (Nitro) supported"
+    },
+    "AZURE": {
+        "driver_instance": "Standard_E8d_v4",
+        "driver_specs": "8 vCPU, 64 GB, encryption supported",
+        "worker_instance": "Standard_F4s",
+        "worker_specs": "4 vCPU, 8 GB, encryption supported"
+    },
+    "GCP": {
+        "driver_instance": "n2-highmem-8",
+        "driver_specs": "8 vCPU, 64 GB, encryption supported",
+        "worker_instance": "n2-standard-4",
+        "worker_specs": "4 vCPU, 16 GB, encryption supported"
+    }
+}
+
+LAKEFLOW_CONNECTOR_TYPES = {
+    "saas": {
+        "description": "SaaS Connector",
+        "examples": ["Salesforce", "Workday", "Google Analytics"],
+        "components": ["Serverless DLT (Ingestion Pipeline)"]
+    },
+    "database": {
+        "description": "Database Source",
+        "examples": ["MSSQL", "MySQL", "Postgres", "Oracle"],
+        "components": ["Serverless DLT (Ingestion Pipeline)", "Classic DLT Advanced (Ingestion Gateway)"]
+    }
+}
+
+
+class LakeflowConnectCalculationRequest(BaseModel):
+    """Request model for Lakeflow Connect cost calculation"""
+    connector_type: str = Field(..., description="Connector type: saas or database")
+    cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
+    region: str = Field(..., description="Region code (e.g., us-east-1)")
+    tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
+    
+    # Ingestion pipeline (Serverless DLT)
+    ingestion_hours_per_month: float = Field(..., description="Hours per month the ingestion pipeline runs", ge=0)
+    
+    # Gateway options - only for database type (defaults provided)
+    gateway_hours_per_month: float = Field(730, description="Gateway hours per month (default: 730 = 24/7)", ge=0)
+    gateway_driver_instance: Optional[str] = Field(None, description="Override default driver instance type")
+    gateway_worker_instance: Optional[str] = Field(None, description="Override default worker instance type")
+    gateway_num_workers: int = Field(1, description="Number of gateway workers (default: 1)", ge=1)
+
+
+@app.get("/api/v1/lakeflow-connect/info", tags=["Lakeflow Connect"])
+async def get_lakeflow_connect_info():
+    """
+    Get Lakeflow Connect connector types and default gateway configuration.
+    
+    **Connector Types:**
+    - **saas**: SaaS connectors (Salesforce, Workday, Google Analytics) - uses Serverless DLT only
+    - **database**: Database sources (MSSQL, MySQL, Postgres, Oracle) - uses Serverless DLT + Ingestion Gateway
+    
+    **Gateway:** Runs 24/7 by default (730 hours/month) unless manually stopped.
+    """
+    return {
+        "success": True,
+        "data": {
+            "connector_types": LAKEFLOW_CONNECTOR_TYPES,
+            "gateway_defaults": {
+                cloud: {
+                    "driver_instance": config["driver_instance"],
+                    "driver_specs": config["driver_specs"],
+                    "worker_instance": config["worker_instance"],
+                    "worker_specs": config["worker_specs"],
+                    "num_workers": 1
+                }
+                for cloud, config in LAKEFLOW_GATEWAY_DEFAULTS.items()
+            },
+            "gateway_default_hours": 730,
+            "gateway_note": "Gateway runs 24/7 by default unless manually stopped"
+        }
+    }
+
+
+@app.post("/api/v1/calculate/lakeflow-connect", tags=["Cost Calculation"])
+async def calculate_lakeflow_connect_cost(
+    request: LakeflowConnectCalculationRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Calculate cost for Lakeflow Connect.
+    
+    **Connector Types:**
+    - **saas**: Uses Serverless DLT for ingestion pipeline only
+    - **database**: Uses Serverless DLT + Classic DLT Advanced (Ingestion Gateway)
+    
+    **Gateway Defaults (per cloud):**
+    - AWS: r5n.2xlarge driver + m5.large worker
+    - Azure: Standard_E8d_v4 driver + Standard_F4s worker
+    - GCP: n2-highmem-8 driver + n2-standard-4 worker
+    
+    Gateway runs 24/7 (730 hours) by default.
+    """
+    connector_type = request.connector_type.lower()
+    cloud_upper = request.cloud.upper()
+    
+    # Validate connector type
+    if connector_type not in LAKEFLOW_CONNECTOR_TYPES:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_CONNECTOR_TYPE",
+            "message": f"Invalid connector type: {request.connector_type}",
+            "allowed_values": list(LAKEFLOW_CONNECTOR_TYPES.keys())
+        })
+    
+    # Validate cloud
+    error = await validate_cloud(cloud_upper)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    # Validate region
+    error = await validate_region(cloud_upper, request.region, db)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    # Validate tier
+    error = await validate_tier(cloud_upper, request.tier, db)
+    if error:
+        raise HTTPException(status_code=400, detail=error["error"])
+    
+    try:
+        # =====================================================================
+        # 1. Calculate Ingestion Pipeline (Serverless DLT) - Both types use this
+        # =====================================================================
+        
+        # Get Serverless DLT DBU rate
+        serverless_query = text("""
+            SELECT price_per_dbu
+            FROM lakemeter.sync_pricing_dbu_rates
+            WHERE product_type = 'DLT_SERVERLESS'
+              AND cloud = :cloud
+              AND region = :region
+              AND tier = :tier
+            LIMIT 1
+        """)
+        result = await db.execute(serverless_query, {
+            "cloud": cloud_upper,
+            "region": request.region,
+            "tier": request.tier.upper()
+        })
+        row = result.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail={
+                "code": "PRICING_NOT_FOUND",
+                "message": f"No Serverless DLT pricing found for {cloud_upper}/{request.region}/{request.tier.upper()}"
+            })
+        
+        serverless_dbu_rate = float(row[0])
+        serverless_dbu_per_hour = 2.0  # Serverless DLT rate
+        ingestion_total_dbu = request.ingestion_hours_per_month * serverless_dbu_per_hour
+        ingestion_cost = ingestion_total_dbu * serverless_dbu_rate
+        
+        ingestion_pipeline_result = {
+            "type": "Serverless DLT",
+            "hours_per_month": request.ingestion_hours_per_month,
+            "dbu_per_hour": serverless_dbu_per_hour,
+            "total_dbu": ingestion_total_dbu,
+            "dbu_rate": serverless_dbu_rate,
+            "cost": ingestion_cost
+        }
+        
+        # =====================================================================
+        # 2. Calculate Ingestion Gateway (Classic DLT Advanced) - Database only
+        # =====================================================================
+        
+        gateway_result = None
+        gateway_cost = 0
+        
+        if connector_type == "database":
+            # Get default or overridden instance types
+            gateway_config = LAKEFLOW_GATEWAY_DEFAULTS.get(cloud_upper, {})
+            driver_instance = request.gateway_driver_instance or gateway_config.get("driver_instance")
+            worker_instance = request.gateway_worker_instance or gateway_config.get("worker_instance")
+            
+            if not driver_instance or not worker_instance:
+                raise HTTPException(status_code=400, detail={
+                    "code": "MISSING_GATEWAY_CONFIG",
+                    "message": f"No default gateway configuration for cloud: {cloud_upper}"
+                })
+            
+            # Get Classic DLT Advanced DBU rate
+            classic_query = text("""
+                SELECT price_per_dbu
+                FROM lakemeter.sync_pricing_dbu_rates
+                WHERE product_type = 'DLT_ADVANCED'
+                  AND cloud = :cloud
+                  AND region = :region
+                  AND tier = :tier
+                LIMIT 1
+            """)
+            result = await db.execute(classic_query, {
+                "cloud": cloud_upper,
+                "region": request.region,
+                "tier": request.tier.upper()
+            })
+            row = result.fetchone()
+            
+            if not row:
+                raise HTTPException(status_code=404, detail={
+                    "code": "PRICING_NOT_FOUND",
+                    "message": f"No Classic DLT Advanced pricing found for {cloud_upper}/{request.region}/{request.tier.upper()}"
+                })
+            
+            classic_dbu_rate = float(row[0])
+            
+            # Get driver VM info and cost
+            driver_info = await get_instance_info(cloud_upper, driver_instance, request.region, db)
+            if not driver_info:
+                raise HTTPException(status_code=404, detail={
+                    "code": "INSTANCE_NOT_FOUND",
+                    "message": f"Driver instance type not found: {driver_instance}"
+                })
+            
+            # Get worker VM info and cost
+            worker_info = await get_instance_info(cloud_upper, worker_instance, request.region, db)
+            if not worker_info:
+                raise HTTPException(status_code=404, detail={
+                    "code": "INSTANCE_NOT_FOUND",
+                    "message": f"Worker instance type not found: {worker_instance}"
+                })
+            
+            # Calculate DBU cost (driver + workers)
+            driver_dbu_per_hour = driver_info.get("dbu", 0)
+            worker_dbu_per_hour = worker_info.get("dbu", 0)
+            total_dbu_per_hour = driver_dbu_per_hour + (worker_dbu_per_hour * request.gateway_num_workers)
+            gateway_total_dbu = total_dbu_per_hour * request.gateway_hours_per_month
+            gateway_dbu_cost = gateway_total_dbu * classic_dbu_rate
+            
+            # Calculate VM cost (driver + workers)
+            driver_vm_cost = driver_info.get("on_demand_cost", 0) * request.gateway_hours_per_month
+            worker_vm_cost = worker_info.get("on_demand_cost", 0) * request.gateway_num_workers * request.gateway_hours_per_month
+            gateway_vm_cost = driver_vm_cost + worker_vm_cost
+            
+            gateway_cost = gateway_dbu_cost + gateway_vm_cost
+            
+            gateway_result = {
+                "type": "Classic DLT Advanced Edition",
+                "note": "Runs 24/7 by default unless manually stopped",
+                "driver_instance": driver_instance,
+                "driver_specs": gateway_config.get("driver_specs", ""),
+                "worker_instance": worker_instance,
+                "worker_specs": gateway_config.get("worker_specs", ""),
+                "num_workers": request.gateway_num_workers,
+                "hours_per_month": request.gateway_hours_per_month,
+                "dbu_per_hour": total_dbu_per_hour,
+                "total_dbu": gateway_total_dbu,
+                "dbu_rate": classic_dbu_rate,
+                "dbu_cost": gateway_dbu_cost,
+                "vm_cost": gateway_vm_cost,
+                "cost": gateway_cost
+            }
+        
+        # =====================================================================
+        # 3. Build response
+        # =====================================================================
+        
+        total_cost = ingestion_cost + gateway_cost
+        
+        response_data = {
+            "workload_type": "LAKEFLOW_CONNECT",
+            "connector_type": connector_type,
+            "connector_description": LAKEFLOW_CONNECTOR_TYPES[connector_type]["description"],
+            "connector_examples": LAKEFLOW_CONNECTOR_TYPES[connector_type]["examples"],
+            "configuration": {
+                "cloud": cloud_upper,
+                "region": request.region,
+                "tier": request.tier.upper(),
+                "ingestion_hours_per_month": request.ingestion_hours_per_month
+            },
+            "ingestion_pipeline": ingestion_pipeline_result,
+            "total_cost": {
+                "ingestion_pipeline": ingestion_cost,
+                "ingestion_gateway": gateway_cost,
+                "total": total_cost
+            }
+        }
+        
+        if connector_type == "database":
+            response_data["configuration"]["gateway_hours_per_month"] = request.gateway_hours_per_month
+            response_data["ingestion_gateway"] = gateway_result
+        
+        return {
+            "success": True,
+            "data": response_data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": {
+                "code": "CALCULATION_ERROR",
+                "message": str(e),
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }
+        }
