@@ -7585,9 +7585,9 @@ async def calculate_lakeflow_connect_cost(
                 "worker_memory_gb": gateway_config.get("worker_memory_gb"),
                 "num_workers": request.gateway_num_workers,
                 "hours_per_month": request.gateway_hours_per_month,
-                "dbu_per_hour": gateway_data["calculation"]["dbu_per_hour"],
-                "total_dbu": gateway_data["calculation"]["dbu_per_month"],
-                "dbu_rate": gateway_data["calculation"]["dbu_price"],
+                "dbu_per_hour": gateway_data["dbu_calculation"]["dbu_per_hour"],
+                "total_dbu": gateway_data["dbu_calculation"]["dbu_per_month"],
+                "dbu_rate": gateway_data["dbu_calculation"]["dbu_price"],
                 "dbu_cost": gateway_data["total_cost"]["breakdown"]["dbu_cost"],
                 "vm_cost": gateway_data["total_cost"]["breakdown"]["vm_cost"],
                 "cost": gateway_cost
