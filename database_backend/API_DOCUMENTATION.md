@@ -961,7 +961,7 @@ Cost = Total DBU × dbu_rate (SERVERLESS_REAL_TIME_INFERENCE)
 **Description**: Calculate cost for Databricks Support plans.
 
 **Note:** Support pricing is multi-cloud (AWS, Azure, GCP) with no regional or tier variation.
-For Azure customers, Azure provides additional support under their SLA with Azure.
+For Azure, default support is already provided by Azure under their SLA (Azure Databricks is a 1st party product).
 
 **Formula:**
 ```
@@ -998,7 +998,7 @@ Annual Cost = MAX(minimum_annual, annual_product_commit × percentage)
   "success": true,
   "data": {
     "workload_type": "DATABRICKS_SUPPORT",
-    "note": "Multi-cloud support pricing. For Azure, additional support is provided by Azure under their SLA.",
+    "note": "Multi-cloud support pricing. For Azure, default support is already provided by Azure under their SLA (Azure Databricks is a 1st party product).",
     "configuration": {
       "support_tier": "enhanced",
       "tier_description": "Enhanced Support",
