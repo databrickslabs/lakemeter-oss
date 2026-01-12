@@ -7192,21 +7192,33 @@ async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationR
 LAKEFLOW_GATEWAY_DEFAULTS = {
     "AWS": {
         "driver_instance": "r5n.2xlarge",
-        "driver_specs": "8 vCPU, 64 GB, encryption (Nitro) supported",
+        "driver_vcpu": 8,
+        "driver_memory_gb": 64,
+        "driver_encryption": "Nitro supported",
         "worker_instance": "m5.large",
-        "worker_specs": "2 vCPU, 8 GB, encryption (Nitro) supported"
+        "worker_vcpu": 2,
+        "worker_memory_gb": 8,
+        "worker_encryption": "Nitro supported"
     },
     "AZURE": {
         "driver_instance": "Standard_E8d_v4",
-        "driver_specs": "8 vCPU, 64 GB, encryption supported",
+        "driver_vcpu": 8,
+        "driver_memory_gb": 64,
+        "driver_encryption": "supported",
         "worker_instance": "Standard_F4s",
-        "worker_specs": "4 vCPU, 8 GB, encryption supported"
+        "worker_vcpu": 4,
+        "worker_memory_gb": 8,
+        "worker_encryption": "supported"
     },
     "GCP": {
         "driver_instance": "n2-highmem-8",
-        "driver_specs": "8 vCPU, 64 GB, encryption supported",
+        "driver_vcpu": 8,
+        "driver_memory_gb": 64,
+        "driver_encryption": "supported",
         "worker_instance": "n2-standard-4",
-        "worker_specs": "4 vCPU, 16 GB, encryption supported"
+        "worker_vcpu": 4,
+        "worker_memory_gb": 16,
+        "worker_encryption": "supported"
     }
 }
 
@@ -7268,9 +7280,13 @@ async def get_lakeflow_connect_info():
             "gateway_defaults": {
                 cloud: {
                     "driver_instance": config["driver_instance"],
-                    "driver_specs": config["driver_specs"],
+                    "driver_vcpu": config["driver_vcpu"],
+                    "driver_memory_gb": config["driver_memory_gb"],
+                    "driver_encryption": config["driver_encryption"],
                     "worker_instance": config["worker_instance"],
-                    "worker_specs": config["worker_specs"],
+                    "worker_vcpu": config["worker_vcpu"],
+                    "worker_memory_gb": config["worker_memory_gb"],
+                    "worker_encryption": config["worker_encryption"],
                     "num_workers": 1
                 }
                 for cloud, config in LAKEFLOW_GATEWAY_DEFAULTS.items()
@@ -7311,9 +7327,13 @@ async def get_lakeflow_gateway_defaults():
             "gateway_by_cloud": {
                 cloud: {
                     "driver_instance": config["driver_instance"],
-                    "driver_specs": config["driver_specs"],
+                    "driver_vcpu": config["driver_vcpu"],
+                    "driver_memory_gb": config["driver_memory_gb"],
+                    "driver_encryption": config["driver_encryption"],
                     "worker_instance": config["worker_instance"],
-                    "worker_specs": config["worker_specs"]
+                    "worker_vcpu": config["worker_vcpu"],
+                    "worker_memory_gb": config["worker_memory_gb"],
+                    "worker_encryption": config["worker_encryption"]
                 }
                 for cloud, config in LAKEFLOW_GATEWAY_DEFAULTS.items()
             }
@@ -7586,9 +7606,11 @@ async def calculate_lakeflow_connect_cost(
                 "type": "Classic DLT Advanced Edition",
                 "note": "Runs 24/7 by default unless manually stopped",
                 "driver_instance": driver_instance,
-                "driver_specs": gateway_config.get("driver_specs", ""),
+                "driver_vcpu": gateway_config.get("driver_vcpu"),
+                "driver_memory_gb": gateway_config.get("driver_memory_gb"),
                 "worker_instance": worker_instance,
-                "worker_specs": gateway_config.get("worker_specs", ""),
+                "worker_vcpu": gateway_config.get("worker_vcpu"),
+                "worker_memory_gb": gateway_config.get("worker_memory_gb"),
                 "num_workers": request.gateway_num_workers,
                 "hours_per_month": request.gateway_hours_per_month,
                 "dbu_per_hour": total_dbu_per_hour,
