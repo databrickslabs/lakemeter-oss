@@ -6970,3 +6970,116 @@ async def calculate_shutterstock_imageai_cost(
                 "traceback": traceback.format_exc()
             }
         }
+
+
+# ============================================================================
+# Databricks Support
+# ============================================================================
+
+# Support tier configurations: (min_annual_cost, percentage)
+SUPPORT_TIERS = {
+    "business": {"min_annual": 2500, "percentage": 15, "description": "Business Support"},
+    "enhanced": {"min_annual": 30000, "percentage": 20, "description": "Enhanced Support"},
+    "production": {"min_annual": 60000, "percentage": 25, "description": "Production Support"},
+    "mission_critical": {"min_annual": 120000, "percentage": 35, "description": "Mission Critical Support"}
+}
+
+
+class DatabricksSupportCalculationRequest(BaseModel):
+    """Request model for Databricks Support cost calculation"""
+    support_tier: str = Field(..., description="Support tier: business, enhanced, production, mission_critical")
+    annual_product_commit: float = Field(..., description="Annual product commitment in USD", ge=0)
+
+
+@app.get("/api/v1/databricks-support/tiers", tags=["Databricks Support"])
+async def get_support_tiers():
+    """
+    Get available Databricks Support tiers and pricing.
+    
+    **Note:** Support pricing is multi-cloud (AWS, Azure, GCP) with no regional variation.
+    For Azure customers, Azure provides support under their SLA with Azure.
+    
+    **Formula:** Cost = MAX(minimum_annual, annual_commit × percentage)
+    """
+    return {
+        "success": True,
+        "data": {
+            "note": "Multi-cloud support pricing. For Azure, additional support is provided by Azure under their SLA.",
+            "tiers": [
+                {
+                    "tier": key,
+                    "description": val["description"],
+                    "min_annual_cost": val["min_annual"],
+                    "percentage_of_commit": val["percentage"]
+                }
+                for key, val in SUPPORT_TIERS.items()
+            ]
+        }
+    }
+
+
+@app.post("/api/v1/calculate/databricks-support", tags=["Cost Calculation"])
+async def calculate_databricks_support_cost(request: DatabricksSupportCalculationRequest):
+    """
+    Calculate Databricks Support cost.
+    
+    **Note:** Support pricing is multi-cloud (AWS, Azure, GCP) with no regional or tier variation.
+    For Azure customers, Azure provides support under their SLA with Azure.
+    
+    **Formula:** Cost = MAX(minimum_annual, annual_commit × percentage)
+    
+    **Support Tiers:**
+    | Tier | Min Annual | % of Commit |
+    |------|------------|-------------|
+    | business | 2,500 | 15% |
+    | enhanced | 30,000 | 20% |
+    | production | 60,000 | 25% |
+    | mission_critical | 120,000 | 35% |
+    
+    **Example Request:**
+    ```json
+    {
+      "support_tier": "enhanced",
+      "annual_product_commit": 200000
+    }
+    ```
+    """
+    tier_lower = request.support_tier.lower().replace("-", "_").replace(" ", "_")
+    
+    if tier_lower not in SUPPORT_TIERS:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_SUPPORT_TIER",
+            "message": f"Invalid support tier: {request.support_tier}",
+            "allowed_values": list(SUPPORT_TIERS.keys())
+        })
+    
+    tier_config = SUPPORT_TIERS[tier_lower]
+    min_annual = tier_config["min_annual"]
+    percentage = tier_config["percentage"]
+    
+    # Calculate: greater of min_annual or percentage of commit
+    percentage_cost = request.annual_product_commit * (percentage / 100)
+    annual_cost = max(min_annual, percentage_cost)
+    
+    return {
+        "success": True,
+        "data": {
+            "workload_type": "DATABRICKS_SUPPORT",
+            "note": "Multi-cloud support pricing. For Azure, additional support is provided by Azure under their SLA.",
+            "configuration": {
+                "support_tier": tier_lower,
+                "tier_description": tier_config["description"],
+                "annual_product_commit": request.annual_product_commit
+            },
+            "calculation": {
+                "min_annual_cost": min_annual,
+                "percentage_of_commit": percentage,
+                "percentage_based_cost": percentage_cost,
+                "applied_cost": "minimum" if min_annual > percentage_cost else "percentage"
+            },
+            "total_cost": {
+                "annual_cost": annual_cost,
+                "monthly_cost": annual_cost / 12
+            }
+        }
+    }
