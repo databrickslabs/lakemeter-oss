@@ -6997,14 +6997,14 @@ async def get_support_tiers():
     Get available Databricks Support tiers and pricing.
     
     **Note:** Support pricing is multi-cloud (AWS, Azure, GCP) with no regional variation.
-    For Azure customers, Azure provides support under their SLA with Azure.
+    For Azure, default support is already provided by Azure under their SLA (Azure Databricks is a 1st party product).
     
     **Formula:** Cost = MAX(minimum_annual, annual_commit × percentage)
     """
     return {
         "success": True,
         "data": {
-            "note": "Multi-cloud support pricing. For Azure, additional support is provided by Azure under their SLA.",
+            "note": "Multi-cloud support pricing. For Azure, default support is already provided by Azure under their SLA (Azure Databricks is a 1st party product).",
             "tiers": [
                 {
                     "tier": key,
@@ -7024,7 +7024,7 @@ async def calculate_databricks_support_cost(request: DatabricksSupportCalculatio
     Calculate Databricks Support cost.
     
     **Note:** Support pricing is multi-cloud (AWS, Azure, GCP) with no regional or tier variation.
-    For Azure customers, Azure provides support under their SLA with Azure.
+    For Azure, default support is already provided by Azure under their SLA (Azure Databricks is a 1st party product).
     
     **Formula:** Cost = MAX(minimum_annual, annual_commit × percentage)
     
@@ -7065,7 +7065,7 @@ async def calculate_databricks_support_cost(request: DatabricksSupportCalculatio
         "success": True,
         "data": {
             "workload_type": "DATABRICKS_SUPPORT",
-            "note": "Multi-cloud support pricing. For Azure, additional support is provided by Azure under their SLA.",
+            "note": "Multi-cloud support pricing. For Azure, default support is already provided by Azure under their SLA (Azure Databricks is a 1st party product).",
             "configuration": {
                 "support_tier": tier_lower,
                 "tier_description": tier_config["description"],
