@@ -7281,15 +7281,37 @@ async def calculate_lakeflow_connect_cost(
     Calculate cost for Lakeflow Connect.
     
     **Connector Types:**
-    - **saas**: Uses Serverless DLT for ingestion pipeline only
-    - **database**: Uses Serverless DLT + Classic DLT Advanced (Ingestion Gateway)
+    - **saas**: Uses Serverless DLT for ingestion pipeline only (Salesforce, Workday, Google Analytics)
+    - **database**: Uses Serverless DLT + Classic DLT Advanced Ingestion Gateway (MSSQL, MySQL, Postgres, Oracle)
     
     **Gateway Defaults (per cloud):**
     - AWS: r5n.2xlarge driver + m5.large worker
     - Azure: Standard_E8d_v4 driver + Standard_F4s worker
     - GCP: n2-highmem-8 driver + n2-standard-4 worker
     
-    Gateway runs 24/7 (730 hours) by default.
+    Gateway runs 24/7 (730 hours) by default. Leave gateway_driver_instance and gateway_worker_instance empty to use defaults.
+    
+    **Example Request - SaaS Connector (Salesforce):**
+    ```json
+    {
+      "connector_type": "saas",
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "ingestion_hours_per_month": 100
+    }
+    ```
+    
+    **Example Request - Database Source (MySQL/Postgres):**
+    ```json
+    {
+      "connector_type": "database",
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "ingestion_hours_per_month": 100
+    }
+    ```
     """
     connector_type = request.connector_type.lower()
     cloud_upper = request.cloud.upper()
