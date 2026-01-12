@@ -7627,17 +7627,30 @@ async def calculate_lakeflow_connect_cost(
         
         total_cost = ingestion_cost + gateway_cost
         
+        # Build configuration based on input type
+        config = {
+            "cloud": cloud_upper,
+            "region": request.region,
+            "tier": request.tier.upper(),
+            "pipeline_driver_node_type": request.pipeline_driver_node_type,
+            "pipeline_worker_node_type": request.pipeline_worker_node_type,
+            "pipeline_num_workers": request.pipeline_num_workers,
+            "pipeline_serverless_mode": request.pipeline_serverless_mode
+        }
+        
+        if has_run_params:
+            config["pipeline_runs_per_day"] = request.pipeline_runs_per_day
+            config["pipeline_avg_runtime_minutes"] = request.pipeline_avg_runtime_minutes
+            config["pipeline_days_per_month"] = request.pipeline_days_per_month or 30
+        else:
+            config["pipeline_hours_per_month"] = request.pipeline_hours_per_month
+        
         response_data = {
             "workload_type": "LAKEFLOW_CONNECT",
             "connector_type": connector_type,
             "connector_description": LAKEFLOW_CONNECTOR_TYPES[connector_type]["description"],
             "connector_examples": LAKEFLOW_CONNECTOR_TYPES[connector_type]["examples"],
-            "configuration": {
-                "cloud": cloud_upper,
-                "region": request.region,
-                "tier": request.tier.upper(),
-                "ingestion_hours_per_month": request.ingestion_hours_per_month
-            },
+            "configuration": config,
             "ingestion_pipeline": ingestion_pipeline_result,
             "total_cost": {
                 "ingestion_pipeline": ingestion_cost,
@@ -7648,6 +7661,9 @@ async def calculate_lakeflow_connect_cost(
         
         if connector_type == "database":
             response_data["configuration"]["gateway_hours_per_month"] = request.gateway_hours_per_month
+            response_data["configuration"]["gateway_driver_instance"] = request.gateway_driver_instance or gateway_config.get("driver_instance")
+            response_data["configuration"]["gateway_worker_instance"] = request.gateway_worker_instance or gateway_config.get("worker_instance")
+            response_data["configuration"]["gateway_num_workers"] = request.gateway_num_workers
             response_data["ingestion_gateway"] = gateway_result
         
         return {
