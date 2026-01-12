@@ -7083,3 +7083,102 @@ async def calculate_databricks_support_cost(request: DatabricksSupportCalculatio
             }
         }
     }
+
+
+# ============================================================================
+# Enhanced Security and Compliance Add-on
+# ============================================================================
+
+# Percentage of product spend by cloud
+ENHANCED_SECURITY_RATES = {
+    "AWS": 15,
+    "AZURE": 10,
+    "GCP": 15
+}
+
+
+class EnhancedSecurityCalculationRequest(BaseModel):
+    """Request model for Enhanced Security and Compliance cost calculation"""
+    cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
+    product_spend: float = Field(..., description="Product spend at list price (before discounts) in USD", ge=0)
+
+
+@app.get("/api/v1/enhanced-security/info", tags=["Enhanced Security"])
+async def get_enhanced_security_info():
+    """
+    Get Enhanced Security and Compliance add-on pricing information.
+    
+    **Description:** Provides enhanced security and controls for your compliance needs.
+    
+    **Pricing:** Based on product spend at list price incurred in workspaces where the add-on 
+    is enabled, before the application of any discounts, usage credits, add-on uplifts, or support fees.
+    """
+    return {
+        "success": True,
+        "data": {
+            "description": "Enhanced Security and Compliance - Provides enhanced security and controls for your compliance needs",
+            "pricing_note": "Product spend is calculated based on product spend at list price incurred in the specific workspaces where the add-on is enabled, before the application of any discounts, usage credits, add-on uplifts, or support fees.",
+            "rates_by_cloud": [
+                {"cloud": cloud, "percentage": rate}
+                for cloud, rate in ENHANCED_SECURITY_RATES.items()
+            ]
+        }
+    }
+
+
+@app.post("/api/v1/calculate/enhanced-security", tags=["Cost Calculation"])
+async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationRequest):
+    """
+    Calculate Enhanced Security and Compliance add-on cost.
+    
+    **Description:** Provides enhanced security and controls for your compliance needs.
+    
+    **Pricing:** Based on product spend at list price incurred in workspaces where the add-on 
+    is enabled, before the application of any discounts, usage credits, add-on uplifts, or support fees.
+    
+    **Rates by Cloud:**
+    | Cloud | Percentage |
+    |-------|------------|
+    | AWS | 15% |
+    | Azure | 10% |
+    | GCP | 15% |
+    
+    **Example Request:**
+    ```json
+    {
+      "cloud": "AWS",
+      "product_spend": 100000
+    }
+    ```
+    """
+    cloud_upper = request.cloud.upper()
+    
+    if cloud_upper not in ENHANCED_SECURITY_RATES:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_CLOUD",
+            "message": f"Invalid cloud: {request.cloud}",
+            "allowed_values": list(ENHANCED_SECURITY_RATES.keys())
+        })
+    
+    percentage = ENHANCED_SECURITY_RATES[cloud_upper]
+    addon_cost = request.product_spend * (percentage / 100)
+    
+    return {
+        "success": True,
+        "data": {
+            "workload_type": "ENHANCED_SECURITY_COMPLIANCE",
+            "description": "Enhanced Security and Compliance - Provides enhanced security and controls for your compliance needs",
+            "pricing_note": "Product spend is calculated based on product spend at list price incurred in the specific workspaces where the add-on is enabled, before the application of any discounts, usage credits, add-on uplifts, or support fees.",
+            "configuration": {
+                "cloud": cloud_upper,
+                "product_spend": request.product_spend
+            },
+            "calculation": {
+                "percentage": percentage,
+                "addon_cost": addon_cost
+            },
+            "total_cost": {
+                "cost": addon_cost
+            }
+        }
+    }
