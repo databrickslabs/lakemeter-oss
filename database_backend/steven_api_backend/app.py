@@ -7231,8 +7231,12 @@ class LakeflowConnectCalculationRequest(BaseModel):
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     
-    # Ingestion pipeline (Serverless DLT)
+    # Ingestion pipeline (Serverless DLT) - requires instance types for DBU calculation
     ingestion_hours_per_month: float = Field(..., description="Hours per month the ingestion pipeline runs", ge=0)
+    ingestion_driver_node_type: str = Field(..., description="Driver instance type for ingestion (e.g., m5.xlarge)")
+    ingestion_worker_node_type: str = Field(..., description="Worker instance type for ingestion (e.g., m5.xlarge)")
+    ingestion_num_workers: int = Field(1, description="Number of workers for ingestion pipeline", ge=0)
+    ingestion_serverless_mode: str = Field("standard", description="Serverless mode: standard or performance")
     
     # Gateway options - only for database type (defaults provided)
     gateway_hours_per_month: float = Field(730, description="Gateway hours per month (default: 730 = 24/7)", ge=0)
@@ -7289,7 +7293,7 @@ async def calculate_lakeflow_connect_cost(
     - Azure: Standard_E8d_v4 driver + Standard_F4s worker
     - GCP: n2-highmem-8 driver + n2-standard-4 worker
     
-    Gateway runs 24/7 (730 hours) by default. Leave gateway_driver_instance and gateway_worker_instance empty to use defaults.
+    Gateway runs 24/7 (730 hours) by default.
     
     **Example Request - SaaS Connector (Salesforce):**
     ```json
@@ -7298,7 +7302,11 @@ async def calculate_lakeflow_connect_cost(
       "cloud": "AWS",
       "region": "us-east-1",
       "tier": "PREMIUM",
-      "ingestion_hours_per_month": 100
+      "ingestion_hours_per_month": 100,
+      "ingestion_driver_node_type": "m5.xlarge",
+      "ingestion_worker_node_type": "m5.xlarge",
+      "ingestion_num_workers": 2,
+      "ingestion_serverless_mode": "standard"
     }
     ```
     
@@ -7309,7 +7317,13 @@ async def calculate_lakeflow_connect_cost(
       "cloud": "AWS",
       "region": "us-east-1",
       "tier": "PREMIUM",
-      "ingestion_hours_per_month": 100
+      "ingestion_hours_per_month": 100,
+      "ingestion_driver_node_type": "m5.xlarge",
+      "ingestion_worker_node_type": "m5.xlarge",
+      "ingestion_num_workers": 2,
+      "ingestion_serverless_mode": "standard",
+      "gateway_hours_per_month": 730,
+      "gateway_num_workers": 1
     }
     ```
     """
@@ -7344,41 +7358,40 @@ async def calculate_lakeflow_connect_cost(
         # 1. Calculate Ingestion Pipeline (Serverless DLT) - Both types use this
         # =====================================================================
         
-        # Get Serverless Pipelines DBU rate (PIPELINES_SERVERLESS_COMPUTE)
-        serverless_query = text("""
-            SELECT price_per_dbu
-            FROM lakemeter.sync_pricing_dbu_rates
-            WHERE product_type = 'PIPELINES_SERVERLESS_COMPUTE'
-              AND cloud = :cloud
-              AND region = :region
-              AND tier = :tier
-            LIMIT 1
-        """)
-        result = await db.execute(serverless_query, {
-            "cloud": cloud_upper,
-            "region": request.region,
-            "tier": request.tier.upper()
-        })
-        row = result.fetchone()
+        # Call the existing DLT Serverless calculation function
+        dlt_serverless_request = DLTServerlessCalculationRequest(
+            cloud=request.cloud,
+            region=request.region,
+            tier=request.tier,
+            driver_node_type=request.ingestion_driver_node_type,
+            worker_node_type=request.ingestion_worker_node_type,
+            num_workers=request.ingestion_num_workers,
+            serverless_mode=request.ingestion_serverless_mode,
+            hours_per_month=request.ingestion_hours_per_month
+        )
         
-        if not row:
-            raise HTTPException(status_code=404, detail={
-                "code": "PRICING_NOT_FOUND",
-                "message": f"No Serverless DLT pricing found for {cloud_upper}/{request.region}/{request.tier.upper()}"
+        dlt_result = await calculate_dlt_serverless_cost(dlt_serverless_request, db)
+        
+        if not dlt_result.get("success", False):
+            raise HTTPException(status_code=500, detail={
+                "code": "DLT_CALCULATION_ERROR",
+                "message": "Failed to calculate DLT Serverless cost",
+                "details": dlt_result.get("error", {})
             })
         
-        serverless_dbu_rate = float(row[0])
-        # Serverless DLT uses a simplified DBU calculation - 1 DBU per hour baseline
-        serverless_dbu_per_hour = 1.0
-        ingestion_total_dbu = request.ingestion_hours_per_month * serverless_dbu_per_hour
-        ingestion_cost = ingestion_total_dbu * serverless_dbu_rate
+        dlt_data = dlt_result["data"]
+        ingestion_cost = dlt_data["total_cost"]["dbu_cost"]
         
         ingestion_pipeline_result = {
             "type": "Serverless DLT",
+            "driver_node_type": request.ingestion_driver_node_type,
+            "worker_node_type": request.ingestion_worker_node_type,
+            "num_workers": request.ingestion_num_workers,
+            "serverless_mode": request.ingestion_serverless_mode,
             "hours_per_month": request.ingestion_hours_per_month,
-            "dbu_per_hour": serverless_dbu_per_hour,
-            "total_dbu": ingestion_total_dbu,
-            "dbu_rate": serverless_dbu_rate,
+            "dbu_per_hour": dlt_data["calculation"]["dbu_per_hour"],
+            "total_dbu": dlt_data["calculation"]["dbu_per_month"],
+            "dbu_rate": dlt_data["calculation"]["dbu_price"],
             "cost": ingestion_cost
         }
         
@@ -7401,11 +7414,13 @@ async def calculate_lakeflow_connect_cost(
                     "message": f"No default gateway configuration for cloud: {cloud_upper}"
                 })
             
-            # Get Classic DLT Advanced DBU rate (DLT_ADVANCED_COMPUTE)
+            # Get Classic DLT Advanced DBU rate
+            # Try multiple product type patterns for DLT Advanced
             classic_query = text("""
-                SELECT price_per_dbu
+                SELECT price_per_dbu, product_type
                 FROM lakemeter.sync_pricing_dbu_rates
-                WHERE product_type = 'DLT_ADVANCED_COMPUTE'
+                WHERE (product_type ILIKE '%DLT%ADVANCED%' 
+                       OR product_type ILIKE '%PIPELINES%ADVANCED%')
                   AND cloud = :cloud
                   AND region = :region
                   AND tier = :tier
