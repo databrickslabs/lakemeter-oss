@@ -247,34 +247,31 @@ async def get_salesforce_accounts(
     - Use 'limit' and 'offset' for pagination
     """
     try:
-        # Get total count first (count distinct account names, not IDs)
+        # Get total count first
         if name:
             count_query = text("""
-                SELECT COUNT(DISTINCT salesforce_account_name) as total
+                SELECT COUNT(DISTINCT salesforce_account_id) as total
                 FROM lakemeter.sync_salesforce_account
                 WHERE LOWER(salesforce_account_name) LIKE LOWER(:search_term)
             """)
             count_result = await db.execute(count_query, {"search_term": f"%{name}%"})
         else:
             count_query = text("""
-                SELECT COUNT(DISTINCT salesforce_account_name) as total
+                SELECT COUNT(DISTINCT salesforce_account_id) as total
                 FROM lakemeter.sync_salesforce_account
             """)
             count_result = await db.execute(count_query)
         
         total_count = count_result.scalar()
         
-        # Get paginated results (deduplicate by account name, keep the one with max ds)
+        # Get paginated results
         if name:
             query = text("""
-                SELECT salesforce_account_id as value, salesforce_account_name as label
-                FROM (
-                    SELECT salesforce_account_id, salesforce_account_name,
-                           ROW_NUMBER() OVER (PARTITION BY salesforce_account_name ORDER BY ds DESC) as rn
-                    FROM lakemeter.sync_salesforce_account
-                    WHERE LOWER(salesforce_account_name) LIKE LOWER(:search_term)
-                ) ranked
-                WHERE rn = 1
+                SELECT DISTINCT 
+                    salesforce_account_id as value,
+                    salesforce_account_name as label
+                FROM lakemeter.sync_salesforce_account
+                WHERE LOWER(salesforce_account_name) LIKE LOWER(:search_term)
                 ORDER BY salesforce_account_name
                 LIMIT :limit OFFSET :offset
             """)
@@ -285,13 +282,10 @@ async def get_salesforce_accounts(
             })
         else:
             query = text("""
-                SELECT salesforce_account_id as value, salesforce_account_name as label
-                FROM (
-                    SELECT salesforce_account_id, salesforce_account_name,
-                           ROW_NUMBER() OVER (PARTITION BY salesforce_account_name ORDER BY ds DESC) as rn
-                    FROM lakemeter.sync_salesforce_account
-                ) ranked
-                WHERE rn = 1
+                SELECT DISTINCT 
+                    salesforce_account_id as value,
+                    salesforce_account_name as label
+                FROM lakemeter.sync_salesforce_account
                 ORDER BY salesforce_account_name
                 LIMIT :limit OFFSET :offset
             """)
@@ -334,12 +328,12 @@ async def get_salesforce_account_id(
     Returns 404 if not found.
     """
     try:
-        # Get the account with max ds if there are duplicates
         query = text("""
-            SELECT salesforce_account_id, salesforce_account_name
+            SELECT DISTINCT 
+                salesforce_account_id,
+                salesforce_account_name
             FROM lakemeter.sync_salesforce_account
             WHERE LOWER(salesforce_account_name) = LOWER(:account_name)
-            ORDER BY ds DESC
             LIMIT 1
         """)
         result = await db.execute(query, {"account_name": account_name})
