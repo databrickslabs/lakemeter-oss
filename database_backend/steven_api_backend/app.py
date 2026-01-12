@@ -7281,6 +7281,46 @@ async def get_lakeflow_connect_info():
     }
 
 
+@app.get("/api/v1/lakeflow-connect/gateway-defaults", tags=["Lakeflow Connect"])
+async def get_lakeflow_gateway_defaults():
+    """
+    Get default Ingestion Gateway configuration per cloud.
+    
+    Gateway configuration: 1 driver + 1 worker (default).
+    Gateway runs 24/7 (730 hours/month) by default unless manually stopped.
+    
+    **AWS:**
+    - Driver: r5n.2xlarge (8 vCPU, 64 GB, encryption Nitro supported)
+    - Worker: m5.large (2 vCPU, 8 GB, encryption Nitro supported)
+    
+    **Azure:**
+    - Driver: Standard_E8d_v4 (8 vCPU, 64 GB, encryption supported)
+    - Worker: Standard_F4s (4 vCPU, 8 GB, encryption supported)
+    
+    **GCP:**
+    - Driver: n2-highmem-8 (8 vCPU, 64 GB, encryption supported)
+    - Worker: n2-standard-4 (4 vCPU, 16 GB, encryption supported)
+    """
+    return {
+        "success": True,
+        "data": {
+            "description": "Ingestion Gateway default configuration per cloud",
+            "note": "Gateway runs 24/7 (730 hours/month) by default unless manually stopped",
+            "default_num_workers": 1,
+            "default_hours_per_month": 730,
+            "gateway_by_cloud": {
+                cloud: {
+                    "driver_instance": config["driver_instance"],
+                    "driver_specs": config["driver_specs"],
+                    "worker_instance": config["worker_instance"],
+                    "worker_specs": config["worker_specs"]
+                }
+                for cloud, config in LAKEFLOW_GATEWAY_DEFAULTS.items()
+            }
+        }
+    }
+
+
 @app.post("/api/v1/calculate/lakeflow-connect", tags=["Cost Calculation"])
 async def calculate_lakeflow_connect_cost(
     request: LakeflowConnectCalculationRequest,
@@ -7332,7 +7372,7 @@ async def calculate_lakeflow_connect_cost(
     }
     ```
     
-    **Example Request - Database Source (with Gateway defaults):**
+    **Example Request - Database Source (with Gateway):**
     ```json
     {
       "connector_type": "database",
@@ -7345,10 +7385,16 @@ async def calculate_lakeflow_connect_cost(
       "pipeline_serverless_mode": "standard",
       "pipeline_hours_per_month": 100,
       "gateway_hours_per_month": 730,
+      "gateway_driver_instance": "r5n.2xlarge",
+      "gateway_worker_instance": "m5.large",
       "gateway_num_workers": 1
     }
     ```
-    Note: Gateway uses cloud defaults (AWS: r5n.2xlarge driver + m5.large worker) when not specified.
+    
+    **Gateway Defaults by Cloud (leave gateway_driver_instance/gateway_worker_instance empty to use):**
+    - AWS: r5n.2xlarge (8 vCPU, 64GB) driver + m5.large (2 vCPU, 8GB) worker
+    - Azure: Standard_E8d_v4 (8 vCPU, 64GB) driver + Standard_F4s (4 vCPU, 8GB) worker
+    - GCP: n2-highmem-8 (8 vCPU, 64GB) driver + n2-standard-4 (4 vCPU, 16GB) worker
     """
     connector_type = request.connector_type.lower()
     cloud_upper = request.cloud.upper()
