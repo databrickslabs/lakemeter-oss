@@ -29,12 +29,15 @@ STORAGE_PATH = f"abfss://{CONTAINER}@{STORAGE_ACCOUNT}.dfs.core.windows.net"
 TABLE_PREFIX = "sf_"
 
 # Tables to sync with specific columns
+# For dedup_by: deduplicate by this column, keeping the record with max of order_by column
 TABLES_TO_SYNC = [
     {
         "source": "main.metric_store.dim_salesforce_account",
         "target": "dim_salesforce_account",
         "columns": ["salesforce_account_id", "salesforce_account_name"],
-        "distinct": True
+        "distinct": False,
+        "dedup_by": "salesforce_account_name",  # Keep one record per account name
+        "order_by": "ds"  # Keep the one with max ds
     },
     {
         "source": "main.metric_store.fct_salesforce_use_case__core",
@@ -123,6 +126,8 @@ print("✅ Cleanup complete")
 # COMMAND ----------
 
 import traceback
+from pyspark.sql.window import Window
+from pyspark.sql import functions as F
 
 def sync_table_to_storage(table_config):
     """Sync a single table from Unity Catalog to Azure Storage"""
@@ -131,19 +136,38 @@ def sync_table_to_storage(table_config):
     target = table_config["target"]
     columns = table_config["columns"]
     use_distinct = table_config.get("distinct", False)
+    dedup_by = table_config.get("dedup_by", None)
+    order_by = table_config.get("order_by", None)
     output_path = f"{STORAGE_PATH}/{TABLE_PREFIX}{target}"
     
     print(f"\n📥 Syncing: {source}")
     print(f"   Columns: {columns}")
     
-    # Read from Unity Catalog with selected columns
+    # Read from Unity Catalog
     print(f"   Reading from Unity Catalog...")
-    df = spark.table(source).select(*columns)
     
-    # Apply distinct if needed
-    if use_distinct:
-        print(f"   Applying DISTINCT...")
-        df = df.distinct()
+    if dedup_by and order_by:
+        # Deduplicate by a column, keeping the record with max of order_by column
+        print(f"   Deduplicating by '{dedup_by}', keeping max '{order_by}'...")
+        
+        # Read with order_by column included for deduplication
+        read_columns = columns + [order_by] if order_by not in columns else columns
+        df = spark.table(source).select(*read_columns)
+        
+        # Use window function to rank records
+        window = Window.partitionBy(dedup_by).orderBy(F.col(order_by).desc())
+        df = df.withColumn("_rank", F.row_number().over(window))
+        df = df.filter(F.col("_rank") == 1).drop("_rank")
+        
+        # Select only the final output columns
+        df = df.select(*columns)
+    else:
+        df = spark.table(source).select(*columns)
+        
+        # Apply distinct if needed
+        if use_distinct:
+            print(f"   Applying DISTINCT...")
+            df = df.distinct()
     
     row_count = df.count()
     print(f"   Found {row_count:,} rows")
