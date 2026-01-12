@@ -51,6 +51,7 @@ headers = {"Authorization": f"Bearer {token}"}
 - **Clean Room**: Collaborator-based
 - **AI Parse**: Pages/complexity-based
 - **Shutterstock ImageAI**: Image-based
+- **Databricks Support**: Tier-based (no regional pricing)
 
 ---
 
@@ -950,6 +951,74 @@ Cost = Total DBU × dbu_rate (SERVERLESS_REAL_TIME_INFERENCE)
 ```
 
 **Reference Endpoint:** `GET /api/v1/shutterstock-imageai/info` - Returns DBU per image rate
+
+---
+
+## 1️⃣8️⃣ Databricks Support
+
+**Endpoint**: `POST /api/v1/calculate/databricks-support`
+
+**Description**: Calculate cost for Databricks Support plans.
+
+**Note:** Support pricing is multi-cloud (AWS, Azure, GCP) with no regional or tier variation.
+For Azure customers, Azure provides additional support under their SLA with Azure.
+
+**Formula:**
+```
+Annual Cost = MAX(minimum_annual, annual_product_commit × percentage)
+```
+
+**Support Tiers:**
+
+| Tier | Min Annual | % of Commit | Description |
+|------|------------|-------------|-------------|
+| `business` | 2,500 | 15% | Business Support |
+| `enhanced` | 30,000 | 20% | Enhanced Support |
+| `production` | 60,000 | 25% | Production Support |
+| `mission_critical` | 120,000 | 35% | Mission Critical Support |
+
+**Request Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `support_tier` | string | ✅ | business, enhanced, production, mission_critical |
+| `annual_product_commit` | number | ✅ | Annual product commitment in USD |
+
+**Example Request:**
+```json
+{
+  "support_tier": "enhanced",
+  "annual_product_commit": 200000
+}
+```
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "workload_type": "DATABRICKS_SUPPORT",
+    "note": "Multi-cloud support pricing. For Azure, additional support is provided by Azure under their SLA.",
+    "configuration": {
+      "support_tier": "enhanced",
+      "tier_description": "Enhanced Support",
+      "annual_product_commit": 200000
+    },
+    "calculation": {
+      "min_annual_cost": 30000,
+      "percentage_of_commit": 20,
+      "percentage_based_cost": 40000,
+      "applied_cost": "percentage"
+    },
+    "total_cost": {
+      "annual_cost": 40000,
+      "monthly_cost": 3333.33
+    }
+  }
+}
+```
+
+**Reference Endpoint:** `GET /api/v1/databricks-support/tiers` - Returns all support tiers with pricing info
 
 ---
 
