@@ -7545,62 +7545,34 @@ async def calculate_lakeflow_connect_cost(
                     "message": f"No default gateway configuration for cloud: {cloud_upper}"
                 })
             
-            # Get Classic DLT Advanced DBU rate
-            # Try multiple product type patterns for DLT Advanced
-            classic_query = text("""
-                SELECT price_per_dbu, product_type
-                FROM lakemeter.sync_pricing_dbu_rates
-                WHERE (product_type ILIKE '%DLT%ADVANCED%' 
-                       OR product_type ILIKE '%PIPELINES%ADVANCED%')
-                  AND cloud = :cloud
-                  AND region = :region
-                  AND tier = :tier
-                LIMIT 1
-            """)
-            result = await db.execute(classic_query, {
-                "cloud": cloud_upper,
-                "region": request.region,
-                "tier": request.tier.upper()
-            })
-            row = result.fetchone()
+            # Call the existing DLT Classic calculation function (edition = ADVANCED)
+            dlt_classic_request = DLTClassicCalculationRequest(
+                cloud=request.cloud,
+                region=request.region,
+                tier=request.tier,
+                dlt_edition="ADVANCED",
+                photon_enabled=False,
+                driver_node_type=driver_instance,
+                worker_node_type=worker_instance,
+                num_workers=request.gateway_num_workers,
+                driver_pricing_tier="on_demand",
+                worker_pricing_tier="on_demand",
+                driver_payment_option="NA",
+                worker_payment_option="NA",
+                hours_per_month=request.gateway_hours_per_month
+            )
             
-            if not row:
-                raise HTTPException(status_code=404, detail={
-                    "code": "PRICING_NOT_FOUND",
-                    "message": f"No Classic DLT Advanced pricing found for {cloud_upper}/{request.region}/{request.tier.upper()}"
+            dlt_classic_result = await calculate_dlt_classic_cost(dlt_classic_request, db)
+            
+            if not dlt_classic_result.get("success", False):
+                raise HTTPException(status_code=500, detail={
+                    "code": "GATEWAY_CALCULATION_ERROR",
+                    "message": "Failed to calculate Gateway (DLT Classic Advanced) cost",
+                    "details": dlt_classic_result.get("error", {})
                 })
             
-            classic_dbu_rate = float(row[0])
-            
-            # Get driver VM info and cost
-            driver_info = await get_instance_info(cloud_upper, driver_instance, db)
-            if not driver_info:
-                raise HTTPException(status_code=404, detail={
-                    "code": "INSTANCE_NOT_FOUND",
-                    "message": f"Driver instance type not found: {driver_instance}"
-                })
-            
-            # Get worker VM info and cost
-            worker_info = await get_instance_info(cloud_upper, worker_instance, db)
-            if not worker_info:
-                raise HTTPException(status_code=404, detail={
-                    "code": "INSTANCE_NOT_FOUND",
-                    "message": f"Worker instance type not found: {worker_instance}"
-                })
-            
-            # Calculate DBU cost (driver + workers)
-            driver_dbu_per_hour = driver_info.get("dbu", 0)
-            worker_dbu_per_hour = worker_info.get("dbu", 0)
-            total_dbu_per_hour = driver_dbu_per_hour + (worker_dbu_per_hour * request.gateway_num_workers)
-            gateway_total_dbu = total_dbu_per_hour * request.gateway_hours_per_month
-            gateway_dbu_cost = gateway_total_dbu * classic_dbu_rate
-            
-            # Calculate VM cost (driver + workers)
-            driver_vm_cost = driver_info.get("on_demand_cost", 0) * request.gateway_hours_per_month
-            worker_vm_cost = worker_info.get("on_demand_cost", 0) * request.gateway_num_workers * request.gateway_hours_per_month
-            gateway_vm_cost = driver_vm_cost + worker_vm_cost
-            
-            gateway_cost = gateway_dbu_cost + gateway_vm_cost
+            gateway_data = dlt_classic_result["data"]
+            gateway_cost = gateway_data["total_cost"]["cost_per_month"]
             
             gateway_result = {
                 "type": "Classic DLT Advanced Edition",
@@ -7613,11 +7585,11 @@ async def calculate_lakeflow_connect_cost(
                 "worker_memory_gb": gateway_config.get("worker_memory_gb"),
                 "num_workers": request.gateway_num_workers,
                 "hours_per_month": request.gateway_hours_per_month,
-                "dbu_per_hour": total_dbu_per_hour,
-                "total_dbu": gateway_total_dbu,
-                "dbu_rate": classic_dbu_rate,
-                "dbu_cost": gateway_dbu_cost,
-                "vm_cost": gateway_vm_cost,
+                "dbu_per_hour": gateway_data["calculation"]["dbu_per_hour"],
+                "total_dbu": gateway_data["calculation"]["dbu_per_month"],
+                "dbu_rate": gateway_data["calculation"]["dbu_price"],
+                "dbu_cost": gateway_data["total_cost"]["breakdown"]["dbu_cost"],
+                "vm_cost": gateway_data["total_cost"]["breakdown"]["vm_cost"],
                 "cost": gateway_cost
             }
         
