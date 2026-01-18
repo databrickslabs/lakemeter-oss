@@ -185,6 +185,124 @@ def get_sku_type(
     else:
         return 'JOBS_COMPUTE'  # Default fallback
 
+# Helper functions for SKU breakdown (for discount application)
+def build_sku_breakdown_classic(
+    sku_type: str,
+    cloud: str,
+    region: str,
+    tier: str,
+    dbu_cost: float,
+    dbu_quantity: float,
+    dbu_price: float,
+    driver_vm_cost: float,
+    worker_vm_cost: float,
+    driver_instance_type: str,
+    worker_instance_type: str,
+    num_workers: int,
+    hours_per_month: float,
+    driver_vm_price_per_hour: float,
+    worker_vm_price_per_hour: float,
+    driver_pricing_tier: str,
+    worker_pricing_tier: str,
+    driver_payment_option: str,
+    worker_payment_option: str
+):
+    """
+    Build detailed SKU breakdown for classic compute workloads.
+    VM costs are broken down by pricing tier (on_demand, spot, reserved_1y, reserved_3y)
+    to enable proper discount application (spot instances typically can't get discounts).
+    """
+    
+    sku_breakdown = {
+        "dbu_skus": [
+            {
+                "sku_type": sku_type,
+                "sku_category": "DBU",
+                "cost": round(dbu_cost, 2),
+                "quantity": round(dbu_quantity, 2),
+                "unit": "DBU",
+                "unit_price": round(dbu_price, 6),
+                "cloud": cloud.upper(),
+                "region": region,
+                "tier": tier.upper()
+            }
+        ],
+        "vm_skus": [],
+        "storage_skus": []
+    }
+    
+    # Add driver VM SKU with pricing tier breakdown
+    if driver_vm_cost > 0:
+        sku_breakdown["vm_skus"].append({
+            "sku_type": f"VM_{driver_pricing_tier.upper()}",
+            "sku_category": "VM",
+            "instance_type": driver_instance_type,
+            "role": "driver",
+            "cost": round(driver_vm_cost, 2),
+            "quantity": round(hours_per_month, 2),
+            "unit": "hours",
+            "unit_price": round(driver_vm_price_per_hour, 6),
+            "cloud": cloud.upper(),
+            "region": region,
+            "pricing_tier": driver_pricing_tier,
+            "payment_option": driver_payment_option,
+            "discountable": driver_pricing_tier.lower() != "spot"  # Spot can't get discounts
+        })
+    
+    # Add worker VM SKUs with pricing tier breakdown
+    if worker_vm_cost > 0 and num_workers > 0:
+        sku_breakdown["vm_skus"].append({
+            "sku_type": f"VM_{worker_pricing_tier.upper()}",
+            "sku_category": "VM",
+            "instance_type": worker_instance_type,
+            "role": "worker",
+            "cost": round(worker_vm_cost, 2),
+            "quantity": round(hours_per_month * num_workers, 2),
+            "unit": "hours",
+            "unit_price": round(worker_vm_price_per_hour, 6),
+            "cloud": cloud.upper(),
+            "region": region,
+            "pricing_tier": worker_pricing_tier,
+            "payment_option": worker_payment_option,
+            "discountable": worker_pricing_tier.lower() != "spot"  # Spot can't get discounts
+        })
+    
+    return sku_breakdown
+
+
+def build_sku_breakdown_serverless(
+    sku_type: str,
+    cloud: str,
+    region: str,
+    tier: str,
+    dbu_cost: float,
+    dbu_quantity: float,
+    dbu_price: float
+):
+    """
+    Build SKU breakdown for serverless workloads (DBU only, no VMs).
+    """
+    
+    return {
+        "dbu_skus": [
+            {
+                "sku_type": sku_type,
+                "sku_category": "DBU",
+                "cost": round(dbu_cost, 2),
+                "quantity": round(dbu_quantity, 2),
+                "unit": "DBU",
+                "unit_price": round(dbu_price, 6),
+                "cloud": cloud.upper(),
+                "region": region,
+                "tier": tier.upper(),
+                "discountable": True
+            }
+        ],
+        "vm_skus": [],  # No VM costs for serverless
+        "storage_skus": []
+    }
+
+
 @app.get("/", tags=["System"])
 def root():
     return {
@@ -3019,6 +3137,29 @@ async def calculate_jobs_classic_cost(
             photon_enabled=request.photon_enabled
         )
         
+        # Build SKU breakdown for discount application
+        sku_breakdown = build_sku_breakdown_classic(
+            sku_type=sku_type,
+            cloud=request.cloud,
+            region=request.region,
+            tier=request.tier,
+            dbu_cost=float(row.dbu_cost_per_month) if row.dbu_cost_per_month else 0,
+            dbu_quantity=float(row.dbu_per_month) if row.dbu_per_month else 0,
+            dbu_price=float(row.dbu_price) if row.dbu_price else 0,
+            driver_vm_cost=float(row.driver_vm_cost_per_month) if row.driver_vm_cost_per_month else 0,
+            worker_vm_cost=float(row.total_worker_vm_cost_per_month) if row.total_worker_vm_cost_per_month else 0,
+            driver_instance_type=request.driver_node_type,
+            worker_instance_type=request.worker_node_type,
+            num_workers=request.num_workers,
+            hours_per_month=float(row.hours_per_month) if row.hours_per_month else 0,
+            driver_vm_price_per_hour=float(row.driver_vm_cost_per_hour) if row.driver_vm_cost_per_hour else 0,
+            worker_vm_price_per_hour=float(row.worker_vm_cost_per_hour) if row.worker_vm_cost_per_hour else 0,
+            driver_pricing_tier=request.driver_pricing_tier,
+            worker_pricing_tier=request.worker_pricing_tier,
+            driver_payment_option=request.driver_payment_option or "NA",
+            worker_payment_option=request.worker_payment_option or "NA"
+        )
+        
         return {
             "success": True,
             "data": {
@@ -3063,7 +3204,8 @@ async def calculate_jobs_classic_cost(
                         "dbu_cost": float(row.dbu_cost_per_month) if row.dbu_cost_per_month else 0,
                         "vm_cost": float(row.vm_cost_per_month) if row.vm_cost_per_month else 0
                     }
-                }
+                },
+                "sku_breakdown": sku_breakdown
             }
         }
         
