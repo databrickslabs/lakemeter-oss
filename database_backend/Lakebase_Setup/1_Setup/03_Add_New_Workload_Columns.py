@@ -9,14 +9,14 @@
 # MAGIC **New Workloads:**
 # MAGIC - Vector Search (storage enhancement)
 # MAGIC - Lakebase (storage enhancement)
-# MAGIC - Databricks Apps
+# MAGIC - Databricks Apps (with num_apps)
 # MAGIC - Clean Room
 # MAGIC - AI Parse
 # MAGIC - Shutterstock ImageAI
 # MAGIC - Databricks Support
 # MAGIC - Lakeflow Connect
 # MAGIC 
-# MAGIC **Total New Columns:** 25
+# MAGIC **Total New Columns:** 26
 # MAGIC 
 # MAGIC **Run This First:** Test on backup table before applying to production `line_items`
 
@@ -201,6 +201,12 @@ CHECK (lakebase_storage_gb >= 0 AND lakebase_storage_gb <= 8192);
 print("=" * 80)
 print("3. DATABRICKS APPS")
 print("=" * 80)
+
+execute_sql("""
+ALTER TABLE line_items_backup_20260114 
+ADD COLUMN databricks_apps_num_apps INT
+CHECK (databricks_apps_num_apps >= 1);
+""", "Added databricks_apps_num_apps column")
 
 execute_sql("""
 ALTER TABLE line_items_backup_20260114 
@@ -440,7 +446,7 @@ if new_columns:
         print(f"  • {col_name:<50} {data_type}")
 
 # Expected count
-expected_count = 25
+expected_count = 26  # Updated: added databricks_apps_num_apps
 actual_count = len(new_columns) if new_columns else 0
 
 print("\n" + "=" * 80)
@@ -461,9 +467,19 @@ print("\n" + "=" * 80)
 print("🎉 MIGRATION COMPLETE")
 print("=" * 80)
 print("""
-✅ All 25 new columns added to line_items_backup_20260114
+✅ All 26 new columns added to line_items_backup_20260114
 ✅ All constraints validated
 ✅ Ready for production migration
+
+New Columns Added:
+- vector_search_storage_gb (1 column)
+- lakebase_storage_gb (1 column)
+- databricks_apps_* (3 columns: num_apps, size, hours_per_month)
+- clean_room_* (2 columns)
+- ai_parse_* (4 columns)
+- shutterstock_imageai_num_images (1 column)
+- databricks_support_* (2 columns)
+- lakeflow_connect_* (12 columns)
 """)
 
 # COMMAND ----------
