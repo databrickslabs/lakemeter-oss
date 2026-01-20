@@ -40,7 +40,8 @@ from validators import (
     validate_lakebase_num_nodes,
     validate_photon_sku_type,
     validate_product_type,
-    validate_tier
+    validate_tier,
+    validate_sku_specific_discounts
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -311,7 +312,7 @@ def build_sku_breakdown_classic(
 ):
     """
     Builds a simplified flat list SKU breakdown for classic compute workloads.
-    Returns: [{"type": "dbu|vm", "sku": "SKU_NAME", "cost": X, "qty": Y, "usage_unit": "DBU|Hours", "unit_price_before_discount": Z}, ...]
+    Returns: [{"type": "dbu|vm", "sku": "SKU_NAME", "cost": X, "qty": Y, "usage_unit": "DBU", "unit_price_before_discount": Z}, ...]
     """
     breakdown = []
     
@@ -326,25 +327,25 @@ def build_sku_breakdown_classic(
             "unit_price_before_discount": round(dbu_price, 6)
         })
     
-    # Driver VM SKU
+    # Driver VM SKU (measured in DBU equivalent for consistency)
     if driver_vm_cost > 0:
         breakdown.append({
             "type": "vm",
             "sku": f"VM_{driver_pricing_tier.upper()}",
             "cost": round(driver_vm_cost, 2),
             "qty": round(hours_per_month, 2),
-            "usage_unit": "Hours",
+            "usage_unit": "DBU",
             "unit_price_before_discount": round(driver_vm_price_per_hour, 6)
         })
     
-    # Worker VM SKU
+    # Worker VM SKU (measured in DBU equivalent for consistency)
     if worker_vm_cost > 0 and num_workers > 0:
         breakdown.append({
             "type": "vm",
             "sku": f"VM_{worker_pricing_tier.upper()}",
             "cost": round(worker_vm_cost, 2),
             "qty": round(hours_per_month * num_workers, 2),
-            "usage_unit": "Hours",
+            "usage_unit": "DBU",
             "unit_price_before_discount": round(worker_vm_price_per_hour, 6)
         })
     
@@ -3753,6 +3754,12 @@ async def calculate_jobs_classic_cost(
             num_workers=request.num_workers
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
         # Apply discount if provided
         if request.discount_config:
             sku_breakdown = await apply_discount_to_sku_breakdown(
@@ -4462,6 +4469,12 @@ async def calculate_jobs_serverless_cost(
             dbu_price=float(row.dbu_price) if row.dbu_price else 0
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
         # Apply discounts if provided
         if request.discount_config:
             sku_breakdown = await apply_discount_to_sku_breakdown(
@@ -4791,6 +4804,12 @@ async def calculate_all_purpose_serverless_cost(
             dbu_price=float(row.dbu_price) if row.dbu_price else 0
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
         # Apply discounts if provided
         if request.discount_config:
             sku_breakdown = await apply_discount_to_sku_breakdown(
@@ -4942,7 +4961,7 @@ async def calculate_dbsql_classic_pro_cost(
     }
     ```
     
-    Option 3 - With Discounts:
+    Option 3 - With Discounts (SKU-specific overrides global):
     ```json
     {
       "cloud": "AWS",
@@ -4958,12 +4977,16 @@ async def calculate_dbsql_classic_pro_cost(
           "dbu_discount": 18,
           "vm_discount": 12
         },
-        "notes": "SQL warehouse discount"
+        "sku_specific": {
+          "SQL_COMPUTE": 22,
+          "VM_ON_DEMAND": 15
+        },
+        "notes": "SQL warehouse discount with SKU overrides"
       }
     }
     ```
     
-    **Response Structure (with discounts):**
+    **Response Structure (with SKU-specific discounts):**
     ```json
     {
       "success": true,
@@ -4976,26 +4999,35 @@ async def calculate_dbsql_classic_pro_cost(
             "vm_cost": 2396.16
           },
           "breakdown_after_discount": {
-            "dbu_cost": 1385.47,
-            "vm_cost": 2108.62
+            "dbu_cost": 1317.89,
+            "vm_cost": 2036.74
           },
           "discount_by_category": {
-            "dbu": { "amount": 304.13, "percentage": 18.0 },
-            "vm": { "amount": 287.54, "percentage": 12.0 }
+            "dbu": { "amount": 371.71, "percentage": 22.0 },
+            "vm": { "amount": 359.42, "percentage": 15.0 }
           },
-          "total_after_discount": 3494.09,
-          "total_discount": 591.67,
-          "effective_discount_percentage": 14.48
+          "total_after_discount": 3354.63,
+          "total_discount": 731.13,
+          "effective_discount_percentage": 17.89
         },
         "sku_breakdown": [
           {
             "type": "dbu",
             "sku": "SQL_COMPUTE",
             "cost": 1689.6,
-            "cost_after_discount": 1385.47,
+            "cost_after_discount": 1317.89,
             "unit_price_before_discount": 0.22,
-            "unit_price_after_discount": 0.1804,
-            "discount": { "percentage": 18.0, "amount": 304.13, "source": "global:dbu" }
+            "unit_price_after_discount": 0.1716,
+            "discount": { "percentage": 22.0, "amount": 371.71, "source": "sku_specific:SQL_COMPUTE" }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_ON_DEMAND",
+            "cost": 798.72,
+            "cost_after_discount": 678.91,
+            "unit_price_before_discount": 4.992,
+            "unit_price_after_discount": 4.2432,
+            "discount": { "percentage": 15.0, "amount": 119.81, "source": "sku_specific:VM_ON_DEMAND" }
           }
         ]
       }
@@ -5181,6 +5213,12 @@ async def calculate_dbsql_classic_pro_cost(
             worker_pricing_tier=request.vm_pricing_tier,  # DBSQL uses same tier for all VMs
             num_workers=1  # DBSQL has driver + workers bundled
         )
+        
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
         
         # Apply discounts if provided
         if request.discount_config:
@@ -5525,6 +5563,12 @@ async def calculate_dbsql_serverless_cost(
             dbu_price=float(row[3]) if row[3] else 0
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
         # Apply discounts if provided
         if request.discount_config:
             sku_breakdown = await apply_discount_to_sku_breakdown(
@@ -5684,7 +5728,7 @@ async def calculate_dlt_classic_cost(
     }
     ```
     
-    Option 3 - With Discounts:
+    Option 3 - With Discounts (SKU-specific overrides global):
     ```json
     {
       "cloud": "AWS",
@@ -5703,12 +5747,16 @@ async def calculate_dlt_classic_cost(
           "dbu_discount": 15,
           "vm_discount": 10
         },
-        "notes": "DLT pipeline discount"
+        "sku_specific": {
+          "DLT_PRO_COMPUTE_(PHOTON)": 20,
+          "VM_SPOT": 12
+        },
+        "notes": "DLT pipeline discount with SKU overrides"
       }
     }
     ```
     
-    **Response Structure (with discounts):**
+    **Response Structure (with SKU-specific discounts):**
     ```json
     {
       "success": true,
@@ -5721,26 +5769,44 @@ async def calculate_dlt_classic_cost(
             "vm_cost": 60.93
           },
           "breakdown_after_discount": {
-            "dbu_cost": 255.13,
-            "vm_cost": 54.84
+            "dbu_cost": 240.12,
+            "vm_cost": 54.19
           },
           "discount_by_category": {
-            "dbu": { "amount": 45.02, "percentage": 15.0 },
-            "vm": { "amount": 6.09, "percentage": 10.0 }
+            "dbu": { "amount": 60.03, "percentage": 20.0 },
+            "vm": { "amount": 6.74, "percentage": 11.06 }
           },
-          "total_after_discount": 309.97,
-          "total_discount": 51.11,
-          "effective_discount_percentage": 14.15
+          "total_after_discount": 294.31,
+          "total_discount": 66.77,
+          "effective_discount_percentage": 18.49
         },
         "sku_breakdown": [
           {
             "type": "dbu",
             "sku": "DLT_PRO_COMPUTE_(PHOTON)",
             "cost": 300.15,
-            "cost_after_discount": 255.13,
+            "cost_after_discount": 240.12,
             "unit_price_before_discount": 0.25,
-            "unit_price_after_discount": 0.2125,
-            "discount": { "percentage": 15.0, "amount": 45.02, "source": "global:dbu" }
+            "unit_price_after_discount": 0.2,
+            "discount": { "percentage": 20.0, "amount": 60.03, "source": "sku_specific:DLT_PRO_COMPUTE_(PHOTON)" }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_ON_DEMAND",
+            "cost": 28.8,
+            "cost_after_discount": 25.92,
+            "unit_price_before_discount": 0.192,
+            "unit_price_after_discount": 0.1728,
+            "discount": { "percentage": 10.0, "amount": 2.88, "source": "global:vm" }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_SPOT",
+            "cost": 32.13,
+            "cost_after_discount": 28.27,
+            "unit_price_before_discount": 0.2142,
+            "unit_price_after_discount": 0.188496,
+            "discount": { "percentage": 12.0, "amount": 3.86, "source": "sku_specific:VM_SPOT" }
           }
         ]
       }
@@ -5928,6 +5994,12 @@ async def calculate_dlt_classic_cost(
             worker_pricing_tier=request.worker_pricing_tier,
             num_workers=request.num_workers
         )
+        
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
         
         # Apply discounts if provided
         if request.discount_config:
@@ -6301,6 +6373,12 @@ async def calculate_dlt_serverless_cost(
             dbu_quantity=float(row[2]),
             dbu_price=float(row[3])
         )
+        
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
         
         # Apply discounts if provided
         if request.discount_config:
