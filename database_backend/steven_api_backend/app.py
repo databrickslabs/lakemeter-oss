@@ -9803,6 +9803,105 @@ async def get_lakeflow_gateway_defaults():
     **GCP:**
     - Driver: n2-highmem-8 (8 vCPU, 64 GB, encryption supported)
     - Worker: n2-standard-4 (4 vCPU, 16 GB, encryption supported)
+    """
+    return {
+        "success": True,
+        "data": {
+            "description": "Ingestion Gateway default configuration per cloud",
+            "note": "Gateway runs 24/7 (730 hours/month) by default unless manually stopped",
+            "default_num_workers": 1,
+            "default_hours_per_month": 730,
+            "gateway_by_cloud": {
+                cloud: {
+                    "driver_instance": config["driver_instance"],
+                    "driver_vcpu": config["driver_vcpu"],
+                    "driver_memory_gb": config["driver_memory_gb"],
+                    "driver_encryption": config["driver_encryption"],
+                    "worker_instance": config["worker_instance"],
+                    "worker_vcpu": config["worker_vcpu"],
+                    "worker_memory_gb": config["worker_memory_gb"],
+                    "worker_encryption": config["worker_encryption"]
+                }
+                for cloud, config in LAKEFLOW_GATEWAY_DEFAULTS.items()
+            }
+        }
+    }
+
+
+@app.post("/api/v1/calculate/lakeflow-connect", tags=["Cost Calculation"])
+async def calculate_lakeflow_connect_cost(
+    request: LakeflowConnectCalculationRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Calculate cost for Lakeflow Connect.
+    
+    **Connector Types:**
+    - **saas**: Uses Serverless DLT for ingestion pipeline only (Salesforce, Workday, Google Analytics)
+    - **database**: Uses Serverless DLT + Classic DLT Advanced Ingestion Gateway (MSSQL, MySQL, Postgres, Oracle)
+    
+    **Gateway Defaults (per cloud):**
+    - AWS: r5n.2xlarge driver + m5.large worker
+    - Azure: Standard_E8d_v4 driver + Standard_F4s worker
+    - GCP: n2-highmem-8 driver + n2-standard-4 worker
+    
+    Gateway runs 24/7 (730 hours) by default.
+    
+    **Example Request - SaaS Connector (Pipeline Hours-based):**
+    ```json
+    {
+      "connector_type": "saas",
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "pipeline_driver_node_type": "m5.xlarge",
+      "pipeline_worker_node_type": "m5.xlarge",
+      "pipeline_num_workers": 2,
+      "pipeline_serverless_mode": "standard",
+      "pipeline_hours_per_month": 100
+    }
+    ```
+    
+    **Example Request - SaaS Connector (Pipeline Run-based):**
+    ```json
+    {
+      "connector_type": "saas",
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "pipeline_driver_node_type": "m5.xlarge",
+      "pipeline_worker_node_type": "m5.xlarge",
+      "pipeline_num_workers": 2,
+      "pipeline_serverless_mode": "standard",
+      "pipeline_runs_per_day": 4,
+      "pipeline_avg_runtime_minutes": 30,
+      "pipeline_days_per_month": 30
+    }
+    ```
+    
+    **Example Request - Database Source (with Gateway):**
+    ```json
+    {
+      "connector_type": "database",
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "pipeline_driver_node_type": "m5.xlarge",
+      "pipeline_worker_node_type": "m5.xlarge",
+      "pipeline_num_workers": 2,
+      "pipeline_serverless_mode": "standard",
+      "pipeline_hours_per_month": 100,
+      "gateway_hours_per_month": 730,
+      "gateway_driver_instance": "r5n.2xlarge",
+      "gateway_worker_instance": "m5.large",
+      "gateway_num_workers": 1
+    }
+    ```
+    
+    **Gateway Defaults by Cloud (leave gateway_driver_instance/gateway_worker_instance empty to use):**
+    - AWS: r5n.2xlarge (8 vCPU, 64GB) driver + m5.large (2 vCPU, 8GB) worker
+    - Azure: Standard_E8d_v4 (8 vCPU, 64GB) driver + Standard_F4s (4 vCPU, 8GB) worker
+    - GCP: n2-highmem-8 (8 vCPU, 64GB) driver + n2-standard-4 (4 vCPU, 16GB) worker
     
     **Example Request with Discounts (Database Connector with Gateway):**
     ```json
@@ -9969,105 +10068,6 @@ async def get_lakeflow_gateway_defaults():
       }
     }
     ```
-    """
-    return {
-        "success": True,
-        "data": {
-            "description": "Ingestion Gateway default configuration per cloud",
-            "note": "Gateway runs 24/7 (730 hours/month) by default unless manually stopped",
-            "default_num_workers": 1,
-            "default_hours_per_month": 730,
-            "gateway_by_cloud": {
-                cloud: {
-                    "driver_instance": config["driver_instance"],
-                    "driver_vcpu": config["driver_vcpu"],
-                    "driver_memory_gb": config["driver_memory_gb"],
-                    "driver_encryption": config["driver_encryption"],
-                    "worker_instance": config["worker_instance"],
-                    "worker_vcpu": config["worker_vcpu"],
-                    "worker_memory_gb": config["worker_memory_gb"],
-                    "worker_encryption": config["worker_encryption"]
-                }
-                for cloud, config in LAKEFLOW_GATEWAY_DEFAULTS.items()
-            }
-        }
-    }
-
-
-@app.post("/api/v1/calculate/lakeflow-connect", tags=["Cost Calculation"])
-async def calculate_lakeflow_connect_cost(
-    request: LakeflowConnectCalculationRequest,
-    db: AsyncSession = Depends(get_async_db)
-):
-    """
-    Calculate cost for Lakeflow Connect.
-    
-    **Connector Types:**
-    - **saas**: Uses Serverless DLT for ingestion pipeline only (Salesforce, Workday, Google Analytics)
-    - **database**: Uses Serverless DLT + Classic DLT Advanced Ingestion Gateway (MSSQL, MySQL, Postgres, Oracle)
-    
-    **Gateway Defaults (per cloud):**
-    - AWS: r5n.2xlarge driver + m5.large worker
-    - Azure: Standard_E8d_v4 driver + Standard_F4s worker
-    - GCP: n2-highmem-8 driver + n2-standard-4 worker
-    
-    Gateway runs 24/7 (730 hours) by default.
-    
-    **Example Request - SaaS Connector (Pipeline Hours-based):**
-    ```json
-    {
-      "connector_type": "saas",
-      "cloud": "AWS",
-      "region": "us-east-1",
-      "tier": "PREMIUM",
-      "pipeline_driver_node_type": "m5.xlarge",
-      "pipeline_worker_node_type": "m5.xlarge",
-      "pipeline_num_workers": 2,
-      "pipeline_serverless_mode": "standard",
-      "pipeline_hours_per_month": 100
-    }
-    ```
-    
-    **Example Request - SaaS Connector (Pipeline Run-based):**
-    ```json
-    {
-      "connector_type": "saas",
-      "cloud": "AWS",
-      "region": "us-east-1",
-      "tier": "PREMIUM",
-      "pipeline_driver_node_type": "m5.xlarge",
-      "pipeline_worker_node_type": "m5.xlarge",
-      "pipeline_num_workers": 2,
-      "pipeline_serverless_mode": "standard",
-      "pipeline_runs_per_day": 4,
-      "pipeline_avg_runtime_minutes": 30,
-      "pipeline_days_per_month": 30
-    }
-    ```
-    
-    **Example Request - Database Source (with Gateway):**
-    ```json
-    {
-      "connector_type": "database",
-      "cloud": "AWS",
-      "region": "us-east-1",
-      "tier": "PREMIUM",
-      "pipeline_driver_node_type": "m5.xlarge",
-      "pipeline_worker_node_type": "m5.xlarge",
-      "pipeline_num_workers": 2,
-      "pipeline_serverless_mode": "standard",
-      "pipeline_hours_per_month": 100,
-      "gateway_hours_per_month": 730,
-      "gateway_driver_instance": "r5n.2xlarge",
-      "gateway_worker_instance": "m5.large",
-      "gateway_num_workers": 1
-    }
-    ```
-    
-    **Gateway Defaults by Cloud (leave gateway_driver_instance/gateway_worker_instance empty to use):**
-    - AWS: r5n.2xlarge (8 vCPU, 64GB) driver + m5.large (2 vCPU, 8GB) worker
-    - Azure: Standard_E8d_v4 (8 vCPU, 64GB) driver + Standard_F4s (4 vCPU, 8GB) worker
-    - GCP: n2-highmem-8 (8 vCPU, 64GB) driver + n2-standard-4 (4 vCPU, 16GB) worker
     """
     connector_type = request.connector_type.lower()
     cloud_upper = request.cloud.upper()
