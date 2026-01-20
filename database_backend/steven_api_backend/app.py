@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Query, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Union
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -443,7 +443,7 @@ def infer_discount_category(sku: str) -> str:
 
 async def get_discount_for_sku(
     sku: str, 
-    discount_config: dict,
+    discount_config: Union['DiscountConfig', dict],
     db: AsyncSession
 ) -> tuple[float, str]:
     """
@@ -456,7 +456,7 @@ async def get_discount_for_sku(
     
     Args:
         sku: SKU name
-        discount_config: Discount configuration dict
+        discount_config: Discount configuration (DiscountConfig model or dict)
         db: Database session
     
     Returns:
@@ -465,8 +465,15 @@ async def get_discount_for_sku(
     if not discount_config:
         return (0.0, "none")
     
-    sku_specific = discount_config.get("sku_specific", {})
-    global_discounts = discount_config.get("global", {})
+    # Handle both DiscountConfig model and dict
+    if hasattr(discount_config, 'sku_specific'):
+        # It's a DiscountConfig model
+        sku_specific = discount_config.sku_specific
+        global_discounts = discount_config.global_discounts
+    else:
+        # It's a dict (backward compatibility)
+        sku_specific = discount_config.get("sku_specific", {})
+        global_discounts = discount_config.get("global", {})
     
     # 1. Check exact SKU match FIRST (highest priority)
     if sku in sku_specific:
@@ -475,16 +482,31 @@ async def get_discount_for_sku(
     # 2. Fall back to global by category (query database)
     category = await get_discount_category_from_db(sku, db)
     
-    if category == "dbu":
-        return (float(global_discounts.get("dbu_discount", 0)), "global:dbu")
-    elif category == "vm":
-        return (float(global_discounts.get("vm_discount", 0)), "global:vm")
-    elif category == "storage":
-        return (float(global_discounts.get("storage_discount", 0)), "global:storage")
-    elif category == "platform_addon":
-        return (float(global_discounts.get("platform_addon_discount", 0)), "global:platform_addon")
-    elif category == "support":
-        return (float(global_discounts.get("support_discount", 0)), "global:support")
+    # Handle both model attributes and dict keys
+    if hasattr(global_discounts, 'dbu_discount'):
+        # DiscountConfig model
+        if category == "dbu":
+            return (float(global_discounts.dbu_discount), "global:dbu")
+        elif category == "vm":
+            return (float(global_discounts.vm_discount), "global:vm")
+        elif category == "storage":
+            return (float(global_discounts.storage_discount), "global:storage")
+        elif category == "platform_addon":
+            return (float(global_discounts.platform_addon_discount), "global:platform_addon")
+        elif category == "support":
+            return (float(global_discounts.support_discount), "global:support")
+    else:
+        # Dict format
+        if category == "dbu":
+            return (float(global_discounts.get("dbu_discount", 0)), "global:dbu")
+        elif category == "vm":
+            return (float(global_discounts.get("vm_discount", 0)), "global:vm")
+        elif category == "storage":
+            return (float(global_discounts.get("storage_discount", 0)), "global:storage")
+        elif category == "platform_addon":
+            return (float(global_discounts.get("platform_addon_discount", 0)), "global:platform_addon")
+        elif category == "support":
+            return (float(global_discounts.get("support_discount", 0)), "global:support")
     
     # 3. No discount
     return (0.0, "none")
@@ -492,7 +514,7 @@ async def get_discount_for_sku(
 
 async def apply_discount_to_sku_breakdown(
     sku_breakdown: list,
-    discount_config: dict,
+    discount_config: Union['DiscountConfig', dict],
     db: AsyncSession
 ) -> list:
     """
@@ -3227,7 +3249,39 @@ async def get_fmapi_proprietary_models(
 # COST CALCULATION ENDPOINTS
 # ============================================================================
 
-# Request Models
+# Request Models - Discount Configuration
+class GlobalDiscountConfig(BaseModel):
+    """Global discount configuration by category"""
+    dbu_discount: float = Field(default=0, ge=0, le=100, description="DBU discount percentage (0-100)")
+    vm_discount: float = Field(default=0, ge=0, le=100, description="VM discount percentage (0-100)")
+    storage_discount: float = Field(default=0, ge=0, le=100, description="Storage discount percentage (0-100)")
+    platform_addon_discount: float = Field(default=0, ge=0, le=100, description="Platform add-on discount percentage (0-100)")
+    support_discount: float = Field(default=0, ge=0, le=100, description="Support discount percentage (0-100)")
+
+
+class DiscountConfig(BaseModel):
+    """Discount configuration structure for cost calculations"""
+    global_discounts: GlobalDiscountConfig = Field(alias="global", description="Global discounts by category")
+    sku_specific: dict[str, float] = Field(default={}, description="SKU-specific discounts (SKU name -> discount %)")
+    notes: Optional[str] = Field(default=None, description="Notes about the discount")
+    effective_date: Optional[str] = Field(default=None, description="When discount becomes effective (YYYY-MM-DD)")
+    expiry_date: Optional[str] = Field(default=None, description="When discount expires (YYYY-MM-DD)")
+    
+    class Config:
+        populate_by_name = True  # Allow both 'global' and 'global_discounts'
+    
+    def validate_sku_specific(self) -> list[str]:
+        """Validate SKU-specific discount percentages and return errors"""
+        errors = []
+        for sku, discount_pct in self.sku_specific.items():
+            if not isinstance(discount_pct, (int, float)):
+                errors.append(f"SKU '{sku}': discount must be a number, got {type(discount_pct).__name__}")
+            elif discount_pct < 0 or discount_pct > 100:
+                errors.append(f"SKU '{sku}': discount must be between 0 and 100, got {discount_pct}")
+        return errors
+
+
+# Request Models - Workload Calculations
 class JobsClassicCalculationRequest(BaseModel):
     """Request model for JOBS Classic cost calculation"""
     # Core parameters
@@ -3254,7 +3308,7 @@ class JobsClassicCalculationRequest(BaseModel):
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
     
     # Discount configuration (optional)
-    discount_config: Optional[dict] = Field(None, description="Discount configuration with global and SKU-specific discounts")
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/jobs-classic", tags=["Cost Calculation"])
