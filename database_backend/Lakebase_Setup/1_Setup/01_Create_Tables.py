@@ -113,85 +113,109 @@ except Exception as e:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4. Drop Existing Objects
+# MAGIC ## 4. ⚠️ DROP Section DISABLED (To Prevent Data Loss)
+# MAGIC
+# MAGIC **IMPORTANT:** The DROP statements have been commented out to prevent accidental data loss.
+# MAGIC
+# MAGIC **If you need to recreate tables from scratch:**
+# MAGIC 1. Manually verify you have backups
+# MAGIC 2. Uncomment the DROP section below
+# MAGIC 3. Run the notebook
+# MAGIC 4. **Immediately re-comment this section** to prevent future accidents
 
 # COMMAND ----------
 
 print("=" * 80)
-print("🗑️  DROPPING EXISTING OBJECTS (if they exist)")
+print("⚠️  DROP SECTION DISABLED")
 print("=" * 80)
-print("\nThis ensures a clean slate by removing any existing objects.")
-print("Drop order: Triggers → Functions → Views → Tables")
+print("\n✅ SKIPPED: Drop statements are commented out to prevent data loss.")
+print("   Tables will only be created if they don't already exist (CREATE TABLE IF NOT EXISTS).")
 print("=" * 80)
 
-# Drop in correct dependency order
-drop_statements = [
-    # 1. Drop triggers first (depend on functions and tables)
-    ("DROP TRIGGER IF EXISTS trg_sync_line_item_cloud ON lakemeter.line_items CASCADE", "Drop trigger: trg_sync_line_item_cloud"),
-    ("DROP TRIGGER IF EXISTS trg_sync_estimate_cloud ON lakemeter.estimates CASCADE", "Drop trigger: trg_sync_estimate_cloud"),
-    
-    # 2. Drop functions (triggers depend on these)
-    ("DROP FUNCTION IF EXISTS lakemeter.sync_line_item_cloud() CASCADE", "Drop function: sync_line_item_cloud()"),
-    ("DROP FUNCTION IF EXISTS lakemeter.sync_estimate_cloud_to_line_items() CASCADE", "Drop function: sync_estimate_cloud_to_line_items()"),
-    
-    # 3. Drop views (depend on tables)
-    ("DROP VIEW IF EXISTS lakemeter.v_estimates_with_totals CASCADE", "Drop view: v_estimates_with_totals"),
-    ("DROP VIEW IF EXISTS lakemeter.v_line_items_with_costs CASCADE", "Drop view: v_line_items_with_costs"),
-    
-    # 4. Drop tables (in reverse dependency order)
-    ("DROP TABLE IF EXISTS lakemeter.decision_records CASCADE", "Drop table: decision_records"),
-    ("DROP TABLE IF EXISTS lakemeter.conversation_messages CASCADE", "Drop table: conversation_messages"),
-    ("DROP TABLE IF EXISTS lakemeter.sharing CASCADE", "Drop table: sharing"),
-    ("DROP TABLE IF EXISTS lakemeter.line_items CASCADE", "Drop table: line_items"),
-    ("DROP TABLE IF EXISTS lakemeter.estimates CASCADE", "Drop table: estimates"),
-    ("DROP TABLE IF EXISTS lakemeter.templates CASCADE", "Drop table: templates"),
-    ("DROP TABLE IF EXISTS lakemeter.users CASCADE", "Drop table: users"),
-    ("DROP TABLE IF EXISTS lakemeter.ref_cloud_tiers CASCADE", "Drop table: ref_cloud_tiers"),
-    ("DROP TABLE IF EXISTS lakemeter.ref_workload_types CASCADE", "Drop table: ref_workload_types"),
-]
-
-print("\n📋 Dropping objects...")
-success_count = 0
-failed_objects = []
-
-for sql, desc in drop_statements:
-    # Show errors so we can see what's failing
-    result = execute_sql(sql, desc, show_error=True)
-    if result:
-        success_count += 1
-    else:
-        failed_objects.append(desc)
-
-print(f"\n📊 Cleanup summary: {success_count}/{len(drop_statements)} objects dropped")
-
-if failed_objects:
-    print(f"\n⚠️  WARNING: {len(failed_objects)} objects could not be dropped:")
-    for obj in failed_objects:
-        print(f"   ❌ {obj}")
-    print("\n💡 This usually means objects are owned by another user.")
-    print("\n🔧 SOLUTION: Run this SQL in Lakebase SQL Editor to diagnose and fix:")
-    print("=" * 70)
-    print("""
--- 1. Check who owns the functions
-SELECT 
-    p.proname as function_name,
-    pg_get_userbyid(p.proowner) as owner,
-    'DROP FUNCTION lakemeter.' || p.proname || '() CASCADE;' as drop_command
-FROM pg_proc p 
-JOIN pg_namespace n ON p.pronamespace = n.oid
-WHERE n.nspname = 'lakemeter' AND p.proname LIKE 'sync_%';
-
--- 2. Copy and run the DROP commands from above output
---    (or run this if you own them):
-DROP FUNCTION IF EXISTS lakemeter.sync_line_item_cloud() CASCADE;
-DROP FUNCTION IF EXISTS lakemeter.sync_estimate_cloud_to_line_items() CASCADE;
-
--- 3. Then re-run this notebook
-""")
-    print("=" * 70)
-    print("\n🛑 STOPPING: Cannot proceed with failed drops.")
-    print("   Fix ownership issues above, then re-run this notebook.")
-    raise Exception("Ownership errors detected. Fix in SQL Editor first.")
+# # ========================================================================
+# # ⛔ DANGER ZONE - COMMENTED OUT TO PREVENT ACCIDENTAL DATA LOSS
+# # ========================================================================
+# # Uncomment ONLY if you need to recreate all tables from scratch
+# # and you have confirmed you have backups!
+# #
+# # print("=" * 80)
+# # print("🗑️  DROPPING EXISTING OBJECTS (if they exist)")
+# # print("=" * 80)
+# # print("\nThis ensures a clean slate by removing any existing objects.")
+# # print("Drop order: Triggers → Functions → Views → Tables")
+# # print("=" * 80)
+# #
+# # # Drop in correct dependency order
+# # drop_statements = [
+# #     # 1. Drop triggers first (depend on functions and tables)
+# #     ("DROP TRIGGER IF EXISTS trg_sync_line_item_cloud ON lakemeter.line_items CASCADE", "Drop trigger: trg_sync_line_item_cloud"),
+# #     ("DROP TRIGGER IF EXISTS trg_sync_estimate_cloud ON lakemeter.estimates CASCADE", "Drop trigger: trg_sync_estimate_cloud"),
+# #     
+# #     # 2. Drop functions (triggers depend on these)
+# #     ("DROP FUNCTION IF EXISTS lakemeter.sync_line_item_cloud() CASCADE", "Drop function: sync_line_item_cloud()"),
+# #     ("DROP FUNCTION IF EXISTS lakemeter.sync_estimate_cloud_to_line_items() CASCADE", "Drop function: sync_estimate_cloud_to_line_items()"),
+# #     
+# #     # 3. Drop views (depend on tables)
+# #     ("DROP VIEW IF EXISTS lakemeter.v_estimates_with_totals CASCADE", "Drop view: v_estimates_with_totals"),
+# #     ("DROP VIEW IF EXISTS lakemeter.v_line_items_with_costs CASCADE", "Drop view: v_line_items_with_costs"),
+# #     
+# #     # 4. Drop tables (in reverse dependency order)
+# #     ("DROP TABLE IF EXISTS lakemeter.decision_records CASCADE", "Drop table: decision_records"),
+# #     ("DROP TABLE IF EXISTS lakemeter.conversation_messages CASCADE", "Drop table: conversation_messages"),
+# #     ("DROP TABLE IF EXISTS lakemeter.sharing CASCADE", "Drop table: sharing"),
+# #     ("DROP TABLE IF EXISTS lakemeter.line_items CASCADE", "Drop table: line_items"),
+# #     ("DROP TABLE IF EXISTS lakemeter.estimates CASCADE", "Drop table: estimates"),
+# #     ("DROP TABLE IF EXISTS lakemeter.templates CASCADE", "Drop table: templates"),
+# #     ("DROP TABLE IF EXISTS lakemeter.users CASCADE", "Drop table: users"),
+# #     ("DROP TABLE IF EXISTS lakemeter.ref_cloud_tiers CASCADE", "Drop table: ref_cloud_tiers"),
+# #     ("DROP TABLE IF EXISTS lakemeter.ref_workload_types CASCADE", "Drop table: ref_workload_types"),
+# # ]
+# #
+# # print("\n📋 Dropping objects...")
+# # success_count = 0
+# # failed_objects = []
+# #
+# # for sql, desc in drop_statements:
+# #     # Show errors so we can see what's failing
+# #     result = execute_sql(sql, desc, show_error=True)
+# #     if result:
+# #         success_count += 1
+# #     else:
+# #         failed_objects.append(desc)
+# #
+# # print(f"\n📊 Cleanup summary: {success_count}/{len(drop_statements)} objects dropped")
+# #
+# # if failed_objects:
+# #     print(f"\n⚠️  WARNING: {len(failed_objects)} objects could not be dropped:")
+# #     for obj in failed_objects:
+# #         print(f"   ❌ {obj}")
+# #     print("\n💡 This usually means objects are owned by another user.")
+# #     print("\n🔧 SOLUTION: Run this SQL in Lakebase SQL Editor to diagnose and fix:")
+# #     print("=" * 70)
+# #     print("""
+# # -- 1. Check who owns the functions
+# # SELECT 
+# #     p.proname as function_name,
+# #     pg_get_userbyid(p.proowner) as owner,
+# #     'DROP FUNCTION lakemeter.' || p.proname || '() CASCADE;' as drop_command
+# # FROM pg_proc p 
+# # JOIN pg_namespace n ON p.pronamespace = n.oid
+# # WHERE n.nspname = 'lakemeter' AND p.proname LIKE 'sync_%';
+# #
+# # -- 2. Copy and run the DROP commands from above output
+# # --    (or run this if you own them):
+# # DROP FUNCTION IF EXISTS lakemeter.sync_line_item_cloud() CASCADE;
+# # DROP FUNCTION IF EXISTS lakemeter.sync_estimate_cloud_to_line_items() CASCADE;
+# #
+# # -- 3. Then re-run this notebook
+# # """)
+# #     print("=" * 70)
+# #     print("\n🛑 STOPPING: Cannot proceed with failed drops.")
+# #     print("   Fix ownership issues above, then re-run this notebook.")
+# #     raise Exception("Ownership errors detected. Fix in SQL Editor first.")
+# # ========================================================================
+# # END DANGER ZONE
+# # ========================================================================
 else:
     print("\n✅ All objects dropped successfully!")
 
