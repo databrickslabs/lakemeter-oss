@@ -175,23 +175,26 @@ else:
 # COMMAND ----------
 
 print("\n" + "=" * 80)
-print("🗑️  DROPPING EXISTING VIEWS")
+print("⚠️  DROP VIEWS SECTION DISABLED")
+print("=" * 80)
+print("✅ SKIPPED: Using CREATE OR REPLACE VIEW instead to prevent data loss.")
 print("=" * 80)
 
-# Drop in reverse dependency order
-execute_sql(
-    "DROP VIEW IF EXISTS lakemeter.v_estimates_with_totals CASCADE;",
-    "Drop v_estimates_with_totals",
-    show_error=False
-)
-
-execute_sql(
-    "DROP VIEW IF EXISTS lakemeter.v_line_items_with_costs CASCADE;",
-    "Drop v_line_items_with_costs",
-    show_error=False
-)
-
-print("\n✅ Old views dropped")
+# # ========================================================================
+# # ⛔ COMMENTED OUT TO PREVENT ACCIDENTAL VIEW DROPS
+# # ========================================================================
+# # execute_sql(
+# #     "DROP VIEW IF EXISTS lakemeter.v_estimates_with_totals CASCADE;",
+# #     "Drop v_estimates_with_totals",
+# #     show_error=False
+# # )
+# #
+# # execute_sql(
+# #     "DROP VIEW IF EXISTS lakemeter.v_line_items_with_costs CASCADE;",
+# #     "Drop v_line_items_with_costs",
+# #     show_error=False
+# # )
+# # ========================================================================
 
 # COMMAND ----------
 
@@ -214,7 +217,7 @@ print("=" * 80)
 
 # The view SQL is large, so we'll define it in a multi-line string
 create_view_line_items_sql = """
-CREATE VIEW lakemeter.v_line_items_with_costs AS
+CREATE OR REPLACE VIEW lakemeter.v_line_items_with_costs AS
 WITH 
 -- Calculate hours per month for each line item
 hours_calc AS (
@@ -490,7 +493,7 @@ print("=" * 80)
 # COMMAND ----------
 
 create_view_estimates_sql = """
-CREATE VIEW lakemeter.v_estimates_with_totals AS
+CREATE OR REPLACE VIEW lakemeter.v_estimates_with_totals AS
 SELECT 
     e.*,
     COALESCE(t.total_dbu_per_month, 0) as total_dbu_per_month,
