@@ -597,7 +597,7 @@ def enhance_total_cost_with_discount(total_cost: dict, sku_breakdown: list) -> d
     Keeps existing fields unchanged and adds new discount-related fields.
     
     Args:
-        total_cost: Original total_cost dict with cost_per_month and breakdown
+        total_cost: Original total_cost dict with cost_per_month (and optional breakdown)
         sku_breakdown: SKU breakdown list with discount details
     
     Returns:
@@ -620,37 +620,57 @@ def enhance_total_cost_with_discount(total_cost: dict, sku_breakdown: list) -> d
     # Build enhanced structure (keep existing fields)
     enhanced = total_cost.copy()
     
-    # Add breakdown_after_discount
-    breakdown_after_discount = {}
-    for key in total_cost["breakdown"]:
-        # Map breakdown keys to types (dbu_cost -> dbu, vm_cost -> vm, storage_cost -> storage)
-        type_key = key.replace("_cost", "")
-        if type_key in by_type:
-            breakdown_after_discount[key] = round(by_type[type_key]["cost_after"], 2)
-        else:
-            breakdown_after_discount[key] = total_cost["breakdown"][key]
-    
-    enhanced["breakdown_after_discount"] = breakdown_after_discount
-    
-    # Add discount_by_category
-    discount_by_category = {}
-    for key in total_cost["breakdown"]:
-        type_key = key.replace("_cost", "")
-        if type_key in by_type and by_type[type_key]["discount_amount"] > 0:
-            cost_before = by_type[type_key]["cost_before"]
-            discount_amt = by_type[type_key]["discount_amount"]
-            discount_pct = (discount_amt / cost_before * 100) if cost_before > 0 else 0
-            discount_by_category[type_key] = {
-                "amount": round(discount_amt, 2),
-                "percentage": round(discount_pct, 2)
-            }
-        else:
-            discount_by_category[type_key] = {
-                "amount": 0,
-                "percentage": 0
-            }
-    
-    enhanced["discount_by_category"] = discount_by_category
+    # Handle breakdown (if exists) or create one from by_type
+    if "breakdown" in total_cost:
+        # Classic workloads have breakdown
+        breakdown_after_discount = {}
+        for key in total_cost["breakdown"]:
+            # Map breakdown keys to types (dbu_cost -> dbu, vm_cost -> vm, storage_cost -> storage)
+            type_key = key.replace("_cost", "")
+            if type_key in by_type:
+                breakdown_after_discount[key] = round(by_type[type_key]["cost_after"], 2)
+            else:
+                breakdown_after_discount[key] = total_cost["breakdown"][key]
+        
+        enhanced["breakdown_after_discount"] = breakdown_after_discount
+        
+        # Add discount_by_category
+        discount_by_category = {}
+        for key in total_cost["breakdown"]:
+            type_key = key.replace("_cost", "")
+            if type_key in by_type and by_type[type_key]["discount_amount"] > 0:
+                cost_before = by_type[type_key]["cost_before"]
+                discount_amt = by_type[type_key]["discount_amount"]
+                discount_pct = (discount_amt / cost_before * 100) if cost_before > 0 else 0
+                discount_by_category[type_key] = {
+                    "amount": round(discount_amt, 2),
+                    "percentage": round(discount_pct, 2)
+                }
+            else:
+                discount_by_category[type_key] = {
+                    "amount": 0,
+                    "percentage": 0
+                }
+        
+        enhanced["discount_by_category"] = discount_by_category
+    else:
+        # Serverless workloads - create breakdown from by_type
+        breakdown_after_discount = {}
+        discount_by_category = {}
+        
+        for type_key, data in by_type.items():
+            cost_key = f"{type_key}_cost"
+            breakdown_after_discount[cost_key] = round(data["cost_after"], 2)
+            
+            if data["discount_amount"] > 0:
+                discount_pct = (data["discount_amount"] / data["cost_before"] * 100) if data["cost_before"] > 0 else 0
+                discount_by_category[type_key] = {
+                    "amount": round(data["discount_amount"], 2),
+                    "percentage": round(discount_pct, 2)
+                }
+        
+        enhanced["breakdown_after_discount"] = breakdown_after_discount
+        enhanced["discount_by_category"] = discount_by_category
     
     # Add grand totals
     total_cost_before = sum(item["cost"] for item in sku_breakdown)
