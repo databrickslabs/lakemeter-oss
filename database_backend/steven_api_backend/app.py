@@ -569,6 +569,80 @@ def calculate_total_discount_summary(sku_breakdown: list) -> dict:
     }
 
 
+def enhance_total_cost_with_discount(total_cost: dict, sku_breakdown: list) -> dict:
+    """
+    Enhances the total_cost structure with discount details by category.
+    Keeps existing fields unchanged and adds new discount-related fields.
+    
+    Args:
+        total_cost: Original total_cost dict with cost_per_month and breakdown
+        sku_breakdown: SKU breakdown list with discount details
+    
+    Returns:
+        Enhanced total_cost dict with additional discount fields
+    """
+    # Group SKU breakdown by type
+    by_type = {}
+    for item in sku_breakdown:
+        item_type = item["type"]
+        if item_type not in by_type:
+            by_type[item_type] = {
+                "cost_before": 0,
+                "cost_after": 0,
+                "discount_amount": 0
+            }
+        by_type[item_type]["cost_before"] += item["cost"]
+        by_type[item_type]["cost_after"] += item.get("cost_after_discount", item["cost"])
+        by_type[item_type]["discount_amount"] += item.get("discount", {}).get("amount", 0)
+    
+    # Build enhanced structure (keep existing fields)
+    enhanced = total_cost.copy()
+    
+    # Add breakdown_after_discount
+    breakdown_after_discount = {}
+    for key in total_cost["breakdown"]:
+        # Map breakdown keys to types (dbu_cost -> dbu, vm_cost -> vm, storage_cost -> storage)
+        type_key = key.replace("_cost", "")
+        if type_key in by_type:
+            breakdown_after_discount[key] = round(by_type[type_key]["cost_after"], 2)
+        else:
+            breakdown_after_discount[key] = total_cost["breakdown"][key]
+    
+    enhanced["breakdown_after_discount"] = breakdown_after_discount
+    
+    # Add discount_by_category
+    discount_by_category = {}
+    for key in total_cost["breakdown"]:
+        type_key = key.replace("_cost", "")
+        if type_key in by_type and by_type[type_key]["discount_amount"] > 0:
+            cost_before = by_type[type_key]["cost_before"]
+            discount_amt = by_type[type_key]["discount_amount"]
+            discount_pct = (discount_amt / cost_before * 100) if cost_before > 0 else 0
+            discount_by_category[type_key] = {
+                "amount": round(discount_amt, 2),
+                "percentage": round(discount_pct, 2)
+            }
+        else:
+            discount_by_category[type_key] = {
+                "amount": 0,
+                "percentage": 0
+            }
+    
+    enhanced["discount_by_category"] = discount_by_category
+    
+    # Add grand totals
+    total_cost_before = sum(item["cost"] for item in sku_breakdown)
+    total_cost_after = sum(item.get("cost_after_discount", item["cost"]) for item in sku_breakdown)
+    total_discount = total_cost_before - total_cost_after
+    effective_discount_pct = (total_discount / total_cost_before * 100) if total_cost_before > 0 else 0
+    
+    enhanced["total_after_discount"] = round(total_cost_after, 2)
+    enhanced["total_discount"] = round(total_discount, 2)
+    enhanced["effective_discount_percentage"] = round(effective_discount_pct, 2)
+    
+    return enhanced
+
+
 @app.get("/", tags=["System"])
 def root():
     return {
@@ -3521,8 +3595,14 @@ async def calculate_jobs_classic_cost(
             }
         }
         
-        # Add discount summary if discount was applied
+        # Enhance total_cost and add discount summary if discount was applied
         if request.discount_config:
+            # Enhance total_cost with discount details
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+            # Also add discount_summary for backward compatibility
             discount_summary = calculate_total_discount_summary(sku_breakdown)
             response_data["data"]["discount_summary"] = discount_summary
         
