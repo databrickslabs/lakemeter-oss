@@ -7868,6 +7868,69 @@ async def calculate_lakebase_cost(
       }
     }
     ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "cu_size": 2,
+      "num_nodes": 2,
+      "hours_per_month": 730,
+      "storage_gb": 1000,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20,
+          "storage_discount": 15
+        },
+        "sku_specific": {
+          "DATABASE_SERVERLESS_COMPUTE": 25
+        },
+        "notes": "Q1 2026 Lakebase discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "LAKEBASE",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "DATABASE_SERVERLESS_COMPUTE",
+            "cost": 408.8,
+            "cost_after_discount": 306.6,
+            "discount": {
+              "percentage_applied": 25.0,
+              "source": "sku_specific:DATABASE_SERVERLESS_COMPUTE",
+              "amount_saved": 102.2
+            }
+          },
+          {
+            "type": "storage",
+            "sku": "LAKEBASE_STORAGE_DSU",
+            "cost": 345.0,
+            "cost_after_discount": 293.25,
+            "discount": {
+              "percentage_applied": 15.0,
+              "source": "global:storage",
+              "amount_saved": 51.75
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 753.8,
+          "total_after_discount": 599.85,
+          "total_discount": 153.95,
+          "effective_discount_percentage": 20.42
+        }
+      }
+    }
+    ```
     """
     # Validate cloud, region, tier
     error = await validate_cloud(request.cloud)
