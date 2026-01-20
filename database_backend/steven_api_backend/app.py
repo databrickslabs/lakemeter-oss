@@ -7342,7 +7342,10 @@ async def calculate_fmapi_databricks_cost(
         "global": {
           "dbu_discount": 18
         },
-        "notes": "Q1 2026 FMAPI Databricks discount"
+        "sku_specific": {
+          "OPENAI_MODEL_SERVING": 25
+        },
+        "notes": "Q1 2026 FMAPI Databricks discount - SKU-specific override"
       }
     }
     ```
@@ -7358,23 +7361,23 @@ async def calculate_fmapi_databricks_cost(
             "type": "fmapi",
             "sku": "OPENAI_MODEL_SERVING",
             "cost": 0.5,
-            "cost_after_discount": 0.41,
+            "cost_after_discount": 0.375,
             "qty": 1.0,
             "usage_unit": "DBU",
             "unit_price_before_discount": 0.5,
-            "unit_price_after_discount": 0.41,
+            "unit_price_after_discount": 0.375,
             "discount": {
-              "percentage_applied": 18.0,
-              "source": "global:dbu",
-              "amount_saved": 0.09
+              "percentage_applied": 25.0,
+              "source": "sku_specific:OPENAI_MODEL_SERVING",
+              "amount_saved": 0.125
             }
           }
         ],
         "cost": {
           "total_cost": 0.5,
-          "total_after_discount": 0.41,
-          "total_discount": 0.09,
-          "effective_discount_percentage": 18.0,
+          "total_after_discount": 0.375,
+          "total_discount": 0.125,
+          "effective_discount_percentage": 25.0,
           "note": "Cost based on token or provisioned usage"
         }
       }
