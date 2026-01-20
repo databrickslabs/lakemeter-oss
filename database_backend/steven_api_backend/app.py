@@ -3846,9 +3846,6 @@ class AllPurposeClassicCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per session in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
-    
-    # Discount configuration
-    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/all-purpose-classic", tags=["Cost Calculation"])
@@ -3913,71 +3910,6 @@ async def calculate_all_purpose_classic_cost(
       "driver_payment_option": "NA",
       "worker_payment_option": "no_upfront",
       "hours_per_month": 730
-    }
-    ```
-    
-    Option 3 - With Discounts:
-    ```json
-    {
-      "cloud": "AWS",
-      "region": "us-east-1",
-      "tier": "PREMIUM",
-      "driver_node_type": "m5.xlarge",
-      "worker_node_type": "m5.xlarge",
-      "num_workers": 5,
-      "photon_enabled": true,
-      "driver_pricing_tier": "on_demand",
-      "worker_pricing_tier": "spot",
-      "runs_per_day": 8,
-      "avg_runtime_minutes": 60,
-      "days_per_month": 30,
-      "discount_config": {
-        "global": {
-          "dbu_discount": 20,
-          "vm_discount": 15
-        },
-        "sku_specific": {
-          "ALL_PURPOSE_COMPUTE_(PHOTON)": 25
-        },
-        "notes": "Enterprise agreement discount"
-      }
-    }
-    ```
-    
-    **Response with Discount (excerpt):**
-    ```json
-    {
-      "success": true,
-      "data": {
-        "sku_breakdown": [
-          {
-            "type": "dbu",
-            "sku": "ALL_PURPOSE_COMPUTE_(PHOTON)",
-            "cost": 1305.60,
-            "cost_after_discount": 979.20,
-            "unit_price_after_discount": 0.612,
-            "discount": {
-              "type": "sku_specific",
-              "percentage": 25.0,
-              "amount": 326.40
-            }
-          }
-        ],
-        "total_cost": {
-          "cost_per_month": 1651.68,
-          "breakdown_after_discount": {
-            "dbu_cost": 979.20,
-            "vm_cost": 294.12
-          },
-          "discount_by_category": {
-            "dbu": {"before": 1305.60, "after": 979.20, "amount": 326.40, "percentage": 25.0},
-            "vm": {"before": 346.08, "after": 294.12, "amount": 51.96, "percentage": 15.0}
-          },
-          "total_after_discount": 1273.32,
-          "total_discount": 378.36,
-          "effective_discount_percentage": 22.9
-        }
-      }
     }
     ```
     """
@@ -4150,27 +4082,6 @@ async def calculate_all_purpose_classic_cost(
             num_workers=request.num_workers
         )
         
-        # Apply discounts if provided
-        if request.discount_config:
-            sku_breakdown = await apply_discount_to_sku_breakdown(
-                sku_breakdown, 
-                request.discount_config, 
-                db
-            )
-        
-        # Build total_cost structure
-        total_cost = {
-            "cost_per_month": float(row[11]),
-            "breakdown": {
-                "dbu_cost": float(row[4]),
-                "vm_cost": float(row[10])
-            }
-        }
-        
-        # Enhance total_cost with discount details if discounts applied
-        if request.discount_config:
-            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
-        
         return {
             "success": True,
             "data": {
@@ -4206,7 +4117,13 @@ async def calculate_all_purpose_classic_cost(
                     "total_worker_vm_cost_per_month": float(row[9]),
                     "vm_cost_per_month": float(row[10])
                 },
-                "total_cost": total_cost,
+                "total_cost": {
+                    "cost_per_month": float(row[11]),
+                    "breakdown": {
+                        "dbu_cost": float(row[4]),
+                        "vm_cost": float(row[10])
+                    }
+                },
                 "sku_breakdown": sku_breakdown
             }
         }
@@ -4533,6 +4450,9 @@ class AllPurposeServerlessCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per session in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/all-purpose-serverless", tags=["Cost Calculation"])
@@ -4588,6 +4508,31 @@ async def calculate_all_purpose_serverless_cost(
       "num_workers": 2,
       "serverless_mode": "standard",
       "hours_per_month": 730
+    }
+    ```
+    
+    Option 3 - With Discounts:
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "driver_node_type": "m5.xlarge",
+      "worker_node_type": "m5.xlarge",
+      "num_workers": 4,
+      "serverless_mode": "performance",
+      "runs_per_day": 10,
+      "avg_runtime_minutes": 45,
+      "days_per_month": 22,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 25
+        },
+        "sku_specific": {
+          "ALL_PURPOSE_SERVERLESS_COMPUTE": 30
+        },
+        "notes": "Volume discount for serverless"
+      }
     }
     ```
     """
@@ -4737,22 +4682,30 @@ async def calculate_all_purpose_serverless_cost(
         )
         
         # Build SKU breakdown for discount application
-        
         sku_breakdown = build_sku_breakdown_serverless(
-        
             sku_type=sku_type,
-        
             dbu_cost=float(row.dbu_cost_per_month) if row.dbu_cost_per_month else 0,
-        
             dbu_quantity=float(row.dbu_per_month) if row.dbu_per_month else 0,
-        
             dbu_price=float(row.dbu_price) if row.dbu_price else 0
-        
         )
         
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
         
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "note": "Serverless has no VM costs - only DBU costs"
+        }
         
-        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
         
         return {
             "success": True,
@@ -4782,10 +4735,7 @@ async def calculate_all_purpose_serverless_cost(
                     "dbu_price": float(row[3]),
                     "dbu_cost_per_month": float(row[4])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "note": "Serverless has no VM costs - only DBU costs"
-                },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
             }
         }
