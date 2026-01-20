@@ -904,3 +904,51 @@ async def validate_warehouse_type(warehouse_type: str, db: AsyncSession) -> Opti
         }
     return None
 
+
+async def validate_sku_specific_discounts(sku_specific: dict, db: AsyncSession) -> Optional[Dict]:
+    """
+    Validate SKU names in the sku_specific discount configuration.
+    Returns error dict with all valid SKUs if any invalid SKU is found, None if all valid.
+    """
+    if not sku_specific:
+        return None
+    
+    # Query all valid SKUs from sku_discount_mapping table
+    query = text("""
+        SELECT sku, discount_category, workload_group, description
+        FROM lakemeter.sku_discount_mapping
+        ORDER BY workload_group, sku
+    """)
+    result = await db.execute(query)
+    rows = result.fetchall()
+    
+    valid_skus = [row[0] for row in rows]
+    sku_details = {
+        row[0]: {
+            "sku": row[0],
+            "discount_category": row[1],
+            "workload_group": row[2],
+            "description": row[3] if row[3] else f"{row[0]} workload"
+        }
+        for row in rows
+    }
+    
+    # Check for invalid SKUs
+    invalid_skus = [sku for sku in sku_specific.keys() if sku not in valid_skus]
+    
+    if invalid_skus:
+        return {
+            "success": False,
+            "error": {
+                "code": "INVALID_SKU_IN_DISCOUNT_CONFIG",
+                "message": f"Invalid SKU(s) in sku_specific discount configuration: {', '.join(invalid_skus)}. Please use valid SKU names from the available list.",
+                "field": "discount_config.sku_specific",
+                "invalid_skus": invalid_skus,
+                "valid_skus": valid_skus,
+                "sku_details": list(sku_details.values()),
+                "note": "Use GET /api/v1/reference/discount-options to see all available SKUs with descriptions"
+            }
+        }
+    
+    return None
+
