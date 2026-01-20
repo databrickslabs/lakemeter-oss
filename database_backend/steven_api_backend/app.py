@@ -4167,6 +4167,9 @@ class JobsServerlessCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per job in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/jobs-serverless", tags=["Cost Calculation"])
@@ -4219,6 +4222,31 @@ async def calculate_jobs_serverless_cost(
       "num_workers": 2,
       "serverless_mode": "performance",
       "hours_per_month": 150
+    }
+    ```
+    
+    With Discounts:
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "driver_node_type": "m5.xlarge",
+      "worker_node_type": "m5.xlarge",
+      "num_workers": 4,
+      "serverless_mode": "standard",
+      "runs_per_day": 12,
+      "avg_runtime_minutes": 45,
+      "days_per_month": 22,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20
+        },
+        "sku_specific": {
+          "JOBS_SERVERLESS_COMPUTE": 28
+        },
+        "notes": "Enterprise serverless discount"
+      }
     }
     ```
     """
@@ -4375,6 +4403,24 @@ async def calculate_jobs_serverless_cost(
             dbu_price=float(row.dbu_price) if row.dbu_price else 0
         )
         
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
+        
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "note": "Serverless has no VM costs - only DBU costs"
+        }
+        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
+        
         return {
             "success": True,
             "data": {
@@ -4403,10 +4449,7 @@ async def calculate_jobs_serverless_cost(
                     "dbu_price": float(row[3]),
                     "dbu_cost_per_month": float(row[4])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "note": "Serverless has no VM costs - only DBU costs"
-                },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
             }
         }
