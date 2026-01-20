@@ -311,7 +311,7 @@ def build_sku_breakdown_classic(
 ):
     """
     Builds a simplified flat list SKU breakdown for classic compute workloads.
-    Returns: [{"type": "dbu|vm", "sku": "SKU_NAME", "cost": X, "qty": Y, "usage_unit": "DBU", "unit_price_before_discount": Z}, ...]
+    Returns: [{"type": "dbu|vm", "sku": "SKU_NAME", "cost": X, "qty": Y, "usage_unit": "DBU|Hours", "unit_price_before_discount": Z}, ...]
     """
     breakdown = []
     
@@ -326,25 +326,25 @@ def build_sku_breakdown_classic(
             "unit_price_before_discount": round(dbu_price, 6)
         })
     
-    # Driver VM SKU (measured in DBU equivalent for consistency)
+    # Driver VM SKU
     if driver_vm_cost > 0:
         breakdown.append({
             "type": "vm",
             "sku": f"VM_{driver_pricing_tier.upper()}",
             "cost": round(driver_vm_cost, 2),
             "qty": round(hours_per_month, 2),
-            "usage_unit": "DBU",
+            "usage_unit": "Hours",
             "unit_price_before_discount": round(driver_vm_price_per_hour, 6)
         })
     
-    # Worker VM SKU (measured in DBU equivalent for consistency)
+    # Worker VM SKU
     if worker_vm_cost > 0 and num_workers > 0:
         breakdown.append({
             "type": "vm",
             "sku": f"VM_{worker_pricing_tier.upper()}",
             "cost": round(worker_vm_cost, 2),
             "qty": round(hours_per_month * num_workers, 2),
-            "usage_unit": "DBU",
+            "usage_unit": "Hours",
             "unit_price_before_discount": round(worker_vm_price_per_hour, 6)
         })
     
@@ -4942,7 +4942,7 @@ async def calculate_dbsql_classic_pro_cost(
     }
     ```
     
-    Option 3 - With Discounts (SKU-specific overrides global):
+    Option 3 - With Discounts:
     ```json
     {
       "cloud": "AWS",
@@ -4958,16 +4958,12 @@ async def calculate_dbsql_classic_pro_cost(
           "dbu_discount": 18,
           "vm_discount": 12
         },
-        "sku_specific": {
-          "SQL_COMPUTE": 22,
-          "VM_ON_DEMAND": 15
-        },
-        "notes": "SQL warehouse discount with SKU overrides"
+        "notes": "SQL warehouse discount"
       }
     }
     ```
     
-    **Response Structure (with SKU-specific discounts):**
+    **Response Structure (with discounts):**
     ```json
     {
       "success": true,
@@ -4980,35 +4976,26 @@ async def calculate_dbsql_classic_pro_cost(
             "vm_cost": 2396.16
           },
           "breakdown_after_discount": {
-            "dbu_cost": 1317.89,
-            "vm_cost": 2036.74
+            "dbu_cost": 1385.47,
+            "vm_cost": 2108.62
           },
           "discount_by_category": {
-            "dbu": { "amount": 371.71, "percentage": 22.0 },
-            "vm": { "amount": 359.42, "percentage": 15.0 }
+            "dbu": { "amount": 304.13, "percentage": 18.0 },
+            "vm": { "amount": 287.54, "percentage": 12.0 }
           },
-          "total_after_discount": 3354.63,
-          "total_discount": 731.13,
-          "effective_discount_percentage": 17.89
+          "total_after_discount": 3494.09,
+          "total_discount": 591.67,
+          "effective_discount_percentage": 14.48
         },
         "sku_breakdown": [
           {
             "type": "dbu",
             "sku": "SQL_COMPUTE",
             "cost": 1689.6,
-            "cost_after_discount": 1317.89,
+            "cost_after_discount": 1385.47,
             "unit_price_before_discount": 0.22,
-            "unit_price_after_discount": 0.1716,
-            "discount": { "percentage": 22.0, "amount": 371.71, "source": "sku_specific:SQL_COMPUTE" }
-          },
-          {
-            "type": "vm",
-            "sku": "VM_ON_DEMAND",
-            "cost": 798.72,
-            "cost_after_discount": 678.91,
-            "unit_price_before_discount": 4.992,
-            "unit_price_after_discount": 4.2432,
-            "discount": { "percentage": 15.0, "amount": 119.81, "source": "sku_specific:VM_ON_DEMAND" }
+            "unit_price_after_discount": 0.1804,
+            "discount": { "percentage": 18.0, "amount": 304.13, "source": "global:dbu" }
           }
         ]
       }
@@ -5697,7 +5684,7 @@ async def calculate_dlt_classic_cost(
     }
     ```
     
-    Option 3 - With Discounts (SKU-specific overrides global):
+    Option 3 - With Discounts:
     ```json
     {
       "cloud": "AWS",
@@ -5716,16 +5703,12 @@ async def calculate_dlt_classic_cost(
           "dbu_discount": 15,
           "vm_discount": 10
         },
-        "sku_specific": {
-          "DLT_PRO_COMPUTE_(PHOTON)": 20,
-          "VM_SPOT": 12
-        },
-        "notes": "DLT pipeline discount with SKU overrides"
+        "notes": "DLT pipeline discount"
       }
     }
     ```
     
-    **Response Structure (with SKU-specific discounts):**
+    **Response Structure (with discounts):**
     ```json
     {
       "success": true,
@@ -5738,44 +5721,26 @@ async def calculate_dlt_classic_cost(
             "vm_cost": 60.93
           },
           "breakdown_after_discount": {
-            "dbu_cost": 240.12,
-            "vm_cost": 54.19
+            "dbu_cost": 255.13,
+            "vm_cost": 54.84
           },
           "discount_by_category": {
-            "dbu": { "amount": 60.03, "percentage": 20.0 },
-            "vm": { "amount": 6.74, "percentage": 11.06 }
+            "dbu": { "amount": 45.02, "percentage": 15.0 },
+            "vm": { "amount": 6.09, "percentage": 10.0 }
           },
-          "total_after_discount": 294.31,
-          "total_discount": 66.77,
-          "effective_discount_percentage": 18.49
+          "total_after_discount": 309.97,
+          "total_discount": 51.11,
+          "effective_discount_percentage": 14.15
         },
         "sku_breakdown": [
           {
             "type": "dbu",
             "sku": "DLT_PRO_COMPUTE_(PHOTON)",
             "cost": 300.15,
-            "cost_after_discount": 240.12,
+            "cost_after_discount": 255.13,
             "unit_price_before_discount": 0.25,
-            "unit_price_after_discount": 0.2,
-            "discount": { "percentage": 20.0, "amount": 60.03, "source": "sku_specific:DLT_PRO_COMPUTE_(PHOTON)" }
-          },
-          {
-            "type": "vm",
-            "sku": "VM_ON_DEMAND",
-            "cost": 28.8,
-            "cost_after_discount": 25.92,
-            "unit_price_before_discount": 0.192,
-            "unit_price_after_discount": 0.1728,
-            "discount": { "percentage": 10.0, "amount": 2.88, "source": "global:vm" }
-          },
-          {
-            "type": "vm",
-            "sku": "VM_SPOT",
-            "cost": 32.13,
-            "cost_after_discount": 28.27,
-            "unit_price_before_discount": 0.2142,
-            "unit_price_after_discount": 0.188496,
-            "discount": { "percentage": 12.0, "amount": 3.86, "source": "sku_specific:VM_SPOT" }
+            "unit_price_after_discount": 0.2125,
+            "discount": { "percentage": 15.0, "amount": 45.02, "source": "global:dbu" }
           }
         ]
       }
