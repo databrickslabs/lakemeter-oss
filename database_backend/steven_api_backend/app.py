@@ -9884,6 +9884,91 @@ async def get_lakeflow_gateway_defaults():
       }
     }
     ```
+    
+    **Example Request with SKU-Specific Discounts:**
+    ```json
+    {
+      "connector_type": "database",
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "pipeline_driver_node_type": "m5.xlarge",
+      "pipeline_worker_node_type": "m5.xlarge",
+      "pipeline_num_workers": 2,
+      "pipeline_serverless_mode": "standard",
+      "pipeline_hours_per_month": 100,
+      "gateway_hours_per_month": 730,
+      "gateway_num_workers": 1,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 15,
+          "vm_discount": 10
+        },
+        "sku_specific": {
+          "DLT_ADVANCED_COMPUTE": 30,
+          "VM_ON_DEMAND": 20
+        },
+        "notes": "Q1 2026 Lakeflow Connect - Heavier discount on gateway components (DLT Advanced + VMs)"
+      }
+    }
+    ```
+    
+    **Example Response with SKU-Specific Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "LAKEFLOW_CONNECT",
+        "connector_type": "database",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "JOBS_SERVERLESS_COMPUTE",
+            "cost": 210.11,
+            "cost_after_discount": 178.59,
+            "source": "ingestion_pipeline",
+            "discount": {
+              "percentage_applied": 15.0,
+              "source": "global:dbu",
+              "amount_saved": 31.52
+            }
+          },
+          {
+            "type": "dbu",
+            "sku": "DLT_ADVANCED_COMPUTE",
+            "cost": 912.5,
+            "cost_after_discount": 638.75,
+            "source": "ingestion_gateway",
+            "discount": {
+              "percentage_applied": 30.0,
+              "source": "sku_specific:DLT_ADVANCED_COMPUTE",
+              "amount_saved": 273.75
+            }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_ON_DEMAND",
+            "cost": 116.06,
+            "cost_after_discount": 92.85,
+            "source": "ingestion_gateway",
+            "discount": {
+              "percentage_applied": 20.0,
+              "source": "sku_specific:VM_ON_DEMAND",
+              "amount_saved": 23.21
+            }
+          }
+        ],
+        "total_cost": {
+          "ingestion_pipeline": 210.11,
+          "ingestion_gateway": 1028.56,
+          "total": 1238.67,
+          "total_after_discount": 910.19,
+          "total_discount": 328.48,
+          "effective_discount_percentage": 26.52
+        }
+      }
+    }
+    ```
     """
     return {
         "success": True,
