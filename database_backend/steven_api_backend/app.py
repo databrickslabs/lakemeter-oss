@@ -6166,7 +6166,7 @@ async def calculate_dlt_serverless_cost(
     }
     ```
     
-    Option 3 - With Discounts:
+    Option 3 - With Discounts (SKU-specific overrides global):
     ```json
     {
       "cloud": "AWS",
@@ -6181,12 +6181,15 @@ async def calculate_dlt_serverless_cost(
         "global": {
           "dbu_discount": 20
         },
-        "notes": "DLT serverless discount"
+        "sku_specific": {
+          "JOBS_SERVERLESS_COMPUTE": 24
+        },
+        "notes": "DLT serverless discount with SKU override"
       }
     }
     ```
     
-    **Response Structure (with discounts):**
+    **Response Structure (with SKU-specific discount):**
     ```json
     {
       "success": true,
@@ -6196,24 +6199,24 @@ async def calculate_dlt_serverless_cost(
           "cost_per_month": 630.32,
           "note": "Serverless has no VM costs - only DBU costs",
           "breakdown_after_discount": {
-            "dbu_cost": 504.26
+            "dbu_cost": 479.04
           },
           "discount_by_category": {
-            "dbu": { "amount": 126.06, "percentage": 20.0 }
+            "dbu": { "amount": 151.28, "percentage": 24.0 }
           },
-          "total_after_discount": 504.26,
-          "total_discount": 126.06,
-          "effective_discount_percentage": 20.0
+          "total_after_discount": 479.04,
+          "total_discount": 151.28,
+          "effective_discount_percentage": 24.0
         },
         "sku_breakdown": [
           {
             "type": "dbu",
             "sku": "JOBS_SERVERLESS_COMPUTE",
             "cost": 630.32,
-            "cost_after_discount": 504.26,
+            "cost_after_discount": 479.04,
             "unit_price_before_discount": 0.35,
-            "unit_price_after_discount": 0.28,
-            "discount": { "percentage": 20.0, "amount": 126.06, "source": "global:dbu" }
+            "unit_price_after_discount": 0.266,
+            "discount": { "percentage": 24.0, "amount": 151.28, "source": "sku_specific:JOBS_SERVERLESS_COMPUTE" }
           }
         ]
       }
