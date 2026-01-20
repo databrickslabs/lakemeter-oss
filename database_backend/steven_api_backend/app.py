@@ -6726,7 +6726,7 @@ async def calculate_vector_search_cost(
         if storage_cost_per_month > 0:
             sku_breakdown.append({
                 "type": "storage",
-                "sku": "VECTOR_SEARCH_STORAGE",
+                "sku": "DATABRICKS_STORAGE",
                 "cost": round(storage_cost_per_month, 2),
                 "qty": round(billable_storage_gb, 2),
                 "usage_unit": "DSU",
@@ -7912,7 +7912,7 @@ async def calculate_lakebase_cost(
           },
           {
             "type": "storage",
-            "sku": "LAKEBASE_STORAGE_DSU",
+            "sku": "DATABRICKS_STORAGE",
             "cost": 345.0,
             "cost_after_discount": 293.25,
             "discount": {
@@ -8055,7 +8055,7 @@ async def calculate_lakebase_cost(
         if storage_cost_per_month > 0:
             sku_breakdown.append({
                 "type": "storage",
-                "sku": "LAKEBASE_STORAGE_DSU",
+                "sku": "DATABRICKS_STORAGE",
                 "cost": round(storage_cost_per_month, 2),
                 "qty": round(total_dsu, 2),
                 "usage_unit": "DSU",
