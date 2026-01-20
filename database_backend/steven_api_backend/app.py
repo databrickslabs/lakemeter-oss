@@ -9376,12 +9376,9 @@ async def calculate_databricks_support_cost(
       "annual_product_commit": 500000,
       "discount_config": {
         "global": {
-          "support_discount": 15
+          "support_discount": 25
         },
-        "sku_specific": {
-          "DATABRICKS_SUPPORT": 25
-        },
-        "notes": "Q1 2026 Support discount - SKU-specific override"
+        "notes": "Q1 2026 Support discount - 25% off all support tiers"
       }
     }
     ```
@@ -9402,7 +9399,7 @@ async def calculate_databricks_support_cost(
             "usage_unit": "MONTH",
             "discount": {
               "percentage_applied": 25.0,
-              "source": "sku_specific:DATABRICKS_SUPPORT",
+              "source": "global:support",
               "amount_saved": 2604.17
             }
           }
@@ -9568,12 +9565,9 @@ async def calculate_enhanced_security_cost(
       "product_spend": 100000,
       "discount_config": {
         "global": {
-          "platform_addon_discount": 18
+          "platform_addon_discount": 30
         },
-        "sku_specific": {
-          "ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES": 30
-        },
-        "notes": "Q1 2026 Enhanced Security discount - SKU-specific override"
+        "notes": "Q1 2026 Enhanced Security discount - 30% off platform add-on"
       }
     }
     ```
@@ -9594,7 +9588,7 @@ async def calculate_enhanced_security_cost(
             "usage_unit": "PRODUCT_LIST_PRICE_CONSUMPTION",
             "discount": {
               "percentage_applied": 30.0,
-              "source": "sku_specific:ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES",
+              "source": "global:platform_addon",
               "amount_saved": 4500.0
             }
           }
@@ -9810,10 +9804,10 @@ async def get_lakeflow_gateway_defaults():
     - Driver: n2-highmem-8 (8 vCPU, 64 GB, encryption supported)
     - Worker: n2-standard-4 (4 vCPU, 16 GB, encryption supported)
     
-    **Example Request with Discounts (SaaS Connector):**
+    **Example Request with Discounts (Database Connector with Gateway):**
     ```json
     {
-      "connector_type": "saas",
+      "connector_type": "database",
       "cloud": "AWS",
       "region": "us-east-1",
       "tier": "PREMIUM",
@@ -9822,15 +9816,14 @@ async def get_lakeflow_gateway_defaults():
       "pipeline_num_workers": 2,
       "pipeline_serverless_mode": "standard",
       "pipeline_hours_per_month": 100,
+      "gateway_hours_per_month": 730,
+      "gateway_num_workers": 1,
       "discount_config": {
         "global": {
           "dbu_discount": 20,
           "vm_discount": 15
         },
-        "sku_specific": {
-          "DLT_PRO_SERVERLESS_COMPUTE": 28
-        },
-        "notes": "Q1 2026 Lakeflow Connect discount"
+        "notes": "Q1 2026 Lakeflow Connect discount - applies to both DLT Serverless and Classic DLT Gateway"
       }
     }
     ```
@@ -9841,7 +9834,7 @@ async def get_lakeflow_gateway_defaults():
       "success": true,
       "data": {
         "workload_type": "LAKEFLOW_CONNECT",
-        "connector_type": "saas",
+        "connector_type": "database",
         "sku_breakdown": [
           {
             "type": "dbu",
@@ -9854,15 +9847,39 @@ async def get_lakeflow_gateway_defaults():
               "source": "global:dbu",
               "amount_saved": 42.02
             }
+          },
+          {
+            "type": "dbu",
+            "sku": "DLT_ADVANCED_COMPUTE",
+            "cost": 912.5,
+            "cost_after_discount": 730.0,
+            "source": "ingestion_gateway",
+            "discount": {
+              "percentage_applied": 20.0,
+              "source": "global:dbu",
+              "amount_saved": 182.5
+            }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_ON_DEMAND",
+            "cost": 116.06,
+            "cost_after_discount": 98.65,
+            "source": "ingestion_gateway",
+            "discount": {
+              "percentage_applied": 15.0,
+              "source": "global:vm",
+              "amount_saved": 17.41
+            }
           }
         ],
         "total_cost": {
           "ingestion_pipeline": 210.11,
-          "ingestion_gateway": 0,
-          "total": 210.11,
-          "total_after_discount": 168.09,
-          "total_discount": 42.02,
-          "effective_discount_percentage": 20.0
+          "ingestion_gateway": 1028.56,
+          "total": 1238.67,
+          "total_after_discount": 996.74,
+          "total_discount": 241.93,
+          "effective_discount_percentage": 19.53
         }
       }
     }
