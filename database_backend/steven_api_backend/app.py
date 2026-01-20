@@ -7343,7 +7343,7 @@ async def calculate_fmapi_databricks_cost(
           "dbu_discount": 18
         },
         "sku_specific": {
-          "SERVERLESS_REAL_TIME_INFERENCE": 25
+          "OPENAI_MODEL_SERVING": 25
         },
         "notes": "Q1 2026 FMAPI Databricks discount - SKU-specific override"
       }
@@ -7359,7 +7359,7 @@ async def calculate_fmapi_databricks_cost(
         "sku_breakdown": [
           {
             "type": "fmapi",
-            "sku": "SERVERLESS_REAL_TIME_INFERENCE",
+            "sku": "OPENAI_MODEL_SERVING",
             "cost": 0.5,
             "cost_after_discount": 0.375,
             "qty": 1.0,
@@ -7368,7 +7368,7 @@ async def calculate_fmapi_databricks_cost(
             "unit_price_after_discount": 0.375,
             "discount": {
               "percentage_applied": 25.0,
-              "source": "sku_specific:SERVERLESS_REAL_TIME_INFERENCE",
+              "source": "sku_specific:OPENAI_MODEL_SERVING",
               "amount_saved": 0.125
             }
           }
@@ -7804,6 +7804,7 @@ class LakebaseCalculationRequest(BaseModel):
     num_nodes: int = Field(..., description="Number of nodes: 1-3 for HA", ge=1, le=3)
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
     storage_gb: float = Field(0, description="Storage in GB (max 8 TB = 8192 GB, no free tier)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/lakebase", tags=["Cost Calculation"])
@@ -7998,7 +7999,21 @@ async def calculate_lakebase_cost(
                 "unit_price_before_discount": round(price_per_dsu, 6)
             })
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "LAKEBASE",
@@ -8037,6 +8052,15 @@ async def calculate_lakebase_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -8095,6 +8119,7 @@ class DatabricksAppsCalculationRequest(BaseModel):
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     size: str = Field(..., description="App size: medium or large")
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/databricks-apps", tags=["Cost Calculation"])
@@ -8213,7 +8238,21 @@ async def calculate_databricks_apps_cost(
             dbu_price=dbu_price
         )
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "DATABRICKS_APPS",
@@ -8240,6 +8279,15 @@ async def calculate_databricks_apps_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -8262,6 +8310,7 @@ class CleanRoomCalculationRequest(BaseModel):
     region: str = Field(..., description="Region code (e.g., us-east-1, southeastasia)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     num_collaborators: int = Field(..., description="Number of collaborators (1-10, excludes the org setting up the clean room)", ge=1)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
     days_per_month: int = Field(30, description="Days per month (default: 30)", ge=1, le=31)
 
 
@@ -8403,7 +8452,21 @@ async def calculate_clean_room_cost(
             "unit_price_before_discount": round(rate_per_collaborator_per_day, 6)
         }]
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "CLEAN_ROOM",
@@ -8427,6 +8490,15 @@ async def calculate_clean_room_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -8488,6 +8560,8 @@ class AIParseCalculationRequest(BaseModel):
     # Method 2: Pages + Complexity
     num_pages: Optional[int] = Field(None, description="Number of pages to parse", ge=0)
     complexity: Optional[str] = Field(None, description="Complexity: low_text, low_images, medium, high")
+    
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.get("/api/v1/ai-parse/complexities", tags=["AI Parse"])
@@ -8689,6 +8763,20 @@ async def calculate_ai_parse_cost(
             "unit_price_before_discount": round(dbu_rate, 6)
         }]
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
         # Build response
         response_data = {
             "workload_type": "AI_PARSE",
@@ -8722,6 +8810,13 @@ async def calculate_ai_parse_cost(
         else:
             response_data["configuration"]["dbu_quantity"] = request.dbu_quantity
         
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["total_cost"] = enhance_total_cost_with_discount(
+                response_data["total_cost"],
+                sku_breakdown
+            )
+        
         return {
             "success": True,
             "data": response_data
@@ -8752,6 +8847,7 @@ class ShutterstockImageAICalculationRequest(BaseModel):
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     num_images: int = Field(..., description="Number of images to process", ge=1)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.get("/api/v1/shutterstock-imageai/info", tags=["Shutterstock ImageAI"])
@@ -8871,7 +8967,21 @@ async def calculate_shutterstock_imageai_cost(
             "unit_price_before_discount": round(dbu_rate, 6)
         }]
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "SHUTTERSTOCK_IMAGEAI",
@@ -8894,6 +9004,15 @@ async def calculate_shutterstock_imageai_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
