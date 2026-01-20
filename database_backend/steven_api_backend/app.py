@@ -7343,7 +7343,7 @@ async def calculate_fmapi_databricks_cost(
           "dbu_discount": 18
         },
         "sku_specific": {
-          "OPENAI_MODEL_SERVING": 25
+          "SERVERLESS_REAL_TIME_INFERENCE": 25
         },
         "notes": "Q1 2026 FMAPI Databricks discount - SKU-specific override"
       }
@@ -7359,7 +7359,7 @@ async def calculate_fmapi_databricks_cost(
         "sku_breakdown": [
           {
             "type": "fmapi",
-            "sku": "OPENAI_MODEL_SERVING",
+            "sku": "SERVERLESS_REAL_TIME_INFERENCE",
             "cost": 0.5,
             "cost_after_discount": 0.375,
             "qty": 1.0,
@@ -7368,7 +7368,7 @@ async def calculate_fmapi_databricks_cost(
             "unit_price_after_discount": 0.375,
             "discount": {
               "percentage_applied": 25.0,
-              "source": "sku_specific:OPENAI_MODEL_SERVING",
+              "source": "sku_specific:SERVERLESS_REAL_TIME_INFERENCE",
               "amount_saved": 0.125
             }
           }
