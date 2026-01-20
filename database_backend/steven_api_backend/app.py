@@ -8228,6 +8228,55 @@ async def calculate_databricks_apps_cost(
       }
     }
     ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "size": "medium",
+      "hours_per_month": 730,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 18
+        },
+        "sku_specific": {
+          "ALL_PURPOSE_SERVERLESS_COMPUTE": 25
+        },
+        "notes": "Q1 2026 Databricks Apps discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DATABRICKS_APPS",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "ALL_PURPOSE_SERVERLESS_COMPUTE",
+            "cost": 273.75,
+            "cost_after_discount": 205.31,
+            "discount": {
+              "percentage_applied": 25.0,
+              "source": "sku_specific:ALL_PURPOSE_SERVERLESS_COMPUTE",
+              "amount_saved": 68.44
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 273.75,
+          "total_after_discount": 205.31,
+          "total_discount": 68.44,
+          "effective_discount_percentage": 25.0
+        }
+      }
+    }
+    ```
     """
     # Validate cloud, region, tier
     error = await validate_cloud(request.cloud)
@@ -8444,6 +8493,58 @@ async def calculate_clean_room_cost(
       "total_cost": {
         "cost_per_month": 450.00,
         "note": "Excludes the organization that sets up the clean room"
+      }
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "num_collaborators": 3,
+      "days_per_month": 20,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 22
+        },
+        "sku_specific": {
+          "CLEAN_ROOMS_COLLABORATOR": 30
+        },
+        "notes": "Q1 2026 Clean Room discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "CLEAN_ROOM",
+        "sku_breakdown": [
+          {
+            "type": "collaborator",
+            "sku": "CLEAN_ROOMS_COLLABORATOR",
+            "cost": 3000.0,
+            "cost_after_discount": 2100.0,
+            "qty": 60.0,
+            "usage_unit": "DAY",
+            "discount": {
+              "percentage_applied": 30.0,
+              "source": "sku_specific:CLEAN_ROOMS_COLLABORATOR",
+              "amount_saved": 900.0
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 3000.0,
+          "total_after_discount": 2100.0,
+          "total_discount": 900.0,
+          "effective_discount_percentage": 30.0,
+          "note": "Excludes the organization that sets up the clean room"
+        }
       }
     }
     ```
@@ -8717,6 +8818,57 @@ async def calculate_ai_parse_cost(
       "dbu_quantity": 500
     }
     ```
+    
+    **Example Request with Discounts (Pages-based):**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "num_pages": 1000,
+      "complexity": "medium",
+      "discount_config": {
+        "global": {
+          "dbu_discount": 15
+        },
+        "sku_specific": {
+          "SERVERLESS_REAL_TIME_INFERENCE": 28
+        },
+        "notes": "Q1 2026 AI-Parse discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "AI_PARSE",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SERVERLESS_REAL_TIME_INFERENCE",
+            "cost": 4.375,
+            "cost_after_discount": 3.15,
+            "qty": 62.5,
+            "usage_unit": "DBU",
+            "discount": {
+              "percentage_applied": 28.0,
+              "source": "sku_specific:SERVERLESS_REAL_TIME_INFERENCE",
+              "amount_saved": 1.225
+            }
+          }
+        ],
+        "total_cost": {
+          "cost": 4.375,
+          "total_after_discount": 3.15,
+          "total_discount": 1.225,
+          "effective_discount_percentage": 28.0
+        }
+      }
+    }
+    ```
     """
     # Validate cloud, region, tier
     error = await validate_cloud(request.cloud)
@@ -8970,6 +9122,56 @@ async def calculate_shutterstock_imageai_cost(
         "total_dbu": 857,
         "dbu_rate": 0.07,
         "cost": 59.99
+      }
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "num_images": 100,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20
+        },
+        "sku_specific": {
+          "SERVERLESS_REAL_TIME_INFERENCE": 30
+        },
+        "notes": "Q1 2026 Shutterstock ImageAI discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "SHUTTERSTOCK_IMAGEAI",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SERVERLESS_REAL_TIME_INFERENCE",
+            "cost": 6.0,
+            "cost_after_discount": 4.2,
+            "qty": 85.7,
+            "usage_unit": "DBU",
+            "discount": {
+              "percentage_applied": 30.0,
+              "source": "sku_specific:SERVERLESS_REAL_TIME_INFERENCE",
+              "amount_saved": 1.8
+            }
+          }
+        ],
+        "total_cost": {
+          "cost": 6.0,
+          "total_after_discount": 4.2,
+          "total_discount": 1.8,
+          "effective_discount_percentage": 30.0
+        }
       }
     }
     ```
