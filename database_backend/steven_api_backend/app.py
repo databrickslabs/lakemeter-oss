@@ -9310,6 +9310,7 @@ class DatabricksSupportCalculationRequest(BaseModel):
     """Request model for Databricks Support cost calculation"""
     support_tier: str = Field(..., description="Support tier: business, enhanced, production, mission_critical")
     annual_product_commit: float = Field(..., description="Annual product commitment in USD", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.get("/api/v1/databricks-support/tiers", tags=["Databricks Support"])
@@ -9340,7 +9341,10 @@ async def get_support_tiers():
 
 
 @app.post("/api/v1/calculate/databricks-support", tags=["Cost Calculation"])
-async def calculate_databricks_support_cost(request: DatabricksSupportCalculationRequest):
+async def calculate_databricks_support_cost(
+    request: DatabricksSupportCalculationRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
     """
     Calculate Databricks Support cost.
     
@@ -9362,6 +9366,55 @@ async def calculate_databricks_support_cost(request: DatabricksSupportCalculatio
     {
       "support_tier": "enhanced",
       "annual_product_commit": 200000
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "support_tier": "production",
+      "annual_product_commit": 500000,
+      "discount_config": {
+        "global": {
+          "support_discount": 15
+        },
+        "sku_specific": {
+          "DATABRICKS_SUPPORT": 25
+        },
+        "notes": "Q1 2026 Support discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DATABRICKS_SUPPORT",
+        "sku_breakdown": [
+          {
+            "type": "support",
+            "sku": "DATABRICKS_SUPPORT",
+            "cost": 10416.67,
+            "cost_after_discount": 7812.5,
+            "qty": 1,
+            "usage_unit": "MONTH",
+            "discount": {
+              "percentage_applied": 25.0,
+              "source": "sku_specific:DATABRICKS_SUPPORT",
+              "amount_saved": 2604.17
+            }
+          }
+        ],
+        "total_cost": {
+          "annual_cost": 125000,
+          "monthly_cost": 10416.67,
+          "total_after_discount": 7812.5,
+          "total_discount": 2604.17,
+          "effective_discount_percentage": 25.0
+        }
+      }
     }
     ```
     """
@@ -9391,9 +9444,29 @@ async def calculate_databricks_support_cost(request: DatabricksSupportCalculatio
         "sku": sku_type,
         "cost": round(annual_cost / 12, 2),  # monthly cost
         "qty": 1,
-        "usage_unit": "DBU",
+        "usage_unit": "MONTH",
         "unit_price_before_discount": round(annual_cost / 12, 2)
     }]
+    
+    # Validate SKU-specific discounts if provided
+    if request.discount_config and request.discount_config.sku_specific:
+        error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+        if error:
+            return error
+    
+    # Apply discounts if provided
+    if request.discount_config:
+        sku_breakdown = await apply_discount_to_sku_breakdown(sku_breakdown, request.discount_config, db)
+    
+    # Build base response
+    total_cost = {
+        "annual_cost": annual_cost,
+        "monthly_cost": annual_cost / 12
+    }
+    
+    # Enhance with discount summary if discounts applied
+    if request.discount_config:
+        total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
     
     return {
         "success": True,
@@ -9412,10 +9485,7 @@ async def calculate_databricks_support_cost(request: DatabricksSupportCalculatio
                 "percentage_based_cost": percentage_cost,
                 "applied_cost": "minimum" if min_annual > percentage_cost else "percentage"
             },
-            "total_cost": {
-                "annual_cost": annual_cost,
-                "monthly_cost": annual_cost / 12
-            },
+            "total_cost": total_cost,
             "sku_breakdown": sku_breakdown
         }
     }
@@ -9437,6 +9507,7 @@ class EnhancedSecurityCalculationRequest(BaseModel):
     """Request model for Enhanced Security and Compliance cost calculation"""
     cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
     product_spend: float = Field(..., description="Product spend at list price (before discounts) in USD", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.get("/api/v1/enhanced-security/info", tags=["Enhanced Security"])
@@ -9463,7 +9534,10 @@ async def get_enhanced_security_info():
 
 
 @app.post("/api/v1/calculate/enhanced-security", tags=["Cost Calculation"])
-async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationRequest):
+async def calculate_enhanced_security_cost(
+    request: EnhancedSecurityCalculationRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
     """
     Calculate Enhanced Security and Compliance add-on cost.
     
@@ -9486,6 +9560,54 @@ async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationR
       "product_spend": 100000
     }
     ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "product_spend": 100000,
+      "discount_config": {
+        "global": {
+          "platform_addon_discount": 18
+        },
+        "sku_specific": {
+          "ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES": 30
+        },
+        "notes": "Q1 2026 Enhanced Security discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "ENHANCED_SECURITY_COMPLIANCE",
+        "sku_breakdown": [
+          {
+            "type": "platform_addon",
+            "sku": "ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES",
+            "cost": 15000.0,
+            "cost_after_discount": 10500.0,
+            "qty": 100000.0,
+            "usage_unit": "PRODUCT_LIST_PRICE_CONSUMPTION",
+            "discount": {
+              "percentage_applied": 30.0,
+              "source": "sku_specific:ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES",
+              "amount_saved": 4500.0
+            }
+          }
+        ],
+        "total_cost": {
+          "cost": 15000.0,
+          "total_after_discount": 10500.0,
+          "total_discount": 4500.0,
+          "effective_discount_percentage": 30.0
+        }
+      }
+    }
+    ```
     """
     cloud_upper = request.cloud.upper()
     
@@ -9499,18 +9621,37 @@ async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationR
     percentage = ENHANCED_SECURITY_RATES[cloud_upper]
     addon_cost = request.product_spend * (percentage / 100)
     
-    # SKU type for Enhanced Security (cloud-specific, no regional variation)
-    sku_type = f"ENHANCED_SECURITY_{cloud_upper}"
+    # SKU type for Enhanced Security - Use the standard SKU name
+    sku_type = "ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES"
     
     # Build SKU breakdown (not traditional DBU - it's an add-on fee)
     sku_breakdown = [{
-        "type": "addon",
+        "type": "platform_addon",
         "sku": sku_type,
         "cost": round(addon_cost, 2),
         "qty": round(request.product_spend, 2),
         "usage_unit": "PRODUCT_LIST_PRICE_CONSUMPTION",
         "unit_price_before_discount": round(percentage / 100, 6)  # as decimal
     }]
+    
+    # Validate SKU-specific discounts if provided
+    if request.discount_config and request.discount_config.sku_specific:
+        error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+        if error:
+            return error
+    
+    # Apply discounts if provided
+    if request.discount_config:
+        sku_breakdown = await apply_discount_to_sku_breakdown(sku_breakdown, request.discount_config, db)
+    
+    # Build base response
+    total_cost = {
+        "cost": addon_cost
+    }
+    
+    # Enhance with discount summary if discounts applied
+    if request.discount_config:
+        total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
     
     return {
         "success": True,
@@ -9527,9 +9668,7 @@ async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationR
                 "percentage": percentage,
                 "addon_cost": addon_cost
             },
-            "total_cost": {
-                "cost": addon_cost
-            },
+            "total_cost": total_cost,
             "sku_breakdown": sku_breakdown
         }
     }
@@ -9611,6 +9750,9 @@ class LakeflowConnectCalculationRequest(BaseModel):
     gateway_driver_instance: Optional[str] = Field(None, description="Override default driver (AWS: r5n.2xlarge, Azure: Standard_E8d_v4, GCP: n2-highmem-8)")
     gateway_worker_instance: Optional[str] = Field(None, description="Override default worker (AWS: m5.large, Azure: Standard_F4s, GCP: n2-standard-4)")
     gateway_num_workers: int = Field(1, description="Number of gateway workers (default: 1)", ge=1)
+    
+    # ===== DISCOUNT CONFIGURATION =====
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.get("/api/v1/lakeflow-connect/info", tags=["Lakeflow Connect"])
@@ -9667,6 +9809,64 @@ async def get_lakeflow_gateway_defaults():
     **GCP:**
     - Driver: n2-highmem-8 (8 vCPU, 64 GB, encryption supported)
     - Worker: n2-standard-4 (4 vCPU, 16 GB, encryption supported)
+    
+    **Example Request with Discounts (SaaS Connector):**
+    ```json
+    {
+      "connector_type": "saas",
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "pipeline_driver_node_type": "m5.xlarge",
+      "pipeline_worker_node_type": "m5.xlarge",
+      "pipeline_num_workers": 2,
+      "pipeline_serverless_mode": "standard",
+      "pipeline_hours_per_month": 100,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20,
+          "vm_discount": 15
+        },
+        "sku_specific": {
+          "DLT_PRO_SERVERLESS_COMPUTE": 28
+        },
+        "notes": "Q1 2026 Lakeflow Connect discount"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "LAKEFLOW_CONNECT",
+        "connector_type": "saas",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "JOBS_SERVERLESS_COMPUTE",
+            "cost": 210.11,
+            "cost_after_discount": 168.09,
+            "source": "ingestion_pipeline",
+            "discount": {
+              "percentage_applied": 20.0,
+              "source": "global:dbu",
+              "amount_saved": 42.02
+            }
+          }
+        ],
+        "total_cost": {
+          "ingestion_pipeline": 210.11,
+          "ingestion_gateway": 0,
+          "total": 210.11,
+          "total_after_discount": 168.09,
+          "total_discount": 42.02,
+          "effective_discount_percentage": 20.0
+        }
+      }
+    }
+    ```
     """
     return {
         "success": True,
@@ -9971,6 +10171,16 @@ async def calculate_lakeflow_connect_cost(
                     sku_with_source["source"] = "ingestion_gateway"
                     sku_breakdown.append(sku_with_source)
         
+        # Validate SKU-specific discounts if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                return error
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(sku_breakdown, request.discount_config, db)
+        
         # Build configuration based on input type
         config = {
             "cloud": cloud_upper,
@@ -9989,6 +10199,17 @@ async def calculate_lakeflow_connect_cost(
         else:
             config["pipeline_hours_per_month"] = request.pipeline_hours_per_month
         
+        # Build base total_cost
+        total_cost_obj = {
+            "ingestion_pipeline": ingestion_cost,
+            "ingestion_gateway": gateway_cost,
+            "total": total_cost
+        }
+        
+        # Enhance with discount summary if discounts applied
+        if request.discount_config:
+            total_cost_obj = enhance_total_cost_with_discount(total_cost_obj, sku_breakdown)
+        
         response_data = {
             "workload_type": "LAKEFLOW_CONNECT",
             "connector_type": connector_type,
@@ -9996,11 +10217,7 @@ async def calculate_lakeflow_connect_cost(
             "connector_examples": LAKEFLOW_CONNECTOR_TYPES[connector_type]["examples"],
             "configuration": config,
             "ingestion_pipeline": ingestion_pipeline_result,
-            "total_cost": {
-                "ingestion_pipeline": ingestion_cost,
-                "ingestion_gateway": gateway_cost,
-                "total": total_cost
-            },
+            "total_cost": total_cost_obj,
             "sku_breakdown": sku_breakdown
         }
         
