@@ -3932,91 +3932,6 @@ async def calculate_all_purpose_classic_cost(
       "hours_per_month": 730
     }
     ```
-    
-    Option 3 - With Discounts:
-    ```json
-    {
-      "cloud": "AWS",
-      "region": "us-east-1",
-      "tier": "PREMIUM",
-      "driver_node_type": "m5.xlarge",
-      "worker_node_type": "m5.xlarge",
-      "num_workers": 3,
-      "photon_enabled": false,
-      "driver_pricing_tier": "on_demand",
-      "worker_pricing_tier": "spot",
-      "runs_per_day": 5,
-      "avg_runtime_minutes": 60,
-      "days_per_month": 20,
-      "discount_config": {
-        "global": {
-          "dbu_discount": 20,
-          "vm_discount": 10
-        },
-        "notes": "Standard enterprise discount"
-      }
-    }
-    ```
-    
-    **Response with Discount (excerpt):**
-    ```json
-    {
-      "success": true,
-      "data": {
-        "workload_type": "ALL_PURPOSE_COMPUTE",
-        "sku_breakdown": [
-          {
-            "type": "dbu",
-            "sku": "ALL_PURPOSE_COMPUTE",
-            "cost": 151.80,
-            "cost_after_discount": 121.44,
-            "unit_price_after_discount": 0.44,
-            "discount": {
-              "percentage": 20.0,
-              "amount": 30.36,
-              "source": "global:dbu"
-            }
-          },
-          {
-            "type": "vm",
-            "sku": "VM_ON_DEMAND",
-            "cost": 19.20,
-            "cost_after_discount": 17.28,
-            "discount": {
-              "percentage": 10.0,
-              "amount": 1.92,
-              "source": "global:vm"
-            }
-          },
-          {
-            "type": "vm",
-            "sku": "VM_SPOT",
-            "cost": 21.42,
-            "cost_after_discount": 19.28,
-            "discount": {
-              "percentage": 10.0,
-              "amount": 2.14,
-              "source": "global:vm"
-            }
-          }
-        ],
-        "total_cost": {
-          "cost_per_month": 192.42,
-          "breakdown_after_discount": {
-            "dbu_cost": 121.44,
-            "vm_cost": 36.56
-          },
-          "discount_by_category": {
-            "dbu": {"amount": 30.36, "percentage": 20.0},
-            "vm": {"amount": 4.06, "percentage": 10.0}
-          },
-          "total_after_discount": 158.00,
-          "total_discount": 34.42,
-          "effective_discount_percentage": 17.89
-        }
-      }
-    }
-    ```
     """
     # Validate usage parameters - must provide EITHER run-based OR direct hours
     has_run_params = all([
@@ -4351,6 +4266,45 @@ async def calculate_jobs_serverless_cost(
           "JOBS_SERVERLESS_COMPUTE": 28
         },
         "notes": "Enterprise serverless discount"
+      }
+    }
+    ```
+    
+    **Response with Discount (excerpt):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "JOBS_SERVERLESS",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "JOBS_SERVERLESS_COMPUTE",
+            "cost": 693.35,
+            "cost_after_discount": 499.21,
+            "unit_price_after_discount": 0.252,
+            "discount": {
+              "percentage": 28.0,
+              "amount": 194.14,
+              "source": "sku_specific:JOBS_SERVERLESS_COMPUTE"
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 693.35,
+          "breakdown_after_discount": {
+            "dbu_cost": 499.21
+          },
+          "discount_by_category": {
+            "dbu": {
+              "amount": 194.14,
+              "percentage": 28.0
+            }
+          },
+          "total_after_discount": 499.21,
+          "total_discount": 194.14,
+          "effective_discount_percentage": 28.0
+        }
       }
     }
     ```
@@ -4927,6 +4881,9 @@ class DBSQLClassicProCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/dbsql-classic-pro", tags=["Cost Calculation"])
@@ -4982,6 +4939,66 @@ async def calculate_dbsql_classic_pro_cost(
       "vm_pricing_tier": "reserved_1y",
       "vm_payment_option": "no_upfront",
       "hours_per_month": 730
+    }
+    ```
+    
+    Option 3 - With Discounts:
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "warehouse_type": "CLASSIC",
+      "warehouse_size": "Medium",
+      "num_clusters": 2,
+      "vm_pricing_tier": "on_demand",
+      "hours_per_month": 160,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 18,
+          "vm_discount": 12
+        },
+        "notes": "SQL warehouse discount"
+      }
+    }
+    ```
+    
+    **Response Structure (with discounts):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DBSQL_CLASSIC_PRO",
+        "total_cost": {
+          "cost_per_month": 4085.76,
+          "breakdown": {
+            "dbu_cost": 1689.6,
+            "vm_cost": 2396.16
+          },
+          "breakdown_after_discount": {
+            "dbu_cost": 1385.47,
+            "vm_cost": 2108.62
+          },
+          "discount_by_category": {
+            "dbu": { "amount": 304.13, "percentage": 18.0 },
+            "vm": { "amount": 287.54, "percentage": 12.0 }
+          },
+          "total_after_discount": 3494.09,
+          "total_discount": 591.67,
+          "effective_discount_percentage": 14.48
+        },
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SQL_COMPUTE",
+            "cost": 1689.6,
+            "cost_after_discount": 1385.47,
+            "unit_price_before_discount": 0.22,
+            "unit_price_after_discount": 0.1804,
+            "discount": { "percentage": 18.0, "amount": 304.13, "source": "global:dbu" }
+          }
+        ]
+      }
     }
     ```
     """
@@ -5165,6 +5182,27 @@ async def calculate_dbsql_classic_pro_cost(
             num_workers=1  # DBSQL has driver + workers bundled
         )
         
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
+        
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "breakdown": {
+                "dbu_cost": float(row[4]),
+                "vm_cost": float(row[10])
+            }
+        }
+        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
+        
         return {
             "success": True,
             "data": {
@@ -5197,14 +5235,8 @@ async def calculate_dbsql_classic_pro_cost(
                     "total_worker_vm_cost_per_month": float(row[9]),
                     "vm_cost_per_month": float(row[10])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "breakdown": {
-                        "dbu_cost": float(row[4]),
-                        "vm_cost": float(row[10])
-                    },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
-                }
             }
         }
         
@@ -5242,6 +5274,9 @@ class DBSQLServerlessCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/dbsql-serverless", tags=["Cost Calculation"])
@@ -5291,6 +5326,61 @@ async def calculate_dbsql_serverless_cost(
       "warehouse_size": "Large",
       "num_clusters": 2,
       "hours_per_month": 730
+    }
+    ```
+    
+    Option 3 - With Discounts (SKU-specific overrides global):
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "warehouse_size": "Medium",
+      "num_clusters": 1,
+      "hours_per_month": 200,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 22
+        },
+        "sku_specific": {
+          "SERVERLESS_SQL_COMPUTE": 25
+        },
+        "notes": "Serverless SQL discount"
+      }
+    }
+    ```
+    
+    **Response Structure (with discounts):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DBSQL_SERVERLESS",
+        "total_cost": {
+          "cost_per_month": 3360.0,
+          "note": "Serverless has no VM costs - only DBU costs",
+          "breakdown_after_discount": {
+            "dbu_cost": 2520.0
+          },
+          "discount_by_category": {
+            "dbu": { "amount": 840.0, "percentage": 25.0 }
+          },
+          "total_after_discount": 2520.0,
+          "total_discount": 840.0,
+          "effective_discount_percentage": 25.0
+        },
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SERVERLESS_SQL_COMPUTE",
+            "cost": 3360.0,
+            "cost_after_discount": 2520.0,
+            "unit_price_before_discount": 0.7,
+            "unit_price_after_discount": 0.525,
+            "discount": { "percentage": 25.0, "amount": 840.0, "source": "sku_specific:SERVERLESS_SQL_COMPUTE" }
+          }
+        ]
+      }
     }
     ```
     """
@@ -5435,6 +5525,24 @@ async def calculate_dbsql_serverless_cost(
             dbu_price=float(row[3]) if row[3] else 0
         )
         
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
+        
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "note": "Serverless has no VM costs - only DBU costs"
+        }
+        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
+        
         return {
             "success": True,
             "data": {
@@ -5457,10 +5565,7 @@ async def calculate_dbsql_serverless_cost(
                     "dbu_price": float(row[3]),
                     "dbu_cost_per_month": float(row[4])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "note": "Serverless warehouses have no VM costs"
-                },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
             }
         }
@@ -5510,6 +5615,9 @@ class DLTClassicCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/dlt-classic", tags=["Cost Calculation"])
@@ -5573,6 +5681,69 @@ async def calculate_dlt_classic_cost(
       "driver_payment_option": "NA",
       "worker_payment_option": "no_upfront",
       "hours_per_month": 730
+    }
+    ```
+    
+    Option 3 - With Discounts:
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "dlt_edition": "PRO",
+      "photon_enabled": true,
+      "driver_node_type": "m5.xlarge",
+      "worker_node_type": "m5.xlarge",
+      "num_workers": 3,
+      "driver_pricing_tier": "on_demand",
+      "worker_pricing_tier": "spot",
+      "hours_per_month": 150,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 15,
+          "vm_discount": 10
+        },
+        "notes": "DLT pipeline discount"
+      }
+    }
+    ```
+    
+    **Response Structure (with discounts):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DLT",
+        "total_cost": {
+          "cost_per_month": 361.08,
+          "breakdown": {
+            "dbu_cost": 300.15,
+            "vm_cost": 60.93
+          },
+          "breakdown_after_discount": {
+            "dbu_cost": 255.13,
+            "vm_cost": 54.84
+          },
+          "discount_by_category": {
+            "dbu": { "amount": 45.02, "percentage": 15.0 },
+            "vm": { "amount": 6.09, "percentage": 10.0 }
+          },
+          "total_after_discount": 309.97,
+          "total_discount": 51.11,
+          "effective_discount_percentage": 14.15
+        },
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "DLT_PRO_COMPUTE_(PHOTON)",
+            "cost": 300.15,
+            "cost_after_discount": 255.13,
+            "unit_price_before_discount": 0.25,
+            "unit_price_after_discount": 0.2125,
+            "discount": { "percentage": 15.0, "amount": 45.02, "source": "global:dbu" }
+          }
+        ]
+      }
     }
     ```
     """
@@ -5758,6 +5929,27 @@ async def calculate_dlt_classic_cost(
             num_workers=request.num_workers
         )
         
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
+        
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "breakdown": {
+                "dbu_cost": float(row[4]),
+                "vm_cost": float(row[10])
+            }
+        }
+        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
+        
         return {
             "success": True,
             "data": {
@@ -5794,14 +5986,8 @@ async def calculate_dlt_classic_cost(
                     "total_worker_vm_cost_per_month": float(row[9]),
                     "vm_cost_per_month": float(row[10])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "breakdown": {
-                        "dbu_cost": float(row[4]),
-                        "vm_cost": float(row[10])
-                    },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
-                }
             }
         }
         
@@ -5829,6 +6015,9 @@ class DLTServerlessCalculationRequest(BaseModel):
     cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
     
     # Note: Photon is ALWAYS enabled for serverless workloads (no parameter needed)
     # Note: DLT Serverless does NOT have editions - editions are only for Classic
@@ -5902,6 +6091,60 @@ async def calculate_dlt_serverless_cost(
       "num_workers": 3,
       "serverless_mode": "standard",
       "hours_per_month": 730
+    }
+    ```
+    
+    Option 3 - With Discounts:
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "driver_node_type": "m5.xlarge",
+      "worker_node_type": "m5.xlarge",
+      "num_workers": 4,
+      "serverless_mode": "standard",
+      "hours_per_month": 180,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20
+        },
+        "notes": "DLT serverless discount"
+      }
+    }
+    ```
+    
+    **Response Structure (with discounts):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DLT_SERVERLESS",
+        "total_cost": {
+          "cost_per_month": 630.32,
+          "note": "Serverless has no VM costs - only DBU costs",
+          "breakdown_after_discount": {
+            "dbu_cost": 504.26
+          },
+          "discount_by_category": {
+            "dbu": { "amount": 126.06, "percentage": 20.0 }
+          },
+          "total_after_discount": 504.26,
+          "total_discount": 126.06,
+          "effective_discount_percentage": 20.0
+        },
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "JOBS_SERVERLESS_COMPUTE",
+            "cost": 630.32,
+            "cost_after_discount": 504.26,
+            "unit_price_before_discount": 0.35,
+            "unit_price_after_discount": 0.28,
+            "discount": { "percentage": 20.0, "amount": 126.06, "source": "global:dbu" }
+          }
+        ]
+      }
     }
     ```
     """
@@ -6059,6 +6302,24 @@ async def calculate_dlt_serverless_cost(
             dbu_price=float(row[3])
         )
         
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
+        
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "note": "Serverless has no VM costs - only DBU costs"
+        }
+        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
+        
         return {
             "success": True,
             "data": {
@@ -6087,10 +6348,7 @@ async def calculate_dlt_serverless_cost(
                     "dbu_price": float(row[3]),
                     "dbu_cost_per_month": float(row[4])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "note": "Serverless has no VM costs - only DBU costs"
-                },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
             }
         }
