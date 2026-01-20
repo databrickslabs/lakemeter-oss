@@ -6166,7 +6166,7 @@ async def calculate_dlt_serverless_cost(
     }
     ```
     
-    Option 3 - With Discounts (SKU-specific overrides global):
+    Option 3 - With Discounts:
     ```json
     {
       "cloud": "AWS",
@@ -6181,15 +6181,12 @@ async def calculate_dlt_serverless_cost(
         "global": {
           "dbu_discount": 20
         },
-        "sku_specific": {
-          "JOBS_SERVERLESS_COMPUTE": 24
-        },
-        "notes": "DLT serverless discount with SKU override"
+        "notes": "DLT serverless discount"
       }
     }
     ```
     
-    **Response Structure (with SKU-specific discount):**
+    **Response Structure (with discounts):**
     ```json
     {
       "success": true,
@@ -6199,24 +6196,24 @@ async def calculate_dlt_serverless_cost(
           "cost_per_month": 630.32,
           "note": "Serverless has no VM costs - only DBU costs",
           "breakdown_after_discount": {
-            "dbu_cost": 479.04
+            "dbu_cost": 504.26
           },
           "discount_by_category": {
-            "dbu": { "amount": 151.28, "percentage": 24.0 }
+            "dbu": { "amount": 126.06, "percentage": 20.0 }
           },
-          "total_after_discount": 479.04,
-          "total_discount": 151.28,
-          "effective_discount_percentage": 24.0
+          "total_after_discount": 504.26,
+          "total_discount": 126.06,
+          "effective_discount_percentage": 20.0
         },
         "sku_breakdown": [
           {
             "type": "dbu",
             "sku": "JOBS_SERVERLESS_COMPUTE",
             "cost": 630.32,
-            "cost_after_discount": 479.04,
+            "cost_after_discount": 504.26,
             "unit_price_before_discount": 0.35,
-            "unit_price_after_discount": 0.266,
-            "discount": { "percentage": 24.0, "amount": 151.28, "source": "sku_specific:JOBS_SERVERLESS_COMPUTE" }
+            "unit_price_after_discount": 0.28,
+            "discount": { "percentage": 20.0, "amount": 126.06, "source": "global:dbu" }
           }
         ]
       }
@@ -6461,6 +6458,7 @@ class VectorSearchCalculationRequest(BaseModel):
     vector_capacity_millions: float = Field(..., description="Vector capacity in millions", ge=0)
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
     storage_gb: float = Field(0, description="Total storage in GB (first 20 GB per unit is free)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/vector-search", tags=["Cost Calculation"])
@@ -6534,6 +6532,81 @@ async def calculate_vector_search_cost(
         "breakdown": {
           "dbu_cost": ...,
           "storage_cost": 2.30
+        }
+      }
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "mode": "standard",
+      "vector_capacity_millions": 100,
+      "hours_per_month": 730,
+      "storage_gb": 500,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 15,
+          "storage_discount": 10
+        },
+        "sku_specific": {
+          "SERVERLESS_REAL_TIME_INFERENCE": 25
+        },
+        "notes": "Q1 2026 discount - SKU-specific override for Vector Search"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "VECTOR_SEARCH",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SERVERLESS_REAL_TIME_INFERENCE",
+            "cost": 10220.0,
+            "cost_after_discount": 7665.0,
+            "qty": 73000.0,
+            "usage_unit": "DBU",
+            "unit_price_before_discount": 0.14,
+            "unit_price_after_discount": 0.105,
+            "discount": {
+              "percentage_applied": 25.0,
+              "source": "sku_specific:SERVERLESS_REAL_TIME_INFERENCE",
+              "amount_saved": 2555.0
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 10220.0,
+          "breakdown": {
+            "dbu_cost": 10220.0,
+            "storage_cost": 0.0
+          },
+          "breakdown_after_discount": {
+            "dbu_cost": 7665.0,
+            "storage_cost": 0.0
+          },
+          "discount_by_category": {
+            "dbu": {
+              "amount": 2555.0,
+              "percentage": 25.0
+            },
+            "storage": {
+              "amount": 0.0,
+              "percentage": 0.0
+            }
+          },
+          "total_after_discount": 7665.0,
+          "total_discount": 2555.0,
+          "effective_discount_percentage": 25.0,
+          "note": "Vector Search is serverless - no VM costs"
         }
       }
     }
@@ -6660,7 +6733,21 @@ async def calculate_vector_search_cost(
                 "unit_price_before_discount": round(price_per_gb_per_month, 6)
             })
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "VECTOR_SEARCH",
@@ -6702,6 +6789,15 @@ async def calculate_vector_search_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -6725,6 +6821,7 @@ class ModelServingCalculationRequest(BaseModel):
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     gpu_type: str = Field(..., description="GPU type (e.g., gpu_small_t4, gpu_xlarge_a100_80gb_8x)")
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/model-serving", tags=["Cost Calculation"])
@@ -6751,6 +6848,60 @@ async def calculate_model_serving_cost(
       "tier": "PREMIUM",
       "gpu_type": "gpu_small_t4",
       "hours_per_month": 730
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "gpu_type": "gpu_small_t4",
+      "hours_per_month": 730,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20
+        },
+        "sku_specific": {
+          "SERVERLESS_REAL_TIME_INFERENCE": 30
+        },
+        "notes": "Q1 2026 Model Serving discount"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "MODEL_SERVING",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SERVERLESS_REAL_TIME_INFERENCE",
+            "cost": 535.52,
+            "cost_after_discount": 374.86,
+            "qty": 5839.68,
+            "usage_unit": "DBU",
+            "unit_price_before_discount": 0.091725,
+            "unit_price_after_discount": 0.064208,
+            "discount": {
+              "percentage_applied": 30.0,
+              "source": "sku_specific:SERVERLESS_REAL_TIME_INFERENCE",
+              "amount_saved": 160.66
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 535.52,
+          "total_after_discount": 374.86,
+          "total_discount": 160.66,
+          "effective_discount_percentage": 30.0,
+          "note": "Model Serving is serverless - no VM costs"
+        }
+      }
     }
     ```
     """
@@ -6843,7 +6994,21 @@ async def calculate_model_serving_cost(
             dbu_price=float(row[3])
         )
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "MODEL_SERVING",
@@ -6868,6 +7033,15 @@ async def calculate_model_serving_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -7100,6 +7274,7 @@ class FMAPIDatabricksCalculationRequest(BaseModel):
     model: str = Field(..., description="Databricks model name (e.g., llama-3-3-70b, gpt-oss-120b, gemma-3-12b)")
     rate_type: str = Field(..., description="Rate type: input_token, output_token, provisioned_scaling, provisioned_entry")
     quantity: int = Field(..., description="Quantity (tokens or hours depending on rate_type)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/fmapi-databricks", tags=["Cost Calculation"])
@@ -7151,6 +7326,58 @@ async def calculate_fmapi_databricks_cost(
       "model": "gpt-oss-120b",
       "rate_type": "provisioned_scaling",
       "quantity": 730
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "model": "llama-3-3-70b",
+      "rate_type": "input_token",
+      "quantity": 1000000,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 18
+        },
+        "notes": "Q1 2026 FMAPI Databricks discount"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "FMAPI_DATABRICKS",
+        "sku_breakdown": [
+          {
+            "type": "fmapi",
+            "sku": "OPENAI_MODEL_SERVING",
+            "cost": 0.5,
+            "cost_after_discount": 0.41,
+            "qty": 1.0,
+            "usage_unit": "DBU",
+            "unit_price_before_discount": 0.5,
+            "unit_price_after_discount": 0.41,
+            "discount": {
+              "percentage_applied": 18.0,
+              "source": "global:dbu",
+              "amount_saved": 0.09
+            }
+          }
+        ],
+        "cost": {
+          "total_cost": 0.5,
+          "total_after_discount": 0.41,
+          "total_discount": 0.09,
+          "effective_discount_percentage": 18.0,
+          "note": "Cost based on token or provisioned usage"
+        }
+      }
     }
     ```
     """
@@ -7235,7 +7462,21 @@ async def calculate_fmapi_databricks_cost(
             "unit_price_before_discount": round(dbu_price, 6)
         }]
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "FMAPI_DATABRICKS",
@@ -7256,6 +7497,15 @@ async def calculate_fmapi_databricks_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -7283,6 +7533,7 @@ class FMAPIProprietaryCalculationRequest(BaseModel):
     context_length: str = Field("short", description="Context length category: short, long, all")
     rate_type: str = Field(..., description="Rate type: input_token, output_token, provisioned_scaling, etc.")
     quantity: int = Field(..., description="Quantity (tokens or hours depending on rate_type)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/fmapi-proprietary", tags=["Cost Calculation"])
@@ -7337,6 +7588,64 @@ async def calculate_fmapi_proprietary_cost(
       "context_length": "short",
       "rate_type": "provisioned_scaling",
       "quantity": 730
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-5",
+      "endpoint_type": "global",
+      "context_length": "short",
+      "rate_type": "input_token",
+      "quantity": 1000000,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 22
+        },
+        "sku_specific": {
+          "ANTHROPIC_MODEL_SERVING": 28
+        },
+        "notes": "Q1 2026 FMAPI Proprietary discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "FMAPI_PROPRIETARY",
+        "sku_breakdown": [
+          {
+            "type": "fmapi",
+            "sku": "ANTHROPIC_MODEL_SERVING",
+            "cost": 3.0,
+            "cost_after_discount": 2.16,
+            "qty": 1.0,
+            "usage_unit": "DBU",
+            "unit_price_before_discount": 3.0,
+            "unit_price_after_discount": 2.16,
+            "discount": {
+              "percentage_applied": 28.0,
+              "source": "sku_specific:ANTHROPIC_MODEL_SERVING",
+              "amount_saved": 0.84
+            }
+          }
+        ],
+        "cost": {
+          "total_cost": 3.0,
+          "total_after_discount": 2.16,
+          "total_discount": 0.84,
+          "effective_discount_percentage": 28.0,
+          "note": "Cost based on token or provisioned usage"
+        }
+      }
     }
     ```
     """
@@ -7421,7 +7730,21 @@ async def calculate_fmapi_proprietary_cost(
             "unit_price_before_discount": round(dbu_price, 6)
         }]
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "FMAPI_PROPRIETARY",
@@ -7444,6 +7767,15 @@ async def calculate_fmapi_proprietary_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
