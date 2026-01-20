@@ -685,6 +685,148 @@ async def health():
         "database_healthy": db_healthy
     }
 
+
+@app.get("/api/v1/reference/discount-options", tags=["Reference Data"])
+async def get_discount_options(db: AsyncSession = Depends(get_async_db)):
+    """
+    Get available SKUs and their discount categories for discount configuration.
+    
+    Returns:
+        - List of all available SKUs with their discount categories
+        - Discount categories explanation
+        - Workload groups for filtering
+    
+    **Example Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "discount_categories": {
+          "dbu": {
+            "name": "DBU (Databricks Units)",
+            "description": "Applies to all compute workloads billed by DBU",
+            "examples": ["JOBS_COMPUTE", "SQL_COMPUTE", "DLT_CORE_COMPUTE"]
+          },
+          "vm": {
+            "name": "VM (Virtual Machine)",
+            "description": "Applies to underlying cloud VM costs",
+            "examples": ["VM_ON_DEMAND", "VM_SPOT", "VM_RESERVED_1Y"]
+          },
+          "storage": {
+            "name": "Storage",
+            "description": "Applies to storage costs (DSU, GB)",
+            "examples": ["DATABRICKS_STORAGE", "LAKEBASE_STORAGE"]
+          },
+          "platform_addon": {
+            "name": "Platform Add-ons",
+            "description": "Applies to additional platform features",
+            "examples": ["ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES"]
+          },
+          "support": {
+            "name": "Support",
+            "description": "Applies to Databricks support plans",
+            "examples": ["DATABRICKS_SUPPORT"]
+          }
+        },
+        "skus": [...],
+        "workload_groups": [...],
+        "total_sku_count": 50
+      }
+    }
+    ```
+    """
+    try:
+        # Query all SKUs from sku_discount_mapping table
+        query = text("""
+            SELECT 
+                sku, 
+                discount_category, 
+                workload_group, 
+                description
+            FROM lakemeter.sku_discount_mapping
+            ORDER BY workload_group, sku
+        """)
+        
+        result = await db.execute(query)
+        rows = result.fetchall()
+        
+        # Organize data
+        skus = []
+        workload_groups = set()
+        categories_used = set()
+        
+        for row in rows:
+            sku_data = {
+                "sku": row[0],
+                "discount_category": row[1],
+                "workload_group": row[2],
+                "description": row[3] if row[3] else f"{row[0]} workload"
+            }
+            skus.append(sku_data)
+            workload_groups.add(row[2])
+            categories_used.add(row[1])
+        
+        # Discount categories explanation
+        discount_categories = {
+            "dbu": {
+                "name": "DBU (Databricks Units)",
+                "description": "Applies to all compute workloads billed by DBU",
+                "field_name": "dbu_discount",
+                "examples": ["JOBS_COMPUTE_(PHOTON)", "SQL_COMPUTE", "DLT_CORE_COMPUTE"]
+            },
+            "vm": {
+                "name": "VM (Virtual Machine)",
+                "description": "Applies to underlying cloud VM costs",
+                "field_name": "vm_discount",
+                "examples": ["VM_ON_DEMAND", "VM_SPOT", "VM_RESERVED_1Y", "VM_RESERVED_3Y"]
+            },
+            "storage": {
+                "name": "Storage",
+                "description": "Applies to storage costs (DSU, GB)",
+                "field_name": "storage_discount",
+                "examples": ["DATABRICKS_STORAGE", "LAKEBASE_STORAGE", "VECTOR_SEARCH_STORAGE"]
+            },
+            "platform_addon": {
+                "name": "Platform Add-ons",
+                "description": "Applies to additional platform features",
+                "field_name": "platform_addon_discount",
+                "examples": ["ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES"]
+            },
+            "support": {
+                "name": "Support",
+                "description": "Applies to Databricks support plans",
+                "field_name": "support_discount",
+                "examples": ["DATABRICKS_SUPPORT"]
+            }
+        }
+        
+        # Workload groups info
+        workload_groups_list = sorted(list(workload_groups))
+        
+        return {
+            "success": True,
+            "data": {
+                "discount_categories": discount_categories,
+                "skus": skus,
+                "workload_groups": workload_groups_list,
+                "total_sku_count": len(skus),
+                "note": "Use 'sku' field for sku_specific discounts. Use 'discount_category' to understand which global discount applies."
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching discount options: {e}")
+        import traceback
+        return {
+            "success": False,
+            "error": {
+                "code": "DATABASE_ERROR",
+                "message": str(e),
+                "traceback": traceback.format_exc()
+            }
+        }
+
+
 @app.get("/debug/headers", tags=["System"])
 async def debug_headers(request: Request):
     """
