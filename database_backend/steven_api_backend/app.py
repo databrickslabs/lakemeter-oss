@@ -10264,9 +10264,9 @@ async def calculate_lakeflow_connect_cost(
                 sku_breakdown.append(sku_with_source)
         
         # Add gateway SKU breakdown (only for database connectors)
-        # Note: For DLT Classic, sku_breakdown is nested under total_cost
+        # Note: For DLT Classic, sku_breakdown is at root level of data
         if connector_type == "database" and gateway_data:
-            gateway_sku_breakdown = gateway_data.get("total_cost", {}).get("sku_breakdown", [])
+            gateway_sku_breakdown = gateway_data.get("sku_breakdown", [])
             if gateway_sku_breakdown:
                 for sku in gateway_sku_breakdown:
                     sku_with_source = sku.copy()
