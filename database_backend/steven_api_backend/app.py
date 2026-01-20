@@ -597,7 +597,7 @@ def enhance_total_cost_with_discount(total_cost: dict, sku_breakdown: list) -> d
     Keeps existing fields unchanged and adds new discount-related fields.
     
     Args:
-        total_cost: Original total_cost dict with cost_per_month and breakdown
+        total_cost: Original total_cost dict with cost_per_month (and optional breakdown)
         sku_breakdown: SKU breakdown list with discount details
     
     Returns:
@@ -620,37 +620,57 @@ def enhance_total_cost_with_discount(total_cost: dict, sku_breakdown: list) -> d
     # Build enhanced structure (keep existing fields)
     enhanced = total_cost.copy()
     
-    # Add breakdown_after_discount
-    breakdown_after_discount = {}
-    for key in total_cost["breakdown"]:
-        # Map breakdown keys to types (dbu_cost -> dbu, vm_cost -> vm, storage_cost -> storage)
-        type_key = key.replace("_cost", "")
-        if type_key in by_type:
-            breakdown_after_discount[key] = round(by_type[type_key]["cost_after"], 2)
-        else:
-            breakdown_after_discount[key] = total_cost["breakdown"][key]
-    
-    enhanced["breakdown_after_discount"] = breakdown_after_discount
-    
-    # Add discount_by_category
-    discount_by_category = {}
-    for key in total_cost["breakdown"]:
-        type_key = key.replace("_cost", "")
-        if type_key in by_type and by_type[type_key]["discount_amount"] > 0:
-            cost_before = by_type[type_key]["cost_before"]
-            discount_amt = by_type[type_key]["discount_amount"]
-            discount_pct = (discount_amt / cost_before * 100) if cost_before > 0 else 0
-            discount_by_category[type_key] = {
-                "amount": round(discount_amt, 2),
-                "percentage": round(discount_pct, 2)
-            }
-        else:
-            discount_by_category[type_key] = {
-                "amount": 0,
-                "percentage": 0
-            }
-    
-    enhanced["discount_by_category"] = discount_by_category
+    # Handle breakdown (if exists) or create one from by_type
+    if "breakdown" in total_cost:
+        # Classic workloads have breakdown
+        breakdown_after_discount = {}
+        for key in total_cost["breakdown"]:
+            # Map breakdown keys to types (dbu_cost -> dbu, vm_cost -> vm, storage_cost -> storage)
+            type_key = key.replace("_cost", "")
+            if type_key in by_type:
+                breakdown_after_discount[key] = round(by_type[type_key]["cost_after"], 2)
+            else:
+                breakdown_after_discount[key] = total_cost["breakdown"][key]
+        
+        enhanced["breakdown_after_discount"] = breakdown_after_discount
+        
+        # Add discount_by_category
+        discount_by_category = {}
+        for key in total_cost["breakdown"]:
+            type_key = key.replace("_cost", "")
+            if type_key in by_type and by_type[type_key]["discount_amount"] > 0:
+                cost_before = by_type[type_key]["cost_before"]
+                discount_amt = by_type[type_key]["discount_amount"]
+                discount_pct = (discount_amt / cost_before * 100) if cost_before > 0 else 0
+                discount_by_category[type_key] = {
+                    "amount": round(discount_amt, 2),
+                    "percentage": round(discount_pct, 2)
+                }
+            else:
+                discount_by_category[type_key] = {
+                    "amount": 0,
+                    "percentage": 0
+                }
+        
+        enhanced["discount_by_category"] = discount_by_category
+    else:
+        # Serverless workloads - create breakdown from by_type
+        breakdown_after_discount = {}
+        discount_by_category = {}
+        
+        for type_key, data in by_type.items():
+            cost_key = f"{type_key}_cost"
+            breakdown_after_discount[cost_key] = round(data["cost_after"], 2)
+            
+            if data["discount_amount"] > 0:
+                discount_pct = (data["discount_amount"] / data["cost_before"] * 100) if data["cost_before"] > 0 else 0
+                discount_by_category[type_key] = {
+                    "amount": round(data["discount_amount"], 2),
+                    "percentage": round(discount_pct, 2)
+                }
+        
+        enhanced["breakdown_after_discount"] = breakdown_after_discount
+        enhanced["discount_by_category"] = discount_by_category
     
     # Add grand totals
     total_cost_before = sum(item["cost"] for item in sku_breakdown)
@@ -3912,6 +3932,91 @@ async def calculate_all_purpose_classic_cost(
       "hours_per_month": 730
     }
     ```
+    
+    Option 3 - With Discounts:
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "driver_node_type": "m5.xlarge",
+      "worker_node_type": "m5.xlarge",
+      "num_workers": 3,
+      "photon_enabled": false,
+      "driver_pricing_tier": "on_demand",
+      "worker_pricing_tier": "spot",
+      "runs_per_day": 5,
+      "avg_runtime_minutes": 60,
+      "days_per_month": 20,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20,
+          "vm_discount": 10
+        },
+        "notes": "Standard enterprise discount"
+      }
+    }
+    ```
+    
+    **Response with Discount (excerpt):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "ALL_PURPOSE_COMPUTE",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "ALL_PURPOSE_COMPUTE",
+            "cost": 151.80,
+            "cost_after_discount": 121.44,
+            "unit_price_after_discount": 0.44,
+            "discount": {
+              "percentage": 20.0,
+              "amount": 30.36,
+              "source": "global:dbu"
+            }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_ON_DEMAND",
+            "cost": 19.20,
+            "cost_after_discount": 17.28,
+            "discount": {
+              "percentage": 10.0,
+              "amount": 1.92,
+              "source": "global:vm"
+            }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_SPOT",
+            "cost": 21.42,
+            "cost_after_discount": 19.28,
+            "discount": {
+              "percentage": 10.0,
+              "amount": 2.14,
+              "source": "global:vm"
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 192.42,
+          "breakdown_after_discount": {
+            "dbu_cost": 121.44,
+            "vm_cost": 36.56
+          },
+          "discount_by_category": {
+            "dbu": {"amount": 30.36, "percentage": 20.0},
+            "vm": {"amount": 4.06, "percentage": 10.0}
+          },
+          "total_after_discount": 158.00,
+          "total_discount": 34.42,
+          "effective_discount_percentage": 17.89
+        }
+      }
+    }
+    ```
     """
     # Validate usage parameters - must provide EITHER run-based OR direct hours
     has_run_params = all([
@@ -4246,45 +4351,6 @@ async def calculate_jobs_serverless_cost(
           "JOBS_SERVERLESS_COMPUTE": 28
         },
         "notes": "Enterprise serverless discount"
-      }
-    }
-    ```
-    
-    **Response with Discount (excerpt):**
-    ```json
-    {
-      "success": true,
-      "data": {
-        "workload_type": "JOBS_SERVERLESS",
-        "sku_breakdown": [
-          {
-            "type": "dbu",
-            "sku": "JOBS_SERVERLESS_COMPUTE",
-            "cost": 693.35,
-            "cost_after_discount": 499.21,
-            "unit_price_after_discount": 0.252,
-            "discount": {
-              "percentage": 28.0,
-              "amount": 194.14,
-              "source": "sku_specific:JOBS_SERVERLESS_COMPUTE"
-            }
-          }
-        ],
-        "total_cost": {
-          "cost_per_month": 693.35,
-          "breakdown_after_discount": {
-            "dbu_cost": 499.21
-          },
-          "discount_by_category": {
-            "dbu": {
-              "amount": 194.14,
-              "percentage": 28.0
-            }
-          },
-          "total_after_discount": 499.21,
-          "total_discount": 194.14,
-          "effective_discount_percentage": 28.0
-        }
       }
     }
     ```
@@ -4861,9 +4927,6 @@ class DBSQLClassicProCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
-    
-    # Discount configuration
-    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/dbsql-classic-pro", tags=["Cost Calculation"])
@@ -5102,27 +5165,6 @@ async def calculate_dbsql_classic_pro_cost(
             num_workers=1  # DBSQL has driver + workers bundled
         )
         
-        # Apply discounts if provided
-        if request.discount_config:
-            sku_breakdown = await apply_discount_to_sku_breakdown(
-                sku_breakdown, 
-                request.discount_config, 
-                db
-            )
-        
-        # Build total_cost structure
-        total_cost = {
-            "cost_per_month": float(row[11]),
-            "breakdown": {
-                "dbu_cost": float(row[4]),
-                "vm_cost": float(row[10])
-            }
-        }
-        
-        # Enhance total_cost with discount details if discounts applied
-        if request.discount_config:
-            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
-        
         return {
             "success": True,
             "data": {
@@ -5155,8 +5197,14 @@ async def calculate_dbsql_classic_pro_cost(
                     "total_worker_vm_cost_per_month": float(row[9]),
                     "vm_cost_per_month": float(row[10])
                 },
-                "total_cost": total_cost,
+                "total_cost": {
+                    "cost_per_month": float(row[11]),
+                    "breakdown": {
+                        "dbu_cost": float(row[4]),
+                        "vm_cost": float(row[10])
+                    },
                 "sku_breakdown": sku_breakdown
+                }
             }
         }
         
@@ -5194,9 +5242,6 @@ class DBSQLServerlessCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
-    
-    # Discount configuration
-    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/dbsql-serverless", tags=["Cost Calculation"])
@@ -5390,24 +5435,6 @@ async def calculate_dbsql_serverless_cost(
             dbu_price=float(row[3]) if row[3] else 0
         )
         
-        # Apply discounts if provided
-        if request.discount_config:
-            sku_breakdown = await apply_discount_to_sku_breakdown(
-                sku_breakdown, 
-                request.discount_config, 
-                db
-            )
-        
-        # Build total_cost structure
-        total_cost = {
-            "cost_per_month": float(row[11]),
-            "note": "Serverless has no VM costs - only DBU costs"
-        }
-        
-        # Enhance total_cost with discount details if discounts applied
-        if request.discount_config:
-            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
-        
         return {
             "success": True,
             "data": {
@@ -5430,7 +5457,10 @@ async def calculate_dbsql_serverless_cost(
                     "dbu_price": float(row[3]),
                     "dbu_cost_per_month": float(row[4])
                 },
-                "total_cost": total_cost,
+                "total_cost": {
+                    "cost_per_month": float(row[11]),
+                    "note": "Serverless warehouses have no VM costs"
+                },
                 "sku_breakdown": sku_breakdown
             }
         }
@@ -5480,9 +5510,6 @@ class DLTClassicCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
-    
-    # Discount configuration
-    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/dlt-classic", tags=["Cost Calculation"])
@@ -5731,27 +5758,6 @@ async def calculate_dlt_classic_cost(
             num_workers=request.num_workers
         )
         
-        # Apply discounts if provided
-        if request.discount_config:
-            sku_breakdown = await apply_discount_to_sku_breakdown(
-                sku_breakdown, 
-                request.discount_config, 
-                db
-            )
-        
-        # Build total_cost structure
-        total_cost = {
-            "cost_per_month": float(row[11]),
-            "breakdown": {
-                "dbu_cost": float(row[4]),
-                "vm_cost": float(row[10])
-            }
-        }
-        
-        # Enhance total_cost with discount details if discounts applied
-        if request.discount_config:
-            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
-        
         return {
             "success": True,
             "data": {
@@ -5788,8 +5794,14 @@ async def calculate_dlt_classic_cost(
                     "total_worker_vm_cost_per_month": float(row[9]),
                     "vm_cost_per_month": float(row[10])
                 },
-                "total_cost": total_cost,
+                "total_cost": {
+                    "cost_per_month": float(row[11]),
+                    "breakdown": {
+                        "dbu_cost": float(row[4]),
+                        "vm_cost": float(row[10])
+                    },
                 "sku_breakdown": sku_breakdown
+                }
             }
         }
         
@@ -5817,9 +5829,6 @@ class DLTServerlessCalculationRequest(BaseModel):
     cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
-    
-    # Discount configuration
-    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
     
     # Note: Photon is ALWAYS enabled for serverless workloads (no parameter needed)
     # Note: DLT Serverless does NOT have editions - editions are only for Classic
@@ -6050,24 +6059,6 @@ async def calculate_dlt_serverless_cost(
             dbu_price=float(row[3])
         )
         
-        # Apply discounts if provided
-        if request.discount_config:
-            sku_breakdown = await apply_discount_to_sku_breakdown(
-                sku_breakdown, 
-                request.discount_config, 
-                db
-            )
-        
-        # Build total_cost structure
-        total_cost = {
-            "cost_per_month": float(row[11]),
-            "note": "Serverless has no VM costs - only DBU costs"
-        }
-        
-        # Enhance total_cost with discount details if discounts applied
-        if request.discount_config:
-            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
-        
         return {
             "success": True,
             "data": {
@@ -6096,7 +6087,10 @@ async def calculate_dlt_serverless_cost(
                     "dbu_price": float(row[3]),
                     "dbu_cost_per_month": float(row[4])
                 },
-                "total_cost": total_cost,
+                "total_cost": {
+                    "cost_per_month": float(row[11]),
+                    "note": "Serverless has no VM costs - only DBU costs"
+                },
                 "sku_breakdown": sku_breakdown
             }
         }
