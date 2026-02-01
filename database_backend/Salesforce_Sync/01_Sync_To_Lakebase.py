@@ -35,7 +35,7 @@ LAKEBASE_CONFIG = {
     "port": 5432,
     "database": "lakemeter_pricing",
     "user": "lakemeter_sync_role",
-    "password": "Lak3m3t3r_Sync_2024!",
+    "password": dbutils.secrets.get(scope="lakemeter-credentials", key="lakebase-password"),
     "sslmode": "require"
 }
 

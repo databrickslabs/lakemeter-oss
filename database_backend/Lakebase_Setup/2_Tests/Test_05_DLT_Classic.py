@@ -33,7 +33,7 @@ LAKEBASE_HOST = "instance-364041a4-0aae-44df-bbc6-37ac84169dfe.database.cloud.da
 LAKEBASE_PORT = 5432
 LAKEBASE_DB = "lakemeter_pricing"
 LAKEBASE_USER = "lakemeter_sync_role"
-LAKEBASE_PASSWORD = "Lak3m3t3r_Sync_2024!"
+LAKEBASE_PASSWORD = dbutils.secrets.get(scope="lakemeter-credentials", key="lakebase-password")
 
 def get_connection():
     return psycopg2.connect(host=LAKEBASE_HOST, port=LAKEBASE_PORT, database=LAKEBASE_DB, user=LAKEBASE_USER, password=LAKEBASE_PASSWORD)

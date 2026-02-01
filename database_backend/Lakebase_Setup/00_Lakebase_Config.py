@@ -23,7 +23,7 @@ LAKEBASE_PORT = 5432
 LAKEBASE_DB = "lakemeter_pricing"
 LAKEBASE_DATABASE = "lakemeter_pricing"  # Alias for compatibility
 LAKEBASE_USER = "lakemeter_sync_role"
-LAKEBASE_PASSWORD = "Lak3m3t3r_Sync_2024!"
+LAKEBASE_PASSWORD = dbutils.secrets.get(scope="lakemeter-credentials", key="lakebase-password")
 
 # ============================================================================
 # HELPER FUNCTIONS

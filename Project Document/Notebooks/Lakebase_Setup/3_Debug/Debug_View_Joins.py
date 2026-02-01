@@ -37,7 +37,7 @@ LAKEBASE_CONFIG = {
     'port': 5432,
     'database': 'lakemeter_pricing',
     'user': 'lakemeter_sync_role',
-    'password': 'Lak3m3t3r_Sync_2024!',
+    'password': 'YOUR_SECURE_PASSWORD_HERE',
     'sslmode': 'require'
 }
 

@@ -6,7 +6,7 @@
 -- =============================================================================
 
 -- 1. Create the sync role with password
-CREATE ROLE lakemeter_sync_role LOGIN PASSWORD 'Lak3m3t3r_Sync_2024!';
+CREATE ROLE lakemeter_sync_role LOGIN PASSWORD 'YOUR_SECURE_PASSWORD_HERE';
 
 -- 2. Grant connect to database
 GRANT CONNECT ON DATABASE lakemeter_pricing TO lakemeter_sync_role;
@@ -77,7 +77,7 @@ WHERE nspname IN ('lakemeter', 'public');
 -- Database: lakemeter_pricing
 -- Schema:   lakemeter
 -- User:     lakemeter_sync_role
--- Password: Lak3m3t3r_Sync_2024!
+-- Password: YOUR_SECURE_PASSWORD_HERE
 -- SSL:      require
 --
 -- JDBC URL:
@@ -89,7 +89,7 @@ WHERE nspname IN ('lakemeter', 'public');
 --     port=5432,
 --     database="lakemeter_pricing",
 --     user="lakemeter_sync_role",
---     password="Lak3m3t3r_Sync_2024!",
+--     password="YOUR_SECURE_PASSWORD_HERE",
 --     options="-c search_path=lakemeter"
 -- )
 --

@@ -35,18 +35,16 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
+# Import Lakebase configuration
+%run ../00_Lakebase_Config
+
+# COMMAND ----------
+
 import psycopg2
 import pandas as pd
 import uuid
 from datetime import datetime
 from tabulate import tabulate
-
-# Lakebase connection parameters
-LAKEBASE_HOST = "instance-364041a4-0aae-44df-bbc6-37ac84169dfe.database.cloud.databricks.com"
-LAKEBASE_PORT = 5432
-LAKEBASE_DB = "lakemeter_pricing"
-LAKEBASE_USER = "lakemeter_sync_role"
-LAKEBASE_PASSWORD = "Lak3m3t3r_Sync_2024!"
 
 def get_connection():
     """Create and return a PostgreSQL connection"""

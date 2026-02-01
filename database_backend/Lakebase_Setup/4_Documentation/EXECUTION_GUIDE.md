@@ -222,7 +222,7 @@ CHECK: worker_pricing_tier IN ('on_demand', 'spot', 'reserved_1y', 'reserved_3y'
 ### Issue: "Connection failed"
 **Solution:**
 - Check Lakebase is running
-- Verify credentials in notebook (lakemeter_sync_role / Lak3m3t3r_Sync_2024!)
+- Verify credentials in notebook (lakemeter_sync_role / [STORED_IN_SECRET_SCOPE])
 - Check network connectivity
 
 ### Issue: "Table already exists"
@@ -355,7 +355,7 @@ After running all notebooks, you should have:
 ## 📝 Notes
 
 - **Idempotent:** All notebooks can be re-run safely
-- **Hardcoded credentials:** lakemeter_sync_role / Lak3m3t3r_Sync_2024!
+- **Hardcoded credentials:** lakemeter_sync_role / [STORED_IN_SECRET_SCOPE]
 - **Connection:** Direct to Lakebase PostgreSQL (instance-364041a4-0aae-44df-bbc6-37ac84169dfe)
 - **SSL:** Required (sslmode='require')
 

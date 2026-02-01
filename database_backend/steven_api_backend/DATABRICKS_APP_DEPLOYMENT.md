@@ -132,7 +132,7 @@ env:
   - name: LAKEBASE_USER
     value: "lakemeter_sync"
   - name: LAKEBASE_PASSWORD
-    value: "Lak3m3t3r_Sync_2024!"
+    value: "[STORED_IN_SECRET_SCOPE]"
 
 resources:
   cpu: "1"

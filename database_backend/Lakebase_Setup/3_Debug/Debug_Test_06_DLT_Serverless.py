@@ -22,7 +22,7 @@ DB_HOST = "instance-364041a4-0aae-44df-bbc6-37ac84169dfe.database.cloud.databric
 DB_PORT = 5432
 DB_NAME = "lakemeter_pricing"
 DB_USER = "lakemeter_sync_role"
-DB_PASSWORD = "Lak3m3t3r_Sync_2024!"
+DB_PASSWORD = dbutils.secrets.get(scope="lakemeter-credentials", key="lakebase-password")
 
 def get_connection():
     return psycopg2.connect(
