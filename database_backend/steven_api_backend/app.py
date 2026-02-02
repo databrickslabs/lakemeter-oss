@@ -41,7 +41,11 @@ from validators import (
     validate_photon_sku_type,
     validate_product_type,
     validate_tier,
-    validate_sku_specific_discounts
+    validate_sku_specific_discounts,
+    validate_salesforce_account_id,
+    validate_workspace_id_for_account,
+    validate_product_types_list,
+    validate_pagination
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -1130,6 +1134,576 @@ async def get_salesforce_usecases(
         }
     except Exception as e:
         logger.error(f"Error fetching Salesforce use cases: {e}")
+        return {
+            "success": False,
+            "error": {"message": str(e), "code": "DATABASE_ERROR"}
+        }
+
+
+@app.get("/api/v1/salesforce/baseline-consumption", tags=["Salesforce"])
+async def get_baseline_consumption(
+    account_id: str = Query(..., description="Salesforce account ID (required)"),
+    workspace_id: str = Query(None, description="Filter by workspace ID"),
+    cloud: str = Query(None, description="Filter by cloud (AWS/Azure/GCP)"),
+    product_type: str = Query(None, description="Filter by product type (comma-separated)"),
+    tier: str = Query(None, description="Filter by tier (ENTERPRISE/PREMIUM/STANDARD)"),
+    region: str = Query(None, description="Filter by region"),
+    limit: int = Query(100, ge=1, le=1000, description="Results per page (1-1000)"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Get baseline consumption data for a Salesforce account.
+    
+    Returns historical consumption metrics organized by time periods:
+    
+    **Rolling Averages:**
+    - `3m`: Total over last 3 complete months / 3 (normalized to average monthly spend)
+    - `30d`: Total over past 30 days (not normalized)
+    - `90d`: Total over past 90 days / 3 (normalized to average monthly spend)
+    
+    **Monthly Totals (complete months):**
+    - `1m`: Last complete month (e.g., if today is Feb 1, returns January totals)
+    - `m12`: Last complete month - same as 1m (1 month ago)
+    - `m11`: 2 months ago (full month)
+    - `m10`: 3 months ago (full month)
+    - `m9`: 4 months ago (full month)
+    - ... down to `m1`: 12 months ago (full month)
+    
+    **Each time period includes 6 metrics:**
+    - `usage_amount`: DBU/GB consumed for the workload
+    - `usage_dollars`: Actual cost paid for the workload (after discounts)
+    - `usage_dollars_at_list`: Cost at list price for the workload (before discounts)
+    - `shield_usage_amount`: Total list price dollars for the product tier (not Shield DBUs)
+    - `shield_dollars`: Shield cost paid (after discounts)
+    - `shield_dollars_at_list`: Shield cost at list price (before discounts)
+    """
+    
+    # ========================================
+    # VALIDATION
+    # ========================================
+    
+    # 1. Validate account_id (REQUIRED)
+    account_validation = await validate_salesforce_account_id(account_id, db)
+    if not account_validation.get("success"):
+        return JSONResponse(status_code=404, content=account_validation)
+    
+    account_info = {
+        "sfdc_account_id": account_validation["account_id"],
+        "sfdc_account_name": account_validation["account_name"]
+    }
+    
+    # 2. Validate cloud (if provided)
+    if cloud:
+        cloud_error = await validate_cloud(cloud)
+        if cloud_error:
+            return JSONResponse(status_code=400, content=cloud_error)
+        cloud = cloud.upper()
+    
+    # 3. Validate region (if provided, requires cloud)
+    if region:
+        if not cloud:
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "error": {
+                    "code": "MISSING_CLOUD",
+                    "message": "cloud parameter is required when filtering by region",
+                    "field": "region"
+                }
+            })
+        region_error = await validate_region(cloud, region, db)
+        if region_error:
+            return JSONResponse(status_code=400, content=region_error)
+    
+    # 4. Validate product_type (if provided, comma-separated)
+    product_types_list = None
+    if product_type:
+        product_validation = await validate_product_types_list(product_type, db)
+        if not product_validation.get("success"):
+            return JSONResponse(status_code=400, content=product_validation)
+        product_types_list = product_validation["product_types"]
+    
+    # 5. Validate tier (if provided)
+    if tier:
+        tier = tier.upper()
+        if tier not in ["ENTERPRISE", "PREMIUM", "STANDARD"]:
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "error": {
+                    "code": "INVALID_TIER",
+                    "message": f"Invalid tier '{tier}'. Must be one of: ENTERPRISE, PREMIUM, STANDARD",
+                    "field": "tier",
+                    "allowed_values": ["ENTERPRISE", "PREMIUM", "STANDARD"]
+                }
+            })
+    
+    # 6. Validate workspace_id (if provided)
+    if workspace_id:
+        workspace_error = await validate_workspace_id_for_account(workspace_id, account_id, db)
+        if workspace_error:
+            return JSONResponse(status_code=404, content=workspace_error)
+    
+    # 7. Validate pagination
+    pagination_error = validate_pagination(limit, offset)
+    if pagination_error:
+        return JSONResponse(status_code=400, content=pagination_error)
+    
+    # ========================================
+    # BUILD QUERY
+    # ========================================
+    
+    try:
+        # Build WHERE clauses
+        where_clauses = ["sfdc_account_id = :account_id"]
+        params = {"account_id": account_id, "limit": limit, "offset": offset}
+        
+        if workspace_id:
+            where_clauses.append("sfdc_workspace_object_id = :workspace_id")
+            params["workspace_id"] = workspace_id
+        
+        if cloud:
+            where_clauses.append("cloud = :cloud")
+            params["cloud"] = cloud
+        
+        if product_types_list:
+            placeholders = ", ".join([f":product_type_{i}" for i in range(len(product_types_list))])
+            where_clauses.append(f"product_type IN ({placeholders})")
+            for i, pt in enumerate(product_types_list):
+                params[f"product_type_{i}"] = pt
+        
+        if tier:
+            where_clauses.append("tier = :tier")
+            params["tier"] = tier
+        
+        if region:
+            where_clauses.append("region = :region")
+            params["region"] = region
+        
+        where_sql = " AND ".join(where_clauses)
+        
+        # Count total
+        count_query = text(f"""
+            SELECT COUNT(*) as total
+            FROM lakemeter.sync_baseline_consumption
+            WHERE {where_sql}
+        """)
+        count_result = await db.execute(count_query, params)
+        total_count = count_result.scalar()
+        
+        # Get data
+        query = text(f"""
+            SELECT *
+            FROM lakemeter.sync_baseline_consumption
+            WHERE {where_sql}
+            ORDER BY sfdc_workspace_name, product_type, cloud, region
+            LIMIT :limit OFFSET :offset
+        """)
+        result = await db.execute(query, params)
+        rows = result.fetchall()
+        columns = result.keys()
+        
+        # ========================================
+        # FORMAT RESPONSE (Grouped by time period)
+        # ========================================
+        
+        data = []
+        for row in rows:
+            row_dict = dict(zip(columns, row))
+            
+            # Extract dimensions
+            dimensions = {
+                "sfdc_workspace_object_id": row_dict.get("sfdc_workspace_object_id"),
+                "sfdc_workspace_name": row_dict.get("sfdc_workspace_name"),
+                "cloud": row_dict.get("cloud"),
+                "tier": row_dict.get("tier"),
+                "product_type": row_dict.get("product_type"),
+                "region": row_dict.get("region"),
+                "shield_sku": row_dict.get("shield_sku"),
+                "usage_unit": row_dict.get("usage_unit")
+            }
+            
+            # Extract rolling averages
+            rolling_averages = {
+                "3m": {
+                    "usage_amount": row_dict.get("usage_amount_3m"),
+                    "usage_dollars": row_dict.get("usage_dollars_3m"),
+                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_3m"),
+                    "shield_usage_amount": row_dict.get("shield_usage_amount_3m"),
+                    "shield_dollars": row_dict.get("shield_dollars_3m"),
+                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_3m")
+                },
+                "30d": {
+                    "usage_amount": row_dict.get("usage_amount_30d"),
+                    "usage_dollars": row_dict.get("usage_dollars_30d"),
+                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_30d"),
+                    "shield_usage_amount": row_dict.get("shield_usage_amount_30d"),
+                    "shield_dollars": row_dict.get("shield_dollars_30d"),
+                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_30d")
+                },
+                "90d": {
+                    "usage_amount": row_dict.get("usage_amount_90d"),
+                    "usage_dollars": row_dict.get("usage_dollars_90d"),
+                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_90d"),
+                    "shield_usage_amount": row_dict.get("shield_usage_amount_90d"),
+                    "shield_dollars": row_dict.get("shield_dollars_90d"),
+                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_90d")
+                }
+            }
+            
+            # Extract monthly data
+            monthly = {}
+            time_periods = ["1m"] + [f"m{i}" for i in range(1, 13)]
+            for period in time_periods:
+                monthly[period] = {
+                    "usage_amount": row_dict.get(f"usage_amount_{period}"),
+                    "usage_dollars": row_dict.get(f"usage_dollars_{period}"),
+                    "usage_dollars_at_list": row_dict.get(f"usage_dollars_at_list_{period}"),
+                    "shield_usage_amount": row_dict.get(f"shield_usage_amount_{period}"),
+                    "shield_dollars": row_dict.get(f"shield_dollars_{period}"),
+                    "shield_dollars_at_list": row_dict.get(f"shield_dollars_at_list_{period}")
+                }
+            
+            data.append({
+                "dimensions": dimensions,
+                "rolling_averages": rolling_averages,
+                "monthly": monthly
+            })
+        
+        # Build filters_applied
+        filters_applied = {"account_id": account_id}
+        if workspace_id:
+            filters_applied["workspace_id"] = workspace_id
+        if cloud:
+            filters_applied["cloud"] = cloud
+        if product_types_list:
+            filters_applied["product_type"] = ", ".join(product_types_list)
+        if tier:
+            filters_applied["tier"] = tier
+        if region:
+            filters_applied["region"] = region
+        
+        return {
+            "success": True,
+            "account": account_info,
+            "metadata": {
+                "time_periods": {
+                    "rolling_averages": {
+                        "3m": "Total over last 3 complete months / 3 (normalized to average monthly spend)",
+                        "30d": "Total over past 30 days (not normalized)",
+                        "90d": "Total over past 90 days / 3 (normalized to average monthly spend)"
+                    },
+                    "monthly": {
+                        "1m": "Last complete month (e.g., if today is Feb 1, returns January totals)",
+                        "m12": "Last complete month - same as 1m (1 month ago)",
+                        "m11": "2 months ago (full month)",
+                        "m10": "3 months ago (full month)",
+                        "m9": "4 months ago (full month)",
+                        "m8": "5 months ago (full month)",
+                        "m7": "6 months ago (full month)",
+                        "m6": "7 months ago (full month)",
+                        "m5": "8 months ago (full month)",
+                        "m4": "9 months ago (full month)",
+                        "m3": "10 months ago (full month)",
+                        "m2": "11 months ago (full month)",
+                        "m1": "12 months ago (full month)"
+                    }
+                },
+                "metrics": {
+                    "usage_amount": "DBU/GB consumed for the workload",
+                    "usage_dollars": "Actual cost paid for the workload (after discounts)",
+                    "usage_dollars_at_list": "Cost at list price for the workload (before discounts)",
+                    "shield_usage_amount": "Total list price dollars for the product tier (not Shield DBUs)",
+                    "shield_dollars": "Shield cost paid (after discounts)",
+                    "shield_dollars_at_list": "Shield cost at list price (before discounts)"
+                }
+            },
+            "data": data,
+            "pagination": {
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
+                "returned": len(data)
+            },
+            "filters_applied": filters_applied
+        }
+    
+    except Exception as e:
+        logger.error(f"Error fetching baseline consumption: {e}")
+        return {
+            "success": False,
+            "error": {"message": str(e), "code": "DATABASE_ERROR"}
+        }
+
+
+@app.get("/api/v1/salesforce/baseline-consumption-hierarchy", tags=["Salesforce"])
+async def get_baseline_consumption_hierarchy(
+    account_id: str = Query(..., description="Salesforce account ID (required)"),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Get baseline consumption data for a Salesforce account across all 4 hierarchy levels.
+    
+    Returns consumption data organized by hierarchy:
+    
+    **Hierarchy Levels:**
+    - **Level 1 (ACCOUNT_LEVEL)**: Total consumption across entire customer account
+      - Dimensions: sfdc_account_id, sfdc_account_name
+      
+    - **Level 2 (PRODUCT_ACCOUNT_CLOUD)**: Breakdown by Databricks account and cloud
+      - Dimensions: sfdc_account_id, sfdc_account_name, product_account_id, cloud
+      - Note: One customer can have multiple Databricks accounts
+      
+    - **Level 3 (WORKSPACE_LEVEL)**: Breakdown by workspace
+      - Dimensions: sfdc_account_id, sfdc_account_name, product_account_id, cloud, 
+                   sfdc_workspace_object_id, sfdc_workspace_name
+      
+    - **Level 4 (SKU_LEVEL)**: Most granular - by SKU details
+      - Dimensions: All above + tier, product_type, region, shield_sku, usage_unit
+    
+    **Time Periods & Metrics:**
+    
+    Same as `/api/v1/salesforce/baseline-consumption`:
+    - Rolling averages: 3m, 30d, 90d
+    - Monthly totals: 1m, m12-m1 (last 12 complete months)
+    - 6 metrics per period: usage_amount, usage_dollars, usage_dollars_at_list,
+      shield_usage_amount, shield_dollars, shield_dollars_at_list
+    """
+    
+    # ========================================
+    # VALIDATION
+    # ========================================
+    
+    # Validate account_id (REQUIRED)
+    account_validation = await validate_salesforce_account_id(account_id, db)
+    if not account_validation.get("success"):
+        return JSONResponse(status_code=404, content=account_validation)
+    
+    account_info = {
+        "sfdc_account_id": account_validation["account_id"],
+        "sfdc_account_name": account_validation["account_name"]
+    }
+    
+    # ========================================
+    # BUILD QUERY
+    # ========================================
+    
+    try:
+        # Query all hierarchy levels for this account
+        query = text("""
+            SELECT *
+            FROM lakemeter.mv_baseline_consumption
+            WHERE sfdc_account_id = :account_id
+            ORDER BY hierarchy_level, product_account_id, cloud, sfdc_workspace_name, 
+                     product_type, tier, region
+        """)
+        
+        result = await db.execute(query, {"account_id": account_id})
+        rows = result.fetchall()
+        columns = result.keys()
+        
+        # ========================================
+        # FORMAT RESPONSE (Grouped by hierarchy level)
+        # ========================================
+        
+        # Helper function to extract metrics for a row
+        def extract_metrics(row_dict):
+            """Extract rolling averages and monthly data from a row"""
+            
+            # Extract rolling averages
+            rolling_averages = {
+                "3m": {
+                    "usage_amount": row_dict.get("usage_amount_3m"),
+                    "usage_dollars": row_dict.get("usage_dollars_3m"),
+                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_3m"),
+                    "shield_usage_amount": row_dict.get("shield_usage_amount_3m"),
+                    "shield_dollars": row_dict.get("shield_dollars_3m"),
+                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_3m")
+                },
+                "30d": {
+                    "usage_amount": row_dict.get("usage_amount_30d"),
+                    "usage_dollars": row_dict.get("usage_dollars_30d"),
+                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_30d"),
+                    "shield_usage_amount": row_dict.get("shield_usage_amount_30d"),
+                    "shield_dollars": row_dict.get("shield_dollars_30d"),
+                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_30d")
+                },
+                "90d": {
+                    "usage_amount": row_dict.get("usage_amount_90d"),
+                    "usage_dollars": row_dict.get("usage_dollars_90d"),
+                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_90d"),
+                    "shield_usage_amount": row_dict.get("shield_usage_amount_90d"),
+                    "shield_dollars": row_dict.get("shield_dollars_90d"),
+                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_90d")
+                }
+            }
+            
+            # Extract monthly data
+            monthly = {}
+            time_periods = ["1m"] + [f"m{i}" for i in range(1, 13)]
+            for period in time_periods:
+                monthly[period] = {
+                    "usage_amount": row_dict.get(f"usage_amount_{period}"),
+                    "usage_dollars": row_dict.get(f"usage_dollars_{period}"),
+                    "usage_dollars_at_list": row_dict.get(f"usage_dollars_at_list_{period}"),
+                    "shield_usage_amount": row_dict.get(f"shield_usage_amount_{period}"),
+                    "shield_dollars": row_dict.get(f"shield_dollars_{period}"),
+                    "shield_dollars_at_list": row_dict.get(f"shield_dollars_at_list_{period}")
+                }
+            
+            return {
+                "rolling_averages": rolling_averages,
+                "monthly": monthly
+            }
+        
+        # Group by hierarchy level
+        hierarchy_data = {
+            "level_1_account": [],
+            "level_2_product_cloud": [],
+            "level_3_workspace": [],
+            "level_4_sku": []
+        }
+        
+        for row in rows:
+            row_dict = dict(zip(columns, row))
+            hierarchy_level = row_dict.get("hierarchy_level")
+            
+            # Extract common metrics
+            metrics = extract_metrics(row_dict)
+            
+            if hierarchy_level == 1:
+                # Account Level
+                hierarchy_data["level_1_account"].append({
+                    "dimensions": {
+                        "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                        "sfdc_account_name": row_dict.get("sfdc_account_name")
+                    },
+                    "dimension_keys": row_dict.get("dimension_keys"),
+                    **metrics
+                })
+            
+            elif hierarchy_level == 2:
+                # Product Account + Cloud Level
+                hierarchy_data["level_2_product_cloud"].append({
+                    "dimensions": {
+                        "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                        "sfdc_account_name": row_dict.get("sfdc_account_name"),
+                        "product_account_id": row_dict.get("product_account_id"),
+                        "cloud": row_dict.get("cloud")
+                    },
+                    "dimension_keys": row_dict.get("dimension_keys"),
+                    **metrics
+                })
+            
+            elif hierarchy_level == 3:
+                # Workspace Level
+                hierarchy_data["level_3_workspace"].append({
+                    "dimensions": {
+                        "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                        "sfdc_account_name": row_dict.get("sfdc_account_name"),
+                        "product_account_id": row_dict.get("product_account_id"),
+                        "cloud": row_dict.get("cloud"),
+                        "sfdc_workspace_object_id": row_dict.get("sfdc_workspace_object_id"),
+                        "sfdc_workspace_name": row_dict.get("sfdc_workspace_name")
+                    },
+                    "dimension_keys": row_dict.get("dimension_keys"),
+                    **metrics
+                })
+            
+            elif hierarchy_level == 4:
+                # SKU Level
+                hierarchy_data["level_4_sku"].append({
+                    "dimensions": {
+                        "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                        "sfdc_account_name": row_dict.get("sfdc_account_name"),
+                        "product_account_id": row_dict.get("product_account_id"),
+                        "cloud": row_dict.get("cloud"),
+                        "sfdc_workspace_object_id": row_dict.get("sfdc_workspace_object_id"),
+                        "sfdc_workspace_name": row_dict.get("sfdc_workspace_name"),
+                        "tier": row_dict.get("tier"),
+                        "product_type": row_dict.get("product_type"),
+                        "region": row_dict.get("region"),
+                        "shield_sku": row_dict.get("shield_sku"),
+                        "usage_unit": row_dict.get("usage_unit")
+                    },
+                    "dimension_keys": row_dict.get("dimension_keys"),
+                    **metrics
+                })
+        
+        # Calculate counts
+        total_rows = sum([
+            len(hierarchy_data["level_1_account"]),
+            len(hierarchy_data["level_2_product_cloud"]),
+            len(hierarchy_data["level_3_workspace"]),
+            len(hierarchy_data["level_4_sku"])
+        ])
+        
+        return {
+            "success": True,
+            "account": account_info,
+            "metadata": {
+                "hierarchy_levels": {
+                    "level_1_account": {
+                        "name": "ACCOUNT_LEVEL",
+                        "description": "Total consumption across entire customer account",
+                        "dimensions": ["sfdc_account_id", "sfdc_account_name"],
+                        "count": len(hierarchy_data["level_1_account"])
+                    },
+                    "level_2_product_cloud": {
+                        "name": "PRODUCT_ACCOUNT_CLOUD",
+                        "description": "Breakdown by Databricks account and cloud (one customer can have multiple Databricks accounts)",
+                        "dimensions": ["sfdc_account_id", "sfdc_account_name", "product_account_id", "cloud"],
+                        "count": len(hierarchy_data["level_2_product_cloud"])
+                    },
+                    "level_3_workspace": {
+                        "name": "WORKSPACE_LEVEL",
+                        "description": "Breakdown by workspace",
+                        "dimensions": ["sfdc_account_id", "sfdc_account_name", "product_account_id", "cloud", "sfdc_workspace_object_id", "sfdc_workspace_name"],
+                        "count": len(hierarchy_data["level_3_workspace"])
+                    },
+                    "level_4_sku": {
+                        "name": "SKU_LEVEL",
+                        "description": "Most granular breakdown by SKU details",
+                        "dimensions": ["sfdc_account_id", "sfdc_account_name", "product_account_id", "cloud", "sfdc_workspace_object_id", "sfdc_workspace_name", "tier", "product_type", "region", "shield_sku", "usage_unit"],
+                        "count": len(hierarchy_data["level_4_sku"])
+                    }
+                },
+                "time_periods": {
+                    "rolling_averages": {
+                        "3m": "Total over last 3 complete months / 3 (normalized to average monthly spend)",
+                        "30d": "Total over past 30 days (not normalized)",
+                        "90d": "Total over past 90 days / 3 (normalized to average monthly spend)"
+                    },
+                    "monthly": {
+                        "1m": "Last complete month (e.g., if today is Feb 1, returns January totals)",
+                        "m12": "Last complete month - same as 1m (1 month ago)",
+                        "m11": "2 months ago (full month)",
+                        "m10": "3 months ago (full month)",
+                        "m9": "4 months ago (full month)",
+                        "m8": "5 months ago (full month)",
+                        "m7": "6 months ago (full month)",
+                        "m6": "7 months ago (full month)",
+                        "m5": "8 months ago (full month)",
+                        "m4": "9 months ago (full month)",
+                        "m3": "10 months ago (full month)",
+                        "m2": "11 months ago (full month)",
+                        "m1": "12 months ago (full month)"
+                    }
+                },
+                "metrics": {
+                    "usage_amount": "DBU/GB consumed for the workload",
+                    "usage_dollars": "Actual cost paid for the workload (after discounts)",
+                    "usage_dollars_at_list": "Cost at list price for the workload (before discounts)",
+                    "shield_usage_amount": "Total list price dollars for the product tier (not Shield DBUs)",
+                    "shield_dollars": "Shield cost paid (after discounts)",
+                    "shield_dollars_at_list": "Shield cost at list price (before discounts)"
+                },
+                "total_rows": total_rows
+            },
+            "data": hierarchy_data
+        }
+    
+    except Exception as e:
+        logger.error(f"Error fetching baseline consumption hierarchy: {e}")
         return {
             "success": False,
             "error": {"message": str(e), "code": "DATABASE_ERROR"}
