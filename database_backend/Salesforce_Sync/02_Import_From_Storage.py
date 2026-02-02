@@ -29,7 +29,7 @@ TABLE_PREFIX = "sf_"
 VOLUME_PATH = "/Volumes/lakemeter_catalog/lakemeter/salesforce"
 
 # Tables to sync (matches the 4 tables exported by 01_Sync_To_Storage.py)
-TABLES = ["dim_salesforce_account", "fct_salesforce_use_case", "hourly_opportunity", "baseline_consumption"]
+TABLES = ["mv_dim_salesforce_account", "mv_fct_salesforce_use_case", "mv_hourly_opportunity", "mv_baseline_consumption"]
 
 print(f"✅ Volume: {VOLUME_PATH}")
 
