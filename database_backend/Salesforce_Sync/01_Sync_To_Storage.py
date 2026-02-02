@@ -22,7 +22,7 @@
 # Azure Storage Configuration
 STORAGE_ACCOUNT = "lakemeterprodsteven"
 CONTAINER = "lakemeter"
-STORAGE_KEY = "PDNtAAtkRNecLvKSpgbzVYUBauufOkCzdg3K1050PRFkffKhTIFrw0nUn2PMiuyGtYvayaTS6l9y+ASt8SD+bA=="
+STORAGE_KEY = dbutils.secrets.get(scope="lakemeter-credentials", key="azure-storage-key")
 
 # Storage path - write directly to container root with sf_ prefix
 STORAGE_PATH = f"abfss://{CONTAINER}@{STORAGE_ACCOUNT}.dfs.core.windows.net"

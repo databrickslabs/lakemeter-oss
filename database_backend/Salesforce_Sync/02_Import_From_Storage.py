@@ -22,14 +22,14 @@ dbutils.library.restartPython()
 # Azure Storage
 STORAGE_ACCOUNT = "lakemeterprodsteven"
 CONTAINER = "lakemeter"
-STORAGE_KEY = "PDNtAAtkRNecLvKSpgbzVYUBauufOkCzdg3K1050PRFkffKhTIFrw0nUn2PMiuyGtYvayaTS6l9y+ASt8SD+bA=="
+STORAGE_KEY = dbutils.secrets.get(scope="lakemeter-credentials", key="azure-storage-key")
 TABLE_PREFIX = "sf_"
 
 # UC Volume path
 VOLUME_PATH = "/Volumes/lakemeter_catalog/lakemeter/salesforce"
 
-# Tables to sync
-TABLES = ["dim_salesforce_account", "fct_salesforce_use_case", "hourly_opportunity"]
+# Tables to sync (matches the 4 tables exported by 01_Sync_To_Storage.py)
+TABLES = ["dim_salesforce_account", "fct_salesforce_use_case", "hourly_opportunity", "baseline_consumption"]
 
 print(f"✅ Volume: {VOLUME_PATH}")
 
@@ -166,3 +166,4 @@ for table_name in TABLES:
 # MAGIC - `lakemeter_catalog.lakemeter.dim_salesforce_account`
 # MAGIC - `lakemeter_catalog.lakemeter.fct_salesforce_use_case`
 # MAGIC - `lakemeter_catalog.lakemeter.hourly_opportunity`
+# MAGIC - `lakemeter_catalog.lakemeter.baseline_consumption` (106 columns: 10 dims + 96 measures)

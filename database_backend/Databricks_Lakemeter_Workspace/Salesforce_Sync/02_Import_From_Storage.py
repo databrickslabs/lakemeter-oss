@@ -22,7 +22,7 @@ dbutils.library.restartPython()
 # Azure Storage
 STORAGE_ACCOUNT = "lakemeterprodsteven"
 CONTAINER = "lakemeter"
-STORAGE_KEY = "PDNtAAtkRNecLvKSpgbzVYUBauufOkCzdg3K1050PRFkffKhTIFrw0nUn2PMiuyGtYvayaTS6l9y+ASt8SD+bA=="
+STORAGE_KEY = dbutils.secrets.get(scope="lakemeter-credentials", key="azure-storage-key")
 TABLE_PREFIX = "sf_"
 
 # UC Volume path
