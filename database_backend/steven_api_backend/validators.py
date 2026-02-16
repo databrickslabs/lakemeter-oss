@@ -952,3 +952,167 @@ async def validate_sku_specific_discounts(sku_specific: dict, db: AsyncSession) 
     
     return None
 
+
+# ============================================================================
+# Baseline Consumption Validators
+# ============================================================================
+
+async def validate_salesforce_account_id(account_id: str, db: AsyncSession) -> Dict:
+    """
+    Validate Salesforce account ID format and existence in baseline consumption.
+    
+    Returns:
+        Dict with account info if valid (account_id, account_name, consumption_rows)
+        Dict with error if invalid
+    """
+    # Check format (Salesforce IDs are typically 15 or 18 chars alphanumeric)
+    if not account_id or len(account_id) not in [15, 18]:
+        return {
+            "success": False,
+            "error": {
+                "code": "INVALID_ACCOUNT_ID_FORMAT",
+                "message": f"Invalid Salesforce account ID format. Must be 15 or 18 alphanumeric characters.",
+                "field": "account_id"
+            }
+        }
+    
+    # Check if account exists in baseline consumption
+    query = text("""
+        SELECT 
+            sfdc_account_id, 
+            sfdc_account_name,
+            COUNT(*) as consumption_rows
+        FROM lakemeter.sync_baseline_consumption
+        WHERE sfdc_account_id = :account_id
+        GROUP BY sfdc_account_id, sfdc_account_name
+    """)
+    result = await db.execute(query, {"account_id": account_id})
+    account = result.fetchone()
+    
+    if not account:
+        return {
+            "success": False,
+            "error": {
+                "code": "ACCOUNT_NOT_FOUND",
+                "message": f"No consumption data found for account '{account_id}'",
+                "field": "account_id"
+            }
+        }
+    
+    # Return account info (will be used in response)
+    return {
+        "success": True,
+        "account_id": account.sfdc_account_id,
+        "account_name": account.sfdc_account_name,
+        "consumption_rows": account.consumption_rows
+    }
+
+
+async def validate_workspace_id_for_account(
+    workspace_id: str,
+    account_id: str,
+    db: AsyncSession
+) -> Optional[Dict]:
+    """
+    Validate workspace ID exists for the given account.
+    
+    Returns:
+        None if valid
+        Error dict if invalid
+    """
+    query = text("""
+        SELECT sfdc_workspace_object_id, sfdc_workspace_name
+        FROM lakemeter.sync_baseline_consumption
+        WHERE sfdc_account_id = :account_id 
+          AND sfdc_workspace_object_id = :workspace_id
+        LIMIT 1
+    """)
+    result = await db.execute(query, {
+        "account_id": account_id,
+        "workspace_id": workspace_id
+    })
+    workspace = result.fetchone()
+    
+    if not workspace:
+        return {
+            "success": False,
+            "error": {
+                "code": "INVALID_WORKSPACE_ID",
+                "message": f"Workspace '{workspace_id}' not found for account '{account_id}'",
+                "field": "workspace_id"
+            }
+        }
+    
+    return None
+
+
+async def validate_product_types_list(product_types: str, db: AsyncSession) -> Dict:
+    """
+    Validate comma-separated list of product types.
+    
+    Returns:
+        Dict with parsed product_types list if valid
+        Dict with error if invalid
+    """
+    # Parse comma-separated list
+    product_type_list = [pt.strip().upper() for pt in product_types.split(",")]
+    
+    # Get valid product types from DB
+    query = text("""
+        SELECT DISTINCT product_type
+        FROM lakemeter.sync_baseline_consumption
+        WHERE product_type IS NOT NULL
+        ORDER BY product_type
+    """)
+    result = await db.execute(query)
+    valid_product_types = [r.product_type for r in result.fetchall()]
+    
+    # Check each product type
+    invalid_types = [pt for pt in product_type_list if pt not in valid_product_types]
+    
+    if invalid_types:
+        return {
+            "success": False,
+            "error": {
+                "code": "INVALID_PRODUCT_TYPE",
+                "message": f"Invalid product type(s): {', '.join(invalid_types)}",
+                "field": "product_type",
+                "allowed_values": valid_product_types
+            }
+        }
+    
+    return {"success": True, "product_types": product_type_list}
+
+
+def validate_pagination(limit: int, offset: int) -> Optional[Dict]:
+    """
+    Validate pagination parameters.
+    
+    Returns:
+        None if valid
+        Error dict if invalid
+    """
+    # Validate limit
+    if limit < 1 or limit > 1000:
+        return {
+            "success": False,
+            "error": {
+                "code": "INVALID_LIMIT",
+                "message": f"Limit must be between 1 and 1000. Got: {limit}",
+                "field": "limit"
+            }
+        }
+    
+    # Validate offset
+    if offset < 0:
+        return {
+            "success": False,
+            "error": {
+                "code": "INVALID_OFFSET",
+                "message": f"Offset must be >= 0. Got: {offset}",
+                "field": "offset"
+            }
+        }
+    
+    return None
+

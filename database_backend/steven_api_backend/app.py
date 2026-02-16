@@ -1140,310 +1140,19 @@ async def get_salesforce_usecases(
         }
 
 
-@app.get("/api/v1/salesforce/baseline-consumption", tags=["Salesforce"])
-async def get_baseline_consumption(
-    account_id: str = Query(..., description="Salesforce account ID (required)"),
-    workspace_id: str = Query(None, description="Filter by workspace ID"),
-    cloud: str = Query(None, description="Filter by cloud (AWS/Azure/GCP)"),
-    product_type: str = Query(None, description="Filter by product type (comma-separated)"),
-    tier: str = Query(None, description="Filter by tier (ENTERPRISE/PREMIUM/STANDARD)"),
-    region: str = Query(None, description="Filter by region"),
-    limit: int = Query(100, ge=1, le=1000, description="Results per page (1-1000)"),
-    offset: int = Query(0, ge=0, description="Pagination offset"),
-    db: AsyncSession = Depends(get_async_db)
-):
-    """
-    Get baseline consumption data for a Salesforce account.
-    
-    Returns historical consumption metrics organized by time periods:
-    
-    **Rolling Averages:**
-    - `3m`: Total over last 3 complete months / 3 (normalized to average monthly spend)
-    - `30d`: Total over past 30 days (not normalized)
-    - `90d`: Total over past 90 days / 3 (normalized to average monthly spend)
-    
-    **Monthly Totals (complete months):**
-    - `1m`: Last complete month (e.g., if today is Feb 1, returns January totals)
-    - `m12`: Last complete month - same as 1m (1 month ago)
-    - `m11`: 2 months ago (full month)
-    - `m10`: 3 months ago (full month)
-    - `m9`: 4 months ago (full month)
-    - ... down to `m1`: 12 months ago (full month)
-    
-    **Each time period includes 6 metrics:**
-    - `usage_amount`: DBU/GB consumed for the workload
-    - `usage_dollars`: Actual cost paid for the workload (after discounts)
-    - `usage_dollars_at_list`: Cost at list price for the workload (before discounts)
-    - `shield_usage_amount`: Total list price dollars for the product tier (not Shield DBUs)
-    - `shield_dollars`: Shield cost paid (after discounts)
-    - `shield_dollars_at_list`: Shield cost at list price (before discounts)
-    """
-    
-    # ========================================
-    # VALIDATION
-    # ========================================
-    
-    # 1. Validate account_id (REQUIRED)
-    account_validation = await validate_salesforce_account_id(account_id, db)
-    if not account_validation.get("success"):
-        return JSONResponse(status_code=404, content=account_validation)
-    
-    account_info = {
-        "sfdc_account_id": account_validation["account_id"],
-        "sfdc_account_name": account_validation["account_name"]
-    }
-    
-    # 2. Validate cloud (if provided)
-    if cloud:
-        cloud_error = await validate_cloud(cloud)
-        if cloud_error:
-            return JSONResponse(status_code=400, content=cloud_error)
-        cloud = cloud.upper()
-    
-    # 3. Validate region (if provided, requires cloud)
-    if region:
-        if not cloud:
-            return JSONResponse(status_code=400, content={
-                "success": False,
-                "error": {
-                    "code": "MISSING_CLOUD",
-                    "message": "cloud parameter is required when filtering by region",
-                    "field": "region"
-                }
-            })
-        region_error = await validate_region(cloud, region, db)
-        if region_error:
-            return JSONResponse(status_code=400, content=region_error)
-    
-    # 4. Validate product_type (if provided, comma-separated)
-    product_types_list = None
-    if product_type:
-        product_validation = await validate_product_types_list(product_type, db)
-        if not product_validation.get("success"):
-            return JSONResponse(status_code=400, content=product_validation)
-        product_types_list = product_validation["product_types"]
-    
-    # 5. Validate tier (if provided)
-    if tier:
-        tier = tier.upper()
-        if tier not in ["ENTERPRISE", "PREMIUM", "STANDARD"]:
-            return JSONResponse(status_code=400, content={
-                "success": False,
-                "error": {
-                    "code": "INVALID_TIER",
-                    "message": f"Invalid tier '{tier}'. Must be one of: ENTERPRISE, PREMIUM, STANDARD",
-                    "field": "tier",
-                    "allowed_values": ["ENTERPRISE", "PREMIUM", "STANDARD"]
-                }
-            })
-    
-    # 6. Validate workspace_id (if provided)
-    if workspace_id:
-        workspace_error = await validate_workspace_id_for_account(workspace_id, account_id, db)
-        if workspace_error:
-            return JSONResponse(status_code=404, content=workspace_error)
-    
-    # 7. Validate pagination
-    pagination_error = validate_pagination(limit, offset)
-    if pagination_error:
-        return JSONResponse(status_code=400, content=pagination_error)
-    
-    # ========================================
-    # BUILD QUERY
-    # ========================================
-    
-    try:
-        # Build WHERE clauses
-        where_clauses = ["sfdc_account_id = :account_id"]
-        params = {"account_id": account_id, "limit": limit, "offset": offset}
-        
-        if workspace_id:
-            where_clauses.append("sfdc_workspace_object_id = :workspace_id")
-            params["workspace_id"] = workspace_id
-        
-        if cloud:
-            where_clauses.append("cloud = :cloud")
-            params["cloud"] = cloud
-        
-        if product_types_list:
-            placeholders = ", ".join([f":product_type_{i}" for i in range(len(product_types_list))])
-            where_clauses.append(f"product_type IN ({placeholders})")
-            for i, pt in enumerate(product_types_list):
-                params[f"product_type_{i}"] = pt
-        
-        if tier:
-            where_clauses.append("tier = :tier")
-            params["tier"] = tier
-        
-        if region:
-            where_clauses.append("region = :region")
-            params["region"] = region
-        
-        where_sql = " AND ".join(where_clauses)
-        
-        # Count total
-        count_query = text(f"""
-            SELECT COUNT(*) as total
-            FROM lakemeter.sync_baseline_consumption
-            WHERE {where_sql}
-        """)
-        count_result = await db.execute(count_query, params)
-        total_count = count_result.scalar()
-        
-        # Get data
-        query = text(f"""
-            SELECT *
-            FROM lakemeter.sync_baseline_consumption
-            WHERE {where_sql}
-            ORDER BY sfdc_workspace_name, product_type, cloud, region
-            LIMIT :limit OFFSET :offset
-        """)
-        result = await db.execute(query, params)
-        rows = result.fetchall()
-        columns = result.keys()
-        
-        # ========================================
-        # FORMAT RESPONSE (Grouped by time period)
-        # ========================================
-        
-        data = []
-        for row in rows:
-            row_dict = dict(zip(columns, row))
-            
-            # Extract dimensions
-            dimensions = {
-                "sfdc_workspace_object_id": row_dict.get("sfdc_workspace_object_id"),
-                "sfdc_workspace_name": row_dict.get("sfdc_workspace_name"),
-                "cloud": row_dict.get("cloud"),
-                "tier": row_dict.get("tier"),
-                "product_type": row_dict.get("product_type"),
-                "region": row_dict.get("region"),
-                "shield_sku": row_dict.get("shield_sku"),
-                "usage_unit": row_dict.get("usage_unit")
-            }
-            
-            # Extract rolling averages
-            rolling_averages = {
-                "3m": {
-                    "usage_amount": row_dict.get("usage_amount_3m"),
-                    "usage_dollars": row_dict.get("usage_dollars_3m"),
-                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_3m"),
-                    "shield_usage_amount": row_dict.get("shield_usage_amount_3m"),
-                    "shield_dollars": row_dict.get("shield_dollars_3m"),
-                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_3m")
-                },
-                "30d": {
-                    "usage_amount": row_dict.get("usage_amount_30d"),
-                    "usage_dollars": row_dict.get("usage_dollars_30d"),
-                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_30d"),
-                    "shield_usage_amount": row_dict.get("shield_usage_amount_30d"),
-                    "shield_dollars": row_dict.get("shield_dollars_30d"),
-                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_30d")
-                },
-                "90d": {
-                    "usage_amount": row_dict.get("usage_amount_90d"),
-                    "usage_dollars": row_dict.get("usage_dollars_90d"),
-                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_90d"),
-                    "shield_usage_amount": row_dict.get("shield_usage_amount_90d"),
-                    "shield_dollars": row_dict.get("shield_dollars_90d"),
-                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_90d")
-                }
-            }
-            
-            # Extract monthly data
-            monthly = {}
-            time_periods = ["1m"] + [f"m{i}" for i in range(1, 13)]
-            for period in time_periods:
-                monthly[period] = {
-                    "usage_amount": row_dict.get(f"usage_amount_{period}"),
-                    "usage_dollars": row_dict.get(f"usage_dollars_{period}"),
-                    "usage_dollars_at_list": row_dict.get(f"usage_dollars_at_list_{period}"),
-                    "shield_usage_amount": row_dict.get(f"shield_usage_amount_{period}"),
-                    "shield_dollars": row_dict.get(f"shield_dollars_{period}"),
-                    "shield_dollars_at_list": row_dict.get(f"shield_dollars_at_list_{period}")
-                }
-            
-            data.append({
-                "dimensions": dimensions,
-                "rolling_averages": rolling_averages,
-                "monthly": monthly
-            })
-        
-        # Build filters_applied
-        filters_applied = {"account_id": account_id}
-        if workspace_id:
-            filters_applied["workspace_id"] = workspace_id
-        if cloud:
-            filters_applied["cloud"] = cloud
-        if product_types_list:
-            filters_applied["product_type"] = ", ".join(product_types_list)
-        if tier:
-            filters_applied["tier"] = tier
-        if region:
-            filters_applied["region"] = region
-        
-        return {
-            "success": True,
-            "account": account_info,
-            "metadata": {
-                "time_periods": {
-                    "rolling_averages": {
-                        "3m": "Total over last 3 complete months / 3 (normalized to average monthly spend)",
-                        "30d": "Total over past 30 days (not normalized)",
-                        "90d": "Total over past 90 days / 3 (normalized to average monthly spend)"
-                    },
-                    "monthly": {
-                        "1m": "Last complete month (e.g., if today is Feb 1, returns January totals)",
-                        "m12": "Last complete month - same as 1m (1 month ago)",
-                        "m11": "2 months ago (full month)",
-                        "m10": "3 months ago (full month)",
-                        "m9": "4 months ago (full month)",
-                        "m8": "5 months ago (full month)",
-                        "m7": "6 months ago (full month)",
-                        "m6": "7 months ago (full month)",
-                        "m5": "8 months ago (full month)",
-                        "m4": "9 months ago (full month)",
-                        "m3": "10 months ago (full month)",
-                        "m2": "11 months ago (full month)",
-                        "m1": "12 months ago (full month)"
-                    }
-                },
-                "metrics": {
-                    "usage_amount": "DBU/GB consumed for the workload",
-                    "usage_dollars": "Actual cost paid for the workload (after discounts)",
-                    "usage_dollars_at_list": "Cost at list price for the workload (before discounts)",
-                    "shield_usage_amount": "Total list price dollars for the product tier (not Shield DBUs)",
-                    "shield_dollars": "Shield cost paid (after discounts)",
-                    "shield_dollars_at_list": "Shield cost at list price (before discounts)"
-                }
-            },
-            "data": data,
-            "pagination": {
-                "total": total_count,
-                "limit": limit,
-                "offset": offset,
-                "returned": len(data)
-            },
-            "filters_applied": filters_applied
-        }
-    
-    except Exception as e:
-        logger.error(f"Error fetching baseline consumption: {e}")
-        return {
-            "success": False,
-            "error": {"message": str(e), "code": "DATABASE_ERROR"}
-        }
-
-
 @app.get("/api/v1/salesforce/baseline-consumption-hierarchy", tags=["Salesforce"])
 async def get_baseline_consumption_hierarchy(
-    account_id: str = Query(..., description="Salesforce account ID (required)"),
+    account_id: str = Query(..., description="Salesforce account ID(s) - comma-separated for multiple (required)"),
+    levels: str = Query("1,2,3,4", description="Comma-separated hierarchy levels to return (1-4). Default: all levels"),
+    level_4_limit: int = Query(1000, ge=1, le=10000, description="Max rows for Level 4 (SKU level) per account. Default: 1000, Max: 10000"),
+    level_4_offset: int = Query(0, ge=0, description="Pagination offset for Level 4 per account. Default: 0"),
     db: AsyncSession = Depends(get_async_db)
 ):
     """
-    Get baseline consumption data for a Salesforce account across all 4 hierarchy levels.
+    Get baseline consumption data for one or more Salesforce accounts across all 4 hierarchy levels.
     
-    Returns consumption data organized by hierarchy:
+    Supports multiple account IDs (comma-separated). Returns consumption data organized
+    by account and hierarchy with filtering and pagination support.
     
     **Hierarchy Levels:**
     - **Level 1 (ACCOUNT_LEVEL)**: Total consumption across entire customer account
@@ -1457,59 +1166,151 @@ async def get_baseline_consumption_hierarchy(
       - Dimensions: sfdc_account_id, sfdc_account_name, product_account_id, cloud, 
                    sfdc_workspace_object_id, sfdc_workspace_name
       
-    - **Level 4 (SKU_LEVEL)**: Most granular - by SKU details
+    - **Level 4 (SKU_LEVEL)**: Most granular - by SKU details (paginated per account)
       - Dimensions: All above + tier, product_type, region, shield_sku, usage_unit
     
     **Time Periods & Metrics:**
-    
-    Same as `/api/v1/salesforce/baseline-consumption`:
     - Rolling averages: 3m, 30d, 90d
-    - Monthly totals: 1m, m12-m1 (last 12 complete months)
+    - Monthly totals: m1-m12 (last 12 complete months)
     - 6 metrics per period: usage_amount, usage_dollars, usage_dollars_at_list,
       shield_usage_amount, shield_dollars, shield_dollars_at_list
+    
+    **Request Examples:**
+    - Single account: `?account_id=001...`
+    - Multiple accounts: `?account_id=001...,002...,003...`
+    - Executive view: `?account_id=001...&levels=1`
+    - Cloud breakdown: `?account_id=001...,002...&levels=1,2`
+    - SKU detail (paginated): `?account_id=001...&levels=4&level_4_limit=500&level_4_offset=0`
     """
     
     # ========================================
-    # VALIDATION
+    # PARSE AND VALIDATE ACCOUNT IDS
     # ========================================
     
-    # Validate account_id (REQUIRED)
-    account_validation = await validate_salesforce_account_id(account_id, db)
-    if not account_validation.get("success"):
-        return JSONResponse(status_code=404, content=account_validation)
+    account_ids = [aid.strip() for aid in account_id.split(",") if aid.strip()]
     
-    account_info = {
-        "sfdc_account_id": account_validation["account_id"],
-        "sfdc_account_name": account_validation["account_name"]
-    }
+    if not account_ids:
+        return JSONResponse(status_code=400, content={
+            "success": False,
+            "error": {
+                "code": "MISSING_ACCOUNT_ID",
+                "message": "At least one account_id is required",
+                "field": "account_id"
+            }
+        })
+    
+    validated_accounts = {}
+    invalid_accounts = []
+    
+    for aid in account_ids:
+        account_validation = await validate_salesforce_account_id(aid, db)
+        if account_validation.get("success"):
+            validated_accounts[aid] = {
+                "sfdc_account_id": account_validation["account_id"],
+                "sfdc_account_name": account_validation["account_name"]
+            }
+        else:
+            invalid_accounts.append({
+                "account_id": aid,
+                "error": account_validation.get("error", {})
+            })
+    
+    if not validated_accounts:
+        return JSONResponse(status_code=404, content={
+            "success": False,
+            "error": {
+                "code": "NO_VALID_ACCOUNTS",
+                "message": "None of the provided account IDs are valid",
+                "invalid_accounts": invalid_accounts
+            }
+        })
     
     # ========================================
-    # BUILD QUERY
+    # VALIDATE LEVELS PARAMETER
+    # ========================================
+    
+    # Validate levels parameter
+    try:
+        # Parse levels
+        requested_levels = [int(level.strip()) for level in levels.split(",")]
+        
+        # Check for valid values (1-4)
+        invalid_levels = [l for l in requested_levels if l not in [1, 2, 3, 4]]
+        if invalid_levels:
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "error": {
+                    "code": "INVALID_LEVELS",
+                    "message": "Invalid levels parameter. Must be comma-separated integers 1-4",
+                    "field": "levels",
+                    "provided": levels,
+                    "invalid_values": invalid_levels,
+                    "allowed_values": [1, 2, 3, 4]
+                }
+            })
+        
+        # Check for duplicates
+        if len(requested_levels) != len(set(requested_levels)):
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "error": {
+                    "code": "INVALID_LEVELS",
+                    "message": "Duplicate levels not allowed",
+                    "field": "levels",
+                    "provided": levels
+                }
+            })
+        
+        # Sort for consistent ordering
+        requested_levels = sorted(requested_levels)
+        
+    except ValueError:
+        return JSONResponse(status_code=400, content={
+            "success": False,
+            "error": {
+                "code": "INVALID_LEVELS",
+                "message": "Invalid levels format. Must be comma-separated integers (e.g., '1,2,3,4')",
+                "field": "levels",
+                "provided": levels,
+                "example": "1,2,3,4"
+            }
+        })
+    
+    # ========================================
+    # QUERY DATA FOR ALL VALID ACCOUNTS
     # ========================================
     
     try:
-        # Query all hierarchy levels for this account
-        query = text("""
+        valid_account_ids = list(validated_accounts.keys())
+        
+        # Build placeholders for account IDs and levels
+        account_placeholders = ",".join([f":account_{i}" for i in range(len(valid_account_ids))])
+        account_params = {f"account_{i}": aid for i, aid in enumerate(valid_account_ids)}
+        
+        levels_placeholder = ",".join([f":level_{i}" for i in range(len(requested_levels))])
+        levels_params = {f"level_{i}": level for i, level in enumerate(requested_levels)}
+        
+        # Single query for all accounts and levels
+        query_all = text(f"""
             SELECT *
-            FROM lakemeter.mv_baseline_consumption
-            WHERE sfdc_account_id = :account_id
-            ORDER BY hierarchy_level, product_account_id, cloud, sfdc_workspace_name, 
+            FROM lakemeter.sync_baseline_consumption
+            WHERE sfdc_account_id IN ({account_placeholders})
+              AND hierarchy_level IN ({levels_placeholder})
+            ORDER BY sfdc_account_id, hierarchy_level, product_account_id, cloud, sfdc_workspace_name, 
                      product_type, tier, region
         """)
         
-        result = await db.execute(query, {"account_id": account_id})
-        rows = result.fetchall()
-        columns = result.keys()
+        params_all = {**account_params, **levels_params}
+        result_all = await db.execute(query_all, params_all)
+        all_rows = result_all.fetchall()
+        columns = result_all.keys()
         
         # ========================================
-        # FORMAT RESPONSE (Grouped by hierarchy level)
+        # HELPER FUNCTIONS
         # ========================================
         
-        # Helper function to extract metrics for a row
         def extract_metrics(row_dict):
             """Extract rolling averages and monthly data from a row"""
-            
-            # Extract rolling averages
             rolling_averages = {
                 "3m": {
                     "usage_amount": row_dict.get("usage_amount_3m"),
@@ -1537,9 +1338,8 @@ async def get_baseline_consumption_hierarchy(
                 }
             }
             
-            # Extract monthly data
             monthly = {}
-            time_periods = ["1m"] + [f"m{i}" for i in range(1, 13)]
+            time_periods = [f"m{i}" for i in range(1, 13)]
             for period in time_periods:
                 monthly[period] = {
                     "usage_amount": row_dict.get(f"usage_amount_{period}"),
@@ -1555,159 +1355,327 @@ async def get_baseline_consumption_hierarchy(
                 "monthly": monthly
             }
         
-        # Group by hierarchy level
-        hierarchy_data = {
-            "level_1_account": [],
-            "level_2_product_cloud": [],
-            "level_3_workspace": [],
-            "level_4_sku": []
-        }
+        def process_account_data(account_rows, account_info):
+            """Process rows for a single account and return structured result"""
+            
+            # Group data by hierarchy level
+            hierarchy_data = {}
+            if 1 in requested_levels:
+                hierarchy_data["level_1_account"] = None
+            if 2 in requested_levels:
+                hierarchy_data["level_2_product_cloud"] = []
+            if 3 in requested_levels:
+                hierarchy_data["level_3_workspace"] = []
+            if 4 in requested_levels:
+                hierarchy_data["level_4_sku"] = []
+            
+            level_4_all_entries = []
+            
+            for row_dict in account_rows:
+                hierarchy_level = row_dict.get("hierarchy_level")
+                metrics = extract_metrics(row_dict)
+                
+                if hierarchy_level == 1 and 1 in requested_levels:
+                    hierarchy_data["level_1_account"] = {
+                        "dimensions": {
+                            "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                            "sfdc_account_name": row_dict.get("sfdc_account_name")
+                        },
+                        "metrics": metrics
+                    }
+                
+                elif hierarchy_level == 2 and 2 in requested_levels:
+                    hierarchy_data["level_2_product_cloud"].append({
+                        "dimensions": {
+                            "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                            "sfdc_account_name": row_dict.get("sfdc_account_name"),
+                            "product_account_id": row_dict.get("product_account_id"),
+                            "cloud": row_dict.get("cloud")
+                        },
+                        "metrics": metrics
+                    })
+                
+                elif hierarchy_level == 3 and 3 in requested_levels:
+                    hierarchy_data["level_3_workspace"].append({
+                        "dimensions": {
+                            "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                            "sfdc_account_name": row_dict.get("sfdc_account_name"),
+                            "product_account_id": row_dict.get("product_account_id"),
+                            "cloud": row_dict.get("cloud"),
+                            "sfdc_workspace_object_id": row_dict.get("sfdc_workspace_object_id"),
+                            "sfdc_workspace_name": row_dict.get("sfdc_workspace_name")
+                        },
+                        "metrics": metrics
+                    })
+                
+                elif hierarchy_level == 4 and 4 in requested_levels:
+                    level_4_all_entries.append({
+                        "dimensions": {
+                            "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                            "sfdc_account_name": row_dict.get("sfdc_account_name"),
+                            "product_account_id": row_dict.get("product_account_id"),
+                            "cloud": row_dict.get("cloud"),
+                            "sfdc_workspace_object_id": row_dict.get("sfdc_workspace_object_id"),
+                            "sfdc_workspace_name": row_dict.get("sfdc_workspace_name"),
+                            "tier": row_dict.get("tier"),
+                            "product_type": row_dict.get("product_type"),
+                            "region": row_dict.get("region"),
+                            "shield_sku": row_dict.get("shield_sku"),
+                            "usage_unit": row_dict.get("usage_unit")
+                        },
+                        "metrics": metrics
+                    })
+            
+            # Apply Level 4 pagination per account
+            if 4 in requested_levels:
+                level_4_total = len(level_4_all_entries)
+                paginated = level_4_all_entries[level_4_offset:level_4_offset + level_4_limit]
+                hierarchy_data["level_4_sku"] = paginated
+            
+            # ========================================
+            # CALCULATE SUMMARY (from Level 1 if available)
+            # ========================================
+            
+            summary = {
+                "total_rows": len(account_rows),
+                "levels_returned": requested_levels
+            }
+            
+            level_1_rows = [r for r in account_rows if r.get("hierarchy_level") == 1]
+            if level_1_rows:
+                l1 = level_1_rows[0]
+                
+                total_usage_dollars_3m = float(l1.get("usage_dollars_3m") or 0)
+                total_usage_dollars_at_list_3m = float(l1.get("usage_dollars_at_list_3m") or 0)
+                total_shield_dollars_3m = float(l1.get("shield_dollars_3m") or 0)
+                
+                summary.update({
+                    "total_usage_dollars_3m": total_usage_dollars_3m,
+                    "total_usage_dollars_at_list_3m": total_usage_dollars_at_list_3m,
+                    "total_discount_dollars_3m": total_usage_dollars_at_list_3m - total_usage_dollars_3m,
+                    "total_discount_pct_3m": round(((total_usage_dollars_at_list_3m - total_usage_dollars_3m) / total_usage_dollars_at_list_3m * 100) if total_usage_dollars_at_list_3m > 0 else 0, 2),
+                    "total_shield_dollars_3m": total_shield_dollars_3m,
+                    "total_usage_amount_3m": float(l1.get("usage_amount_3m") or 0),
+                    
+                    "total_usage_dollars_30d": float(l1.get("usage_dollars_30d") or 0),
+                    "total_usage_dollars_at_list_30d": float(l1.get("usage_dollars_at_list_30d") or 0),
+                    
+                    "total_usage_dollars_90d": float(l1.get("usage_dollars_90d") or 0),
+                    "total_usage_dollars_at_list_90d": float(l1.get("usage_dollars_at_list_90d") or 0)
+                })
+            
+            # Calculate breakdowns
+            breakdown = {}
+            
+            # By Cloud (from Level 2)
+            level_2_rows = [r for r in account_rows if r.get("hierarchy_level") == 2]
+            if level_2_rows:
+                by_cloud = {}
+                for row in level_2_rows:
+                    cloud = row.get("cloud")
+                    if cloud and cloud != '__ALL__':
+                        spend = float(row.get("usage_dollars_3m") or 0)
+                        by_cloud[cloud] = by_cloud.get(cloud, 0) + spend
+                
+                breakdown["by_cloud"] = [
+                    {
+                        "cloud": cloud,
+                        "spend_3m": spend,
+                        "pct_of_total": round((spend / summary.get("total_usage_dollars_3m", 0) * 100) if summary.get("total_usage_dollars_3m", 0) > 0 else 0, 2)
+                    }
+                    for cloud, spend in sorted(by_cloud.items(), key=lambda x: x[1], reverse=True)
+                ]
+            
+            # By Product Type (from Level 4)
+            level_4_all_rows = [r for r in account_rows if r.get("hierarchy_level") == 4]
+            if level_4_all_rows:
+                by_product_type = {}
+                for row in level_4_all_rows:
+                    product_type = row.get("product_type")
+                    if product_type and product_type != '__ALL__':
+                        spend = float(row.get("usage_dollars_3m") or 0)
+                        by_product_type[product_type] = by_product_type.get(product_type, 0) + spend
+                
+                breakdown["by_product_type"] = [
+                    {
+                        "product_type": pt,
+                        "spend_3m": spend,
+                        "pct_of_total": round((spend / summary.get("total_usage_dollars_3m", 0) * 100) if summary.get("total_usage_dollars_3m", 0) > 0 else 0, 2)
+                    }
+                    for pt, spend in sorted(by_product_type.items(), key=lambda x: x[1], reverse=True)
+                ]
+            
+            # Top Workspaces (from Level 3)
+            level_3_rows = [r for r in account_rows if r.get("hierarchy_level") == 3]
+            if level_3_rows:
+                top_workspaces = sorted(level_3_rows, key=lambda x: float(x.get("usage_dollars_3m") or 0), reverse=True)[:10]
+                breakdown["top_workspaces"] = [
+                    {
+                        "workspace_name": ws.get("sfdc_workspace_name"),
+                        "workspace_id": ws.get("sfdc_workspace_object_id"),
+                        "product_account_id": ws.get("product_account_id"),
+                        "cloud": ws.get("cloud"),
+                        "spend_3m": float(ws.get("usage_dollars_3m") or 0),
+                        "pct_of_total": round((float(ws.get("usage_dollars_3m") or 0) / summary.get("total_usage_dollars_3m", 0) * 100) if summary.get("total_usage_dollars_3m", 0) > 0 else 0, 2)
+                    }
+                    for ws in top_workspaces
+                ]
+            
+            summary["breakdown"] = breakdown
+            
+            # Calculate trends (MoM, QoQ) from Level 1
+            if level_1_rows:
+                l1 = level_1_rows[0]
+                
+                current_month_spend = float(l1.get("usage_dollars_m12") or 0)
+                previous_month_spend = float(l1.get("usage_dollars_m11") or 0)
+                mom_change_dollars = current_month_spend - previous_month_spend
+                mom_change_pct = round((mom_change_dollars / previous_month_spend * 100) if previous_month_spend > 0 else 0, 2)
+                
+                current_quarter_avg = (
+                    float(l1.get("usage_dollars_m10") or 0) +
+                    float(l1.get("usage_dollars_m11") or 0) +
+                    float(l1.get("usage_dollars_m12") or 0)
+                ) / 3
+                
+                previous_quarter_avg = (
+                    float(l1.get("usage_dollars_m7") or 0) +
+                    float(l1.get("usage_dollars_m8") or 0) +
+                    float(l1.get("usage_dollars_m9") or 0)
+                ) / 3
+                
+                qoq_change_dollars = current_quarter_avg - previous_quarter_avg
+                qoq_change_pct = round((qoq_change_dollars / previous_quarter_avg * 100) if previous_quarter_avg > 0 else 0, 2)
+                
+                summary["trends"] = {
+                    "month_over_month": {
+                        "change_pct": mom_change_pct,
+                        "change_dollars": round(mom_change_dollars, 2),
+                        "current_month": current_month_spend,
+                        "previous_month": previous_month_spend,
+                        "calculation": "Compares m12 (last complete month) vs m11 (2 months ago)"
+                    },
+                    "quarter_over_quarter": {
+                        "change_pct": qoq_change_pct,
+                        "change_dollars": round(qoq_change_dollars, 2),
+                        "current_quarter_avg": round(current_quarter_avg, 2),
+                        "previous_quarter_avg": round(previous_quarter_avg, 2),
+                        "calculation": "Compares average of (m10, m11, m12) vs average of (m7, m8, m9)"
+                    }
+                }
+            
+            # ========================================
+            # BUILD LEVELS METADATA
+            # ========================================
+            
+            levels_metadata = {}
+            
+            if 1 in requested_levels:
+                levels_metadata["level_1"] = {
+                    "level": 1,
+                    "name": "ACCOUNT_LEVEL",
+                    "description": "Total consumption across entire customer",
+                    "dimension_keys": "sfdc_account_id, sfdc_account_name",
+                    "dimension_count": 2,
+                    "row_count": len(level_1_rows),
+                    "total_spend_3m": summary.get("total_usage_dollars_3m", 0)
+                }
+            
+            if 2 in requested_levels:
+                level_2_spend = sum([float(r.get("usage_dollars_3m") or 0) for r in level_2_rows])
+                levels_metadata["level_2"] = {
+                    "level": 2,
+                    "name": "PRODUCT_ACCOUNT_CLOUD",
+                    "description": "Breakdown by Databricks account and cloud",
+                    "dimension_keys": "sfdc_account_id, sfdc_account_name, product_account_id, cloud",
+                    "dimension_count": 4,
+                    "row_count": len(level_2_rows),
+                    "total_spend_3m": level_2_spend
+                }
+            
+            if 3 in requested_levels:
+                level_3_spend = sum([float(r.get("usage_dollars_3m") or 0) for r in level_3_rows])
+                levels_metadata["level_3"] = {
+                    "level": 3,
+                    "name": "WORKSPACE_LEVEL",
+                    "description": "Breakdown by workspace",
+                    "dimension_keys": "sfdc_account_id, sfdc_account_name, product_account_id, cloud, sfdc_workspace_object_id, sfdc_workspace_name",
+                    "dimension_count": 6,
+                    "row_count": len(level_3_rows),
+                    "total_spend_3m": level_3_spend
+                }
+            
+            if 4 in requested_levels:
+                level_4_spend = sum([float(r.get("usage_dollars_3m") or 0) for r in level_4_all_rows])
+                level_4_returned = len(hierarchy_data.get("level_4_sku", []))
+                level_4_total_count = len(level_4_all_rows)
+                levels_metadata["level_4"] = {
+                    "level": 4,
+                    "name": "SKU_LEVEL",
+                    "description": "Most granular by SKU details",
+                    "dimension_keys": "sfdc_account_id, sfdc_account_name, product_account_id, cloud, sfdc_workspace_object_id, sfdc_workspace_name, tier, product_type, region, shield_sku, usage_unit",
+                    "dimension_count": 11,
+                    "row_count": level_4_total_count,
+                    "total_spend_3m": level_4_spend,
+                    "returned": level_4_returned,
+                    "pagination": {
+                        "total": level_4_total_count,
+                        "limit": level_4_limit,
+                        "offset": level_4_offset,
+                        "has_more": (level_4_offset + level_4_returned) < level_4_total_count
+                    }
+                }
+            
+            return {
+                "account": account_info,
+                "summary": summary,
+                "levels_metadata": levels_metadata,
+                "data": hierarchy_data
+            }
         
-        for row in rows:
-            row_dict = dict(zip(columns, row))
-            hierarchy_level = row_dict.get("hierarchy_level")
-            
-            # Extract common metrics
-            metrics = extract_metrics(row_dict)
-            
-            if hierarchy_level == 1:
-                # Account Level
-                hierarchy_data["level_1_account"].append({
-                    "dimensions": {
-                        "sfdc_account_id": row_dict.get("sfdc_account_id"),
-                        "sfdc_account_name": row_dict.get("sfdc_account_name")
-                    },
-                    "dimension_keys": row_dict.get("dimension_keys"),
-                    **metrics
-                })
-            
-            elif hierarchy_level == 2:
-                # Product Account + Cloud Level
-                hierarchy_data["level_2_product_cloud"].append({
-                    "dimensions": {
-                        "sfdc_account_id": row_dict.get("sfdc_account_id"),
-                        "sfdc_account_name": row_dict.get("sfdc_account_name"),
-                        "product_account_id": row_dict.get("product_account_id"),
-                        "cloud": row_dict.get("cloud")
-                    },
-                    "dimension_keys": row_dict.get("dimension_keys"),
-                    **metrics
-                })
-            
-            elif hierarchy_level == 3:
-                # Workspace Level
-                hierarchy_data["level_3_workspace"].append({
-                    "dimensions": {
-                        "sfdc_account_id": row_dict.get("sfdc_account_id"),
-                        "sfdc_account_name": row_dict.get("sfdc_account_name"),
-                        "product_account_id": row_dict.get("product_account_id"),
-                        "cloud": row_dict.get("cloud"),
-                        "sfdc_workspace_object_id": row_dict.get("sfdc_workspace_object_id"),
-                        "sfdc_workspace_name": row_dict.get("sfdc_workspace_name")
-                    },
-                    "dimension_keys": row_dict.get("dimension_keys"),
-                    **metrics
-                })
-            
-            elif hierarchy_level == 4:
-                # SKU Level
-                hierarchy_data["level_4_sku"].append({
-                    "dimensions": {
-                        "sfdc_account_id": row_dict.get("sfdc_account_id"),
-                        "sfdc_account_name": row_dict.get("sfdc_account_name"),
-                        "product_account_id": row_dict.get("product_account_id"),
-                        "cloud": row_dict.get("cloud"),
-                        "sfdc_workspace_object_id": row_dict.get("sfdc_workspace_object_id"),
-                        "sfdc_workspace_name": row_dict.get("sfdc_workspace_name"),
-                        "tier": row_dict.get("tier"),
-                        "product_type": row_dict.get("product_type"),
-                        "region": row_dict.get("region"),
-                        "shield_sku": row_dict.get("shield_sku"),
-                        "usage_unit": row_dict.get("usage_unit")
-                    },
-                    "dimension_keys": row_dict.get("dimension_keys"),
-                    **metrics
-                })
+        # ========================================
+        # GROUP ROWS BY ACCOUNT AND PROCESS
+        # ========================================
         
-        # Calculate counts
-        total_rows = sum([
-            len(hierarchy_data["level_1_account"]),
-            len(hierarchy_data["level_2_product_cloud"]),
-            len(hierarchy_data["level_3_workspace"]),
-            len(hierarchy_data["level_4_sku"])
-        ])
+        all_row_dicts = [dict(zip(columns, row)) for row in all_rows]
         
-        return {
+        rows_by_account = {}
+        for row_dict in all_row_dicts:
+            aid = row_dict.get("sfdc_account_id")
+            if aid not in rows_by_account:
+                rows_by_account[aid] = []
+            rows_by_account[aid].append(row_dict)
+        
+        accounts_result = []
+        for aid, account_info in validated_accounts.items():
+            account_rows = rows_by_account.get(aid, [])
+            account_result = process_account_data(account_rows, account_info)
+            accounts_result.append(account_result)
+        
+        # ========================================
+        # BUILD RESPONSE
+        # ========================================
+        
+        response = {
             "success": True,
-            "account": account_info,
-            "metadata": {
-                "hierarchy_levels": {
-                    "level_1_account": {
-                        "name": "ACCOUNT_LEVEL",
-                        "description": "Total consumption across entire customer account",
-                        "dimensions": ["sfdc_account_id", "sfdc_account_name"],
-                        "count": len(hierarchy_data["level_1_account"])
-                    },
-                    "level_2_product_cloud": {
-                        "name": "PRODUCT_ACCOUNT_CLOUD",
-                        "description": "Breakdown by Databricks account and cloud (one customer can have multiple Databricks accounts)",
-                        "dimensions": ["sfdc_account_id", "sfdc_account_name", "product_account_id", "cloud"],
-                        "count": len(hierarchy_data["level_2_product_cloud"])
-                    },
-                    "level_3_workspace": {
-                        "name": "WORKSPACE_LEVEL",
-                        "description": "Breakdown by workspace",
-                        "dimensions": ["sfdc_account_id", "sfdc_account_name", "product_account_id", "cloud", "sfdc_workspace_object_id", "sfdc_workspace_name"],
-                        "count": len(hierarchy_data["level_3_workspace"])
-                    },
-                    "level_4_sku": {
-                        "name": "SKU_LEVEL",
-                        "description": "Most granular breakdown by SKU details",
-                        "dimensions": ["sfdc_account_id", "sfdc_account_name", "product_account_id", "cloud", "sfdc_workspace_object_id", "sfdc_workspace_name", "tier", "product_type", "region", "shield_sku", "usage_unit"],
-                        "count": len(hierarchy_data["level_4_sku"])
-                    }
-                },
-                "time_periods": {
-                    "rolling_averages": {
-                        "3m": "Total over last 3 complete months / 3 (normalized to average monthly spend)",
-                        "30d": "Total over past 30 days (not normalized)",
-                        "90d": "Total over past 90 days / 3 (normalized to average monthly spend)"
-                    },
-                    "monthly": {
-                        "1m": "Last complete month (e.g., if today is Feb 1, returns January totals)",
-                        "m12": "Last complete month - same as 1m (1 month ago)",
-                        "m11": "2 months ago (full month)",
-                        "m10": "3 months ago (full month)",
-                        "m9": "4 months ago (full month)",
-                        "m8": "5 months ago (full month)",
-                        "m7": "6 months ago (full month)",
-                        "m6": "7 months ago (full month)",
-                        "m5": "8 months ago (full month)",
-                        "m4": "9 months ago (full month)",
-                        "m3": "10 months ago (full month)",
-                        "m2": "11 months ago (full month)",
-                        "m1": "12 months ago (full month)"
-                    }
-                },
-                "metrics": {
-                    "usage_amount": "DBU/GB consumed for the workload",
-                    "usage_dollars": "Actual cost paid for the workload (after discounts)",
-                    "usage_dollars_at_list": "Cost at list price for the workload (before discounts)",
-                    "shield_usage_amount": "Total list price dollars for the product tier (not Shield DBUs)",
-                    "shield_dollars": "Shield cost paid (after discounts)",
-                    "shield_dollars_at_list": "Shield cost at list price (before discounts)"
-                },
-                "total_rows": total_rows
-            },
-            "data": hierarchy_data
+            "total_accounts": len(validated_accounts),
+            "accounts": accounts_result
         }
+        
+        if invalid_accounts:
+            response["invalid_accounts"] = invalid_accounts
+        
+        return response
     
     except Exception as e:
         logger.error(f"Error fetching baseline consumption hierarchy: {e}")
-        return {
+        return JSONResponse(status_code=500, content={
             "success": False,
-            "error": {"message": str(e), "code": "DATABASE_ERROR"}
-        }
+            "error": {
+                "code": "DATABASE_ERROR",
+                "message": str(e)
+            }
+        })
 
 
 @app.get("/api/v1/regions", tags=["Cloud & Regions"])
@@ -3049,88 +3017,180 @@ async def get_vector_search_modes(
 @app.get("/api/v1/lakebase/list", tags=["Lakebase"])
 async def list_lakebase_sizes():
     """
-    Get a simple list of all available Lakebase CU (Compute Unit) sizes.
-    CU sizes are the same across all clouds (AWS, AZURE, GCP).
-    Useful for populating dropdowns or validation.
+    Get all available Lakebase Compute Unit (CU) sizes with specs.
     
-    **Available CU sizes:** 1, 2, 4, 8
+    Each CU allocates ~2 GB RAM. Sizes are the same across all clouds (AWS, AZURE, GCP).
+    
+    **Two categories:**
+    - **Autoscale (0.5 - 32 CU):** Supports autoscaling and scale-to-zero.
+      Autoscaling range constraint: max - min <= 8 CU.
+    - **Fixed (36 - 112 CU):** Larger fixed-size computes, no autoscaling.
+    
+    **DBU per CU Hour (varies by cloud/tier):**
+    - AWS Premium: 0.230 DBU per CU hour
+    - AWS Enterprise: 0.213 DBU per CU hour
+    - Azure / GCP: 1.0 DBU per CU hour
     """
-    # Hardcoded CU sizes for Lakebase
-    cu_sizes = [1, 2, 4, 8]
+    autoscale_sizes = [
+        {"cu": 0.5, "ram_gb": 1, "max_connections": 104, "type": "autoscale"},
+        {"cu": 1, "ram_gb": 2, "max_connections": 209, "type": "autoscale"},
+        {"cu": 2, "ram_gb": 4, "max_connections": 419, "type": "autoscale"},
+        {"cu": 3, "ram_gb": 6, "max_connections": 629, "type": "autoscale"},
+        {"cu": 4, "ram_gb": 8, "max_connections": 839, "type": "autoscale"},
+        {"cu": 5, "ram_gb": 10, "max_connections": 1049, "type": "autoscale"},
+        {"cu": 6, "ram_gb": 12, "max_connections": 1258, "type": "autoscale"},
+        {"cu": 7, "ram_gb": 14, "max_connections": 1468, "type": "autoscale"},
+        {"cu": 8, "ram_gb": 16, "max_connections": 1678, "type": "autoscale"},
+        {"cu": 9, "ram_gb": 18, "max_connections": 1888, "type": "autoscale"},
+        {"cu": 10, "ram_gb": 20, "max_connections": 2098, "type": "autoscale"},
+        {"cu": 12, "ram_gb": 24, "max_connections": 2517, "type": "autoscale"},
+        {"cu": 14, "ram_gb": 28, "max_connections": 2937, "type": "autoscale"},
+        {"cu": 16, "ram_gb": 32, "max_connections": 3357, "type": "autoscale"},
+        {"cu": 24, "ram_gb": 48, "max_connections": 4000, "type": "autoscale"},
+        {"cu": 28, "ram_gb": 56, "max_connections": 4000, "type": "autoscale"},
+        {"cu": 32, "ram_gb": 64, "max_connections": 4000, "type": "autoscale"},
+    ]
+    
+    fixed_sizes = [
+        {"cu": 36, "ram_gb": 72, "max_connections": 4000, "type": "fixed"},
+        {"cu": 40, "ram_gb": 80, "max_connections": 4000, "type": "fixed"},
+        {"cu": 44, "ram_gb": 88, "max_connections": 4000, "type": "fixed"},
+        {"cu": 48, "ram_gb": 96, "max_connections": 4000, "type": "fixed"},
+        {"cu": 52, "ram_gb": 104, "max_connections": 4000, "type": "fixed"},
+        {"cu": 56, "ram_gb": 112, "max_connections": 4000, "type": "fixed"},
+        {"cu": 60, "ram_gb": 120, "max_connections": 4000, "type": "fixed"},
+        {"cu": 64, "ram_gb": 128, "max_connections": 4000, "type": "fixed"},
+        {"cu": 72, "ram_gb": 144, "max_connections": 4000, "type": "fixed"},
+        {"cu": 80, "ram_gb": 160, "max_connections": 4000, "type": "fixed"},
+        {"cu": 88, "ram_gb": 176, "max_connections": 4000, "type": "fixed"},
+        {"cu": 96, "ram_gb": 192, "max_connections": 4000, "type": "fixed"},
+        {"cu": 104, "ram_gb": 208, "max_connections": 4000, "type": "fixed"},
+        {"cu": 112, "ram_gb": 224, "max_connections": 4000, "type": "fixed"},
+    ]
+    
+    all_cu_values = [s["cu"] for s in autoscale_sizes + fixed_sizes]
     
     return {
         "success": True,
         "data": {
-            "count": len(cu_sizes),
-            "cu_sizes": cu_sizes,
-            "description": "Compute Units (CU) available for Lakebase. 1 CU = 1 DBU per hour."
+            "total_sizes": len(all_cu_values),
+            "all_cu_values": all_cu_values,
+            "autoscale_sizes": autoscale_sizes,
+            "fixed_sizes": fixed_sizes,
+            "dbu_per_cu_hour": {
+                "AWS": {"PREMIUM": 0.230, "ENTERPRISE": 0.213},
+                "AZURE": {"PREMIUM": 1.0, "ENTERPRISE": 1.0, "STANDARD": 1.0},
+                "GCP": {"PREMIUM": 1.0, "ENTERPRISE": 1.0}
+            },
+            "notes": {
+                "ram": "Each CU allocates approximately 2 GB RAM",
+                "autoscale": "Autoscaling supported for 0.5-32 CU. Range constraint: max - min <= 8 CU. Supports scale-to-zero.",
+                "fixed": "Fixed-size computes (36-112 CU) do not support autoscaling."
+            }
         }
     }
 
 
 @app.get("/api/v1/lakebase/calculate", tags=["Lakebase"])
 async def calculate_lakebase_dbu(
-    cu_size: int = Query(..., description="Compute Unit size (required): 1, 2, 4, or 8"),
-    num_nodes: int = Query(..., description="Number of nodes (required): 1 to 3")
+    cu_size: float = Query(..., description="Compute Unit size (required): 0.5 to 112. See /api/v1/lakebase/list for valid values."),
+    cloud: str = Query(..., description="Cloud provider (required): AWS, AZURE, GCP"),
+    tier: str = Query(..., description="Pricing tier (required): PREMIUM, ENTERPRISE"),
+    read_replicas: int = Query(0, ge=0, description="Number of read replicas (0 = primary only). Default: 0")
 ):
     """
-    Calculate Lakebase DBU usage based on CU size and number of nodes.
+    Calculate Lakebase DBU usage based on CU size, cloud, tier, and read replicas.
     
-    **CU size is REQUIRED** - Must be one of: 1, 2, 4, 8
-    **Number of nodes is REQUIRED** - Must be between 1 and 3
+    **DBU per CU Hour varies by cloud/tier:**
+    - AWS Premium: 0.230 DBU per CU hour
+    - AWS Enterprise: 0.213 DBU per CU hour
+    - Azure / GCP (all tiers): 1.0 DBU per CU hour
     
-    **Simple Formula (no database lookup, no cloud difference):**
-    - Total DBU per hour = CU size × Number of nodes
-    - 1 CU = 1 DBU per hour
-    - Same calculation for all clouds (AWS, AZURE, GCP)
+    **Formula:**
+    - DBU per hour (per compute) = CU size × DBU-per-CU-hour rate
+    - Total computes = 1 (primary) + read_replicas
+    - Total DBU per hour = DBU per hour × Total computes
     
     **Discovery Endpoint:**
-    - `/api/v1/lakebase/list` - Get all available CU sizes
+    - `/api/v1/lakebase/list` - Get all available CU sizes and DBU rates
     
-    **Example Calculations:**
-    - CU=2, Nodes=2 → 2 × 2 = 4 DBU/hour
-    - CU=4, Nodes=3 → 4 × 3 = 12 DBU/hour
-    - CU=8, Nodes=1 → 8 × 1 = 8 DBU/hour
+    **Example Calculations (AWS Enterprise, cu=4):**
+    - No replicas: 4 × 0.213 × 1 = 0.852 DBU/hour
+    - 1 replica: 4 × 0.213 × 2 = 1.704 DBU/hour
+    
+    **Example Calculations (Azure, cu=4):**
+    - No replicas: 4 × 1.0 × 1 = 4.0 DBU/hour
+    - 1 replica: 4 × 1.0 × 2 = 8.0 DBU/hour
     """
-    # Validate CU size
-    valid_cu_sizes = [1, 2, 4, 8]
+    valid_cu_sizes = [
+        0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 24, 28, 32,
+        36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112
+    ]
     if cu_size not in valid_cu_sizes:
         return {
             "success": False,
             "error": {
                 "code": "INVALID_CU_SIZE",
-                "message": f"Invalid CU size '{cu_size}'. Must be one of: {', '.join(map(str, valid_cu_sizes))}",
+                "message": f"Invalid CU size '{cu_size}'. See /api/v1/lakebase/list for valid values.",
                 "field": "cu_size",
                 "allowed_values": valid_cu_sizes
             }
         }
     
-    # Validate number of nodes
-    if num_nodes < 1 or num_nodes > 3:
+    cloud_upper = cloud.upper()
+    if cloud_upper not in ["AWS", "AZURE", "GCP"]:
         return {
             "success": False,
             "error": {
-                "code": "INVALID_NUM_NODES",
-                "message": f"Invalid number of nodes '{num_nodes}'. Must be between 1 and 3.",
-                "field": "num_nodes",
-                "allowed_values": [1, 2, 3]
+                "code": "INVALID_CLOUD",
+                "message": f"Invalid cloud '{cloud}'. Must be AWS, AZURE, or GCP.",
+                "field": "cloud",
+                "allowed_values": ["AWS", "AZURE", "GCP"]
             }
         }
     
-    # Simple calculation: Total DBU/hour = CU size × Number of nodes
-    # No database lookup needed - 1 CU always equals 1 DBU per hour
-    # Same for all clouds
-    total_dbu_per_hour = cu_size * num_nodes
+    tier_upper = tier.upper()
+    dbu_rates = {
+        "AWS": {"PREMIUM": 0.230, "ENTERPRISE": 0.213},
+        "AZURE": {"PREMIUM": 1.0, "ENTERPRISE": 1.0, "STANDARD": 1.0},
+        "GCP": {"PREMIUM": 1.0, "ENTERPRISE": 1.0}
+    }
+    
+    cloud_rates = dbu_rates.get(cloud_upper, {})
+    if tier_upper not in cloud_rates:
+        return {
+            "success": False,
+            "error": {
+                "code": "INVALID_TIER",
+                "message": f"Invalid tier '{tier}' for cloud '{cloud_upper}'. Must be one of: {list(cloud_rates.keys())}",
+                "field": "tier",
+                "allowed_values": list(cloud_rates.keys())
+            }
+        }
+    
+    dbu_per_cu_hour = cloud_rates[tier_upper]
+    total_computes = 1 + read_replicas
+    dbu_per_hour_per_compute = cu_size * dbu_per_cu_hour
+    total_dbu_per_hour = dbu_per_hour_per_compute * total_computes
+    
+    cu_spec_type = "autoscale" if cu_size <= 32 else "fixed"
+    ram_gb = int(cu_size * 2)
     
     return {
         "success": True,
         "data": {
             "cu_size": cu_size,
-            "num_nodes": num_nodes,
-            "total_dbu_per_hour": total_dbu_per_hour,
-            "calculation": f"{cu_size} CU × {num_nodes} nodes = {total_dbu_per_hour} DBU/hour",
-            "description": f"Lakebase instance with {cu_size} CU and {num_nodes} node(s)",
-            "note": "1 CU = 1 DBU per hour (same across all clouds)"
+            "cu_type": cu_spec_type,
+            "ram_gb": ram_gb,
+            "cloud": cloud_upper,
+            "tier": tier_upper,
+            "read_replicas": read_replicas,
+            "total_computes": total_computes,
+            "dbu_per_cu_hour": dbu_per_cu_hour,
+            "dbu_per_hour_per_compute": round(dbu_per_hour_per_compute, 6),
+            "total_dbu_per_hour": round(total_dbu_per_hour, 6),
+            "calculation": f"{cu_size} CU × {dbu_per_cu_hour} DBU/CU-hr × {total_computes} compute(s) = {round(total_dbu_per_hour, 6)} DBU/hour",
+            "description": f"Lakebase {cu_spec_type} compute with {cu_size} CU (~{ram_gb} GB RAM) and {read_replicas} read replica(s)"
         }
     }
 
@@ -3507,7 +3567,17 @@ async def get_model_serving_gpu_types(
                         "dbu_rate": float(r.dbu_rate) if r.dbu_rate else None
                     }
                     for r in results
-                ]
+                ],
+                "scale_out_presets": {
+                    "small": {"concurrency": 4, "dbu_multiplier": 4, "range": "4"},
+                    "medium": {"concurrency": 12, "dbu_multiplier": 12, "range": "8-16"},
+                    "large": {"concurrency": 40, "dbu_multiplier": 40, "range": "16-64"}
+                },
+                "custom_scale_out": {
+                    "min": 4,
+                    "step": 4,
+                    "note": "Custom concurrency must be a multiple of 4 (4, 8, 12, 16, ...)"
+                }
             }
         }
     except Exception as e:
@@ -7394,6 +7464,8 @@ class ModelServingCalculationRequest(BaseModel):
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     gpu_type: str = Field(..., description="GPU type (e.g., gpu_small_t4, gpu_xlarge_a100_80gb_8x)")
+    scale_out: str = Field("small", description="Scale-out preset: small (4), medium (12), large (40), or custom")
+    concurrency: Optional[int] = Field(None, description="Custom concurrency (required when scale_out='custom'). Must be a multiple of 4, minimum 4.")
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
     discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
@@ -7408,73 +7480,63 @@ async def calculate_model_serving_cost(
     
     **GPU Types:** cpu, gpu_small_t4, gpu_medium_a10g_1x, gpu_xlarge_a100_80gb_8x, etc.
     
+    **Scale-out presets:**
+    - small: 4 concurrency (4 DBU multiplier)
+    - medium: 12 concurrency (avg of 8-16 range)
+    - large: 40 concurrency (avg of 16-64 range)
+    - custom: provide your own concurrency value (multiples of 4)
+    
     **Formula:**
     ```
-    DBU/Hour = gpu_type_dbu_rate
-    Total Cost = DBU/Hour × hours_per_month × dbu_price
+    DBU/Hour = gpu_dbu_rate × concurrency
+    DBU/Month = DBU/Hour × hours_per_month
+    Cost = DBU/Month × dbu_price
     ```
     
-    **Example Request:**
+    **Example Request (preset):**
     ```json
     {
       "cloud": "AWS",
       "region": "us-east-1",
       "tier": "PREMIUM",
       "gpu_type": "gpu_small_t4",
+      "scale_out": "medium",
       "hours_per_month": 730
     }
     ```
     
-    **Example Request with Discounts:**
+    **Example Request (custom concurrency):**
     ```json
     {
       "cloud": "AWS",
       "region": "us-east-1",
       "tier": "PREMIUM",
       "gpu_type": "gpu_small_t4",
-      "hours_per_month": 730,
-      "discount_config": {
-        "global": {
-          "dbu_discount": 20
-        },
-        "sku_specific": {
-          "SERVERLESS_REAL_TIME_INFERENCE": 30
-        },
-        "notes": "Q1 2026 Model Serving discount"
-      }
+      "scale_out": "custom",
+      "concurrency": 24,
+      "hours_per_month": 730
     }
     ```
     
-    **Example Response with Discounts:**
+    **Example Request (custom concurrency with discounts):**
     ```json
     {
-      "success": true,
-      "data": {
-        "workload_type": "MODEL_SERVING",
-        "sku_breakdown": [
-          {
-            "type": "dbu",
-            "sku": "SERVERLESS_REAL_TIME_INFERENCE",
-            "cost": 535.52,
-            "cost_after_discount": 374.86,
-            "qty": 5839.68,
-            "usage_unit": "DBU",
-            "unit_price_before_discount": 0.091725,
-            "unit_price_after_discount": 0.064208,
-            "discount": {
-              "percentage_applied": 30.0,
-              "source": "sku_specific:SERVERLESS_REAL_TIME_INFERENCE",
-              "amount_saved": 160.66
-            }
-          }
-        ],
-        "total_cost": {
-          "cost_per_month": 535.52,
-          "total_after_discount": 374.86,
-          "total_discount": 160.66,
-          "effective_discount_percentage": 30.0,
-          "note": "Model Serving is serverless - no VM costs"
-        }
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "gpu_type": "gpu_small_t4",
+      "scale_out": "custom",
+      "concurrency": 24,
+      "hours_per_month": 730,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 15,
+          "storage_discount": 10
+        },
+        "sku_specific": {
+          "SERVERLESS_REAL_TIME_INFERENCE": 25
+        },
+        "notes": "Q1 2026 discount - SKU-specific override"
       }
     }
     ```
@@ -7491,16 +7553,48 @@ async def calculate_model_serving_cost(
     if error:
         raise HTTPException(status_code=400, detail=error["error"])
     
-    # Validate GPU type exists for this cloud
-    query_check = text("""
-        SELECT COUNT(*) FROM lakemeter.sync_product_serverless_rates
+    # Resolve concurrency from scale_out preset or custom value
+    scale_out_presets = {
+        "small": 4,
+        "medium": 12,
+        "large": 40
+    }
+    scale_out_lower = request.scale_out.lower()
+    
+    if scale_out_lower == "custom":
+        if request.concurrency is None:
+            raise HTTPException(status_code=400, detail={
+                "code": "MISSING_CONCURRENCY",
+                "message": "concurrency is required when scale_out='custom'.",
+                "field": "concurrency"
+            })
+        if request.concurrency < 4 or request.concurrency % 4 != 0:
+            raise HTTPException(status_code=400, detail={
+                "code": "INVALID_CONCURRENCY",
+                "message": f"concurrency must be a multiple of 4 (minimum 4). Got {request.concurrency}.",
+                "field": "concurrency"
+            })
+        effective_concurrency = request.concurrency
+    elif scale_out_lower in scale_out_presets:
+        effective_concurrency = scale_out_presets[scale_out_lower]
+    else:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_SCALE_OUT",
+            "message": f"scale_out must be one of: small, medium, large, custom. Got '{request.scale_out}'.",
+            "field": "scale_out",
+            "allowed_values": ["small", "medium", "large", "custom"]
+        })
+    
+    # Validate GPU type and get DBU rate
+    gpu_query = text("""
+        SELECT size_or_model as gpu_type, dbu_rate
+        FROM lakemeter.sync_product_serverless_rates
         WHERE product = 'model_serving' AND cloud = :cloud AND size_or_model = :gpu_type
     """)
-    result_check = await db.execute(query_check, {"cloud": request.cloud.upper(), "gpu_type": request.gpu_type})
-    count = result_check.scalar()
+    gpu_result = await db.execute(gpu_query, {"cloud": request.cloud.upper(), "gpu_type": request.gpu_type})
+    gpu_row = gpu_result.fetchone()
     
-    if count == 0:
-        # Fetch available GPU types for this cloud
+    if not gpu_row:
         query_available = text("""
             SELECT size_or_model as gpu_type, dbu_rate
             FROM lakemeter.sync_product_serverless_rates
@@ -7509,7 +7603,6 @@ async def calculate_model_serving_cost(
         """)
         result_available = await db.execute(query_available, {"cloud": request.cloud.upper()})
         available_gpus = result_available.fetchall()
-        
         gpu_list = [f"{row.gpu_type} ({row.dbu_rate} DBU/hour)" for row in available_gpus]
         
         raise HTTPException(
@@ -7523,34 +7616,14 @@ async def calculate_model_serving_cost(
         )
     
     try:
-        query = text("""
-            SELECT 
-                dbu_per_hour, hours_per_month, dbu_per_month, dbu_price, dbu_cost_per_month,
-                driver_vm_cost_per_hour, worker_vm_cost_per_hour, total_vm_cost_per_hour,
-                driver_vm_cost_per_month, total_worker_vm_cost_per_month, vm_cost_per_month, cost_per_month
-            FROM lakemeter.calculate_line_item_costs(
-                :p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8, :p9, :p10,
-                :p11, :p12, :p13, :p14, :p15, :p16, :p17, :p18, :p19, :p20,
-                :p21, :p22, :p23, :p24, :p25, :p26, :p27, :p28, :p29, :p30,
-                :p31, :p32, :p33, :p34, :p35
-            )
-        """)
+        # --- Independent calculation (no stored function) ---
+        gpu_dbu_rate = float(gpu_row.dbu_rate)
         
-        result = await db.execute(query, {
-            "p1": "MODEL_SERVING", "p2": request.cloud.upper(), "p3": request.region, "p4": request.tier.upper(),
-            "p5": False, "p6": False, "p7": None, "p8": None, "p9": None, "p10": 0,
-            "p11": "on_demand", "p12": "on_demand", "p13": 0, "p14": 0, "p15": 30,
-            "p16": request.hours_per_month, "p17": "standard", "p18": None, "p19": None, "p20": 1,
-            "p21": "on_demand", "p22": None, "p23": 0, "p24": request.gpu_type,
-            "p25": None, "p26": None, "p27": "global", "p28": "all",
-            "p29": "input_token", "p30": 0, "p31": 0, "p32": 1, "p33": "NA", "p34": "NA", "p35": "NA"
-        })
+        # DBU per hour = gpu_dbu_rate × concurrency
+        dbu_per_hour = gpu_dbu_rate * effective_concurrency
+        dbu_per_month = dbu_per_hour * request.hours_per_month
         
-        row = result.fetchone()
-        if not row:
-            raise HTTPException(status_code=500, detail="No calculation result returned")
-        
-        # Get SKU type from database (product_type from sync_pricing_dbu_rates)
+        # Get SKU type
         sku_type = await get_product_type_from_db(
             db=db,
             cloud=request.cloud,
@@ -7560,12 +7633,39 @@ async def calculate_model_serving_cost(
             serverless_enabled=True
         )
         
+        # Look up DBU price
+        dbu_price_query = text("""
+            SELECT price_per_dbu
+            FROM lakemeter.sync_pricing_dbu_rates
+            WHERE product_type = :product_type
+              AND cloud = :cloud
+              AND region = :region
+              AND tier = :tier
+              AND usage_unit = 'DBU'
+            LIMIT 1
+        """)
+        dbu_price_result = await db.execute(dbu_price_query, {
+            "product_type": sku_type,
+            "cloud": request.cloud.upper(),
+            "region": request.region,
+            "tier": request.tier.upper()
+        })
+        dbu_price_row = dbu_price_result.fetchone()
+        if not dbu_price_row:
+            raise HTTPException(status_code=500, detail={
+                "code": "PRICE_NOT_FOUND",
+                "message": f"No DBU price found for {sku_type} in {request.cloud.upper()}/{request.region}/{request.tier.upper()}"
+            })
+        
+        dbu_price = float(dbu_price_row[0])
+        dbu_cost_per_month = dbu_per_month * dbu_price
+        
         # Build SKU breakdown for discount application
         sku_breakdown = build_sku_breakdown_serverless(
             sku_type=sku_type,
-            dbu_cost=float(row[4]),
-            dbu_quantity=float(row[2]),
-            dbu_price=float(row[3])
+            dbu_cost=dbu_cost_per_month,
+            dbu_quantity=dbu_per_month,
+            dbu_price=dbu_price
         )
         
         # Validate SKU names in sku_specific discount config if provided
@@ -7591,17 +7691,22 @@ async def calculate_model_serving_cost(
                     "cloud": request.cloud.upper(),
                     "region": request.region,
                     "tier": request.tier.upper(),
-                    "gpu_type": request.gpu_type
+                    "gpu_type": request.gpu_type,
+                    "scale_out": scale_out_lower,
+                    "concurrency": effective_concurrency
                 },
-                "usage": {"hours_per_month": float(row[1])},
+                "usage": {"hours_per_month": request.hours_per_month},
                 "dbu_calculation": {
-                    "dbu_per_hour": float(row[0]),
-                    "dbu_per_month": float(row[2]),
-                    "dbu_price": float(row[3]),
-                    "dbu_cost_per_month": float(row[4])
+                    "gpu_dbu_rate": gpu_dbu_rate,
+                    "concurrency": effective_concurrency,
+                    "dbu_per_hour": round(dbu_per_hour, 6),
+                    "dbu_per_month": round(dbu_per_month, 6),
+                    "dbu_price": dbu_price,
+                    "dbu_cost_per_month": round(dbu_cost_per_month, 2),
+                    "calculation": f"{gpu_dbu_rate} DBU/hr × {effective_concurrency} concurrency = {round(dbu_per_hour, 6)} DBU/hr × {request.hours_per_month} hrs = {round(dbu_per_month, 2)} DBU/mo × ${dbu_price}/DBU = ${round(dbu_cost_per_month, 2)}/mo"
                 },
                 "total_cost": {
-                    "cost_per_month": float(row[11]),
+                    "cost_per_month": round(dbu_cost_per_month, 2),
                     "note": "Model Serving is serverless - no VM costs"
                 },
                 "sku_breakdown": sku_breakdown
@@ -8375,7 +8480,7 @@ class LakebaseCalculationRequest(BaseModel):
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     cu_size: int = Field(..., description="Compute unit size: 1, 2, 4, or 8", ge=1, le=8)
-    num_nodes: int = Field(..., description="Number of nodes: 1-3 for HA", ge=1, le=3)
+    num_nodes: int = Field(..., description="Number of nodes: 1-3 (1 = primary only, 2+ includes read replicas)", ge=1, le=3)
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
     storage_gb: float = Field(0, description="Storage in GB (max 8 TB = 8192 GB, no free tier)", ge=0)
     discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
@@ -8389,14 +8494,20 @@ async def calculate_lakebase_cost(
     """
     Calculate cost for Lakebase (managed PostgreSQL) workload.
     
-    **CU Sizes:** 1, 2, 4, 8  
-    **Nodes:** 1-3 (for high availability)
+    **CU Sizes:** 0.5 to 112 (see /api/v1/lakebase/list for full list)
+    **num_nodes:** 1-3 total nodes (1 = primary only, 2+ includes read replicas).
     **Storage:** 0 - 8192 GB (8 TB max), no free tier
+    
+    **DBU per CU Hour (varies by cloud/tier):**
+    - AWS Premium: 0.230 DBU per CU hour
+    - AWS Enterprise: 0.213 DBU per CU hour
+    - Azure / GCP (all tiers): 1.0 DBU per CU hour
     
     **Formula:**
     ```
-    DBU/Hour = cu_size × num_nodes
-    DBU Cost = DBU/Hour × hours_per_month × dbu_price
+    DBU/Hour per compute = cu_size × dbu_per_cu_hour
+    Total DBU/Hour = DBU/Hour per compute × num_nodes
+    DBU Cost = Total DBU/Hour × hours_per_month × dbu_price
     
     Storage:
     Total DSU = storage_gb × 15 (each GB consumes 15 DSU)
@@ -8410,99 +8521,11 @@ async def calculate_lakebase_cost(
     {
       "cloud": "AWS",
       "region": "us-east-1",
-      "tier": "PREMIUM",
+      "tier": "ENTERPRISE",
       "cu_size": 4,
-      "num_nodes": 2,
+      "num_nodes": 1,
       "hours_per_month": 730,
       "storage_gb": 500
-    }
-    ```
-    
-    **Example Response:**
-    ```json
-    {
-      "dbu_calculation": {
-        "dbu_per_hour": 8,
-        "dbu_cost_per_month": 408.80
-      },
-      "storage_calculation": {
-        "storage_gb": 500,
-        "max_storage_gb": 8192,
-        "dsu_per_gb": 15,
-        "total_dsu": 7500,
-        "price_per_dsu": 0.023,
-        "storage_cost_per_month": 172.50
-      },
-      "total_cost": {
-        "cost_per_month": 581.30,
-        "breakdown": {
-          "dbu_cost": 408.80,
-          "storage_cost": 172.50
-        }
-      }
-    }
-    ```
-    
-    **Example Request with Discounts:**
-    ```json
-    {
-      "cloud": "AWS",
-      "region": "us-east-1",
-      "tier": "PREMIUM",
-      "cu_size": 2,
-      "num_nodes": 2,
-      "hours_per_month": 730,
-      "storage_gb": 1000,
-      "discount_config": {
-        "global": {
-          "dbu_discount": 20,
-          "storage_discount": 15
-        },
-        "sku_specific": {
-          "DATABASE_SERVERLESS_COMPUTE": 25
-        },
-        "notes": "Q1 2026 Lakebase discount - SKU-specific override"
-      }
-    }
-    ```
-    
-    **Example Response with Discounts:**
-    ```json
-    {
-      "success": true,
-      "data": {
-        "workload_type": "LAKEBASE",
-        "sku_breakdown": [
-          {
-            "type": "dbu",
-            "sku": "DATABASE_SERVERLESS_COMPUTE",
-            "cost": 408.8,
-            "cost_after_discount": 306.6,
-            "discount": {
-              "percentage_applied": 25.0,
-              "source": "sku_specific:DATABASE_SERVERLESS_COMPUTE",
-              "amount_saved": 102.2
-            }
-          },
-          {
-            "type": "storage",
-            "sku": "DATABRICKS_STORAGE",
-            "cost": 345.0,
-            "cost_after_discount": 293.25,
-            "discount": {
-              "percentage_applied": 15.0,
-              "source": "global:storage",
-              "amount_saved": 51.75
-            }
-          }
-        ],
-        "total_cost": {
-          "cost_per_month": 753.8,
-          "total_after_discount": 599.85,
-          "total_discount": 153.95,
-          "effective_discount_percentage": 20.42
-        }
-      }
     }
     ```
     """
@@ -8519,13 +8542,26 @@ async def calculate_lakebase_cost(
     if error:
         raise HTTPException(status_code=400, detail=error["error"])
     
-    error = await validate_lakebase_cu_size(request.cu_size, db)
-    if error:
-        raise HTTPException(status_code=400, detail=error["error"])
+    # Validate CU size against full list
+    valid_cu_sizes = [
+        0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 24, 28, 32,
+        36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112
+    ]
+    if request.cu_size not in valid_cu_sizes:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_CU_SIZE",
+            "message": f"Invalid CU size '{request.cu_size}'. See /api/v1/lakebase/list for valid values.",
+            "field": "cu_size",
+            "allowed_values": valid_cu_sizes
+        })
     
-    error = await validate_lakebase_num_nodes(request.num_nodes, db)
-    if error:
-        raise HTTPException(status_code=400, detail=error["error"])
+    if request.num_nodes < 1 or request.num_nodes > 3:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_NUM_NODES",
+            "message": f"num_nodes must be between 1 and 3. Got {request.num_nodes}.",
+            "field": "num_nodes",
+            "allowed_values": [1, 2, 3]
+        })
     
     # Storage constants for Lakebase
     MAX_STORAGE_GB = 8192  # 8 TB
@@ -8548,7 +8584,6 @@ async def calculate_lakebase_cost(
     
     if request.storage_gb > 0:
         try:
-            # Get DSU price from database
             storage_price_query = text("""
                 SELECT price_per_dbu as price_per_dsu 
                 FROM lakemeter.sync_pricing_dbu_rates
@@ -8574,36 +8609,33 @@ async def calculate_lakebase_cost(
             logger.warning(f"Could not fetch storage price for Lakebase: {e}")
     
     try:
-        query = text("""
-            SELECT 
-                dbu_per_hour, hours_per_month, dbu_per_month, dbu_price, dbu_cost_per_month,
-                driver_vm_cost_per_hour, worker_vm_cost_per_hour, total_vm_cost_per_hour,
-                driver_vm_cost_per_month, total_worker_vm_cost_per_month, vm_cost_per_month, cost_per_month
-            FROM lakemeter.calculate_line_item_costs(
-                :p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8, :p9, :p10,
-                :p11, :p12, :p13, :p14, :p15, :p16, :p17, :p18, :p19, :p20,
-                :p21, :p22, :p23, :p24, :p25, :p26, :p27, :p28, :p29, :p30,
-                :p31, :p32, :p33, :p34, :p35
-            )
-        """)
+        # --- Independent DBU calculation (no stored function) ---
+        # DBU per CU hour varies by cloud/tier
+        dbu_per_cu_hour_rates = {
+            "AWS": {"PREMIUM": 0.230, "ENTERPRISE": 0.213},
+            "AZURE": {"PREMIUM": 1.0, "ENTERPRISE": 1.0, "STANDARD": 1.0},
+            "GCP": {"PREMIUM": 1.0, "ENTERPRISE": 1.0}
+        }
         
-        result = await db.execute(query, {
-            "p1": "LAKEBASE", "p2": request.cloud.upper(), "p3": request.region, "p4": request.tier.upper(),
-            "p5": False, "p6": False, "p7": None, "p8": None, "p9": None, "p10": 0,
-            "p11": "on_demand", "p12": "on_demand", "p13": 0, "p14": 0, "p15": 30,
-            "p16": request.hours_per_month, "p17": "standard", "p18": None, "p19": None, "p20": 1,
-            "p21": "on_demand", "p22": None, "p23": 0, "p24": None,
-            "p25": None, "p26": None, "p27": "global", "p28": "all",
-            "p29": "input_token", "p30": 0,
-            "p31": request.cu_size, "p32": request.num_nodes,
-            "p33": "NA", "p34": "NA", "p35": "NA"
-        })
+        cloud_upper = request.cloud.upper()
+        tier_upper = request.tier.upper()
         
-        row = result.fetchone()
-        if not row:
-            raise HTTPException(status_code=500, detail="No calculation result returned")
+        cloud_rates = dbu_per_cu_hour_rates.get(cloud_upper, {})
+        dbu_per_cu_hour = cloud_rates.get(tier_upper)
+        if dbu_per_cu_hour is None:
+            raise HTTPException(status_code=400, detail={
+                "code": "UNSUPPORTED_CLOUD_TIER",
+                "message": f"No Lakebase DBU rate for {cloud_upper}/{tier_upper}.",
+                "field": "tier"
+            })
         
-        # Get SKU type from database (product_type from sync_pricing_dbu_rates)
+        # num_nodes = total nodes (1 = primary only, 2+ includes read replicas)
+        total_computes = request.num_nodes
+        dbu_per_hour_per_compute = request.cu_size * dbu_per_cu_hour
+        total_dbu_per_hour = dbu_per_hour_per_compute * total_computes
+        dbu_per_month = total_dbu_per_hour * request.hours_per_month
+        
+        # Look up the DBU list price from sync_pricing_dbu_rates
         sku_type = await get_product_type_from_db(
             db=db,
             cloud=request.cloud,
@@ -8613,16 +8645,39 @@ async def calculate_lakebase_cost(
             serverless_enabled=True
         )
         
-        # Calculate total cost including storage
-        dbu_cost_per_month = float(row[4])
+        dbu_price_query = text("""
+            SELECT price_per_dbu
+            FROM lakemeter.sync_pricing_dbu_rates
+            WHERE product_type = :product_type
+              AND cloud = :cloud
+              AND region = :region
+              AND tier = :tier
+              AND usage_unit = 'DBU'
+            LIMIT 1
+        """)
+        dbu_price_result = await db.execute(dbu_price_query, {
+            "product_type": sku_type,
+            "cloud": cloud_upper,
+            "region": request.region,
+            "tier": tier_upper
+        })
+        dbu_price_row = dbu_price_result.fetchone()
+        if not dbu_price_row:
+            raise HTTPException(status_code=500, detail={
+                "code": "PRICE_NOT_FOUND",
+                "message": f"No DBU price found for {sku_type} in {cloud_upper}/{request.region}/{tier_upper}"
+            })
+        
+        dbu_price = float(dbu_price_row[0])
+        dbu_cost_per_month = dbu_per_month * dbu_price
         total_cost_per_month = dbu_cost_per_month + storage_cost_per_month
         
-        # Build SKU breakdown for discount application (DBU + DSU Storage)
+        # Build SKU breakdown for discount application
         sku_breakdown = build_sku_breakdown_serverless(
             sku_type=sku_type,
             dbu_cost=dbu_cost_per_month,
-            dbu_quantity=float(row[2]),
-            dbu_price=float(row[3])
+            dbu_quantity=dbu_per_month,
+            dbu_price=dbu_price
         )
         
         # Add DSU storage SKU if there's storage
@@ -8650,25 +8705,34 @@ async def calculate_lakebase_cost(
                 db
             )
         
+        cu_type = "autoscale" if request.cu_size <= 32 else "fixed"
+        ram_gb = int(request.cu_size * 2)
+        
         response_data = {
             "success": True,
             "data": {
                 "workload_type": "LAKEBASE",
                 "sku_type": sku_type,
                 "configuration": {
-                    "cloud": request.cloud.upper(),
+                    "cloud": cloud_upper,
                     "region": request.region,
-                    "tier": request.tier.upper(),
+                    "tier": tier_upper,
                     "cu_size": request.cu_size,
+                    "cu_type": cu_type,
+                    "ram_gb": ram_gb,
                     "num_nodes": request.num_nodes,
+                    "total_computes": total_computes,
                     "storage_gb": request.storage_gb
                 },
-                "usage": {"hours_per_month": float(row[1])},
+                "usage": {"hours_per_month": request.hours_per_month},
                 "dbu_calculation": {
-                    "dbu_per_hour": float(row[0]),
-                    "dbu_per_month": float(row[2]),
-                    "dbu_price": float(row[3]),
-                    "dbu_cost_per_month": dbu_cost_per_month
+                    "dbu_per_cu_hour": dbu_per_cu_hour,
+                    "dbu_per_hour_per_compute": round(dbu_per_hour_per_compute, 6),
+                    "total_dbu_per_hour": round(total_dbu_per_hour, 6),
+                    "dbu_per_month": round(dbu_per_month, 6),
+                    "dbu_price": dbu_price,
+                    "dbu_cost_per_month": round(dbu_cost_per_month, 2),
+                    "calculation": f"{request.cu_size} CU × {dbu_per_cu_hour} DBU/CU-hr × {total_computes} compute(s) = {round(total_dbu_per_hour, 6)} DBU/hr × {request.hours_per_month} hrs = {round(dbu_per_month, 2)} DBU/mo × ${dbu_price}/DBU = ${round(dbu_cost_per_month, 2)}/mo"
                 },
                 "storage_calculation": {
                     "storage_gb": request.storage_gb,
@@ -8676,15 +8740,15 @@ async def calculate_lakebase_cost(
                     "dsu_per_gb": DSU_PER_GB,
                     "total_dsu": total_dsu,
                     "price_per_dsu": price_per_dsu,
-                    "storage_cost_per_month": storage_cost_per_month
+                    "storage_cost_per_month": round(storage_cost_per_month, 2)
                 },
                 "total_cost": {
-                    "cost_per_month": total_cost_per_month,
+                    "cost_per_month": round(total_cost_per_month, 2),
                     "breakdown": {
-                        "dbu_cost": dbu_cost_per_month,
-                        "storage_cost": storage_cost_per_month
+                        "dbu_cost": round(dbu_cost_per_month, 2),
+                        "storage_cost": round(storage_cost_per_month, 2)
                     },
-                    "note": "Lakebase is serverless - no VM costs"
+                    "note": "Lakebase is serverless - no VM costs. num_nodes = total nodes (1 = primary only, 2+ includes read replicas)."
                 },
                 "sku_breakdown": sku_breakdown
             }
