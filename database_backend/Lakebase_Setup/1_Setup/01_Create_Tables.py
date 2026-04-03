@@ -360,7 +360,7 @@ CREATE TABLE lakemeter.line_items (
     fmapi_quantity BIGINT,                   -- Quantity (tokens for token-based, hours for batch_inference)
     
     -- Lakebase config
-    lakebase_cu INT,                          -- CU per node (1, 2, 4, 8)
+    lakebase_cu NUMERIC(5,1),                  -- Compute Units (0.5-112, each CU = ~2GB RAM)
     lakebase_storage_gb INT,                  -- Storage in GB
     lakebase_ha_nodes INT DEFAULT 1,          -- Total number of nodes (1-3, 1=no HA)
     lakebase_backup_retention_days INT DEFAULT 7,  -- Backup retention (0=no backup, 1-35 days)
@@ -902,9 +902,9 @@ enum_constraints = [
     """, "line_items.vm_payment_option"),
     
     ("chk_lakebase_cu", """
-    ALTER TABLE lakemeter.line_items 
-    ADD CONSTRAINT chk_lakebase_cu 
-    CHECK (lakebase_cu IS NULL OR lakebase_cu IN (1, 2, 4, 8))
+    ALTER TABLE lakemeter.line_items
+    ADD CONSTRAINT chk_lakebase_cu
+    CHECK (lakebase_cu IS NULL OR lakebase_cu IN (0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112))
     """, "line_items.lakebase_cu"),
 ]
 

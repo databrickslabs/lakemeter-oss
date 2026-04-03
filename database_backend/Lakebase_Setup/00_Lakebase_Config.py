@@ -18,11 +18,22 @@
 # ============================================================================
 # PostgreSQL connection details for Lakemeter application database
 
-LAKEBASE_HOST = "instance-364041a4-0aae-44df-bbc6-37ac84169dfe.database.cloud.databricks.com"
+# Parameterized config — set via notebook widgets or defaults
+try:
+    dbutils.widgets.text("lakebase_host", "ep-silent-fire-d1kv74l0.database.us-west-2.cloud.databricks.com", "Lakebase Host")
+    dbutils.widgets.text("lakebase_db", "lakemeter_pricing", "Database Name")
+    dbutils.widgets.text("lakebase_user", "lakemeter_sync_role", "Database User")
+    LAKEBASE_HOST = dbutils.widgets.get("lakebase_host")
+    LAKEBASE_DB = dbutils.widgets.get("lakebase_db")
+    LAKEBASE_USER = dbutils.widgets.get("lakebase_user")
+except Exception:
+    # Fallback defaults for non-interactive execution
+    LAKEBASE_HOST = "ep-silent-fire-d1kv74l0.database.us-west-2.cloud.databricks.com"
+    LAKEBASE_DB = "lakemeter_pricing"
+    LAKEBASE_USER = "lakemeter_sync_role"
+
 LAKEBASE_PORT = 5432
-LAKEBASE_DB = "lakemeter_pricing"
-LAKEBASE_DATABASE = "lakemeter_pricing"  # Alias for compatibility
-LAKEBASE_USER = "lakemeter_sync_role"
+LAKEBASE_DATABASE = LAKEBASE_DB  # Alias for compatibility
 LAKEBASE_PASSWORD = dbutils.secrets.get(scope="lakemeter-credentials", key="lakebase-password")
 
 # ============================================================================

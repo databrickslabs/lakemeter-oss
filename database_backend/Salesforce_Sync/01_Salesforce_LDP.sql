@@ -83,64 +83,369 @@ FROM main.sfdc_bronze.hourly_opportunity;
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ## 4. Baseline Consumption (All Time Periods + Monthly Breakdown)
+-- MAGIC ## 4. Baseline Consumption (All Hierarchy Levels + All Time Periods)
 -- MAGIC 
--- MAGIC **Strategy:** ONE materialized view with EVERYTHING:
+-- MAGIC **Strategy:** ONE materialized view with ALL hierarchy levels:
+-- MAGIC - Level 1: Salesforce Account (most aggregated)
+-- MAGIC - Level 2: Product Account + Cloud
+-- MAGIC - Level 3: Workspace
+-- MAGIC - Level 4: SKU Detail (most granular)
+-- MAGIC 
+-- MAGIC **Each level includes:**
+-- MAGIC - `hierarchy_level` (1-4): Numeric level identifier
+-- MAGIC - `hierarchy_level_name`: Human-readable level name
+-- MAGIC - `dimension_keys`: Comma-separated list of dimension columns included at this level
 -- MAGIC - Time period summaries: 3m, 30d, 90d, 1m (24 columns)
 -- MAGIC - Monthly breakdown: 12 months pivoted (72 columns)
--- MAGIC - Total: 96 measure columns + 10 dimensions = 106 columns
+-- MAGIC - Total: 99 metadata columns + 96 measure columns
 -- MAGIC 
--- MAGIC **Result:** ONE row per dimension (~100k rows)
--- MAGIC - Smallest possible dataset
--- MAGIC - Zero aggregation needed in Lakebase - just SELECT!
+-- MAGIC **Hierarchy Levels:**
 -- MAGIC 
--- MAGIC **Column groups:**
--- MAGIC 1. Dimensions (10): account, workspace, cloud, tier, product_type, region, shield_sku, usage_unit
--- MAGIC 2. Summary metrics with suffixes: _3m, _30d, _90d, _1m (24 columns)
--- MAGIC    - _3m and _90d are NORMALIZED (divided by 3) for average monthly spend
--- MAGIC    - _30d and _1m are kept as-is (~1 month each)
--- MAGIC 3. Monthly metrics with suffixes: _m1 to _m12 (72 columns)
--- MAGIC    - Each represents one complete month (no normalization needed)
--- MAGIC 
--- MAGIC **Dimensions (10):**
--- MAGIC - sfdc_account_id, sfdc_account_name
--- MAGIC - sfdc_workspace_object_id, sfdc_workspace_name
--- MAGIC - cloud, tier, product_type, region
--- MAGIC - shield_sku, usage_unit
+-- MAGIC | Level | Name | dimension_keys | Dimensions NULL/Aggregated |
+-- MAGIC |-------|------|----------------|----------------------------|
+-- MAGIC | 1 | ACCOUNT_LEVEL | `sfdc_account_id, sfdc_account_name` | product_account_id, cloud, workspace, tier, product_type, region, shield_sku, usage_unit |
+-- MAGIC | 2 | PRODUCT_ACCOUNT_CLOUD | `sfdc_account_id, sfdc_account_name, product_account_id, cloud` | workspace, tier, product_type, region, shield_sku, usage_unit |
+-- MAGIC | 3 | WORKSPACE_LEVEL | `sfdc_account_id, sfdc_account_name, product_account_id, cloud, sfdc_workspace_object_id, sfdc_workspace_name` | tier, product_type, region, shield_sku, usage_unit |
+-- MAGIC | 4 | SKU_LEVEL | `ALL dimensions (11 total)` | None - most granular |
 -- MAGIC 
 -- MAGIC **Measures (6 × 16 time periods = 96 columns):**
--- MAGIC - usage_amount
--- MAGIC - usage_dollars
--- MAGIC - usage_dollars_at_list
--- MAGIC - shield_usage_amount
--- MAGIC - shield_dollars
--- MAGIC - shield_dollars_at_list
+-- MAGIC - usage_amount, usage_dollars, usage_dollars_at_list
+-- MAGIC - shield_usage_amount, shield_dollars, shield_dollars_at_list
+-- MAGIC 
+-- MAGIC **Example Queries:**
+-- MAGIC ```sql
+-- MAGIC -- See what dimensions are at each level
+-- MAGIC SELECT DISTINCT hierarchy_level, hierarchy_level_name, dimension_keys 
+-- MAGIC FROM mv_baseline_consumption 
+-- MAGIC ORDER BY hierarchy_level;
+-- MAGIC 
+-- MAGIC -- Get account-level summary (Level 1)
+-- MAGIC SELECT * FROM mv_baseline_consumption WHERE hierarchy_level = 1;
+-- MAGIC 
+-- MAGIC -- Get workspace-level detail for a specific account (Level 3)
+-- MAGIC SELECT * FROM mv_baseline_consumption 
+-- MAGIC WHERE hierarchy_level = 3 
+-- MAGIC   AND sfdc_account_id = '001XXXXXX';
+-- MAGIC 
+-- MAGIC -- Get full SKU breakdown (Level 4)
+-- MAGIC SELECT * FROM mv_baseline_consumption 
+-- MAGIC WHERE hierarchy_level = 4
+-- MAGIC   AND product_type = 'JOBS';
+-- MAGIC ```
 
 -- COMMAND ----------
 
 CREATE OR REFRESH MATERIALIZED VIEW mv_baseline_consumption
-COMMENT "Complete baseline consumption - all time periods (3m/30d/90d/1m) + 12 monthly breakdown in ONE view"
+COMMENT "Baseline consumption at ALL hierarchy levels (1=Account, 2=Product+Cloud, 3=Workspace, 4=SKU) with all time periods"
 AS
+
+-- ===========================================================================
+-- LEVEL 1: ACCOUNT_LEVEL (Most Aggregated)
+-- Dimensions: sfdc_account_id, sfdc_account_name
+-- Aggregated: Everything else
+-- ===========================================================================
 SELECT 
+  1 AS hierarchy_level,
+  'ACCOUNT_LEVEL' AS hierarchy_level_name,
+  'sfdc_account_id, sfdc_account_name' AS dimension_keys,
+  
+  -- Account dimensions (ONLY dimensions at this level)
+  p.sfdc_account_id,
+  p.sfdc_account_name,
+  
+  -- All other dimensions are NULL at this level
+  CAST(NULL AS STRING) AS product_account_id,
+  CAST(NULL AS STRING) AS sfdc_workspace_object_id,
+  CAST(NULL AS STRING) AS sfdc_workspace_name,
+  CAST(NULL AS STRING) AS cloud,
+  CAST(NULL AS STRING) AS tier,
+  CAST(NULL AS STRING) AS product_type,
+  CAST(NULL AS STRING) AS region,
+  CAST(NULL AS STRING) AS shield_sku,
+  CAST(NULL AS STRING) AS usage_unit,
+  
+  -- ===================================================================
+  -- PAST 3 COMPLETE MONTHS - NORMALIZED
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_amount ELSE 0 
+  END) / 3 as usage_amount_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars ELSE 0 
+  END) / 3 as usage_dollars_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) / 3 as usage_dollars_at_list_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) / 3 as shield_usage_amount_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_price ELSE 0 
+  END) / 3 as shield_dollars_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) / 3 as shield_dollars_at_list_3m,
+  
+  -- ===================================================================
+  -- PAST 30 DAYS (rolling)
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_amount ELSE 0 
+  END) as usage_amount_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars ELSE 0 
+  END) as usage_dollars_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) as usage_dollars_at_list_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) as shield_usage_amount_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_price ELSE 0 
+  END) as shield_dollars_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) as shield_dollars_at_list_30d,
+  
+  -- ===================================================================
+  -- PAST 90 DAYS - NORMALIZED
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_amount ELSE 0 
+  END) / 3 as usage_amount_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars ELSE 0 
+  END) / 3 as usage_dollars_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) / 3 as usage_dollars_at_list_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) / 3 as shield_usage_amount_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_price ELSE 0 
+  END) / 3 as shield_dollars_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) / 3 as shield_dollars_at_list_90d,
+  
+  -- ===================================================================
+  -- PAST 1 COMPLETE MONTH
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_amount ELSE 0 
+  END) as usage_amount_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars ELSE 0 
+  END) as usage_dollars_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) as usage_dollars_at_list_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) as shield_usage_amount_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_price ELSE 0 
+  END) as shield_dollars_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) as shield_dollars_at_list_1m,
+  
+  -- ===================================================================
+  -- MONTHLY BREAKDOWN (12 MONTHS)
+  -- ===================================================================
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m1,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m2,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m3,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m4,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m5,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m6,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m7,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m8,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m9,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m10,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m11,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m12
+  
+FROM main.fin_live_gold.paid_usage_metering p
+WHERE p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -12))
+  AND p.date < CURRENT_DATE()
+GROUP BY 
+  p.sfdc_account_id,
+  p.sfdc_account_name
+
+UNION ALL
+
+-- ===========================================================================
+-- LEVEL 2: PRODUCT_ACCOUNT_CLOUD
+-- Dimensions: sfdc_account_id, sfdc_account_name, product_account_id, cloud
+-- Aggregated: workspace, tier, product_type, region, shield_sku, usage_unit
+-- ===========================================================================
+SELECT 
+  2 AS hierarchy_level,
+  'PRODUCT_ACCOUNT_CLOUD' AS hierarchy_level_name,
+  'sfdc_account_id, sfdc_account_name, product_account_id, cloud' AS dimension_keys,
+  
   -- Account dimensions
   p.sfdc_account_id,
   p.sfdc_account_name,
   
-  -- Workspace dimensions  
-  p.sfdc_workspace_object_id,
-  p.sfdc_workspace_name,
+  -- Product account dimension (ADDED at this level)
+  p.product_account_id,
   
-  -- Cloud & SKU dimensions (from SKU parser)
+  -- Workspace dimensions (NULL at this level)
+  CAST(NULL AS STRING) AS sfdc_workspace_object_id,
+  CAST(NULL AS STRING) AS sfdc_workspace_name,
+  
+  -- Cloud dimension (INCLUDED at this level)
   p.cloud,
-  s.tier,
-  s.product_type,  -- refined sku (after removing tier and region)
-  s.region,
   
-  -- Shield SKU dimension
-  COALESCE(p.add_on.shield_sku, 'NO_SHIELD') as shield_sku,
-  
-  -- Usage unit dimension
-  p.usage_unit,
+  -- SKU dimensions (NULL at this level)
+  CAST(NULL AS STRING) AS tier,
+  CAST(NULL AS STRING) AS product_type,
+  CAST(NULL AS STRING) AS region,
+  CAST(NULL AS STRING) AS shield_sku,
+  CAST(NULL AS STRING) AS usage_unit,
   
   -- ===================================================================
   -- PAST 3 COMPLETE MONTHS (e.g., Oct, Nov, Dec if running in Jan)
@@ -400,16 +705,592 @@ SELECT
   SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m12
   
 FROM main.fin_live_gold.paid_usage_metering p
-LEFT JOIN users.steven_tan.sku_parser_lookup s
-  ON p.sku = s.sku_name AND p.cloud = s.cloud
-WHERE p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))  -- Need at least 3 months of data
+WHERE p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -12))
   AND p.date < CURRENT_DATE()
 GROUP BY 
   p.sfdc_account_id,
   p.sfdc_account_name,
+  p.product_account_id,
+  p.cloud
+
+UNION ALL
+
+-- ===========================================================================
+-- LEVEL 3: WORKSPACE_LEVEL
+-- Dimensions: sfdc_account_id, sfdc_account_name, product_account_id, cloud, 
+--             sfdc_workspace_object_id, sfdc_workspace_name
+-- Aggregated: tier, product_type, region, shield_sku, usage_unit
+-- ===========================================================================
+SELECT 
+  3 AS hierarchy_level,
+  'WORKSPACE_LEVEL' AS hierarchy_level_name,
+  'sfdc_account_id, sfdc_account_name, product_account_id, cloud, sfdc_workspace_object_id, sfdc_workspace_name' AS dimension_keys,
+  
+  -- Account dimensions
+  p.sfdc_account_id,
+  p.sfdc_account_name,
+  
+  -- Product account dimension
+  p.product_account_id,
+  
+  -- Workspace dimensions (ADDED at this level)
   p.sfdc_workspace_object_id,
   p.sfdc_workspace_name,
+  
+  -- Cloud dimension
   p.cloud,
+  
+  -- SKU dimensions (NULL at this level)
+  CAST(NULL AS STRING) AS tier,
+  CAST(NULL AS STRING) AS product_type,
+  CAST(NULL AS STRING) AS region,
+  CAST(NULL AS STRING) AS shield_sku,
+  CAST(NULL AS STRING) AS usage_unit,
+  
+  -- ===================================================================
+  -- PAST 3 COMPLETE MONTHS - NORMALIZED
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_amount ELSE 0 
+  END) / 3 as usage_amount_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars ELSE 0 
+  END) / 3 as usage_dollars_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) / 3 as usage_dollars_at_list_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) / 3 as shield_usage_amount_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_price ELSE 0 
+  END) / 3 as shield_dollars_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) / 3 as shield_dollars_at_list_3m,
+  
+  -- ===================================================================
+  -- PAST 30 DAYS
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_amount ELSE 0 
+  END) as usage_amount_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars ELSE 0 
+  END) as usage_dollars_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) as usage_dollars_at_list_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) as shield_usage_amount_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_price ELSE 0 
+  END) as shield_dollars_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) as shield_dollars_at_list_30d,
+  
+  -- ===================================================================
+  -- PAST 90 DAYS - NORMALIZED
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_amount ELSE 0 
+  END) / 3 as usage_amount_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars ELSE 0 
+  END) / 3 as usage_dollars_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) / 3 as usage_dollars_at_list_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) / 3 as shield_usage_amount_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_price ELSE 0 
+  END) / 3 as shield_dollars_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) / 3 as shield_dollars_at_list_90d,
+  
+  -- ===================================================================
+  -- PAST 1 COMPLETE MONTH
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_amount ELSE 0 
+  END) as usage_amount_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars ELSE 0 
+  END) as usage_dollars_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) as usage_dollars_at_list_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) as shield_usage_amount_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_price ELSE 0 
+  END) as shield_dollars_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) as shield_dollars_at_list_1m,
+  
+  -- ===================================================================
+  -- MONTHLY BREAKDOWN (12 MONTHS)
+  -- ===================================================================
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m1,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m2,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m3,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m4,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m5,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m6,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m7,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m8,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m9,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m10,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m11,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m12
+  
+FROM main.fin_live_gold.paid_usage_metering p
+WHERE p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -12))
+  AND p.date < CURRENT_DATE()
+GROUP BY 
+  p.sfdc_account_id,
+  p.sfdc_account_name,
+  p.product_account_id,
+  p.cloud,
+  p.sfdc_workspace_object_id,
+  p.sfdc_workspace_name
+
+UNION ALL
+
+-- ===========================================================================
+-- LEVEL 4: SKU_LEVEL (Most Granular)
+-- Dimensions: ALL - sfdc_account_id, sfdc_account_name, product_account_id, cloud, 
+--             sfdc_workspace_object_id, sfdc_workspace_name, tier, product_type, 
+--             region, shield_sku, usage_unit
+-- Aggregated: None - this is the most detailed level
+-- ===========================================================================
+SELECT 
+  4 AS hierarchy_level,
+  'SKU_LEVEL' AS hierarchy_level_name,
+  'sfdc_account_id, sfdc_account_name, product_account_id, cloud, sfdc_workspace_object_id, sfdc_workspace_name, tier, product_type, region, shield_sku, usage_unit' AS dimension_keys,
+  
+  -- Account dimensions
+  p.sfdc_account_id,
+  p.sfdc_account_name,
+  
+  -- Product account dimension
+  p.product_account_id,
+  
+  -- Workspace dimensions
+  p.sfdc_workspace_object_id,
+  p.sfdc_workspace_name,
+  
+  -- Cloud dimension
+  p.cloud,
+  
+  -- SKU dimensions (ALL included at this most granular level)
+  s.tier,
+  s.product_type,
+  s.region,
+  COALESCE(p.add_on.shield_sku, 'NO_SHIELD') as shield_sku,
+  p.usage_unit,
+  
+  -- ===================================================================
+  -- PAST 3 COMPLETE MONTHS - NORMALIZED
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_amount ELSE 0 
+  END) / 3 as usage_amount_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars ELSE 0 
+  END) / 3 as usage_dollars_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) / 3 as usage_dollars_at_list_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) / 3 as shield_usage_amount_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_price ELSE 0 
+  END) / 3 as shield_dollars_3m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -3))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) / 3 as shield_dollars_at_list_3m,
+  
+  -- ===================================================================
+  -- PAST 30 DAYS
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_amount ELSE 0 
+  END) as usage_amount_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars ELSE 0 
+  END) as usage_dollars_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) as usage_dollars_at_list_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) as shield_usage_amount_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_price ELSE 0 
+  END) as shield_dollars_30d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 30)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) as shield_dollars_at_list_30d,
+  
+  -- ===================================================================
+  -- PAST 90 DAYS - NORMALIZED
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_amount ELSE 0 
+  END) / 3 as usage_amount_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars ELSE 0 
+  END) / 3 as usage_dollars_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) / 3 as usage_dollars_at_list_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) / 3 as shield_usage_amount_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_price ELSE 0 
+  END) / 3 as shield_dollars_90d,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_SUB(CURRENT_DATE(), 90)
+     AND p.date < CURRENT_DATE()
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) / 3 as shield_dollars_at_list_90d,
+  
+  -- ===================================================================
+  -- PAST 1 COMPLETE MONTH
+  -- ===================================================================
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_amount ELSE 0 
+  END) as usage_amount_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars ELSE 0 
+  END) as usage_dollars_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.usage_dollars_at_list ELSE 0 
+  END) as usage_dollars_at_list_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_usage_amount ELSE 0 
+  END) as shield_usage_amount_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_price ELSE 0 
+  END) as shield_dollars_1m,
+  
+  SUM(CASE 
+    WHEN p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -1))
+     AND p.date < DATE_TRUNC('month', CURRENT_DATE())
+    THEN p.add_on.shield_list_price ELSE 0 
+  END) as shield_dollars_at_list_1m,
+  
+  -- ===================================================================
+  -- MONTHLY BREAKDOWN (12 MONTHS)
+  -- ===================================================================
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m1,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -12), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m1,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m2,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -11), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m2,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m3,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -10), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m3,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m4,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -9), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m4,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m5,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -8), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m5,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m6,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -7), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m6,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m7,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -6), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m7,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m8,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -5), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m8,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m9,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -4), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m9,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m10,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -3), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m10,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m11,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -2), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m11,
+  
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.usage_amount ELSE 0 END) as usage_amount_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.usage_dollars ELSE 0 END) as usage_dollars_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.usage_dollars_at_list ELSE 0 END) as usage_dollars_at_list_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.add_on.shield_usage_amount ELSE 0 END) as shield_usage_amount_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.add_on.shield_price ELSE 0 END) as shield_dollars_m12,
+  SUM(CASE WHEN DATE_FORMAT(p.date, 'yyyy-MM') = DATE_FORMAT(ADD_MONTHS(CURRENT_DATE(), -1), 'yyyy-MM') THEN p.add_on.shield_list_price ELSE 0 END) as shield_dollars_at_list_m12
+  
+FROM main.fin_live_gold.paid_usage_metering p
+LEFT JOIN users.steven_tan.sku_parser_lookup s
+  ON p.sku = s.sku_name AND p.cloud = s.cloud
+WHERE p.date >= DATE_TRUNC('month', ADD_MONTHS(CURRENT_DATE(), -12))
+  AND p.date < CURRENT_DATE()
+GROUP BY 
+  p.sfdc_account_id,
+  p.sfdc_account_name,
+  p.product_account_id,
+  p.cloud,
+  p.sfdc_workspace_object_id,
+  p.sfdc_workspace_name,
   s.tier,
   s.product_type,
   s.region,
@@ -424,7 +1305,104 @@ GROUP BY
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ### Check Row Counts
+-- MAGIC ### Check Hierarchy Level Distribution
+
+-- COMMAND ----------
+
+-- Verify all 4 hierarchy levels exist and count rows per level
+SELECT 
+  hierarchy_level,
+  hierarchy_level_name,
+  dimension_keys,
+  COUNT(*) as row_count,
+  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER(), 2) as pct_of_total,
+  -- Show sample dimension cardinality
+  COUNT(DISTINCT sfdc_account_id) as unique_accounts,
+  COUNT(DISTINCT product_account_id) as unique_product_accounts,
+  COUNT(DISTINCT sfdc_workspace_object_id) as unique_workspaces,
+  COUNT(DISTINCT tier) as unique_tiers,
+  COUNT(DISTINCT product_type) as unique_product_types
+FROM mv_baseline_consumption
+GROUP BY hierarchy_level, hierarchy_level_name, dimension_keys
+ORDER BY hierarchy_level;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ### Validate Hierarchy Rollup
+-- MAGIC
+-- MAGIC Ensure that aggregating Level 4 produces the same totals as Level 1
+
+-- COMMAND ----------
+
+WITH level_4_totals AS (
+  SELECT 
+    SUM(usage_dollars_3m) as total_dollars_3m
+  FROM mv_baseline_consumption
+  WHERE hierarchy_level = 4
+),
+level_1_totals AS (
+  SELECT 
+    SUM(usage_dollars_3m) as total_dollars_3m
+  FROM mv_baseline_consumption
+  WHERE hierarchy_level = 1
+)
+SELECT 
+  'Hierarchy Rollup Validation' as test_name,
+  l4.total_dollars_3m as level_4_total,
+  l1.total_dollars_3m as level_1_total,
+  ABS(l4.total_dollars_3m - l1.total_dollars_3m) as difference,
+  CASE 
+    WHEN ABS(l4.total_dollars_3m - l1.total_dollars_3m) < 0.01 THEN '✅ VALID'
+    ELSE '❌ MISMATCH'
+  END as validation_status
+FROM level_4_totals l4, level_1_totals l1;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ### Sample Data by Hierarchy Level
+
+-- COMMAND ----------
+
+-- Level 1: Account Level (most aggregated)
+SELECT 'Level 1: ACCOUNT_LEVEL' as level_name, * 
+FROM mv_baseline_consumption 
+WHERE hierarchy_level = 1 
+ORDER BY usage_dollars_3m DESC
+LIMIT 5;
+
+-- COMMAND ----------
+
+-- Level 2: Product Account + Cloud
+SELECT 'Level 2: PRODUCT_ACCOUNT_CLOUD' as level_name, * 
+FROM mv_baseline_consumption 
+WHERE hierarchy_level = 2 
+ORDER BY usage_dollars_3m DESC
+LIMIT 5;
+
+-- COMMAND ----------
+
+-- Level 3: Workspace Level
+SELECT 'Level 3: WORKSPACE_LEVEL' as level_name, * 
+FROM mv_baseline_consumption 
+WHERE hierarchy_level = 3 
+ORDER BY usage_dollars_3m DESC
+LIMIT 5;
+
+-- COMMAND ----------
+
+-- Level 4: SKU Level (most granular)
+SELECT 'Level 4: SKU_LEVEL' as level_name, * 
+FROM mv_baseline_consumption 
+WHERE hierarchy_level = 4 
+ORDER BY usage_dollars_3m DESC
+LIMIT 5;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ### Check Row Counts (All MVs)
 
 -- COMMAND ----------
 
@@ -434,12 +1412,20 @@ SELECT 'mv_fct_salesforce_use_case' AS table_name, COUNT(*) AS row_count FROM mv
 UNION ALL
 SELECT 'mv_hourly_opportunity' AS table_name, COUNT(*) AS row_count FROM mv_hourly_opportunity
 UNION ALL
-SELECT 'mv_baseline_consumption' AS table_name, COUNT(*) AS row_count FROM mv_baseline_consumption;
+SELECT 'mv_baseline_consumption' AS table_name, COUNT(*) AS row_count FROM mv_baseline_consumption
+UNION ALL
+SELECT 'mv_baseline_consumption - Level 1' AS table_name, COUNT(*) AS row_count FROM mv_baseline_consumption WHERE hierarchy_level = 1
+UNION ALL
+SELECT 'mv_baseline_consumption - Level 2' AS table_name, COUNT(*) AS row_count FROM mv_baseline_consumption WHERE hierarchy_level = 2
+UNION ALL
+SELECT 'mv_baseline_consumption - Level 3' AS table_name, COUNT(*) AS row_count FROM mv_baseline_consumption WHERE hierarchy_level = 3
+UNION ALL
+SELECT 'mv_baseline_consumption - Level 4' AS table_name, COUNT(*) AS row_count FROM mv_baseline_consumption WHERE hierarchy_level = 4;
 
 -- COMMAND ----------
 
 -- MAGIC %md
--- MAGIC ### Sample Data
+-- MAGIC ### Legacy Sample Queries (Other MVs)
 
 -- COMMAND ----------
 
@@ -452,7 +1438,3 @@ SELECT 'Use Cases' AS source, * FROM mv_fct_salesforce_use_case LIMIT 5;
 -- COMMAND ----------
 
 SELECT 'Opportunities' AS source, * FROM mv_hourly_opportunity LIMIT 5;
-
--- COMMAND ----------
-
-SELECT 'Baseline Consumption' AS source, * FROM mv_baseline_consumption LIMIT 5;

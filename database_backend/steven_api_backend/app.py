@@ -385,21 +385,19 @@ def build_sku_breakdown_serverless(
 # DISCOUNT HELPER FUNCTIONS
 # ============================================================================
 
-async def get_discount_category_from_db(sku: str, db: AsyncSession) -> str:
+async def get_discount_category_from_db(sku: str, db: AsyncSession) -> tuple[str, bool]:
     """
-    Query discount category for a SKU from lakemeter.sku_discount_mapping table.
+    Query discount category and cross-service eligibility for a SKU.
     Falls back to inference if not found.
     
-    Args:
-        sku: SKU name (e.g., "JOBS_COMPUTE", "VM_ON_DEMAND")
-        db: Database session
-    
     Returns:
-        Discount category: dbu, vm, storage, platform_addon, support
+        Tuple of (discount_category, cross_service_eligible)
+        cross_service_eligible=True means the dbu_discount applies to this SKU.
+        cross_service_eligible=False means the SKU is EXCLUDED from cross-service discounts.
     """
     try:
         query = text("""
-            SELECT discount_category 
+            SELECT discount_category, COALESCE(cross_service_eligible, TRUE)
             FROM lakemeter.sku_discount_mapping 
             WHERE sku = :sku
         """)
@@ -407,15 +405,14 @@ async def get_discount_category_from_db(sku: str, db: AsyncSession) -> str:
         row = result.fetchone()
         
         if row:
-            return row[0]
+            return (row[0], bool(row[1]))
         
-        # Fallback: Infer from SKU name
         logger.warning(f"SKU '{sku}' not found in sku_discount_mapping, inferring category")
-        return infer_discount_category(sku)
+        return (infer_discount_category(sku), True)
         
     except Exception as e:
         logger.error(f"Error querying discount category for SKU '{sku}': {e}")
-        return infer_discount_category(sku)
+        return (infer_discount_category(sku), True)
 
 
 def infer_discount_category(sku: str) -> str:
@@ -454,66 +451,56 @@ async def get_discount_for_sku(
     """
     Get discount percentage for a SKU.
     
-    Priority (NO WILDCARDS):
-    1. Exact SKU match in sku_specific → return that discount
-    2. Global discount by category → return global discount
-    3. None → return 0
-    
-    Args:
-        sku: SKU name
-        discount_config: Discount configuration (DiscountConfig model or dict)
-        db: Database session
+    Resolution order:
+    1. sku_specific exact match → always wins (ignores eligibility rules)
+    2. global dbu_discount → ONLY if SKU is cross_service_eligible
+    3. global vm/storage/platform_addon/support discount → by category
+    4. No match → 0%
     
     Returns:
-        Tuple of (discount_percentage, source)
+        Tuple of (discount_percentage, source_label)
+        source_label clearly describes what happened, e.g.:
+          "sku_specific:JOBS_COMPUTE"
+          "global:dbu"
+          "global:dbu:excluded_from_cross_service"  ← 0% because SKU is excluded
+          "global:vm"
+          "none"
     """
     if not discount_config:
         return (0.0, "none")
     
-    # Handle both DiscountConfig model and dict
     if hasattr(discount_config, 'sku_specific'):
-        # It's a DiscountConfig model
         sku_specific = discount_config.sku_specific
         global_discounts = discount_config.global_discounts
     else:
-        # It's a dict (backward compatibility)
         sku_specific = discount_config.get("sku_specific", {})
         global_discounts = discount_config.get("global", {})
     
-    # 1. Check exact SKU match FIRST (highest priority)
+    # 1. Exact SKU match always wins — ignores cross-service eligibility
     if sku in sku_specific:
         return (float(sku_specific[sku]), f"sku_specific:{sku}")
     
-    # 2. Fall back to global by category (query database)
-    category = await get_discount_category_from_db(sku, db)
+    # 2. Look up category + cross-service eligibility from DB
+    category, cross_service_eligible = await get_discount_category_from_db(sku, db)
     
-    # Handle both model attributes and dict keys
-    if hasattr(global_discounts, 'dbu_discount'):
-        # DiscountConfig model
-        if category == "dbu":
-            return (float(global_discounts.dbu_discount), "global:dbu")
-        elif category == "vm":
-            return (float(global_discounts.vm_discount), "global:vm")
-        elif category == "storage":
-            return (float(global_discounts.storage_discount), "global:storage")
-        elif category == "platform_addon":
-            return (float(global_discounts.platform_addon_discount), "global:platform_addon")
-        elif category == "support":
-            return (float(global_discounts.support_discount), "global:support")
-    else:
-        # Dict format
-        if category == "dbu":
-            return (float(global_discounts.get("dbu_discount", 0)), "global:dbu")
-        elif category == "vm":
-            return (float(global_discounts.get("vm_discount", 0)), "global:vm")
-        elif category == "storage":
-            return (float(global_discounts.get("storage_discount", 0)), "global:storage")
-        elif category == "platform_addon":
-            return (float(global_discounts.get("platform_addon_discount", 0)), "global:platform_addon")
-        elif category == "support":
-            return (float(global_discounts.get("support_discount", 0)), "global:support")
+    def _get_global(field: str) -> float:
+        if hasattr(global_discounts, field):
+            return float(getattr(global_discounts, field))
+        return float(global_discounts.get(field, 0))
     
-    # 3. No discount
+    if category == "dbu":
+        if not cross_service_eligible:
+            return (0.0, "global:dbu:excluded_from_cross_service")
+        return (_get_global("dbu_discount"), "global:dbu")
+    elif category == "vm":
+        return (_get_global("vm_discount"), "global:vm")
+    elif category == "storage":
+        return (_get_global("storage_discount"), "global:storage")
+    elif category == "platform_addon":
+        return (_get_global("platform_addon_discount"), "global:platform_addon")
+    elif category == "support":
+        return (_get_global("support_discount"), "global:support")
+    
     return (0.0, "none")
 
 
@@ -687,6 +674,20 @@ def enhance_total_cost_with_discount(total_cost: dict, sku_breakdown: list) -> d
     enhanced["total_discount"] = round(total_discount, 2)
     enhanced["effective_discount_percentage"] = round(effective_discount_pct, 2)
     
+    excluded_skus = [
+        item["sku"] for item in sku_breakdown
+        if item.get("discount", {}).get("source", "").endswith("excluded_from_cross_service")
+    ]
+    if excluded_skus:
+        enhanced["cross_service_exclusions"] = {
+            "excluded_skus": excluded_skus,
+            "reason": (
+                "These SKUs are excluded from the cross-service (dbu_discount) per "
+                "https://www.databricks.com/product/sku-groups#exclusions. "
+                "To discount them, add each SKU to sku_specific."
+            ),
+        }
+    
     return enhanced
 
 
@@ -714,60 +715,22 @@ async def health():
 @app.get("/api/v1/reference/discount-options", tags=["Reference Data"])
 async def get_discount_options(db: AsyncSession = Depends(get_async_db)):
     """
-    Get available SKUs and their discount categories for discount configuration.
-    
-    Returns:
-        - List of all available SKUs with their discount categories
-        - Discount categories explanation
-        - Workload groups for filtering
-    
-    **Example Response:**
-    ```json
-    {
-      "success": true,
-      "data": {
-        "discount_categories": {
-          "dbu": {
-            "name": "DBU (Databricks Units)",
-            "description": "Applies to all compute workloads billed by DBU",
-            "examples": ["JOBS_COMPUTE", "SQL_COMPUTE", "DLT_CORE_COMPUTE"]
-          },
-          "vm": {
-            "name": "VM (Virtual Machine)",
-            "description": "Applies to underlying cloud VM costs",
-            "examples": ["VM_ON_DEMAND", "VM_SPOT", "VM_RESERVED_1Y"]
-          },
-          "storage": {
-            "name": "Storage",
-            "description": "Applies to storage costs (DSU, GB)",
-            "examples": ["DATABRICKS_STORAGE", "LAKEBASE_STORAGE"]
-          },
-          "platform_addon": {
-            "name": "Platform Add-ons",
-            "description": "Applies to additional platform features",
-            "examples": ["ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES"]
-          },
-          "support": {
-            "name": "Support",
-            "description": "Applies to Databricks support plans",
-            "examples": ["DATABRICKS_SUPPORT"]
-          }
-        },
-        "skus": [...],
-        "workload_groups": [...],
-        "total_sku_count": 50
-      }
-    }
-    ```
+    Get available SKUs, their discount categories, and cross-service eligibility.
+
+    Each SKU includes a `cross_service_eligible` flag:
+    - **true** → `dbu_discount` from the global config applies to this SKU
+    - **false** → `dbu_discount` is SKIPPED; use `sku_specific` to discount this SKU
+
+    Ref: https://www.databricks.com/product/sku-groups#exclusions
     """
     try:
-        # Query all SKUs from sku_discount_mapping table
         query = text("""
             SELECT 
                 sku, 
                 discount_category, 
                 workload_group, 
-                description
+                description,
+                COALESCE(cross_service_eligible, TRUE) AS cross_service_eligible
             FROM lakemeter.sku_discount_mapping
             ORDER BY workload_group, sku
         """)
@@ -775,68 +738,74 @@ async def get_discount_options(db: AsyncSession = Depends(get_async_db)):
         result = await db.execute(query)
         rows = result.fetchall()
         
-        # Organize data
         skus = []
+        excluded_skus = []
         workload_groups = set()
-        categories_used = set()
         
         for row in rows:
+            eligible = bool(row[4])
             sku_data = {
                 "sku": row[0],
                 "discount_category": row[1],
                 "workload_group": row[2],
-                "description": row[3] if row[3] else f"{row[0]} workload"
+                "description": row[3] if row[3] else f"{row[0]} workload",
+                "cross_service_eligible": eligible,
             }
             skus.append(sku_data)
-            workload_groups.add(row[2])
-            categories_used.add(row[1])
+            if not eligible:
+                excluded_skus.append(row[0])
+            if row[2]:
+                workload_groups.add(row[2])
         
-        # Discount categories explanation
         discount_categories = {
             "dbu": {
-                "name": "DBU (Databricks Units)",
-                "description": "Applies to all compute workloads billed by DBU",
+                "name": "DBU (Databricks Units) — Cross-Service Discount",
+                "description": (
+                    "Applied ONLY to SKUs where cross_service_eligible=true. "
+                    "SKUs excluded from the cross-service group receive 0% from dbu_discount. "
+                    "To discount excluded SKUs, add them to sku_specific."
+                ),
                 "field_name": "dbu_discount",
-                "examples": ["JOBS_COMPUTE_(PHOTON)", "SQL_COMPUTE", "DLT_CORE_COMPUTE"]
+                "examples_included": ["JOBS_COMPUTE_(PHOTON)", "SQL_COMPUTE", "DLT_CORE_COMPUTE"],
+                "examples_excluded": ["SERVERLESS_REAL_TIME_INFERENCE_LAUNCH", "OPENAI_SERVING", "ANTHROPIC_SERVING"],
             },
             "vm": {
                 "name": "VM (Virtual Machine)",
                 "description": "Applies to underlying cloud VM costs",
                 "field_name": "vm_discount",
-                "examples": ["VM_ON_DEMAND", "VM_SPOT", "VM_RESERVED_1Y", "VM_RESERVED_3Y"]
             },
             "storage": {
                 "name": "Storage",
                 "description": "Applies to storage costs (DSU, GB)",
                 "field_name": "storage_discount",
-                "examples": ["DATABRICKS_STORAGE", "LAKEBASE_STORAGE", "VECTOR_SEARCH_STORAGE"]
             },
             "platform_addon": {
                 "name": "Platform Add-ons",
                 "description": "Applies to additional platform features",
                 "field_name": "platform_addon_discount",
-                "examples": ["ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES"]
             },
             "support": {
                 "name": "Support",
                 "description": "Applies to Databricks support plans",
                 "field_name": "support_discount",
-                "examples": ["DATABRICKS_SUPPORT"]
-            }
+            },
         }
-        
-        # Workload groups info
-        workload_groups_list = sorted(list(workload_groups))
         
         return {
             "success": True,
             "data": {
                 "discount_categories": discount_categories,
                 "skus": skus,
-                "workload_groups": workload_groups_list,
+                "excluded_from_cross_service": excluded_skus,
+                "workload_groups": sorted(list(workload_groups)),
                 "total_sku_count": len(skus),
-                "note": "Use 'sku' field for sku_specific discounts. Use 'discount_category' to understand which global discount applies."
-            }
+                "cross_service_behavior": (
+                    "When dbu_discount > 0: SKUs with cross_service_eligible=true get the discount. "
+                    "SKUs with cross_service_eligible=false get 0% and the response shows "
+                    "source='global:dbu:excluded_from_cross_service'. "
+                    "To override, add the SKU to sku_specific."
+                ),
+            },
         }
         
     except Exception as e:
@@ -4058,8 +4027,41 @@ async def get_fmapi_proprietary_models(
 
 # Request Models - Discount Configuration
 class GlobalDiscountConfig(BaseModel):
-    """Global discount configuration by category"""
-    dbu_discount: float = Field(default=0, ge=0, le=100, description="DBU discount percentage (0-100)")
+    """Global discount configuration by category.
+
+    CROSS-SERVICE DISCOUNT BEHAVIOR (dbu_discount):
+    ------------------------------------------------
+    The `dbu_discount` field represents the cross-service (EA) discount that
+    customers negotiate with Databricks. Per https://www.databricks.com/product/sku-groups#exclusions,
+    this discount does NOT apply to all DBU-based SKUs.
+
+    INCLUDED in cross-service discount (dbu_discount applies):
+      - Jobs Compute, All-Purpose Compute, DLT, SQL Compute, Serverless SQL,
+        Jobs Serverless, All-Purpose Serverless, Enhanced Security, Clean Rooms,
+        Database Serverless Compute
+
+    EXCLUDED from cross-service discount (dbu_discount does NOT apply):
+      - Serverless Real-Time Inference (Model Serving)
+      - Model Training
+      - OpenAI / Anthropic / Gemini Model Serving (FMAPI proprietary)
+      - Data Transfer (all egress SKUs)
+      - Databricks Storage
+
+    To discount an excluded SKU, use `sku_specific` with the exact SKU name.
+
+    AZURE NOTE: Azure does not have a published cross-service SKU group.
+    For Azure, dbu_discount is applied to all eligible DBU SKUs (same rules).
+    """
+    dbu_discount: float = Field(
+        default=0, ge=0, le=100,
+        description=(
+            "Cross-service DBU discount % (0-100). "
+            "Applied ONLY to SKUs included in the Databricks Cross-Service SKU Group. "
+            "EXCLUDED: FMAPI proprietary (OpenAI/Anthropic/Gemini), Model Training, "
+            "Serverless Inference, Data Transfer, Storage. "
+            "Use sku_specific to discount excluded SKUs."
+        ),
+    )
     vm_discount: float = Field(default=0, ge=0, le=100, description="VM discount percentage (0-100)")
     storage_discount: float = Field(default=0, ge=0, le=100, description="Storage discount percentage (0-100)")
     platform_addon_discount: float = Field(default=0, ge=0, le=100, description="Platform add-on discount percentage (0-100)")
@@ -4067,9 +4069,27 @@ class GlobalDiscountConfig(BaseModel):
 
 
 class DiscountConfig(BaseModel):
-    """Discount configuration structure for cost calculations"""
+    """Discount configuration for cost calculations.
+
+    DISCOUNT RESOLUTION ORDER (per SKU):
+    1. sku_specific  → exact SKU match wins (highest priority, ignores eligibility)
+    2. global.dbu_discount → applied ONLY if the SKU is cross-service eligible
+    3. global.vm_discount / storage_discount / etc. → applied by category
+    4. No match → 0% discount
+
+    If a SKU is EXCLUDED from the cross-service group, dbu_discount is skipped
+    and the response will show source="global:dbu:excluded_from_cross_service".
+    To override, add the SKU to sku_specific explicitly.
+    """
     global_discounts: GlobalDiscountConfig = Field(alias="global", description="Global discounts by category")
-    sku_specific: dict[str, float] = Field(default={}, description="SKU-specific discounts (SKU name -> discount %)")
+    sku_specific: dict[str, float] = Field(
+        default={},
+        description=(
+            "SKU-specific discount overrides (SKU name -> discount %). "
+            "These ALWAYS apply regardless of cross-service eligibility. "
+            "Use this to discount excluded SKUs like FMAPI proprietary models."
+        ),
+    )
     notes: Optional[str] = Field(default=None, description="Notes about the discount")
     effective_date: Optional[str] = Field(default=None, description="When discount becomes effective (YYYY-MM-DD)")
     expiry_date: Optional[str] = Field(default=None, description="When discount expires (YYYY-MM-DD)")
@@ -8479,7 +8499,7 @@ class LakebaseCalculationRequest(BaseModel):
     cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
-    cu_size: int = Field(..., description="Compute unit size: 1, 2, 4, or 8", ge=1, le=8)
+    cu_size: float = Field(..., description="Compute unit size: 0.5 to 112. See /api/v1/lakebase/list for valid values.", ge=0.5, le=112)
     num_nodes: int = Field(..., description="Number of nodes: 1-3 (1 = primary only, 2+ includes read replicas)", ge=1, le=3)
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
     storage_gb: float = Field(0, description="Storage in GB (max 8 TB = 8192 GB, no free tier)", ge=0)
