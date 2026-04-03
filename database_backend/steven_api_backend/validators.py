@@ -847,19 +847,31 @@ async def validate_vector_search_mode(mode: str, db: AsyncSession) -> Optional[D
     return None
 
 
-async def validate_lakebase_cu_size(cu_size: int, db: AsyncSession) -> Optional[Dict]:
+async def validate_lakebase_cu_size(cu_size: float, db: AsyncSession) -> Optional[Dict]:
     """
-    Validate Lakebase CU size.
+    Validate Lakebase CU size against current Databricks docs.
+    Ref: https://docs.databricks.com/aws/en/oltp/projects/manage-computes#available-compute-sizes
+
+    Valid sizes:
+    - Autoscaling (0.5-32 CU): supports autoscaling and scale-to-zero
+    - Fixed (36-112 CU): larger fixed-size computes, no autoscaling
+    Each CU = ~2 GB RAM.
+
     Returns error dict if invalid, None if valid.
     """
-    VALID_CU_SIZES = [1, 2, 4, 8]
-    
-    if cu_size not in VALID_CU_SIZES:
+    VALID_CU_SIZES = [
+        0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112
+    ]
+
+    cu_val = float(cu_size)
+    if cu_val not in VALID_CU_SIZES:
         return {
             "success": False,
             "error": {
                 "code": "INVALID_CU_SIZE",
-                "message": f"Invalid CU size '{cu_size}'. Must be one of: {', '.join(map(str, VALID_CU_SIZES))}",
+                "message": f"Invalid CU size '{cu_size}'. Valid autoscaling sizes: 0.5, 1-32. Fixed sizes: 36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112.",
                 "field": "cu_size",
                 "allowed_values": VALID_CU_SIZES
             }
