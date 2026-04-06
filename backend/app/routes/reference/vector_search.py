@@ -64,9 +64,9 @@ def get_vector_search_modes(
             SELECT
                 cloud, size_or_model as mode, dbu_rate, input_divisor,
                 CASE
-                    WHEN input_divisor = 2000000 THEN 2
-                    WHEN input_divisor = 64000000 THEN 64
-                    ELSE input_divisor / 1000000.0
+                    WHEN input_divisor::bigint = 2000000 THEN 2
+                    WHEN input_divisor::bigint = 64000000 THEN 64
+                    ELSE input_divisor::bigint / 1000000.0
                 END as vector_capacity_millions
             FROM lakemeter.sync_product_serverless_rates
             {where_clause}
