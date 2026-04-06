@@ -22,6 +22,11 @@ def calculate_all_purpose_classic_cost(
     request: AllPurposeClassicCalculationRequest,
     db: Session = Depends(get_db),
 ):
+    # Convert hours_per_day to hours_per_month if provided
+    if getattr(request, 'hours_per_day', None) is not None and request.hours_per_month is None:
+        days = request.days_per_month or 30
+        request.hours_per_month = request.hours_per_day * days
+
     has_run_params, has_hours = _validate_usage_params(request)
     if has_run_params and request.days_per_month is None:
         request.days_per_month = 30
@@ -37,7 +42,7 @@ def calculate_all_purpose_classic_cost(
             "p13": getattr(request, 'runs_per_day', 0) or 0,
             "p14": getattr(request, 'avg_runtime_minutes', 0) or 0,
             "p15": request.days_per_month if has_run_params else 30,
-            "p16": request.hours_per_month if has_hours else None,
+            "p16": int(request.hours_per_month) if has_hours and request.hours_per_month is not None else None,
             "p17": "standard", "p18": None, "p19": None, "p20": 1, "p21": "on_demand", "p22": None,
             "p23": 0, "p24": None, "p25": None, "p26": None,
             "p27": "global", "p28": "all", "p29": "input_token", "p30": 0, "p31": 0, "p32": 1,
@@ -120,6 +125,11 @@ def calculate_all_purpose_serverless_cost(
     request: AllPurposeServerlessCalculationRequest,
     db: Session = Depends(get_db),
 ):
+    # Convert hours_per_day to hours_per_month if provided
+    if getattr(request, 'hours_per_day', None) is not None and request.hours_per_month is None:
+        days = request.days_per_month or 30
+        request.hours_per_month = request.hours_per_day * days
+
     has_run_params, has_hours = _validate_usage_params(request, require_runs=False)
     if has_run_params and request.days_per_month is None:
         request.days_per_month = 30
@@ -133,7 +143,7 @@ def calculate_all_purpose_serverless_cost(
             "p11": "on_demand", "p12": "on_demand",
             "p13": 0, "p14": 0,
             "p15": request.days_per_month or 30,
-            "p16": request.hours_per_month if has_hours else None,
+            "p16": int(request.hours_per_month) if has_hours and request.hours_per_month is not None else None,
             "p17": request.serverless_mode, "p18": None, "p19": None, "p20": 1,
             "p21": "on_demand", "p22": None, "p23": 0, "p24": None, "p25": None, "p26": None,
             "p27": "global", "p28": "all", "p29": "input_token", "p30": 0, "p31": 0, "p32": 1,
