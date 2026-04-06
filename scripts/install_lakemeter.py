@@ -35,7 +35,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 APP_DIR = SCRIPT_DIR.parent
 BACKEND_DIR = APP_DIR / "backend"
 PRICING_DIR = BACKEND_DIR / "static" / "pricing"
-SETUP_DIR = APP_DIR.parent / "database_backend" / "Lakebase_Setup" / "1_Setup"
+SETUP_DIR = APP_DIR / "etl" / "lakebase_setup" / "setup"
 
 DEFAULT_DB_NAME = "lakemeter_pricing"
 DEFAULT_SCHEMA = "lakemeter"
