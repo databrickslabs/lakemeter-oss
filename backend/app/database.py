@@ -37,7 +37,7 @@ def _get_database_url() -> str:
     if token_manager and token_manager._sp_client_id and token_manager._sp_client_secret:
         params = token_manager.get_connection_params()
         if params.get("password"):
-            # Test SP connection before committing to it
+            # Test SP connection before committing — fast timeout to avoid blocking
             try:
                 encoded_user = quote_plus(params["user"])
                 encoded_password = quote_plus(params["password"])
@@ -46,7 +46,11 @@ def _get_database_url() -> str:
                     f"@{params['host']}:{params['port']}/{params['dbname']}"
                     f"?sslmode={params['sslmode']}"
                 )
-                test_engine = create_engine(test_url, connect_args={"sslmode": "require"})
+                test_engine = create_engine(
+                    test_url,
+                    connect_args={"sslmode": "require", "connect_timeout": 5},
+                    pool_timeout=5,
+                )
                 with test_engine.connect() as conn:
                     conn.execute(text("SELECT 1"))
                 test_engine.dispose()
@@ -107,9 +111,10 @@ def _create_engine_with_token_refresh():
             pool_pre_ping=True,
             pool_size=5,
             max_overflow=10,
+            pool_timeout=10,
             # Recycle connections every 15 minutes (before token expires at 1 hour)
             pool_recycle=900,
-            connect_args={"sslmode": "require"}
+            connect_args={"sslmode": "require", "connect_timeout": 10}
         )
         
         # Test connection
