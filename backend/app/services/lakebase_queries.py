@@ -13,12 +13,12 @@ logger = logging.getLogger(__name__)
 def get_dbu_rate(db: Session, cloud: str, region: str, tier: str, product_type: str) -> Optional[Dict]:
     """Get DBU rate for a product type in a specific cloud/region/tier."""
     query = text("""
-        SELECT dbu_price, dbu_per_hour
+        SELECT price_per_dbu
         FROM lakemeter.sync_pricing_dbu_rates
         WHERE UPPER(cloud) = UPPER(:cloud)
           AND UPPER(region) = UPPER(:region)
           AND UPPER(tier) = UPPER(:tier)
-          AND UPPER(product_type) = UPPER(:product_type)
+          AND (UPPER(product_type) = UPPER(:product_type) OR UPPER(sku_name) = UPPER(:product_type))
         LIMIT 1
     """)
     result = db.execute(query, {
@@ -27,7 +27,7 @@ def get_dbu_rate(db: Session, cloud: str, region: str, tier: str, product_type: 
     row = result.fetchone()
     if not row:
         return None
-    return {"dbu_price": float(row.dbu_price), "dbu_per_hour": float(row.dbu_per_hour) if row.dbu_per_hour else None}
+    return {"dbu_price": float(row.price_per_dbu), "dbu_per_hour": None}
 
 
 def get_instance_info(db: Session, cloud: str, instance_type: str) -> Optional[Dict]:
@@ -110,10 +110,15 @@ def call_calculate_line_item_costs(db: Session, params: Dict[str, Any]):
             total_vm_cost_per_hour, driver_vm_cost_per_month,
             total_worker_vm_cost_per_month, vm_cost_per_month, cost_per_month
         FROM lakemeter.calculate_line_item_costs(
-            :p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8, :p9, :p10,
-            :p11, :p12, :p13, :p14, :p15, :p16, :p17, :p18, :p19, :p20,
-            :p21, :p22, :p23, :p24, :p25, :p26, :p27, :p28, :p29, :p30,
-            :p31, :p32, :p33, :p34, :p35
+            CAST(:p1 AS VARCHAR), CAST(:p2 AS VARCHAR), CAST(:p3 AS VARCHAR), CAST(:p4 AS VARCHAR),
+            CAST(:p5 AS BOOLEAN), CAST(:p6 AS BOOLEAN), CAST(:p7 AS VARCHAR), CAST(:p8 AS VARCHAR),
+            CAST(:p9 AS VARCHAR), CAST(:p10 AS INT), CAST(:p11 AS VARCHAR), CAST(:p12 AS VARCHAR),
+            CAST(:p13 AS INT), CAST(:p14 AS INT), CAST(:p15 AS INT), CAST(:p16 AS INT),
+            CAST(:p17 AS VARCHAR), CAST(:p18 AS VARCHAR), CAST(:p19 AS VARCHAR), CAST(:p20 AS INT),
+            CAST(:p21 AS VARCHAR), CAST(:p22 AS VARCHAR), CAST(:p23 AS DECIMAL), CAST(:p24 AS VARCHAR),
+            CAST(:p25 AS VARCHAR), CAST(:p26 AS VARCHAR), CAST(:p27 AS VARCHAR), CAST(:p28 AS VARCHAR),
+            CAST(:p29 AS VARCHAR), CAST(:p30 AS BIGINT), CAST(:p31 AS INT), CAST(:p32 AS INT),
+            CAST(:p33 AS VARCHAR), CAST(:p34 AS VARCHAR), CAST(:p35 AS VARCHAR)
         )
     """)
     try:

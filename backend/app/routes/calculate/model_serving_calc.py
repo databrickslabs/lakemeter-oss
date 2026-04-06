@@ -55,7 +55,7 @@ def calculate_model_serving_cost(
     try:
         # Look up GPU DBU rate from serverless_rates
         gpu_query = text("""
-            SELECT dbu_per_hour
+            SELECT dbu_rate
             FROM lakemeter.sync_product_serverless_rates
             WHERE product = 'model_serving'
               AND UPPER(cloud) = UPPER(:cloud)
@@ -66,7 +66,7 @@ def calculate_model_serving_cost(
         if not gpu_row:
             raise HTTPException(status_code=400, detail=f"GPU type '{request.gpu_type}' not found for {request.cloud}")
 
-        gpu_dbu_rate = float(gpu_row.dbu_per_hour)
+        gpu_dbu_rate = float(gpu_row.dbu_rate)
 
         # Calculate hours
         if has_hours:
@@ -83,19 +83,19 @@ def calculate_model_serving_cost(
         # Look up DBU price
         sku_type = get_product_type_for_pricing(db, "MODEL_SERVING", False, False, None, None, None)
         dbu_price_query = text("""
-            SELECT dbu_price
+            SELECT price_per_dbu
             FROM lakemeter.sync_pricing_dbu_rates
             WHERE UPPER(cloud) = UPPER(:cloud)
               AND UPPER(region) = UPPER(:region)
               AND UPPER(tier) = UPPER(:tier)
-              AND UPPER(product_type) = UPPER(:product_type)
+              AND UPPER(sku_name) = UPPER(:product_type)
             LIMIT 1
         """)
         price_row = db.execute(dbu_price_query, {
             "cloud": request.cloud, "region": request.region,
             "tier": request.tier, "product_type": sku_type,
         }).fetchone()
-        dbu_price = float(price_row.dbu_price) if price_row else 0.0
+        dbu_price = float(price_row.price_per_dbu) if price_row else 0.0
 
         dbu_cost_per_month = dbu_per_month * dbu_price
         cost_per_month = dbu_cost_per_month

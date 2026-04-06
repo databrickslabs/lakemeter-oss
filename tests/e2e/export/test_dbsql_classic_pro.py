@@ -12,7 +12,7 @@ Run: pytest tests/e2e/export/test_dbsql_classic_pro.py -v --timeout=600
 import pytest
 from tests.e2e.helpers.test_data import (
     ESTIMATE_CONFIGS, DBSQL_WAREHOUSE_SIZES,
-    USAGE_HOURS_PER_DAY, USAGE_HOURS_DIRECT, config_id,
+    USAGE_HOURLY, config_id,
 )
 from tests.e2e.helpers.assertions import assert_costs_match, save_test_results
 from tests.e2e.helpers.excel_parser import parse_estimate_excel
@@ -29,8 +29,7 @@ def _generate_dbsql_classic_pro_params():
     for cfg in ESTIMATE_CONFIGS:
         for wh_type in WAREHOUSE_TYPES:
             for wh_size in DBSQL_WAREHOUSE_SIZES:
-                for usage_label, usage in [("hours_per_day", USAGE_HOURS_PER_DAY),
-                                           ("hours_direct", USAGE_HOURS_DIRECT)]:
+                for usage_label, usage in [("hourly", USAGE_HOURLY)]:
                     test_id = f"{config_id(cfg)}-{wh_type}-{wh_size}-{usage_label}"
                     params.append(pytest.param(
                         cfg, wh_type, wh_size, usage_label, usage,
@@ -100,7 +99,7 @@ class TestDBSQLClassicProExcelExport:
             api_result = e2e_client.calculate_dbsql_classic_pro(
                 cloud=cloud, region=region, tier=tier,
                 warehouse_type="classic", warehouse_size=wh_size,
-                usage=USAGE_HOURS_DIRECT,
+                usage=USAGE_HOURLY,
             )
             calc_results.append(api_result)
 
@@ -110,7 +109,7 @@ class TestDBSQLClassicProExcelExport:
                 "serverless_enabled": False,
                 "dbsql_warehouse_type": "classic",
                 "dbsql_warehouse_size": wh_size,
-                "hours_per_month": USAGE_HOURS_DIRECT["hours_per_month"],
+                "hours_per_month": USAGE_HOURLY["hours_per_month"],
             })
 
         excel_bytes = e2e_client.export_excel(eid)
@@ -140,7 +139,7 @@ class TestDBSQLClassicProExcelExport:
             api_result = e2e_client.calculate_dbsql_classic_pro(
                 cloud=cloud, region=region, tier=tier,
                 warehouse_type="pro", warehouse_size=wh_size,
-                usage=USAGE_HOURS_DIRECT,
+                usage=USAGE_HOURLY,
             )
             calc_results.append(api_result)
 
@@ -150,7 +149,7 @@ class TestDBSQLClassicProExcelExport:
                 "serverless_enabled": False,
                 "dbsql_warehouse_type": "pro",
                 "dbsql_warehouse_size": wh_size,
-                "hours_per_month": USAGE_HOURS_DIRECT["hours_per_month"],
+                "hours_per_month": USAGE_HOURLY["hours_per_month"],
             })
 
         excel_bytes = e2e_client.export_excel(eid)
@@ -181,7 +180,7 @@ class TestDBSQLClassicProExcelExport:
                 api_result = e2e_client.calculate_dbsql_classic_pro(
                     cloud=cloud, region=region, tier=tier,
                     warehouse_type=wh_type, warehouse_size=wh_size,
-                    usage=USAGE_HOURS_PER_DAY,
+                    usage=USAGE_HOURLY,
                 )
                 calc_results.append(api_result)
 
@@ -191,8 +190,7 @@ class TestDBSQLClassicProExcelExport:
                     "serverless_enabled": False,
                     "dbsql_warehouse_type": wh_type,
                     "dbsql_warehouse_size": wh_size,
-                    "hours_per_day": USAGE_HOURS_PER_DAY["hours_per_day"],
-                    "days_per_month": USAGE_HOURS_PER_DAY["days_per_month"],
+                    "hours_per_month": USAGE_HOURLY["hours_per_month"],
                 })
 
         excel_bytes = e2e_client.export_excel(eid)

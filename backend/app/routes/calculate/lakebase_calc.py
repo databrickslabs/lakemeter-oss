@@ -71,19 +71,19 @@ def calculate_lakebase_cost(
         # Look up DBU price
         sku_type = get_product_type_for_pricing(db, "LAKEBASE", True, False, None, None, None)
         dbu_price_query = text("""
-            SELECT dbu_price
+            SELECT price_per_dbu
             FROM lakemeter.sync_pricing_dbu_rates
             WHERE UPPER(cloud) = UPPER(:cloud)
               AND UPPER(region) = UPPER(:region)
               AND UPPER(tier) = UPPER(:tier)
-              AND UPPER(product_type) = UPPER(:product_type)
+              AND (UPPER(product_type) = UPPER(:product_type) OR UPPER(sku_name) = UPPER(:product_type))
             LIMIT 1
         """)
         price_row = db.execute(dbu_price_query, {
             "cloud": request.cloud, "region": request.region,
             "tier": request.tier, "product_type": sku_type,
         }).fetchone()
-        dbu_price = float(price_row.dbu_price) if price_row else 0.0
+        dbu_price = float(price_row.price_per_dbu) if price_row else 0.0
 
         dbu_cost_per_month = dbu_per_month * dbu_price
 
@@ -116,6 +116,7 @@ def calculate_lakebase_cost(
                 "dbu_calculation": {
                     "dbu_per_cu_hour": dbu_per_cu_hour,
                     "dbu_per_hour_per_compute": round(request.cu_size * dbu_per_cu_hour, 4),
+                    "dbu_per_hour": round(total_dbu_per_hour, 4),
                     "total_dbu_per_hour": round(total_dbu_per_hour, 4),
                     "dbu_per_month": round(dbu_per_month, 2),
                     "dbu_price": dbu_price,

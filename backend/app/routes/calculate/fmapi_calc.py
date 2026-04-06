@@ -1,5 +1,11 @@
-"""FMAPI calculation endpoints (Databricks + Proprietary token-based pricing)."""
+"""FMAPI calculation endpoints (Databricks + Proprietary token-based pricing).
+
+Uses static JSON pricing data instead of stored functions to avoid
+OSS Lakebase schema compatibility issues with calculate_fmapi_databricks_dbu.
+"""
+import json
 import logging
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -8,7 +14,7 @@ from app.database import get_db
 from app.services.validators import (
     validate_cloud, validate_region, validate_tier, validate_sku_specific_discounts,
 )
-from app.services.lakebase_queries import call_calculate_line_item_costs, get_product_type_for_pricing
+from app.services.lakebase_queries import get_product_type_for_pricing
 from app.routes.calculate.helpers import build_sku_breakdown_serverless
 from app.routes.calculate.discount import (
     apply_discount_to_sku_breakdown, calculate_total_discount_summary, enhance_total_cost_with_discount,
@@ -18,9 +24,49 @@ from app.routes.calculate.schemas import FMAPIDatabricksCalculationRequest, FMAP
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Load FMAPI pricing from static JSON
+_PRICING_DIR = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'static', 'pricing')
 
-def _build_fmapi_line_items(db, request, workload_type, provider=None, endpoint_type="global", context_length="all"):
-    """Build line items for each token type (input, output, provisioned)."""
+
+def _load_json(filename: str) -> dict:
+    path = os.path.join(_PRICING_DIR, filename)
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            return json.load(f)
+    return {}
+
+
+FMAPI_DB_RATES = _load_json('fmapi-databricks-rates.json')
+FMAPI_PROP_RATES = _load_json('fmapi-proprietary-rates.json')
+
+# DBU price ($/DBU) for FMAPI SKUs — looked up from dbu-rates.json or fallback
+DBU_RATES_BY_REGION = _load_json('dbu-rates.json')
+FALLBACK_DBU_PRICES = {
+    'SERVERLESS_REAL_TIME_INFERENCE': 0.07,
+    'OPENAI_MODEL_SERVING': 0.07,
+    'ANTHROPIC_MODEL_SERVING': 0.07,
+    'GEMINI_MODEL_SERVING': 0.07,
+    'GOOGLE_MODEL_SERVING': 0.07,
+}
+
+
+def _get_dbu_price_for_sku(cloud: str, region: str, tier: str, sku: str) -> float:
+    """Look up $/DBU price for a SKU from static pricing data."""
+    key = f"{cloud}:{region}:{tier.upper()}"
+    region_rates = DBU_RATES_BY_REGION.get(key, {})
+    if sku in region_rates:
+        return region_rates[sku]
+    # Try without region specificity
+    for k, v in DBU_RATES_BY_REGION.items():
+        parts = k.split(':')
+        if len(parts) == 3 and parts[0] == cloud and parts[2] == tier.upper() and sku in v:
+            return v[sku]
+    return FALLBACK_DBU_PRICES.get(sku, 0.07)
+
+
+def _build_fmapi_line_items_direct(request, workload_type, cloud, region, tier,
+                                    provider=None, endpoint_type="global", context_length="all"):
+    """Build FMAPI line items using static pricing JSON (no stored function)."""
     line_items = []
 
     token_types = []
@@ -34,35 +80,54 @@ def _build_fmapi_line_items(db, request, workload_type, provider=None, endpoint_
     if not token_types:
         raise HTTPException(status_code=400, detail="Must provide at least one token quantity (input, output, or provisioned)")
 
+    cloud_lc = cloud.lower()
+
     for rate_type, quantity in token_types:
-        params = {
-            "p1": workload_type, "p2": request.cloud.upper(), "p3": request.region, "p4": request.tier.upper(),
-            "p5": True, "p6": False, "p7": None,
-            "p8": None, "p9": None, "p10": 0,
-            "p11": "on_demand", "p12": "on_demand",
-            "p13": 0, "p14": 0, "p15": 30, "p16": None,
-            "p17": "standard", "p18": None, "p19": None, "p20": 1,
-            "p21": "on_demand", "p22": None, "p23": 0, "p24": None,
-            "p25": request.model, "p26": provider,
-            "p27": endpoint_type, "p28": context_length,
-            "p29": rate_type, "p30": quantity,
-            "p31": 0, "p32": 1,
-            "p33": "NA", "p34": "NA", "p35": "NA",
-        }
-        row = call_calculate_line_item_costs(db, params)
-        if not row:
-            raise HTTPException(status_code=500, detail=f"No calculation result for rate_type={rate_type}")
+        # Look up rate from static JSON
+        if workload_type == "FMAPI_DATABRICKS":
+            key = f"{cloud_lc}:{request.model}:{rate_type}"
+            info = FMAPI_DB_RATES.get(key, {})
+        else:
+            key = f"{cloud_lc}:{provider}:{request.model}:{endpoint_type}:{context_length}:{rate_type}"
+            info = FMAPI_PROP_RATES.get(key, {})
+
+        if not info:
+            logger.warning(f"FMAPI rate not found for key={key}")
+            line_items.append({
+                "rate_type": rate_type, "quantity": quantity,
+                "dbu_quantity": 0, "dbu_price": 0, "dbu_per_hour": 0, "cost": 0,
+                "unit": "million_tokens" if rate_type in ("input_token", "output_token") else "hours",
+            })
+            continue
+
+        dbu_rate = info.get('dbu_rate', 0)
+        input_divisor = info.get('input_divisor', 1_000_000)
+        is_hourly = info.get('is_hourly', False)
+        sku_product_type = info.get('sku_product_type', 'SERVERLESS_REAL_TIME_INFERENCE')
+
+        # Calculate DBU quantity
+        # For token-based: quantity is in millions, dbu_rate is DBU per million tokens
+        # For hourly (provisioned): quantity is hours, dbu_rate is DBU per hour
+        if is_hourly:
+            dbu_quantity = dbu_rate * quantity
+        else:
+            # quantity is already in millions (e.g., 10 = 10M tokens)
+            # dbu_rate is DBU per million tokens
+            dbu_quantity = dbu_rate * quantity
+
+        # Get $/DBU price
+        dbu_price = _get_dbu_price_for_sku(cloud_lc, region, tier, sku_product_type)
+        cost = dbu_quantity * dbu_price
 
         is_token = rate_type in ("input_token", "output_token")
-        dbu_quantity = quantity / 1_000_000 if is_token else quantity
 
         line_items.append({
             "rate_type": rate_type,
             "quantity": quantity,
             "dbu_quantity": round(dbu_quantity, 6),
-            "dbu_price": float(row.dbu_price or 0),
-            "dbu_per_hour": float(row.dbu_per_hour or 0),
-            "cost": float(row.cost_per_month or 0),
+            "dbu_price": dbu_price,
+            "dbu_per_hour": dbu_rate if is_hourly else 0,
+            "cost": round(cost, 2),
             "unit": "million_tokens" if is_token else "hours",
         })
 
@@ -85,7 +150,12 @@ def calculate_fmapi_databricks_cost(
         raise HTTPException(status_code=400, detail=error["error"])
 
     try:
-        line_items = _build_fmapi_line_items(db, request, "FMAPI_DATABRICKS")
+        cloud_upper = request.cloud.upper()
+        tier_upper = request.tier.upper()
+
+        line_items = _build_fmapi_line_items_direct(
+            request, "FMAPI_DATABRICKS", cloud_upper, request.region, tier_upper,
+        )
 
         sku_type = get_product_type_for_pricing(db, "FMAPI_DATABRICKS", True, False, None, None, None)
         total_cost = sum(item["cost"] for item in line_items)
@@ -115,7 +185,7 @@ def calculate_fmapi_databricks_cost(
             "data": {
                 "workload_type": "FMAPI_DATABRICKS", "sku_type": sku_type,
                 "configuration": {
-                    "cloud": request.cloud.upper(), "region": request.region, "tier": request.tier.upper(),
+                    "cloud": cloud_upper, "region": request.region, "tier": tier_upper,
                     "model": request.model,
                 },
                 "line_items": line_items,
@@ -153,8 +223,11 @@ def calculate_fmapi_proprietary_cost(
         raise HTTPException(status_code=400, detail=error["error"])
 
     try:
-        line_items = _build_fmapi_line_items(
-            db, request, "FMAPI_PROPRIETARY",
+        cloud_upper = request.cloud.upper()
+        tier_upper = request.tier.upper()
+
+        line_items = _build_fmapi_line_items_direct(
+            request, "FMAPI_PROPRIETARY", cloud_upper, request.region, tier_upper,
             provider=request.provider,
             endpoint_type=request.endpoint_type,
             context_length=request.context_length or "all",
@@ -190,7 +263,7 @@ def calculate_fmapi_proprietary_cost(
             "data": {
                 "workload_type": "FMAPI_PROPRIETARY", "sku_type": sku_type,
                 "configuration": {
-                    "cloud": request.cloud.upper(), "region": request.region, "tier": request.tier.upper(),
+                    "cloud": cloud_upper, "region": request.region, "tier": tier_upper,
                     "provider": request.provider, "model": request.model,
                     "endpoint_type": request.endpoint_type,
                     "context_length": request.context_length,

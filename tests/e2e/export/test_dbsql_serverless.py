@@ -11,7 +11,7 @@ Run: pytest tests/e2e/export/test_dbsql_serverless.py -v --timeout=600
 import pytest
 from tests.e2e.helpers.test_data import (
     ESTIMATE_CONFIGS, DBSQL_WAREHOUSE_SIZES,
-    USAGE_HOURS_PER_DAY, USAGE_HOURS_DIRECT, config_id,
+    USAGE_HOURLY, config_id,
 )
 from tests.e2e.helpers.assertions import assert_costs_match, save_test_results
 from tests.e2e.helpers.excel_parser import parse_estimate_excel
@@ -24,8 +24,7 @@ def _generate_dbsql_serverless_params():
     params = []
     for cfg in ESTIMATE_CONFIGS:
         for wh_size in DBSQL_WAREHOUSE_SIZES:
-            for usage_label, usage in [("hours_per_day", USAGE_HOURS_PER_DAY),
-                                       ("hours_direct", USAGE_HOURS_DIRECT)]:
+            for usage_label, usage in [("hourly", USAGE_HOURLY)]:
                 test_id = f"{config_id(cfg)}-{wh_size}-{usage_label}"
                 params.append(pytest.param(
                     cfg, wh_size, usage_label, usage,
@@ -92,7 +91,7 @@ class TestDBSQLServerlessExcelExport:
         for wh_size in DBSQL_WAREHOUSE_SIZES:
             api_result = e2e_client.calculate_dbsql_serverless(
                 cloud=cloud, region=region, tier=tier,
-                warehouse_size=wh_size, usage=USAGE_HOURS_DIRECT,
+                warehouse_size=wh_size, usage=USAGE_HOURLY,
             )
             calc_results.append(api_result)
 
@@ -102,7 +101,7 @@ class TestDBSQLServerlessExcelExport:
                 "serverless_enabled": True,
                 "dbsql_warehouse_type": "serverless",
                 "dbsql_warehouse_size": wh_size,
-                "hours_per_month": USAGE_HOURS_DIRECT["hours_per_month"],
+                "hours_per_month": USAGE_HOURLY["hours_per_month"],
             })
 
         excel_bytes = e2e_client.export_excel(eid)
@@ -118,12 +117,12 @@ class TestDBSQLServerlessExcelExport:
         e2e_client.delete_estimate(eid)
 
     @pytest.mark.parametrize("cfg", ESTIMATE_CONFIGS, ids=[config_id(c) for c in ESTIMATE_CONFIGS])
-    def test_export_hours_per_day_usage(self, e2e_client, cfg):
-        """Test DBSQL Serverless with hours_per_day usage pattern, export, verify."""
+    def test_export_subset_sizes(self, e2e_client, cfg):
+        """Test DBSQL Serverless with subset of sizes, export, verify."""
         cloud, region, tier = cfg["cloud"], cfg["region"], cfg["tier"]
 
         estimate = e2e_client.create_estimate(
-            name=f"E2E-DBSQL-SL-HoursPerDay-{config_id(cfg)}",
+            name=f"E2E-DBSQL-SL-Subset-{config_id(cfg)}",
             cloud=cloud, region=region, tier=tier,
         )
         eid = estimate["estimate_id"]
@@ -132,18 +131,17 @@ class TestDBSQLServerlessExcelExport:
         for wh_size in ["Small", "Medium", "Large"]:
             api_result = e2e_client.calculate_dbsql_serverless(
                 cloud=cloud, region=region, tier=tier,
-                warehouse_size=wh_size, usage=USAGE_HOURS_PER_DAY,
+                warehouse_size=wh_size, usage=USAGE_HOURLY,
             )
             calc_results.append(api_result)
 
             e2e_client.add_line_item(eid, {
-                "workload_name": f"DBSQL-SL-{wh_size}-hpd",
+                "workload_name": f"DBSQL-SL-{wh_size}-sub",
                 "workload_type": "DBSQL",
                 "serverless_enabled": True,
                 "dbsql_warehouse_type": "serverless",
                 "dbsql_warehouse_size": wh_size,
-                "hours_per_day": USAGE_HOURS_PER_DAY["hours_per_day"],
-                "days_per_month": USAGE_HOURS_PER_DAY["days_per_month"],
+                "hours_per_month": USAGE_HOURLY["hours_per_month"],
             })
 
         excel_bytes = e2e_client.export_excel(eid)

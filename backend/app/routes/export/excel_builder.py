@@ -139,7 +139,7 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier):
     wt = item.workload_type or 'JOBS'
     sku = _get_sku_type(item, cloud)
     dbu_rate, dbu_rate_found = _get_dbu_price(cloud, region, tier, sku)
-    dbu_per_hour, dbu_warnings = _calculate_dbu_per_hour(item, cloud)
+    dbu_per_hour, dbu_warnings = _calculate_dbu_per_hour(item, cloud, tier)
     is_serverless = _is_serverless_workload(item)
     is_fmapi = wt in ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY')
     is_fmapi_token = is_fmapi and item.fmapi_rate_type in (

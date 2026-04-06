@@ -29,7 +29,7 @@ def _calculate_hours_per_month(item) -> float:
     return 0
 
 
-def _calculate_dbu_per_hour(item, cloud: str = 'aws') -> tuple:
+def _calculate_dbu_per_hour(item, cloud: str = 'aws', tier: str = 'PREMIUM') -> tuple:
     """Calculate DBU per hour for a workload. Returns (dbu_per_hour, warnings)."""
     wt = item.workload_type or ''
     warnings = []
@@ -51,7 +51,16 @@ def _calculate_dbu_per_hour(item, cloud: str = 'aws') -> tuple:
             warnings.append(f"Lakebase CU is negative ({cu})")
         elif cu == 0:
             warnings.append("Lakebase CU not specified")
-        return cu * nodes, warnings
+        # Multiply CU by DBU-per-CU-hour rate (matches API's LAKEBASE_DBU_RATES)
+        lakebase_dbu_rates = {
+            'aws': {'PREMIUM': 0.230, 'ENTERPRISE': 0.213},
+            'azure': {'PREMIUM': 1.0, 'ENTERPRISE': 1.0},
+            'gcp': {'PREMIUM': 1.0, 'ENTERPRISE': 1.0},
+        }
+        cloud_lc = cloud.strip().lower() if cloud else 'aws'
+        tier_upper = tier.strip().upper() if tier else 'PREMIUM'
+        dbu_per_cu_hour = lakebase_dbu_rates.get(cloud_lc, {}).get(tier_upper, 1.0)
+        return cu * dbu_per_cu_hour * nodes, warnings
     elif wt == 'DATABRICKS_APPS':
         return 1.0, warnings
     return 0, warnings
@@ -145,14 +154,20 @@ def _calc_vector_search_dbu(item, cloud, warnings):
 
 
 def _calc_model_serving_dbu(item, cloud, warnings):
-    """Calculate DBU/hr for Model Serving workloads."""
+    """Calculate DBU/hr for Model Serving workloads.
+
+    DBU/hr = gpu_dbu_rate × concurrency (from model_serving_concurrency column).
+    """
     gpu_type = (item.model_serving_gpu_type or 'cpu').lower()
     key = f"{cloud}:{gpu_type}"
     info = MODEL_SERVING_RATES.get(key, {})
     if not info:
         warnings.append(f"Model Serving rate not found for {key}")
         return 0, warnings
-    return info.get('dbu_rate', 0), warnings
+    base_rate = info.get('dbu_rate', 0)
+    config = getattr(item, 'workload_config', None) or {}
+    concurrency = int(config.get('model_serving_concurrency', 4))
+    return base_rate * concurrency, warnings
 
 
 def _is_serverless_workload(item) -> bool:

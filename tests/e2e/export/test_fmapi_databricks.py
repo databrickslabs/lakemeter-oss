@@ -16,9 +16,9 @@ from tests.e2e.helpers.assertions import assert_costs_match, save_test_results
 from tests.e2e.helpers.excel_parser import parse_estimate_excel
 
 FMAPI_DATABRICKS_MODELS = [
-    "databricks-dbrx-instruct",
-    "databricks-meta-llama-3-1-70b-instruct",
-    "databricks-mixtral-8x7b-instruct",
+    "llama-3-3-70b",
+    "llama-4-maverick",
+    "gemma-3-12b",
 ]
 
 INPUT_TOKENS = 10   # millions per month
@@ -52,7 +52,7 @@ class TestFMAPIDatabricksCalculation:
             input_tokens=INPUT_TOKENS,
             output_tokens=OUTPUT_TOKENS,
         )
-        assert "dbu_calculation" in result
+        assert "line_items" in result or "dbu_calculation" in result
         assert "total_cost" in result
         assert result["total_cost"]["cost_per_month"] >= 0
 

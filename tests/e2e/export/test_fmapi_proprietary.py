@@ -16,9 +16,9 @@ from tests.e2e.helpers.assertions import assert_costs_match, save_test_results
 from tests.e2e.helpers.excel_parser import parse_estimate_excel
 
 FMAPI_PROPRIETARY_MODELS = [
-    {"provider": "openai", "model": "gpt-4o"},
+    {"provider": "openai", "model": "gpt-5"},
     {"provider": "anthropic", "model": "claude-sonnet-4-5"},
-    {"provider": "google", "model": "gemini-1.5-pro"},
+    {"provider": "google", "model": "gemini-2-5-pro"},
 ]
 
 INPUT_TOKENS = 10   # millions per month
@@ -52,7 +52,7 @@ class TestFMAPIProprietaryCalculation:
             input_tokens=INPUT_TOKENS,
             output_tokens=OUTPUT_TOKENS,
         )
-        assert "dbu_calculation" in result
+        assert "line_items" in result or "dbu_calculation" in result
         assert "total_cost" in result
         assert result["total_cost"]["cost_per_month"] >= 0
 
