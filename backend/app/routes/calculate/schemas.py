@@ -35,8 +35,7 @@ class DiscountConfig(BaseModel):
     effective_date: Optional[str] = Field(default=None, description="When discount becomes effective (YYYY-MM-DD)")
     expiry_date: Optional[str] = Field(default=None, description="When discount expires (YYYY-MM-DD)")
 
-    class Config:
-        populate_by_name = True
+    model_config = {"populate_by_name": True}
 
     def validate_sku_specific(self) -> list[str]:
         errors = []
