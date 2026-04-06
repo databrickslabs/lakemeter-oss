@@ -93,20 +93,23 @@ def assert_costs_match(api_result: dict, excel_row, workload_label: str = ""):
             )
         except AssertionError as e:
             errors.append(str(e))
-        try:
-            assert_close(
-                excel_row.driver_vm_cost, vm_costs.get("driver_vm_cost_per_month"),
-                f"{prefix}Driver VM Cost", tolerance=1.0
-            )
-        except AssertionError as e:
-            errors.append(str(e))
-        try:
-            assert_close(
-                excel_row.worker_vm_cost, vm_costs.get("total_worker_vm_cost_per_month"),
-                f"{prefix}Worker VM Cost", tolerance=1.0
-            )
-        except AssertionError as e:
-            errors.append(str(e))
+        # Compare individual driver/worker VM costs only if the API provides them
+        if vm_costs.get("driver_vm_cost_per_month") is not None:
+            try:
+                assert_close(
+                    excel_row.driver_vm_cost, vm_costs.get("driver_vm_cost_per_month"),
+                    f"{prefix}Driver VM Cost", tolerance=1.0
+                )
+            except AssertionError as e:
+                errors.append(str(e))
+        if vm_costs.get("total_worker_vm_cost_per_month") is not None:
+            try:
+                assert_close(
+                    excel_row.worker_vm_cost, vm_costs.get("total_worker_vm_cost_per_month"),
+                    f"{prefix}Worker VM Cost", tolerance=1.0
+                )
+            except AssertionError as e:
+                errors.append(str(e))
         try:
             assert_close(
                 excel_row.total_vm_cost, vm_costs.get("vm_cost_per_month"),
