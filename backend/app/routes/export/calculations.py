@@ -100,10 +100,7 @@ def _calc_compute_dbu(item, cloud, wt, warnings):
     if item.serverless_enabled:
         photon_mult = _get_photon_multiplier(cloud, sku_base)
         base_dbu *= photon_mult
-        if wt == 'ALL_PURPOSE':
-            mode_multiplier = 2
-        else:
-            mode_multiplier = 2 if item.serverless_mode == 'performance' else 1
+        mode_multiplier = 2 if item.serverless_mode == 'performance' else 1
         return base_dbu * mode_multiplier, warnings
 
     if item.photon_enabled:
