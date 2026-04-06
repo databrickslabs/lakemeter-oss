@@ -37,15 +37,26 @@ def _get_database_url() -> str:
     if token_manager and token_manager._sp_client_id and token_manager._sp_client_secret:
         params = token_manager.get_connection_params()
         if params.get("password"):
-            encoded_user = quote_plus(params["user"])
-            encoded_password = quote_plus(params["password"])
-            log_info(f"Using OAuth SP token for database connection (user: {params['user']})")
-            return (
-                f"postgresql://{encoded_user}:{encoded_password}"
-                f"@{params['host']}:{params['port']}/{params['dbname']}"
-                f"?sslmode={params['sslmode']}"
-            )
-    log_info("No SP OAuth credentials available, using password fallback...")
+            # Test SP connection before committing to it
+            try:
+                encoded_user = quote_plus(params["user"])
+                encoded_password = quote_plus(params["password"])
+                test_url = (
+                    f"postgresql://{encoded_user}:{encoded_password}"
+                    f"@{params['host']}:{params['port']}/{params['dbname']}"
+                    f"?sslmode={params['sslmode']}"
+                )
+                test_engine = create_engine(test_url, connect_args={"sslmode": "require"})
+                with test_engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                test_engine.dispose()
+                log_info(f"Using OAuth SP token for database connection (user: {params['user']})")
+                return test_url
+            except Exception as e:
+                log_warning(f"SP OAuth connection test failed: {e}")
+                log_info("Falling back to password auth...")
+    else:
+        log_info("No SP OAuth credentials available, using password fallback...")
 
     # Fallback: use secrets-based password auth (lakebase-password from secrets scope)
     log_info("Attempting password-based auth via Databricks secrets...")
