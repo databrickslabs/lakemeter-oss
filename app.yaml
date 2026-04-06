@@ -13,9 +13,8 @@ env:
   - name: "CORS_ORIGINS"
     value: ""
 
-  # Databricks workspace (auto-populated by Databricks Apps)
-  - name: "DATABRICKS_HOST"
-    value: "{{databricks_host}}"
+  # Note: DATABRICKS_HOST is auto-populated by Databricks Apps platform.
+  # Do NOT set it manually — the platform injects the correct workspace URL.
 
   # Secrets scope containing SP credentials
   - name: "DATABRICKS_SECRETS_SCOPE"

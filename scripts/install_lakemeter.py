@@ -1416,9 +1416,8 @@ env:
   - name: "CORS_ORIGINS"
     value: ""
 
-  # Databricks workspace (auto-populated by Databricks Apps)
-  - name: "DATABRICKS_HOST"
-    value: "{{{{databricks_host}}}}"
+  # Note: DATABRICKS_HOST is auto-populated by Databricks Apps platform.
+  # Do NOT set it manually — the platform injects the correct workspace URL.
 
   # Secrets scope containing SP credentials
   - name: "DATABRICKS_SECRETS_SCOPE"
@@ -1567,7 +1566,7 @@ def main():
     )
     args = parser.parse_args()
 
-    TOTAL_STEPS = 9
+    TOTAL_STEPS = 10
 
     print(f"\n{BOLD}{'='*60}{NC}")
     print(f"{BOLD}  Lakemeter Installer — Zero-Click Deployment{NC}")
@@ -1623,16 +1622,16 @@ def main():
     log_step(8, TOTAL_STEPS, "Creating cost calculation views")
     create_views(ctx, instance_info, cfg)
 
-    # Step 9: Generate app.yaml
-    log_step(9, TOTAL_STEPS, "Generating app configuration")
+    # Step 9: Generate app.yaml + configure app resources
+    log_step(9, TOTAL_STEPS, "Generating app configuration & resources")
     generate_app_config(ctx, instance_info, cfg)
 
-    # Step 9b: Configure app resources (so valueFrom references resolve)
-    log_info("Configuring Databricks App resources...")
+    log_info("Configuring Databricks App resources (so valueFrom references resolve)...")
     configure_app_resources(ctx, instance_info, cfg)
 
-    # Step 9c: Grant app SP access to Lakebase (so OAuth auth works too)
+    # Grant app SP access to Lakebase (so OAuth auth works)
     log_info("Granting app service principal Lakebase access...")
+    w = ctx["client"]
     try:
         app_info = w.apps.get(cfg["app_name"])
         app_sp_id = app_info.service_principal_client_id
@@ -1677,10 +1676,13 @@ def main():
         log_warn(f"Could not configure app SP Lakebase access: {e}")
         log_info("App will use password-auth fallback (lakemeter_sync_role)")
 
-    # Optional: Deploy
+    # Step 10: Deploy
     if not args.skip_deploy:
         log_step(10, TOTAL_STEPS, "Deploying application")
         deploy_app(ctx, cfg)
+    else:
+        log_step(10, TOTAL_STEPS, "Deploying application")
+        log_info("Skipping deployment (--skip-deploy)")
 
     # Summary
     print(f"\n{BOLD}{'='*60}{NC}")
