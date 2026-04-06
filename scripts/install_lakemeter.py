@@ -243,7 +243,7 @@ def provision_lakebase(ctx: dict, cfg: dict) -> dict:
     except Exception:
         pass
 
-    log_info(f"Creating Lakebase instance '{name}' ({cfg['cu_size']})...")
+    log_info(f"Creating Lakebase instance '{name}' ({cfg['cu_size']}, auto-scaling enabled)...")
     from databricks.sdk.service.database import CreateDatabaseInstanceRequest
 
     instance = w.database.create_database_instance(
@@ -252,6 +252,26 @@ def provision_lakebase(ctx: dict, cfg: dict) -> dict:
         stopped=False,
     )
     log_ok(f"Instance created: {instance.name} (uid={instance.uid})")
+
+    # Enable auto-scaling via REST API (not yet in SDK)
+    try:
+        import requests
+        headers = w.config.authenticate()
+        host = ctx["host"].rstrip("/")
+        resp = requests.patch(
+            f"{host}/api/2.0/database/instances/{name}",
+            headers=headers,
+            json={
+                "name": name,
+                "enable_serverless_compute": True,
+            },
+        )
+        if resp.status_code < 300:
+            log_ok("Auto-scaling (serverless compute) enabled")
+        else:
+            log_warn(f"Could not enable auto-scaling: {resp.status_code} {resp.text[:200]}")
+    except Exception as e:
+        log_warn(f"Could not enable auto-scaling: {e}")
 
     # Enable pg_native_login for password-based auth fallback
     # This ensures the app can connect even without SP OAuth credentials
@@ -1316,13 +1336,23 @@ def configure_sp_access(ctx: dict, instance_info: dict, cfg: dict):
 
     cur.execute(f'GRANT USAGE ON SCHEMA {DEFAULT_SCHEMA} TO "{sp_client_id}"')
     cur.execute(
-        f'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA {DEFAULT_SCHEMA} TO "{sp_client_id}"'
+        f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA {DEFAULT_SCHEMA} TO "{sp_client_id}"'
+    )
+    cur.execute(
+        f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA {DEFAULT_SCHEMA} TO "{sp_client_id}"'
+    )
+    cur.execute(
+        f'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA {DEFAULT_SCHEMA} TO "{sp_client_id}"'
     )
     cur.execute(
         f'ALTER DEFAULT PRIVILEGES IN SCHEMA {DEFAULT_SCHEMA} '
-        f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{sp_client_id}"'
+        f'GRANT ALL PRIVILEGES ON TABLES TO "{sp_client_id}"'
     )
-    log_ok("Schema-level permissions granted")
+    cur.execute(
+        f'ALTER DEFAULT PRIVILEGES IN SCHEMA {DEFAULT_SCHEMA} '
+        f'GRANT EXECUTE ON FUNCTIONS TO "{sp_client_id}"'
+    )
+    log_ok("Schema-level permissions granted (tables, sequences, functions)")
 
     # Step D: Verify SP can connect
     log_info("Verifying SP connectivity...")
@@ -1669,9 +1699,10 @@ def main():
             cur.execute(f'GRANT USAGE ON SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
             cur.execute(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
             cur.execute(f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
+            cur.execute(f'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
             cur.close()
             conn.close()
-            log_ok("App SP SQL permissions granted")
+            log_ok("App SP SQL permissions granted (tables, sequences, functions)")
     except Exception as e:
         log_warn(f"Could not configure app SP Lakebase access: {e}")
         log_info("App will use password-auth fallback (lakemeter_sync_role)")
