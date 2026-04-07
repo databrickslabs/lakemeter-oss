@@ -1863,13 +1863,25 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Capacity Units (CU)</label>
               <select
                 value={form.lakebase_cu}
-                onChange={(e) => setForm(f => ({ ...f, lakebase_cu: parseInt(e.target.value) || 1 }))}
+                onChange={(e) => setForm(f => ({ ...f, lakebase_cu: parseFloat(e.target.value) || 1 }))}
                 className="w-full text-sm"
               >
-                <option value={1}>1 CU</option>
-                <option value={2}>2 CU</option>
-                <option value={4}>4 CU</option>
-                <option value={8}>8 CU</option>
+                <optgroup label="Autoscale (0.5–32 CU)">
+                  <option value={0.5}>0.5 CU (1 GB)</option>
+                  <option value={1}>1 CU (2 GB)</option>
+                  <option value={2}>2 CU (4 GB)</option>
+                  <option value={4}>4 CU (8 GB)</option>
+                  <option value={8}>8 CU (16 GB)</option>
+                  <option value={16}>16 CU (32 GB)</option>
+                  <option value={32}>32 CU (64 GB)</option>
+                </optgroup>
+                <optgroup label="Fixed Size (48–112 CU)">
+                  <option value={48}>48 CU (96 GB)</option>
+                  <option value={64}>64 CU (128 GB)</option>
+                  <option value={80}>80 CU (160 GB)</option>
+                  <option value={96}>96 CU (192 GB)</option>
+                  <option value={112}>112 CU (224 GB)</option>
+                </optgroup>
               </select>
             </div>
             <div>

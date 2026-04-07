@@ -38,6 +38,13 @@ import {
 } from '../utils/pricingBundle'
 
 // =============================================================================
+// IN-FLIGHT REQUEST DEDUPLICATION
+// =============================================================================
+// Tracks in-flight VM cost fetches by (cloud:region:instance_type) to prevent
+// duplicate concurrent requests when loading estimates with many workloads.
+const _vmCostInflight: Record<string, Promise<any>> = {}
+
+// =============================================================================
 // LOCAL STORAGE CACHE UTILITIES
 // =============================================================================
 const CACHE_VERSION = 'v6'  // Bumped - added validation for empty regions
@@ -920,7 +927,13 @@ export const useStore = create<Store>((set, get) => ({
   
   fetchModelServingGPUTypes: async (cloud) => {
     try {
-      const modelServingGPUTypes = await api.fetchModelServingGPUTypes(cloud)
+      const raw = await api.fetchModelServingGPUTypes(cloud)
+      // Transform API response {gpu_type, dbu_rate} to component format {id, name, dbu_per_hour}
+      const modelServingGPUTypes = Array.isArray(raw) ? raw.map((item: any) => ({
+        id: item.id || item.gpu_type || item,
+        name: item.name || item.gpu_type || item,
+        dbu_per_hour: item.dbu_per_hour ?? item.dbu_rate ?? 0,
+      })) : []
       set({ modelServingGPUTypes })
     } catch (error) {
       console.error('Failed to fetch model serving GPU types:', error)
@@ -996,75 +1009,85 @@ export const useStore = create<Store>((set, get) => ({
   },
   
   // Fetch VM cost for a specific instance on-demand using the new API
-  // Uses functional state update to prevent race conditions when multiple fetches run in parallel
+  // Deduplicates in-flight requests: if the same (cloud, region, instance_type) is already
+  // being fetched, all callers share the same promise instead of firing parallel HTTP requests.
+  // This prevents DB connection pool exhaustion when loading estimates with many workloads.
   fetchVMCostForInstance: async (cloud, region, instanceType, pricingTier = 'on_demand', paymentOption = 'NA') => {
     // Return 0 immediately if no instance type provided
     if (!instanceType || instanceType.trim() === '') {
       return 0
     }
-    
+
     // Normalize payment option: on_demand and spot don't have payment options (always NA)
-    const normalizedPaymentOption = (pricingTier === 'on_demand' || pricingTier === 'spot') 
-      ? 'NA' 
+    const normalizedPaymentOption = (pricingTier === 'on_demand' || pricingTier === 'spot')
+      ? 'NA'
       : (paymentOption || 'NA')
-    
+
     // Check if already in cache (before making API call)
     const exactKey = `${cloud.toLowerCase()}:${region}:${instanceType}:${pricingTier}:${normalizedPaymentOption}`
     const currentCache = get().vmPricingMap
     if (currentCache[exactKey] !== undefined) {
       return currentCache[exactKey]
     }
-    
+
+    // Deduplicate in-flight requests: fetch ALL tiers for this instance type at once
+    // (no pricing_tier filter), so one request serves all pricing tier lookups
+    const inflightKey = `${cloud.toLowerCase()}:${region}:${instanceType}`
+
+    // If there's already an in-flight request for this instance type, wait for it
+    if (inflightKey in _vmCostInflight) {
+      await _vmCostInflight[inflightKey]
+      // After the shared request completes, check cache again
+      const cached = get().vmPricingMap[exactKey]
+      return cached !== undefined ? cached : 0
+    }
+
+    // Create a new request (no pricing_tier filter → returns ALL tiers in one call)
+    const fetchPromise = api.fetchInstanceVMCosts({
+      cloud: cloud.toUpperCase(),
+      region,
+      instance_type: instanceType,
+    })
+    _vmCostInflight[inflightKey] = fetchPromise
+
     try {
-      // Fetch from new API: /instances/vm-costs
-      // NOTE: API expects uppercase cloud (AWS, AZURE, GCP)
-      // NOTE: payment_option is only sent for reserved_1y/reserved_3y (handled in API client)
-      const vmCosts = await api.fetchInstanceVMCosts({ 
-        cloud: cloud.toUpperCase(), 
-        region, 
-        instance_type: instanceType,
-        pricing_tier: pricingTier,
-        payment_option: normalizedPaymentOption
-      })
-      
-      // Update cache with fetched data using functional update to avoid race conditions
+      const vmCosts = await fetchPromise
+
+      // Update cache with ALL returned pricing tiers
       if (vmCosts && vmCosts.length > 0) {
-        // Build entries to add
         const newEntries: Record<string, number> = {}
         let dbuRate: number | undefined
         vmCosts.forEach((vc: any) => {
           const key = `${cloud.toLowerCase()}:${region}:${instanceType}:${vc.pricing_tier}:${vc.payment_option}`
           newEntries[key] = vc.cost_per_hour
-          // Capture DBU rate from first entry (same for all pricing tiers)
           if (vc.dbu_rate !== undefined && dbuRate === undefined) {
             dbuRate = vc.dbu_rate
           }
         })
-        
-        // Use functional update to safely merge with existing state (prevents race conditions)
+
         set(state => ({
           vmPricingMap: { ...state.vmPricingMap, ...newEntries },
-          // Also cache DBU rate if available
-          instanceDbuRateMap: dbuRate !== undefined 
+          instanceDbuRateMap: dbuRate !== undefined
             ? { ...state.instanceDbuRateMap, [`${cloud.toLowerCase()}:${instanceType}`]: dbuRate }
             : state.instanceDbuRateMap
         }))
-        
+
         // Return the requested pricing tier
-        const matchedCost = vmCosts.find(vc => 
-          vc.pricing_tier === pricingTier && 
-          (vc.payment_option === paymentOption || paymentOption === 'NA')
+        const matchedCost = vmCosts.find(vc =>
+          vc.pricing_tier === pricingTier &&
+          (vc.payment_option === normalizedPaymentOption || normalizedPaymentOption === 'NA')
         )
         return matchedCost?.cost_per_hour || vmCosts[0]?.cost_per_hour || 0
       }
-      
+
       return 0
     } catch (error) {
-      // Only log actual errors, not missing data
       if (error instanceof Error && !error.message.includes('404')) {
         console.error(`[VM Cost] Fetch failed for ${instanceType}:`, error.message)
       }
       return 0
+    } finally {
+      delete _vmCostInflight[inflightKey]
     }
   },
   

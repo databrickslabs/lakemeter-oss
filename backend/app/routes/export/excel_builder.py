@@ -21,7 +21,7 @@ from .excel_item_helpers import calc_item_values, write_storage_subrow
 from app.routes.vm_pricing import DEFAULT_VM_PRICING
 
 
-def build_estimate_excel(estimate, line_items, cloud, region, tier):
+def build_estimate_excel(estimate, line_items, cloud, region, tier, db=None):
     """Build an Excel workbook for an estimate. Returns BytesIO output."""
     output = BytesIO()
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
@@ -34,7 +34,7 @@ def build_estimate_excel(estimate, line_items, cloud, region, tier):
 
     row = _write_header_section(sheet, fmt, estimate, cloud, region, tier, max_col)
     row, header_row, data_start_row = _write_table_headers(sheet, fmt, row, max_col)
-    row = _write_line_items(sheet, fmt, row, line_items, cloud, region, tier)
+    row = _write_line_items(sheet, fmt, row, line_items, cloud, region, tier, db=db)
     data_end_row = row - 1
     row = write_totals(sheet, fmt, row, data_start_row, data_end_row)
     totals_row = row - 2
@@ -74,6 +74,77 @@ def _get_vm_hourly_rate(instance_prices: dict, pricing_tier: str) -> float:
     on_demand = instance_prices.get('on_demand', 0)
     discount = _RESERVED_DISCOUNTS.get(pricing_tier, 1.0)
     return round(on_demand * discount, 4)
+
+
+def _lookup_dbsql_vm_costs(item, cloud, region, vm_prices, db, auto_notes):
+    """Look up VM costs for DBSQL Classic/Pro warehouses.
+
+    Queries the warehouse config table to find driver/worker instance types,
+    then looks up VM costs from DEFAULT_VM_PRICING or the database.
+    Returns (driver_vm_hr, worker_vm_hr, worker_count).
+    """
+    from sqlalchemy import text as sa_text
+
+    wh_type = (item.dbsql_warehouse_type or 'CLASSIC').upper()
+    wh_size = item.dbsql_warehouse_size or 'Small'
+    driver_tier = _get_val(item, 'dbsql_vm_pricing_tier', 'on_demand') or 'on_demand'
+
+    if not db:
+        auto_notes.append("DBSQL VM costs unavailable (no db session)")
+        return 0, 0, 0
+
+    try:
+        # Get warehouse config: maps warehouse type/size → driver/worker instance types
+        config = db.execute(sa_text("""
+            SELECT driver_instance_type, worker_instance_type, worker_count
+            FROM lakemeter.sync_ref_dbsql_warehouse_config
+            WHERE UPPER(cloud) = UPPER(:cloud)
+                AND UPPER(warehouse_type) = UPPER(:wh_type)
+                AND UPPER(warehouse_size) = UPPER(:wh_size)
+        """), {"cloud": cloud, "wh_type": wh_type, "wh_size": wh_size}).fetchone()
+
+        if not config:
+            auto_notes.append(f"DBSQL warehouse config not found for {cloud}:{wh_type}:{wh_size}")
+            return 0, 0, 0
+
+        driver_inst = config.driver_instance_type
+        worker_inst = config.worker_instance_type
+        worker_count = config.worker_count or 0
+
+        # Try DEFAULT_VM_PRICING first (static fallback)
+        cloud_lc = (cloud or 'aws').lower()
+        driver_vm_hr = 0
+        worker_vm_hr = 0
+        if driver_inst and driver_inst in vm_prices:
+            driver_vm_hr = _get_vm_hourly_rate(vm_prices[driver_inst], driver_tier)
+        if worker_inst and worker_inst in vm_prices:
+            worker_vm_hr = _get_vm_hourly_rate(vm_prices[worker_inst], driver_tier)
+
+        # If not in static data, query the database
+        if driver_vm_hr == 0 and driver_inst:
+            row = db.execute(sa_text("""
+                SELECT cost_per_hour FROM lakemeter.sync_pricing_vm_costs
+                WHERE UPPER(cloud) = UPPER(:cloud) AND region = :region
+                    AND instance_type = :inst AND pricing_tier = :tier
+                LIMIT 1
+            """), {"cloud": cloud, "region": region, "inst": driver_inst, "tier": driver_tier}).fetchone()
+            if row:
+                driver_vm_hr = float(row.cost_per_hour or 0)
+
+        if worker_vm_hr == 0 and worker_inst:
+            row = db.execute(sa_text("""
+                SELECT cost_per_hour FROM lakemeter.sync_pricing_vm_costs
+                WHERE UPPER(cloud) = UPPER(:cloud) AND region = :region
+                    AND instance_type = :inst AND pricing_tier = :tier
+                LIMIT 1
+            """), {"cloud": cloud, "region": region, "inst": worker_inst, "tier": driver_tier}).fetchone()
+            if row:
+                worker_vm_hr = float(row.cost_per_hour or 0)
+
+        return driver_vm_hr, worker_vm_hr, worker_count
+    except Exception as e:
+        auto_notes.append(f"DBSQL VM cost lookup error: {e}")
+        return 0, 0, 0
 
 
 def _write_header_section(sheet, fmt, estimate, cloud, region, tier, max_col):
@@ -127,14 +198,14 @@ def _write_table_headers(sheet, fmt, row, max_col):
     return row, header_row, data_start_row
 
 
-def _write_line_items(sheet, fmt, row, line_items, cloud, region, tier):
+def _write_line_items(sheet, fmt, row, line_items, cloud, region, tier, db=None):
     """Write all line item data rows including storage sub-rows."""
     for idx, item in enumerate(line_items):
-        row = _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier)
+        row = _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=db)
     return row
 
 
-def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier):
+def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None):
     """Write one line item (and its storage sub-row if applicable)."""
     wt = item.workload_type or 'JOBS'
     sku = _get_sku_type(item, cloud)
@@ -162,19 +233,36 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier):
     if not is_serverless:
         cloud_lc = (cloud or 'aws').lower()
         vm_prices = DEFAULT_VM_PRICING.get(cloud_lc, {})
-        driver_node = _get_val(item, 'driver_node_type', '')
-        worker_node = _get_val(item, 'worker_node_type', '')
-        driver_tier = _get_val(item, 'driver_pricing_tier', 'on_demand') or 'on_demand'
-        worker_tier = _get_val(item, 'worker_pricing_tier', 'on_demand') or 'on_demand'
-        if driver_node and driver_node in vm_prices:
-            driver_vm_hr = _get_vm_hourly_rate(vm_prices[driver_node], driver_tier)
-        if worker_node and worker_node in vm_prices:
-            worker_vm_hr = _get_vm_hourly_rate(vm_prices[worker_node], worker_tier)
+
+        # DBSQL Classic/Pro: look up VM costs via warehouse config → instance types
+        if wt == 'DBSQL' and (item.dbsql_warehouse_type or '').upper() in ('CLASSIC', 'PRO'):
+            driver_vm_hr, worker_vm_hr, num_workers = _lookup_dbsql_vm_costs(
+                item, cloud, region, vm_prices, db, auto_notes)
+        else:
+            driver_node = _get_val(item, 'driver_node_type', '')
+            worker_node = _get_val(item, 'worker_node_type', '')
+            driver_tier = _get_val(item, 'driver_pricing_tier', 'on_demand') or 'on_demand'
+            worker_tier = _get_val(item, 'worker_pricing_tier', 'on_demand') or 'on_demand'
+            if driver_node and driver_node in vm_prices:
+                driver_vm_hr = _get_vm_hourly_rate(vm_prices[driver_node], driver_tier)
+            if worker_node and worker_node in vm_prices:
+                worker_vm_hr = _get_vm_hourly_rate(vm_prices[worker_node], worker_tier)
 
     user_notes = _get_val(item, 'notes', '') or ''
     notes_parts = [user_notes] if user_notes else []
     if auto_notes:
         notes_parts.append(' | '.join(auto_notes))
+
+    # For DBSQL Classic/Pro, show warehouse info instead of generic driver/worker
+    if wt == 'DBSQL' and (item.dbsql_warehouse_type or '').upper() in ('CLASSIC', 'PRO'):
+        display_driver_tier = _get_pricing_tier_display(
+            item.dbsql_vm_pricing_tier) if item.dbsql_vm_pricing_tier else '-'
+        display_worker_tier = display_driver_tier
+    else:
+        display_driver_tier = _get_pricing_tier_display(
+            item.driver_pricing_tier) if hasattr(item, 'driver_pricing_tier') and item.driver_pricing_tier else '-'
+        display_worker_tier = _get_pricing_tier_display(
+            item.worker_pricing_tier) if hasattr(item, 'worker_pricing_tier') and item.worker_pricing_tier else '-'
 
     base_row = {
         'idx': idx + 1,
@@ -185,10 +273,8 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier):
         'driver_node': _get_val(item, 'driver_node_type', '-') or '-',
         'worker_node': _get_val(item, 'worker_node_type', '-') or '-',
         'num_workers': num_workers,
-        'driver_tier': _get_pricing_tier_display(item.driver_pricing_tier)
-        if hasattr(item, 'driver_pricing_tier') else '-',
-        'worker_tier': _get_pricing_tier_display(item.worker_pricing_tier)
-        if hasattr(item, 'worker_pricing_tier') else '-',
+        'driver_tier': display_driver_tier,
+        'worker_tier': display_worker_tier,
         'hours_per_month': hours,
         'token_type': token_type if is_fmapi_token else '',
         'token_quantity_millions': token_qty,

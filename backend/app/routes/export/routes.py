@@ -33,7 +33,7 @@ def export_estimate_to_excel(
         region = getattr(estimate, 'region', 'us-east-1') or 'us-east-1'
         tier = getattr(estimate, 'tier', 'PREMIUM') or 'PREMIUM'
 
-        output = build_estimate_excel(estimate, line_items, cloud, region, tier)
+        output = build_estimate_excel(estimate, line_items, cloud, region, tier, db=db)
 
         estimate_name = getattr(estimate, 'estimate_name', 'Untitled') or 'Untitled'
         safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', estimate_name)[:50]

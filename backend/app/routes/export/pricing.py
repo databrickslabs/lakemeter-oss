@@ -135,7 +135,7 @@ def _get_fmapi_sku(item, cloud: str) -> str:
     elif wt == 'FMAPI_PROPRIETARY':
         provider = item.fmapi_provider or ''
         endpoint = getattr(item, 'fmapi_endpoint_type', 'global') or 'global'
-        context = getattr(item, 'fmapi_context_length', 'long') or 'long'
+        context = getattr(item, 'fmapi_context_length', 'all') or 'all'
         key = f"{cloud}:{provider}:{model}:{endpoint}:{context}:{rate_type}"
         info = FMAPI_PROP_RATES.get(key, {})
         return info.get('sku_product_type', 'OPENAI_MODEL_SERVING')
@@ -164,8 +164,8 @@ def _get_fmapi_dbu_per_million(item, cloud: str) -> tuple:
     elif wt == 'FMAPI_PROPRIETARY':
         provider = item.fmapi_provider or ''
         endpoint = getattr(item, 'fmapi_endpoint_type', 'global') or 'global'
-        # Default to 'long' context matching the frontend's default
-        context = getattr(item, 'fmapi_context_length', 'long') or 'long'
+        # Default to 'all' context matching the API's default (fmapi_calc.py)
+        context = getattr(item, 'fmapi_context_length', 'all') or 'all'
         key = f"{cloud}:{provider}:{model}:{endpoint}:{context}:{rate_type}"
         info = FMAPI_PROP_RATES.get(key, {})
         if 'dbu_rate' in info:

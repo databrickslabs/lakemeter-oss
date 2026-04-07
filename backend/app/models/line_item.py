@@ -57,7 +57,7 @@ class LineItem(Base):
     fmapi_quantity = Column(Numeric(18, 2))  # quantity in millions (M)
     
     # Lakebase Configuration
-    lakebase_cu = Column(Integer)
+    lakebase_cu = Column(Numeric(5, 1))
     lakebase_storage_gb = Column(Integer)
     lakebase_ha_nodes = Column(Integer)
     lakebase_backup_retention_days = Column(Integer)
