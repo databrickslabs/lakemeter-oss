@@ -1594,32 +1594,49 @@ def configure_app_resources(ctx: dict, instance_info: dict, cfg: dict):
 # Step 10: Deploy App
 # ===================================================================
 def deploy_app(ctx: dict, cfg: dict):
-    """Build frontend and deploy to Databricks Apps."""
+    """Build frontend and deploy to Databricks Apps via workspace sync.
+
+    Only syncs the files needed for the app to run:
+    - backend/ (FastAPI app, routes, services, static assets)
+    - frontend/ (React source — built at startup via app.yaml command)
+    - scripts/ (installer)
+    - app.yaml, requirements.txt
+
+    Excludes tests/, etl/, docs-site/, harness/, .venv/, .git/, node_modules/.
+    """
     import subprocess
 
     deploy_script = APP_DIR / "deploy.sh"
     if deploy_script.exists():
-        log_info("Running deploy.sh (build frontend + deploy)...")
+        log_info("Running deploy.sh --workspace-deploy ...")
+        profile = ctx.get("profile", "")
         result = subprocess.run(
-            ["bash", str(deploy_script)],
+            ["bash", str(deploy_script), "--workspace-deploy"],
             cwd=str(APP_DIR),
             env={
                 **os.environ,
                 "DATABRICKS_HOST": ctx["host"].replace("https://", ""),
                 "LAKEMETER_APP_NAME": cfg["app_name"],
+                "DATABRICKS_PROFILE": profile,
             },
             capture_output=True,
             text=True,
         )
         if result.returncode == 0:
             log_ok("App deployed successfully")
+            if result.stdout:
+                # Show last few lines of deploy output
+                for line in result.stdout.strip().split('\n')[-5:]:
+                    log_info(line)
         else:
             log_warn(f"Deploy script exited with code {result.returncode}")
             if result.stderr:
                 log_info(result.stderr[:500])
+            if result.stdout:
+                log_info(result.stdout[-500:])
     else:
         log_warn("deploy.sh not found — deploy manually")
-        log_info(f"  cd {APP_DIR} && bash deploy.sh")
+        log_info(f"  cd {APP_DIR} && bash deploy.sh --workspace-deploy")
 
 
 # ===================================================================
