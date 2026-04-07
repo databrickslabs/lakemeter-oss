@@ -523,6 +523,56 @@ def run_setup_sql(ctx: dict, instance_info: dict, cfg: dict):
     """)
     log_ok("Lakebase CU size constraint updated")
 
+    # --- Case normalization triggers ---
+    # DB-level triggers that auto-normalize enum fields to canonical case
+    try:
+        cur.execute("""
+            CREATE OR REPLACE FUNCTION lakemeter.normalize_estimates_case()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                IF NEW.cloud IS NOT NULL THEN NEW.cloud = UPPER(NEW.cloud); END IF;
+                IF NEW.tier IS NOT NULL THEN NEW.tier = UPPER(NEW.tier); END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+        """)
+        cur.execute("""
+            CREATE OR REPLACE FUNCTION lakemeter.normalize_line_items_case()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                IF NEW.cloud IS NOT NULL THEN NEW.cloud = UPPER(NEW.cloud); END IF;
+                IF NEW.workload_type IS NOT NULL THEN NEW.workload_type = UPPER(NEW.workload_type); END IF;
+                IF NEW.dbsql_warehouse_type IS NOT NULL THEN NEW.dbsql_warehouse_type = UPPER(NEW.dbsql_warehouse_type); END IF;
+                IF NEW.dlt_edition IS NOT NULL THEN NEW.dlt_edition = UPPER(NEW.dlt_edition); END IF;
+                IF NEW.serverless_mode IS NOT NULL THEN NEW.serverless_mode = LOWER(NEW.serverless_mode); END IF;
+                IF NEW.vector_search_mode IS NOT NULL THEN NEW.vector_search_mode = LOWER(NEW.vector_search_mode); END IF;
+                IF NEW.fmapi_provider IS NOT NULL THEN NEW.fmapi_provider = LOWER(NEW.fmapi_provider); END IF;
+                IF NEW.fmapi_rate_type IS NOT NULL THEN NEW.fmapi_rate_type = LOWER(NEW.fmapi_rate_type); END IF;
+                IF NEW.fmapi_endpoint_type IS NOT NULL THEN NEW.fmapi_endpoint_type = LOWER(NEW.fmapi_endpoint_type); END IF;
+                IF NEW.fmapi_context_length IS NOT NULL THEN NEW.fmapi_context_length = LOWER(NEW.fmapi_context_length); END IF;
+                IF NEW.model_serving_gpu_type IS NOT NULL THEN NEW.model_serving_gpu_type = LOWER(NEW.model_serving_gpu_type); END IF;
+                IF NEW.driver_pricing_tier IS NOT NULL THEN NEW.driver_pricing_tier = LOWER(NEW.driver_pricing_tier); END IF;
+                IF NEW.worker_pricing_tier IS NOT NULL THEN NEW.worker_pricing_tier = LOWER(NEW.worker_pricing_tier); END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+        """)
+        cur.execute("DROP TRIGGER IF EXISTS trg_normalize_estimates_case ON lakemeter.estimates")
+        cur.execute("""
+            CREATE TRIGGER trg_normalize_estimates_case
+            BEFORE INSERT OR UPDATE ON lakemeter.estimates
+            FOR EACH ROW EXECUTE FUNCTION lakemeter.normalize_estimates_case()
+        """)
+        cur.execute("DROP TRIGGER IF EXISTS trg_normalize_line_items_case ON lakemeter.line_items")
+        cur.execute("""
+            CREATE TRIGGER trg_normalize_line_items_case
+            BEFORE INSERT OR UPDATE ON lakemeter.line_items
+            FOR EACH ROW EXECUTE FUNCTION lakemeter.normalize_line_items_case()
+        """)
+        log_ok("Case normalization triggers created")
+    except Exception as e:
+        log_warn(f"Case normalization triggers: {str(e)[:100]}")
+
     # --- Migrate sync_ref_instance_dbu_rates to include is_active and source ---
     for col_name, col_type in [("is_active", "BOOLEAN DEFAULT TRUE"), ("source", "TEXT")]:
         try:
@@ -1437,7 +1487,11 @@ def generate_app_config(ctx: dict, instance_info: dict, cfg: dict):
 command:
   - "/bin/bash"
   - "-c"
-  - "cd backend && ../.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+  - |
+    # Build frontend from source (Node.js 22 + npm available in Databricks Apps runtime)
+    cd frontend && npm ci --silent && npm run build && cd .. &&
+    # Start FastAPI backend
+    cd backend && ../.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port ${{DATABRICKS_APP_PORT:-8000}}
 
 env:
   # App environment
