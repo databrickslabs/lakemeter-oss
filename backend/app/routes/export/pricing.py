@@ -74,7 +74,7 @@ def _get_photon_multiplier(cloud: str, sku_base: str) -> float:
 
 def _get_sku_type(item, cloud: str = 'aws') -> str:
     """Determine the SKU/product type for a line item."""
-    wt = item.workload_type or ''
+    wt = (item.workload_type or '').upper()
 
     if wt == 'JOBS':
         if item.serverless_enabled:

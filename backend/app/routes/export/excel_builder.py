@@ -207,7 +207,7 @@ def _write_line_items(sheet, fmt, row, line_items, cloud, region, tier, db=None)
 
 def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None):
     """Write one line item (and its storage sub-row if applicable)."""
-    wt = item.workload_type or 'JOBS'
+    wt = (item.workload_type or 'JOBS').upper()
     sku = _get_sku_type(item, cloud)
     dbu_rate, dbu_rate_found = _get_dbu_price(cloud, region, tier, sku)
     dbu_per_hour, dbu_warnings = _calculate_dbu_per_hour(item, cloud, tier)

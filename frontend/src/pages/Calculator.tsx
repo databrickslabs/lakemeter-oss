@@ -547,11 +547,11 @@ export default function Calculator() {
       if (item.serverless_enabled) return
       
       // Handle DBSQL Classic/Pro warehouses - get instance types from warehouse config
-      if (item.workload_type === 'DBSQL' && item.dbsql_warehouse_type !== 'SERVERLESS') {
+      if (item.workload_type === 'DBSQL' && (item.dbsql_warehouse_type || '').toUpperCase() !== 'SERVERLESS') {
         const warehouseConfig = getBundleDBSQLWarehouseConfig(
           pricingBundle,
           formData.cloud,
-          item.dbsql_warehouse_type || 'PRO',
+          (item.dbsql_warehouse_type || 'PRO').toUpperCase(),
           item.dbsql_warehouse_size || 'Small'
         )
         
@@ -759,7 +759,7 @@ export default function Calculator() {
     // Matches the SQL view's CASE logic
     // ========================================
     let productType = ''
-    const dltEdition = effectiveItem.dlt_edition || 'CORE'
+    const dltEdition = (effectiveItem.dlt_edition || 'CORE').toUpperCase()
     
     switch (effectiveItem.workload_type) {
       case 'JOBS':
@@ -795,7 +795,7 @@ export default function Calculator() {
         break
       
       case 'DBSQL':
-        const warehouseType = effectiveItem.dbsql_warehouse_type || 'SERVERLESS'
+        const warehouseType = (effectiveItem.dbsql_warehouse_type || 'SERVERLESS').toUpperCase()
         if (warehouseType === 'SERVERLESS') {
           productType = 'SERVERLESS_SQL_COMPUTE'
         } else if (warehouseType === 'PRO') {
@@ -1000,7 +1000,7 @@ export default function Calculator() {
       case 'DBSQL':
         // DBSQL: lookup DBU per hour from warehouse size
         // Try pricing bundle first, then fetched dbsqlSizes, then hardcoded fallback
-        const dbsqlWarehouseType = effectiveItem.dbsql_warehouse_type || 'SERVERLESS'
+        const dbsqlWarehouseType = (effectiveItem.dbsql_warehouse_type || 'SERVERLESS').toUpperCase()
         const warehouseSize = effectiveItem.dbsql_warehouse_size || 'Small'
         const numClusters = effectiveItem.dbsql_num_clusters || 1
         
@@ -2308,10 +2308,10 @@ export default function Calculator() {
                       const isExpanded = expandedItems.has(item.line_item_id)
                       const isSelected = selectedItems.has(item.line_item_id)
                       const wType = effectiveItem.workload_type || ''
-                      const isServerless = effectiveItem.serverless_enabled || (wType === 'DBSQL' && effectiveItem.dbsql_warehouse_type === 'SERVERLESS')
+                      const isServerless = effectiveItem.serverless_enabled || (wType === 'DBSQL' && (effectiveItem.dbsql_warehouse_type || '').toUpperCase() === 'SERVERLESS')
                       const typeName = workloadTypes.find(w => w.workload_type === wType)?.display_name || wType
                       const usageSummary = getUsageSummary(effectiveItem)
-                      
+
                       // Build structured config for better display - uses effectiveItem for real-time sync
                       // Simplified color scheme: orange accent for key features, neutral for rest
                       const getStructuredConfig = () => {
@@ -2347,8 +2347,8 @@ export default function Calculator() {
                           }
                         } else if (wType === 'DBSQL') {
                           // DBSQL - warehouse type as badge, size as detail
-                          if (effectiveItem.dbsql_warehouse_type && effectiveItem.dbsql_warehouse_type !== 'SERVERLESS') {
-                            config.badges.push({ text: effectiveItem.dbsql_warehouse_type })
+                          if (effectiveItem.dbsql_warehouse_type && (effectiveItem.dbsql_warehouse_type || '').toUpperCase() !== 'SERVERLESS') {
+                            config.badges.push({ text: (effectiveItem.dbsql_warehouse_type || '').toUpperCase() })
                           }
                           if (effectiveItem.dbsql_warehouse_size) {
                             config.details.push(effectiveItem.dbsql_warehouse_size)
@@ -2503,7 +2503,7 @@ export default function Calculator() {
                                 isLoading={(() => {
                                   const needsVMCosts = !effectiveItem.serverless_enabled && 
                                     ['JOBS', 'ALL_PURPOSE', 'DLT'].includes(wType) ||
-                                    (wType === 'DBSQL' && effectiveItem.dbsql_warehouse_type !== 'SERVERLESS')
+                                    (wType === 'DBSQL' && (effectiveItem.dbsql_warehouse_type || '').toUpperCase() !== 'SERVERLESS')
                                   return isLoadingVMCosts && needsVMCosts && costs.vmCost === 0
                                 })()}
                               />
@@ -2924,7 +2924,7 @@ export default function Calculator() {
                                   if (wType === 'DBSQL') {
                                     const warehouseSize = effectiveItem.dbsql_warehouse_size || 'Small'
                                     const numClusters = effectiveItem.dbsql_num_clusters || 1
-                                    const warehouseType = effectiveItem.dbsql_warehouse_type || 'SERVERLESS'
+                                    const warehouseType = (effectiveItem.dbsql_warehouse_type || 'SERVERLESS').toUpperCase()
                                     const dbuPerWarehouse = costs.dbuPerHour ? costs.dbuPerHour / numClusters : 12
                                     const hasVMCost = costs.vmCost > 0
                                     
@@ -3225,7 +3225,7 @@ export default function Calculator() {
                                 "font-semibold truncate text-[var(--text-primary)]",
                                 workloadsViewMode === 'cards' && !isExpanded && "text-sm"
                               )} title={item.workload_name}>{item.workload_name}</h4>
-                              {(item.serverless_enabled || (item.workload_type === 'DBSQL' && item.dbsql_warehouse_type === 'SERVERLESS')) && (
+                              {(item.serverless_enabled || (item.workload_type === 'DBSQL' && (item.dbsql_warehouse_type || '').toUpperCase() === 'SERVERLESS')) && (
                                 <span className="badge badge-teal">Serverless</span>
                               )}
                               {item.photon_enabled && (
@@ -3248,7 +3248,7 @@ export default function Calculator() {
                               const wType = item.workload_type || ''
                               const needsVMCosts = !item.serverless_enabled && 
                                 ['JOBS', 'ALL_PURPOSE', 'DLT'].includes(wType) ||
-                                (wType === 'DBSQL' && item.dbsql_warehouse_type !== 'SERVERLESS')
+                                (wType === 'DBSQL' && (item.dbsql_warehouse_type || '').toUpperCase() !== 'SERVERLESS')
                               return isLoadingVMCosts && needsVMCosts && costs.vmCost === 0
                             })()}
                             className="min-w-[100px]"
@@ -3382,7 +3382,7 @@ export default function Calculator() {
                               {(() => {
                                 // Use effectiveItem for real-time preview
                                 const wType = effectiveItem.workload_type || ''
-                                const isServerless = effectiveItem.serverless_enabled || (wType === 'DBSQL' && effectiveItem.dbsql_warehouse_type === 'SERVERLESS')
+                                const isServerless = effectiveItem.serverless_enabled || (wType === 'DBSQL' && (effectiveItem.dbsql_warehouse_type || '').toUpperCase() === 'SERVERLESS')
                                 
                                 // Determine if using run-based or direct hours
                                 const isRunBased = effectiveItem.runs_per_day && effectiveItem.avg_runtime_minutes && !effectiveItem.hours_per_month

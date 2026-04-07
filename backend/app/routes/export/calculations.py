@@ -23,7 +23,7 @@ def _calculate_hours_per_month(item) -> float:
     if item.hours_per_month:
         return float(item.hours_per_month)
     # Always-on workloads default to 730 hours/month (24/7)
-    wt = getattr(item, 'workload_type', '') or ''
+    wt = (getattr(item, 'workload_type', '') or '').upper()
     if wt in ('VECTOR_SEARCH', 'MODEL_SERVING', 'LAKEBASE', 'DATABRICKS_APPS'):
         return 730
     return 0
@@ -31,7 +31,7 @@ def _calculate_hours_per_month(item) -> float:
 
 def _calculate_dbu_per_hour(item, cloud: str = 'aws', tier: str = 'PREMIUM') -> tuple:
     """Calculate DBU per hour for a workload. Returns (dbu_per_hour, warnings)."""
-    wt = item.workload_type or ''
+    wt = (item.workload_type or '').upper()
     warnings = []
 
     if wt in ('JOBS', 'ALL_PURPOSE', 'DLT'):
@@ -100,7 +100,7 @@ def _calc_compute_dbu(item, cloud, wt, warnings):
     if item.serverless_enabled:
         photon_mult = _get_photon_multiplier(cloud, sku_base)
         base_dbu *= photon_mult
-        mode_multiplier = 2 if item.serverless_mode == 'performance' else 1
+        mode_multiplier = 2 if (item.serverless_mode or '').lower() == 'performance' else 1
         return base_dbu * mode_multiplier, warnings
 
     if item.photon_enabled:
@@ -169,7 +169,7 @@ def _calc_model_serving_dbu(item, cloud, warnings):
 
 def _is_serverless_workload(item) -> bool:
     """Check if workload is serverless (no VM costs)."""
-    wt = item.workload_type or ''
+    wt = (item.workload_type or '').upper()
     if wt in ('VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY',
               'LAKEBASE', 'DATABRICKS_APPS'):
         return True

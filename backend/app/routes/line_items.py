@@ -13,6 +13,26 @@ from app.models.sharing import Sharing
 from app.schemas import LineItemCreate, LineItemUpdate, LineItemResponse
 from app.auth import get_current_user
 
+# ---- Case normalization for enum-like string fields ----
+_UPPERCASE_FIELDS = {'cloud', 'dbsql_warehouse_type', 'dlt_edition', 'workload_type'}
+_LOWERCASE_FIELDS = {
+    'serverless_mode', 'vector_search_mode', 'fmapi_provider',
+    'fmapi_rate_type', 'fmapi_endpoint_type', 'fmapi_context_length',
+    'model_serving_gpu_type', 'driver_pricing_tier', 'worker_pricing_tier',
+    'dbsql_vm_pricing_tier',
+}
+
+
+def _normalize_case(data: dict) -> dict:
+    """Normalize enum-like string fields to canonical case."""
+    for field in _UPPERCASE_FIELDS:
+        if field in data and isinstance(data[field], str):
+            data[field] = data[field].upper()
+    for field in _LOWERCASE_FIELDS:
+        if field in data and isinstance(data[field], str):
+            data[field] = data[field].lower()
+    return data
+
 
 def _touch_estimate(estimate_id: UUID, db: Session):
     """Update the estimate's updated_at timestamp."""
@@ -108,7 +128,7 @@ def create_line_item(
         LineItem.estimate_id == line_item.estimate_id
     ).count()
     
-    item_data = line_item.model_dump()
+    item_data = _normalize_case(line_item.model_dump())
     db_item = LineItem(**item_data)
     if db_item.display_order == 0:
         db_item.display_order = max_order
@@ -156,10 +176,10 @@ def update_line_item(
     
     _check_estimate_access(item.estimate_id, current_user, db, require_edit=True)
     
-    update_data = line_item_update.model_dump(exclude_unset=True)
+    update_data = _normalize_case(line_item_update.model_dump(exclude_unset=True))
     for field, value in update_data.items():
         setattr(item, field, value)
-    
+
     _touch_estimate(item.estimate_id, db)  # Update estimate timestamp
     db.commit()
     db.refresh(item)

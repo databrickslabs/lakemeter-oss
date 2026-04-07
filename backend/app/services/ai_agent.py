@@ -2591,7 +2591,8 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 notes_parts.append("• **Limitations**: Limited Spark config customization, no cluster pools")
         
         if wtype == "DLT":
-            edition = workload.setdefault("dlt_edition", "PRO")
+            workload["dlt_edition"] = (workload.get("dlt_edition") or "PRO").upper()
+            edition = workload["dlt_edition"]
             notes_parts.append("")
             notes_parts.append("=" * 60)
             notes_parts.append("**SPARK DECLARATIVE PIPELINES (SDP) CONFIGURATION**")
@@ -2686,7 +2687,8 @@ Each workload needs to be confirmed individually. Review the configurations and 
             notes_parts.append("• **Cost optimization**: Use 'Enhanced Autoscaling' to minimize idle compute")
         
         if wtype == "DBSQL":
-            warehouse_type = workload.setdefault("dbsql_warehouse_type", "SERVERLESS")
+            workload["dbsql_warehouse_type"] = (workload.get("dbsql_warehouse_type") or "SERVERLESS").upper()
+            warehouse_type = workload["dbsql_warehouse_type"]
             size = workload.setdefault("dbsql_warehouse_size", "Small")
             
             # Calculate num_clusters based on queries per minute throughput
@@ -3144,9 +3146,9 @@ Each workload needs to be confirmed individually. Review the configurations and 
         
         if wtype == "VECTOR_SEARCH":
             # Get LLM-calculated values (LLM calculates and passes these directly)
-            endpoint_type = workload.get("vector_search_endpoint_type", "STANDARD")
+            endpoint_type = (workload.get("vector_search_endpoint_type", "STANDARD") or "STANDARD").upper()
             capacity_millions = workload.get("vector_capacity_millions", 1)
-            
+
             # Set vector_search_mode for DB (lowercase version of endpoint_type)
             mode = "storage_optimized" if endpoint_type == "STORAGE_OPTIMIZED" else "standard"
             workload["vector_search_mode"] = mode
@@ -3385,7 +3387,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
             
             # Add workload-specific summary
             if wtype == "DBSQL":
-                wh_type = workload.get("dbsql_warehouse_type", "SERVERLESS")
+                wh_type = (workload.get("dbsql_warehouse_type") or "SERVERLESS").upper()
                 wh_size = workload.get("dbsql_warehouse_size", "Small")
                 wh_clusters = workload.get("dbsql_num_clusters", 1)
                 footer_parts.append(f"• **Warehouse**: {wh_type} {wh_size} × {wh_clusters} cluster(s)")
@@ -3399,7 +3401,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
                     footer_parts.append(f"• **Compute**: Classic ({instance})")
                     footer_parts.append(f"• **Cluster size**: 1 driver + {workers} workers max")
             elif wtype == "DLT":
-                edition = workload.get("dlt_edition", "PRO")
+                edition = (workload.get("dlt_edition") or "PRO").upper()
                 footer_parts.append(f"• **Edition**: {edition}")
             elif wtype == "LAKEBASE":
                 cu = workload.get("lakebase_cu", 2)
@@ -3644,7 +3646,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 
                 # DLT recommendations
                 if wtype == "DLT":
-                    dlt_edition = workload.get("dlt_edition") or "CORE"
+                    dlt_edition = (workload.get("dlt_edition") or "CORE").upper()
                     if dlt_edition == "ADVANCED" and cost and cost < 500:
                         recommendations.append({
                             "workload": wname,
@@ -3658,7 +3660,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 
                 # DBSQL recommendations
                 if wtype == "DBSQL":
-                    warehouse_type = workload.get("dbsql_warehouse_type") or ""
+                    warehouse_type = (workload.get("dbsql_warehouse_type") or "").upper()
                     warehouse_size = workload.get("dbsql_warehouse_size") or ""
                     hours = workload.get("hours_per_month") or 0
                     

@@ -142,7 +142,7 @@ export function calculateWorkloadCost(
   // Step 2: Determine product_type_for_pricing (SKU)
   // ========================================
   let productType = ''
-  const dltEdition = item.dlt_edition || 'CORE'
+  const dltEdition = (item.dlt_edition || 'CORE').toUpperCase()
   
   switch (item.workload_type) {
     case 'JOBS':
@@ -371,7 +371,7 @@ export function calculateWorkloadCost(
       dbuPerHour = warehouseDBUs * numClusters
       monthlyDBUs = dbuPerHour * hoursPerMonth
       
-      const dbsqlWarehouseType = item.dbsql_warehouse_type || 'SERVERLESS'
+      const dbsqlWarehouseType = (item.dbsql_warehouse_type || 'SERVERLESS').toUpperCase()
       if (dbsqlWarehouseType !== 'SERVERLESS') {
         // DBSQL has separate driver and worker pricing tier selections
         const dbsqlDriverPricingTier = item.dbsql_driver_pricing_tier || item.driver_pricing_tier || 'on_demand'

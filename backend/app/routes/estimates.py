@@ -20,6 +20,17 @@ from app.schemas import (
 )
 from app.auth import get_current_user
 
+# ---- Case normalization for estimate-level enum fields ----
+_ESTIMATE_UPPER_FIELDS = {'cloud', 'tier'}
+
+
+def _normalize_estimate_case(data: dict) -> dict:
+    """Normalize cloud and tier to canonical UPPERCASE."""
+    for field in _ESTIMATE_UPPER_FIELDS:
+        if field in data and isinstance(data[field], str):
+            data[field] = data[field].upper()
+    return data
+
 
 class CloneRequest(BaseModel):
     new_name: Optional[str] = None
@@ -122,7 +133,7 @@ def create_estimate(
         log_info(f"Creating estimate '{estimate.estimate_name}' for user {current_user.user_id}")
         
         db_estimate = Estimate(
-            **estimate.model_dump(),
+            **_normalize_estimate_case(estimate.model_dump()),
             owner_user_id=current_user.user_id  # Set the owner
         )
         db.add(db_estimate)
@@ -271,8 +282,8 @@ def update_estimate(
     """Update an estimate. User must have access (owner or shared with edit permission)."""
     estimate = _get_estimate_for_user(estimate_id, current_user, db)
     
-    update_data = estimate_update.model_dump(exclude_unset=True)
-    
+    update_data = _normalize_estimate_case(estimate_update.model_dump(exclude_unset=True))
+
     # Check if cloud is being changed
     if 'cloud' in update_data and update_data['cloud'] != estimate.cloud:
         # Count existing workloads
