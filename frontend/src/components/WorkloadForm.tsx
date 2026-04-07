@@ -415,7 +415,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         num_workers: lineItem.num_workers || 2,
         photon_enabled: lineItem.photon_enabled || false,
         dlt_edition: lineItem.dlt_edition || 'PRO',
-        dbsql_warehouse_type: lineItem.dbsql_warehouse_type || 'SERVERLESS',
+        dbsql_warehouse_type: (lineItem.dbsql_warehouse_type || 'SERVERLESS').toUpperCase(),
         dbsql_warehouse_size: lineItem.dbsql_warehouse_size || 'Small',
         dbsql_num_clusters: lineItem.dbsql_num_clusters || 1,
         dbsql_driver_pricing_tier: lineItem.dbsql_driver_pricing_tier || lineItem.driver_pricing_tier || 'on_demand',
@@ -550,7 +550,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         num_workers: lineItem.num_workers || 2,
         photon_enabled: lineItem.photon_enabled || false,
         dlt_edition: lineItem.dlt_edition || 'PRO',
-        dbsql_warehouse_type: lineItem.dbsql_warehouse_type || 'SERVERLESS',
+        dbsql_warehouse_type: (lineItem.dbsql_warehouse_type || 'SERVERLESS').toUpperCase(),
         dbsql_warehouse_size: lineItem.dbsql_warehouse_size || 'Small',
         dbsql_num_clusters: lineItem.dbsql_num_clusters || 1,
         // Separate driver and worker pricing for DBSQL Pro/Classic

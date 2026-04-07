@@ -178,7 +178,7 @@ export function calculateWorkloadCost(
       break
     
     case 'DBSQL':
-      const warehouseType = item.dbsql_warehouse_type || 'SERVERLESS'
+      const warehouseType = (item.dbsql_warehouse_type || 'SERVERLESS').toUpperCase()
       if (warehouseType === 'SERVERLESS') {
         productType = 'SERVERLESS_SQL_COMPUTE'
       } else if (warehouseType === 'PRO') {
