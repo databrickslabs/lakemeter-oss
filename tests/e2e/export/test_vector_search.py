@@ -86,7 +86,7 @@ class TestVectorSearchExcelExport:
                     "workload_type": "VECTOR_SEARCH",
                     "serverless_enabled": True,
                     "vector_search_mode": mode,
-                    "vector_search_capacity_millions": cap,
+                    "vector_capacity_millions": cap,
                     "hours_per_month": USAGE_HOURLY["hours_per_month"],
                 })
 

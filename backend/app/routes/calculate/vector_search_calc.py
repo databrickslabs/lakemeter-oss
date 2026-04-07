@@ -48,7 +48,7 @@ def calculate_vector_search_cost(
             "p11": "on_demand", "p12": "on_demand",
             "p13": 0, "p14": 0,
             "p15": request.days_per_month or 30,
-            "p16": request.hours_per_month if has_hours else None,
+            "p16": int(request.hours_per_month) if has_hours and request.hours_per_month is not None else None,
             "p17": "standard", "p18": None, "p19": None, "p20": 1,
             "p21": "on_demand", "p22": request.mode,
             "p23": request.num_vectors_millions,
@@ -62,7 +62,7 @@ def calculate_vector_search_cost(
 
         sku_type = get_product_type_for_pricing(db, "VECTOR_SEARCH", True, False, None, None, None)
 
-        # Calculate units used
+        # Calculate units used for response
         if request.mode == "storage_optimized":
             units_used = math.ceil(request.num_vectors_millions / 64) if request.num_vectors_millions > 0 else 0
         else:
@@ -71,6 +71,9 @@ def calculate_vector_search_cost(
         dbu_cost = float(row.dbu_cost_per_month or 0)
         dbu_quantity = float(row.dbu_per_month or 0)
         dbu_price = float(row.dbu_price or 0)
+        hours = float(row.hours_per_month or 0)
+        # Stored function returns per-unit DBU rate; derive total from monthly quantity
+        dbu_per_hour = (dbu_quantity / hours) if hours > 0 else float(row.dbu_per_hour or 0)
 
         sku_breakdown = build_sku_breakdown_serverless(
             sku_type=sku_type, dbu_cost=dbu_cost,
@@ -97,7 +100,7 @@ def calculate_vector_search_cost(
                     "units_used": units_used,
                 },
                 "dbu_calculation": {
-                    "dbu_per_hour": float(row.dbu_per_hour or 0), "dbu_per_month": round(dbu_quantity, 2),
+                    "dbu_per_hour": round(dbu_per_hour, 4), "dbu_per_month": round(dbu_quantity, 2),
                     "dbu_price": dbu_price, "dbu_cost_per_month": round(dbu_cost, 2),
                 },
                 "total_cost": {"cost_per_month": float(row.cost_per_month or 0)},
