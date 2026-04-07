@@ -79,72 +79,96 @@ def _get_vm_hourly_rate(instance_prices: dict, pricing_tier: str) -> float:
 def _lookup_dbsql_vm_costs(item, cloud, region, vm_prices, db, auto_notes):
     """Look up VM costs for DBSQL Classic/Pro warehouses.
 
-    Queries the warehouse config table to find driver/worker instance types,
-    then looks up VM costs from DEFAULT_VM_PRICING or the database.
+    Uses static dbsql-warehouse-config.json to find driver/worker instance types,
+    then looks up VM costs from DEFAULT_VM_PRICING. Falls back to DB if needed.
     Returns (driver_vm_hr, worker_vm_hr, worker_count).
     """
-    from sqlalchemy import text as sa_text
+    from .pricing import DBSQL_WAREHOUSE_CONFIG
 
     wh_type = (item.dbsql_warehouse_type or 'CLASSIC').upper()
     wh_size = item.dbsql_warehouse_size or 'Small'
     driver_tier = _get_val(item, 'dbsql_vm_pricing_tier', 'on_demand') or 'on_demand'
+    cloud_lc = (cloud or 'aws').lower()
 
+    # Look up warehouse config from static JSON (key format: "aws:classic:Small")
+    config_key = f"{cloud_lc}:{wh_type.lower()}:{wh_size}"
+    config = DBSQL_WAREHOUSE_CONFIG.get(config_key)
+
+    if not config:
+        # Try DB fallback
+        config = _lookup_dbsql_config_from_db(cloud, wh_type, wh_size, db, auto_notes)
+        if not config:
+            auto_notes.append(f"DBSQL warehouse config not found for {config_key}")
+            return 0, 0, 0
+
+    driver_inst = config.get('driver_instance_type', '') if isinstance(config, dict) else getattr(config, 'driver_instance_type', '')
+    worker_inst = config.get('worker_instance_type', '') if isinstance(config, dict) else getattr(config, 'worker_instance_type', '')
+    worker_count = (config.get('worker_count', 0) if isinstance(config, dict) else getattr(config, 'worker_count', 0)) or 0
+
+    driver_vm_hr = 0
+    worker_vm_hr = 0
+    if driver_inst and driver_inst in vm_prices:
+        driver_vm_hr = _get_vm_hourly_rate(vm_prices[driver_inst], driver_tier)
+    if worker_inst and worker_inst in vm_prices:
+        worker_vm_hr = _get_vm_hourly_rate(vm_prices[worker_inst], driver_tier)
+
+    # If not in static VM pricing, try the database
+    if (driver_vm_hr == 0 or worker_vm_hr == 0) and db:
+        _lookup_vm_costs_from_db(
+            cloud, region, driver_inst, worker_inst, driver_tier,
+            driver_vm_hr, worker_vm_hr, db, auto_notes
+        )
+
+    return driver_vm_hr, worker_vm_hr, worker_count
+
+
+def _lookup_dbsql_config_from_db(cloud, wh_type, wh_size, db, auto_notes):
+    """Fallback: query warehouse config from DB table."""
     if not db:
-        auto_notes.append("DBSQL VM costs unavailable (no db session)")
-        return 0, 0, 0
-
+        return None
     try:
-        # Get warehouse config: maps warehouse type/size → driver/worker instance types
-        config = db.execute(sa_text("""
+        from sqlalchemy import text as sa_text
+        row = db.execute(sa_text("""
             SELECT driver_instance_type, worker_instance_type, worker_count
             FROM lakemeter.sync_ref_dbsql_warehouse_config
             WHERE UPPER(cloud) = UPPER(:cloud)
                 AND UPPER(warehouse_type) = UPPER(:wh_type)
                 AND UPPER(warehouse_size) = UPPER(:wh_size)
         """), {"cloud": cloud, "wh_type": wh_type, "wh_size": wh_size}).fetchone()
+        if row:
+            return {'driver_instance_type': row.driver_instance_type,
+                    'worker_instance_type': row.worker_instance_type,
+                    'worker_count': row.worker_count}
+    except Exception as e:
+        auto_notes.append(f"DBSQL config DB fallback: {e}")
+    return None
 
-        if not config:
-            auto_notes.append(f"DBSQL warehouse config not found for {cloud}:{wh_type}:{wh_size}")
-            return 0, 0, 0
 
-        driver_inst = config.driver_instance_type
-        worker_inst = config.worker_instance_type
-        worker_count = config.worker_count or 0
-
-        # Try DEFAULT_VM_PRICING first (static fallback)
-        cloud_lc = (cloud or 'aws').lower()
-        driver_vm_hr = 0
-        worker_vm_hr = 0
-        if driver_inst and driver_inst in vm_prices:
-            driver_vm_hr = _get_vm_hourly_rate(vm_prices[driver_inst], driver_tier)
-        if worker_inst and worker_inst in vm_prices:
-            worker_vm_hr = _get_vm_hourly_rate(vm_prices[worker_inst], driver_tier)
-
-        # If not in static data, query the database
+def _lookup_vm_costs_from_db(cloud, region, driver_inst, worker_inst, tier,
+                              driver_vm_hr, worker_vm_hr, db, auto_notes):
+    """Fallback: query VM costs from DB when not in static pricing."""
+    try:
+        from sqlalchemy import text as sa_text
         if driver_vm_hr == 0 and driver_inst:
             row = db.execute(sa_text("""
                 SELECT cost_per_hour FROM lakemeter.sync_pricing_vm_costs
                 WHERE UPPER(cloud) = UPPER(:cloud) AND region = :region
                     AND instance_type = :inst AND pricing_tier = :tier
                 LIMIT 1
-            """), {"cloud": cloud, "region": region, "inst": driver_inst, "tier": driver_tier}).fetchone()
+            """), {"cloud": cloud, "region": region, "inst": driver_inst, "tier": tier}).fetchone()
             if row:
                 driver_vm_hr = float(row.cost_per_hour or 0)
-
         if worker_vm_hr == 0 and worker_inst:
             row = db.execute(sa_text("""
                 SELECT cost_per_hour FROM lakemeter.sync_pricing_vm_costs
                 WHERE UPPER(cloud) = UPPER(:cloud) AND region = :region
                     AND instance_type = :inst AND pricing_tier = :tier
                 LIMIT 1
-            """), {"cloud": cloud, "region": region, "inst": worker_inst, "tier": driver_tier}).fetchone()
+            """), {"cloud": cloud, "region": region, "inst": worker_inst, "tier": tier}).fetchone()
             if row:
                 worker_vm_hr = float(row.cost_per_hour or 0)
-
-        return driver_vm_hr, worker_vm_hr, worker_count
     except Exception as e:
-        auto_notes.append(f"DBSQL VM cost lookup error: {e}")
-        return 0, 0, 0
+        auto_notes.append(f"VM cost DB lookup: {e}")
 
 
 def _write_header_section(sheet, fmt, estimate, cloud, region, tier, max_col):
@@ -227,6 +251,8 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         item, is_fmapi_token, is_fmapi_provisioned, dbu_per_hour, cloud, auto_notes)
 
     num_workers = int(item.num_workers or 0)
+    dbsql_driver_inst = ''
+    dbsql_worker_inst = ''
     # Look up VM costs from DEFAULT_VM_PRICING; serverless workloads have no VM costs
     driver_vm_hr = 0
     worker_vm_hr = 0
@@ -238,6 +264,14 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         if wt == 'DBSQL' and (item.dbsql_warehouse_type or '').upper() in ('CLASSIC', 'PRO'):
             driver_vm_hr, worker_vm_hr, num_workers = _lookup_dbsql_vm_costs(
                 item, cloud, region, vm_prices, db, auto_notes)
+            # Also capture instance types for display in the export
+            from .pricing import DBSQL_WAREHOUSE_CONFIG
+            wh_type = (item.dbsql_warehouse_type or 'CLASSIC').upper()
+            wh_size = item.dbsql_warehouse_size or 'Small'
+            cfg_key = f"{cloud_lc}:{wh_type.lower()}:{wh_size}"
+            cfg = DBSQL_WAREHOUSE_CONFIG.get(cfg_key, {})
+            dbsql_driver_inst = cfg.get('driver_instance_type', '')
+            dbsql_worker_inst = cfg.get('worker_instance_type', '')
         else:
             driver_node = _get_val(item, 'driver_node_type', '')
             worker_node = _get_val(item, 'worker_node_type', '')
@@ -270,8 +304,8 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         'type_display': _get_workload_display_name(wt),
         'config': _get_workload_config_details(item),
         'sku': sku,
-        'driver_node': _get_val(item, 'driver_node_type', '-') or '-',
-        'worker_node': _get_val(item, 'worker_node_type', '-') or '-',
+        'driver_node': dbsql_driver_inst or _get_val(item, 'driver_node_type', '-') or '-',
+        'worker_node': dbsql_worker_inst or _get_val(item, 'worker_node_type', '-') or '-',
         'num_workers': num_workers,
         'driver_tier': display_driver_tier,
         'worker_tier': display_worker_tier,

@@ -24,6 +24,7 @@ FMAPI_PROP_RATES = _load_json('fmapi-proprietary-rates.json')
 VECTOR_SEARCH_RATES = _load_json('vector-search-rates.json')
 DBSQL_RATES = _load_json('dbsql-rates.json')
 DBU_MULTIPLIERS = _load_json('dbu-multipliers.json')
+DBSQL_WAREHOUSE_CONFIG = _load_json('dbsql-warehouse-config.json')
 
 # Fallback DBU $/DBU rates — aligned with frontend DEFAULT_DBU_PRICING (costCalculation.ts)
 FALLBACK_DBU_PRICES = {
