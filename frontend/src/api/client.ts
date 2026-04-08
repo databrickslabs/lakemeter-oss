@@ -1009,6 +1009,9 @@ export interface LakebaseRequest extends BaseCalculationRequest {
   cu_size: number
   num_nodes: number
   hours_per_month?: number
+  storage_gb?: number
+  pitr_gb?: number
+  snapshot_gb?: number
 }
 
 export const calculateLakebase = async (request: LakebaseRequest): Promise<CostCalculationResponse> => {

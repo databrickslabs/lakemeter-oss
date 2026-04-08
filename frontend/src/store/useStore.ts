@@ -1454,7 +1454,10 @@ export const useStore = create<Store>((set, get) => ({
             ...baseParams,
             cu_size: lineItem.lakebase_cu || 2,
             num_nodes: lineItem.lakebase_ha_nodes || 1,
-            hours_per_month: lineItem.hours_per_month || 730
+            hours_per_month: lineItem.hours_per_month || 730,
+            storage_gb: lineItem.lakebase_storage_gb || 0,
+            pitr_gb: lineItem.lakebase_pitr_gb || 0,
+            snapshot_gb: lineItem.lakebase_snapshot_gb || 0,
           })
           break
       }

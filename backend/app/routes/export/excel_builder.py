@@ -328,6 +328,12 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
     if wt == 'LAKEBASE':
         row = write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
                                    'Lakebase (Storage)', 'lakebase_storage_gb')
+        if getattr(item, 'lakebase_pitr_gb', 0) and item.lakebase_pitr_gb > 0:
+            row = write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
+                                       'Lakebase (PITR)', 'lakebase_pitr_gb')
+        if getattr(item, 'lakebase_snapshot_gb', 0) and item.lakebase_snapshot_gb > 0:
+            row = write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
+                                       'Lakebase (Snapshots)', 'lakebase_snapshot_gb')
     elif wt == 'VECTOR_SEARCH' and (getattr(item, 'vector_search_storage_gb', 0) or 0) > 0:
         row = write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
                                    'Vector Search (Storage)', 'vector_search_storage_gb')

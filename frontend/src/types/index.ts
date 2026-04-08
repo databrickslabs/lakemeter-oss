@@ -95,6 +95,8 @@ export interface LineItem {
   lakebase_storage_gb?: number | null
   lakebase_ha_nodes?: number | null
   lakebase_backup_retention_days?: number | null
+  lakebase_pitr_gb?: number | null
+  lakebase_snapshot_gb?: number | null
   
   // Foundation Model API Configuration (Proprietary)
   fmapi_provider?: string | null

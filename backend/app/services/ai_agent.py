@@ -1115,9 +1115,17 @@ The user will review and confirm before it's added to the estimate.""",
                 },
                 "lakebase_storage_gb": {
                     "type": "integer",
-                    "description": "Storage in GB for Lakebase (0-8192 GB, 8TB max). Each GB consumes 15 DSU at $0.023/DSU/month. No free tier. Example: 500GB = 7500 DSU = $172.50/month storage cost."
+                    "description": "Database storage in GB (0-8192 GB, 8TB max). 15x DSU multiplier. Example: 500GB × 15 DSU/GB × $0.023/DSU = $172.50/month."
                 },
-                
+                "lakebase_pitr_gb": {
+                    "type": "integer",
+                    "description": "Point-in-time restore (PITR) storage in GB. 8.7x DSU multiplier. Example: 500GB × 8.7 DSU/GB × $0.023/DSU = $100.05/month."
+                },
+                "lakebase_snapshot_gb": {
+                    "type": "integer",
+                    "description": "Snapshot storage in GB. 3.91x DSU multiplier. Example: 500GB × 3.91 DSU/GB × $0.023/DSU = $44.97/month."
+                },
+
                 # === Notes (CONVERSATIONAL) ===
                 "reason": {
                     "type": "string",
@@ -3128,21 +3136,27 @@ Each workload needs to be confirmed individually. Review the configurations and 
             notes_parts.append("                    - Incremental writes: Use for updates/inserts (slower due to scanning: 1.2K rows/sec/CU)")
             notes_parts.append("  - Reads: Can distribute across replicas for horizontal scaling")
             
-            # Storage cost info
+            # Storage / PITR / Snapshot cost info (DSU multipliers per SKU page)
+            price_per_dsu = 0.023
             storage_gb = workload.get("lakebase_storage_gb", 0)
-            if storage_gb > 0:
-                storage_gb = min(storage_gb, 8192)  # Cap at 8TB max
-                dsu_per_gb = 15
-                total_dsu = storage_gb * dsu_per_gb
-                price_per_dsu = 0.023
-                storage_cost = total_dsu * price_per_dsu
+            pitr_gb = workload.get("lakebase_pitr_gb", 0)
+            snapshot_gb = workload.get("lakebase_snapshot_gb", 0)
+            if storage_gb > 0 or pitr_gb > 0 or snapshot_gb > 0:
+                storage_gb = min(storage_gb, 8192)
                 notes_parts.append("")
-                notes_parts.append(f"**💾 Storage Configuration:**")
-                notes_parts.append(f"• **Total Storage**: {storage_gb} GB")
-                notes_parts.append(f"• **DSU Consumption**: {storage_gb} GB × 15 DSU/GB = {total_dsu:,} DSU")
-                notes_parts.append(f"• **Storage Cost**: ${storage_cost:.2f}/month (${price_per_dsu}/DSU/month)")
-                notes_parts.append(f"• **Max Storage**: 8,192 GB (8 TB)")
+                notes_parts.append(f"**Storage Costs (Databricks Storage SKU):**")
+                if storage_gb > 0:
+                    s_cost = storage_gb * 15 * price_per_dsu
+                    notes_parts.append(f"• **Database Storage**: {storage_gb} GB × 15 DSU/GB × ${price_per_dsu}/DSU = ${s_cost:.2f}/mo")
+                if pitr_gb > 0:
+                    p_cost = pitr_gb * 8.7 * price_per_dsu
+                    notes_parts.append(f"• **PITR**: {pitr_gb} GB × 8.7 DSU/GB × ${price_per_dsu}/DSU = ${p_cost:.2f}/mo")
+                if snapshot_gb > 0:
+                    sn_cost = snapshot_gb * 3.91 * price_per_dsu
+                    notes_parts.append(f"• **Snapshots**: {snapshot_gb} GB × 3.91 DSU/GB × ${price_per_dsu}/DSU = ${sn_cost:.2f}/mo")
                 workload["lakebase_storage_gb"] = storage_gb
+                workload["lakebase_pitr_gb"] = pitr_gb
+                workload["lakebase_snapshot_gb"] = snapshot_gb
         
         if wtype == "VECTOR_SEARCH":
             # Get LLM-calculated values (LLM calculates and passes these directly)

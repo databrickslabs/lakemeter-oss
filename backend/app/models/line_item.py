@@ -61,6 +61,8 @@ class LineItem(Base):
     lakebase_storage_gb = Column(Integer)
     lakebase_ha_nodes = Column(Integer)
     lakebase_backup_retention_days = Column(Integer)
+    lakebase_pitr_gb = Column(Integer)
+    lakebase_snapshot_gb = Column(Integer)
     
     # Usage Configuration
     runs_per_day = Column(Integer)

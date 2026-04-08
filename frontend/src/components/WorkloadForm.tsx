@@ -434,6 +434,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         lakebase_storage_gb: lineItem.lakebase_storage_gb || 0,
         lakebase_ha_nodes: lineItem.lakebase_ha_nodes || 1,
         lakebase_backup_retention_days: lineItem.lakebase_backup_retention_days || 7,
+        lakebase_pitr_gb: lineItem.lakebase_pitr_gb || 0,
+        lakebase_snapshot_gb: lineItem.lakebase_snapshot_gb || 0,
         fmapi_provider: lineItem.fmapi_provider || 'anthropic',
         fmapi_model: lineItem.fmapi_model || 'llama-3-3-70b',
         fmapi_endpoint_type: lineItem.fmapi_endpoint_type || 'global',
@@ -478,6 +480,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       lakebase_storage_gb: 0,
       lakebase_ha_nodes: 1,
       lakebase_backup_retention_days: 7,
+      lakebase_pitr_gb: 0,
+      lakebase_snapshot_gb: 0,
       fmapi_provider: 'anthropic',
       fmapi_model: 'llama-3-3-70b',
       fmapi_endpoint_type: 'global',
@@ -524,6 +528,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     lakebase_storage_gb: 0,
     lakebase_ha_nodes: 1,
     lakebase_backup_retention_days: 7,
+    lakebase_pitr_gb: 0,
+    lakebase_snapshot_gb: 0,
     fmapi_provider: 'anthropic',
     fmapi_model: 'llama-3-3-70b',
     fmapi_endpoint_type: 'global',
@@ -571,6 +577,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         lakebase_storage_gb: lineItem.lakebase_storage_gb || 0,
         lakebase_ha_nodes: lineItem.lakebase_ha_nodes || 1,
         lakebase_backup_retention_days: lineItem.lakebase_backup_retention_days || 7,
+        lakebase_pitr_gb: lineItem.lakebase_pitr_gb || 0,
+        lakebase_snapshot_gb: lineItem.lakebase_snapshot_gb || 0,
         fmapi_provider: lineItem.fmapi_provider || 'anthropic',
         fmapi_model: lineItem.fmapi_model || 'llama-3-3-70b',
         fmapi_endpoint_type: lineItem.fmapi_endpoint_type || 'global',
@@ -713,6 +721,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       lakebase_cu: form.lakebase_cu,
       lakebase_storage_gb: form.lakebase_storage_gb,
       lakebase_ha_nodes: form.lakebase_ha_nodes,
+      lakebase_pitr_gb: form.lakebase_pitr_gb,
+      lakebase_snapshot_gb: form.lakebase_snapshot_gb,
       fmapi_provider: form.fmapi_provider,
       fmapi_model: form.fmapi_model,
       fmapi_endpoint_type: form.fmapi_endpoint_type,
@@ -847,11 +857,15 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.lakebase_storage_gb = form.lakebase_storage_gb || 0
         data.lakebase_ha_nodes = form.lakebase_ha_nodes
         data.lakebase_backup_retention_days = form.lakebase_backup_retention_days
+        data.lakebase_pitr_gb = form.lakebase_pitr_gb || 0
+        data.lakebase_snapshot_gb = form.lakebase_snapshot_gb || 0
       } else {
         data.lakebase_cu = null
         data.lakebase_storage_gb = null
         data.lakebase_ha_nodes = null
         data.lakebase_backup_retention_days = null
+        data.lakebase_pitr_gb = null
+        data.lakebase_snapshot_gb = null
       }
       
       // FMAPI config
@@ -1912,6 +1926,32 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 className="w-full text-sm"
                 placeholder="e.g., 500"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">PITR Storage (GB)</label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={form.lakebase_pitr_gb}
+                onChange={(e) => setForm(f => ({ ...f, lakebase_pitr_gb: parseInt(e.target.value) || 0 }))}
+                className="w-full text-sm"
+                placeholder="e.g., 500"
+              />
+              <span className="text-[10px] text-[var(--text-tertiary)]">8.7x DSU multiplier</span>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Snapshot Storage (GB)</label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={form.lakebase_snapshot_gb}
+                onChange={(e) => setForm(f => ({ ...f, lakebase_snapshot_gb: parseInt(e.target.value) || 0 }))}
+                className="w-full text-sm"
+                placeholder="e.g., 500"
+              />
+              <span className="text-[10px] text-[var(--text-tertiary)]">3.91x DSU multiplier</span>
             </div>
           </>
         )}

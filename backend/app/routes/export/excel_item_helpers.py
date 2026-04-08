@@ -68,20 +68,35 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
 
 def write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
                          type_display, size_attr):
-    """Write a storage sub-row for Lakebase or Vector Search.
+    """Write a storage sub-row for Lakebase (storage/PITR/snapshots) or Vector Search.
 
-    Lakebase uses DSU pricing: 1 GB = 15 DSU, cost = DSU × $0.023/DSU/month.
+    Lakebase uses DSU pricing with different multipliers per feature:
+      - Database Storage: 15x DSU/GB
+      - PITR: 8.7x DSU/GB
+      - Snapshots: 3.91x DSU/GB
     Vector Search uses standard storage pricing: cost = GB × $/GB/month.
     """
-    if size_attr == 'lakebase_storage_gb':
-        storage_gb = float(item.lakebase_storage_gb or 0)
-        # Lakebase: DSU pricing (15 DSU per GB, $0.023 per DSU)
-        dsu_per_gb = 15
+    # DSU multipliers per Databricks SKU page
+    DSU_MULTIPLIERS = {
+        'lakebase_storage_gb': 15.0,
+        'lakebase_pitr_gb': 8.7,
+        'lakebase_snapshot_gb': 3.91,
+    }
+    DSU_LABELS = {
+        'lakebase_storage_gb': 'Storage',
+        'lakebase_pitr_gb': 'PITR',
+        'lakebase_snapshot_gb': 'Snapshots',
+    }
+
+    if size_attr in DSU_MULTIPLIERS:
+        storage_gb = float(getattr(item, size_attr, 0) or 0)
+        dsu_per_gb = DSU_MULTIPLIERS[size_attr]
         total_dsu = storage_gb * dsu_per_gb
         price_per_dsu = 0.023
         storage_cost = total_dsu * price_per_dsu
-        storage_rate = price_per_dsu  # Rate shown in the column
-        config = f'Storage: {storage_gb:.0f} GB'
+        storage_rate = price_per_dsu
+        label = DSU_LABELS[size_attr]
+        config = f'{label}: {storage_gb:.0f} GB'
         notes = f'{storage_gb:.0f} GB × {dsu_per_gb} DSU/GB × ${price_per_dsu}/DSU = ${storage_cost:.2f}/mo'
     elif size_attr == 'vector_search_storage_gb':
         import math
