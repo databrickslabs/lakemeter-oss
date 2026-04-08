@@ -28,6 +28,16 @@ const api = axios.create({
 // Custom event for session expiration - dispatched to window so any component can listen
 export const SESSION_EXPIRED_EVENT = 'lakemeter:session-expired'
 
+// Helper: unwrap {success, data} API response envelope.
+// Backend endpoints return {success: true, data: <payload>}. This extracts <payload>.
+// Falls through to raw response if the envelope isn't present (legacy/direct endpoints).
+function unwrap<T>(data: any): T {
+  if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+    return data.data as T
+  }
+  return data as T
+}
+
 // Track if we've already shown the session expired message to avoid spam
 let sessionExpiredShown = false
 
@@ -204,25 +214,31 @@ export const fetchRegions = async (cloud: string): Promise<RegionResponse[]> => 
 
 export const fetchTiers = async (cloud?: string): Promise<Tier[]> => {
   const { data } = await api.get('/tiers', { params: cloud ? { cloud } : {} })
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.tiers || [])
 }
 
 // ============================================================================
 // Reference Data (Legacy - for compatibility)
 // ============================================================================
 export const fetchCloudProviders = async (): Promise<CloudProvider[]> => {
-  const { data } = await api.get('/reference/clouds')
-  return data
+  const { data } = await api.get('/clouds')
+  if (Array.isArray(data) && data.length > 0 && data[0].id) {
+    return data
+  }
+  throw new Error('Invalid cloud providers response')
 }
 
 export const fetchDBSQLSizes = async (): Promise<DBSQLSize[]> => {
   const { data } = await api.get('/dbsql/warehouse-sizes')
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.sizes || [])
 }
 
 export const fetchDLTEditions = async (): Promise<DLTEdition[]> => {
   const { data } = await api.get('/dlt/editions')
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.editions || [])
 }
 
 export const fetchFMAPIModels = async (): Promise<FMAPIProvider[]> => {
@@ -263,7 +279,8 @@ export interface VMPricingOption {
 
 export const fetchInstanceFamilies = async (): Promise<string[]> => {
   const { data } = await api.get('/instances/families')
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.families || [])
 }
 
 export const fetchInstanceTypes = async (cloud: string, region?: string, filters?: {
@@ -392,12 +409,14 @@ export interface DBSQLWarehouseHardware {
 
 export const fetchDBSQLWarehouseTypes = async (): Promise<string[]> => {
   const { data } = await api.get('/dbsql/warehouse-types')
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.warehouse_types || [])
 }
 
 export const fetchDBSQLWarehouseSizes = async (): Promise<DBSQLWarehouseSize[]> => {
   const { data } = await api.get('/dbsql/warehouse-sizes')
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.sizes || [])
 }
 
 export const fetchDBSQLWarehouseVMCosts = async (params: {
@@ -433,12 +452,14 @@ export interface VectorSearchMode {
 
 export const fetchVectorSearchModes = async (): Promise<string[]> => {
   const { data } = await api.get('/vector-search/list')
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.modes || [])
 }
 
 export const fetchVectorSearchModesWithPricing = async (cloud: string, mode?: string): Promise<VectorSearchMode[]> => {
   const { data } = await api.get('/vector-search/modes', { params: { cloud, mode } })
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.modes || [])
 }
 
 // ============================================================================
@@ -456,7 +477,8 @@ export interface LakebaseDBUCalculation {
 
 export const fetchLakebaseCUSizes = async (): Promise<number[]> => {
   const { data } = await api.get('/lakebase/list')
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.cu_sizes || [])
 }
 
 export const calculateLakebaseDBU = async (cu_size: number, num_nodes: number): Promise<LakebaseDBUCalculation> => {
@@ -475,12 +497,14 @@ export interface PhotonMultiplier {
 
 export const fetchPhotonSKUTypes = async (cloud: string): Promise<string[]> => {
   const { data } = await api.get('/photon/list', { params: { cloud } })
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.sku_types || [])
 }
 
 export const fetchPhotonMultipliers = async (cloud: string, sku_type?: string): Promise<PhotonMultiplier[]> => {
   const { data } = await api.get('/photon/multipliers', { params: { cloud, sku_type } })
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.multipliers || [])
 }
 
 // ============================================================================
@@ -495,7 +519,8 @@ export interface ServerlessMode {
 
 export const fetchServerlessModes = async (): Promise<ServerlessMode[]> => {
   const { data } = await api.get('/serverless/modes')
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.modes || [])
 }
 
 // ============================================================================
@@ -513,7 +538,8 @@ export interface DBURate {
 
 export const fetchProductTypes = async (cloud: string, region: string, tier: string): Promise<string[]> => {
   const { data } = await api.get('/pricing/product-types', { params: { cloud, region, tier } })
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.product_types || [])
 }
 
 export const fetchDBURates = async (params: {
@@ -523,7 +549,8 @@ export const fetchDBURates = async (params: {
   product_type?: string
 }): Promise<DBURate[]> => {
   const { data } = await api.get('/pricing/dbu-rates', { params })
-  return data
+  // API returns {success, data: {dbu_rates: [...]}} — unwrap to flat array
+  return data?.data?.dbu_rates || data?.dbu_rates || (Array.isArray(data) ? data : [])
 }
 
 // ============================================================================
@@ -531,7 +558,8 @@ export const fetchDBURates = async (params: {
 // ============================================================================
 export const fetchModelServingGPUTypes = async (cloud: string): Promise<ModelServingGPUType[]> => {
   const { data } = await api.get('/model-serving/gpu-types', { params: { cloud } })
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.gpu_types || [])
 }
 
 // ============================================================================
@@ -548,12 +576,14 @@ export interface FMAPIDatabricksModel {
 
 export const fetchFMAPIDatabricksModelsList = async (): Promise<string[]> => {
   const { data } = await api.get('/fmapi/databricks-models/list')
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.models || [])
 }
 
 export const fetchFMAPIDatabricksModels = async (model: string, cloud?: string, rate_type?: string): Promise<FMAPIDatabricksModel[]> => {
   const { data } = await api.get('/fmapi/databricks-models', { params: { model, cloud, rate_type } })
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.models || [])
 }
 
 // Fetch ALL FMAPI Databricks rates for all models (for pre-caching)
@@ -579,8 +609,12 @@ export const fetchAllFMAPIDatabricksRates = async (cloud: string): Promise<FMAPI
 
 // Foundation Models (Databricks) configuration (Legacy - for compatibility)
 export const fetchFMAPIDatabricksConfig = async (): Promise<FMAPIDatabricksConfig> => {
-  const { data } = await api.get('/reference/fmapi-databricks')
-  return data
+  const { data } = await api.get('/fmapi-databricks')
+  // Validate response shape — backend may return error arrays on 200
+  if (data && data.model_types && Array.isArray(data.model_types)) {
+    return data
+  }
+  throw new Error('Invalid FMAPI Databricks config response')
 }
 
 // ============================================================================
@@ -606,7 +640,8 @@ export interface FMAPIProprietaryModelOptions {
 
 export const fetchFMAPIProprietaryModelsList = async (provider: string): Promise<string[]> => {
   const { data } = await api.get('/fmapi/proprietary-models/list', { params: { provider } })
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.models || [])
 }
 
 export const fetchFMAPIProprietaryModelOptions = async (provider: string, model: string): Promise<FMAPIProprietaryModelOptions> => {
@@ -646,8 +681,15 @@ export const fetchAllFMAPIProprietaryRates = async (cloud: string): Promise<FMAP
 
 // Foundation Models (Proprietary) configuration (Legacy - for compatibility)
 export const fetchFMAPIProprietaryConfig = async (): Promise<FMAPIProprietaryConfig> => {
-  const { data } = await api.get('/reference/fmapi-proprietary')
-  return data
+  const { data } = await api.get('/fmapi-proprietary')
+  // Validate response shape — backend may return error arrays on 200,
+  // or return clouds as providers (wrong data from DB)
+  const KNOWN_PROVIDERS = new Set(['anthropic', 'openai', 'google', 'meta', 'cohere', 'ai21'])
+  if (data && data.providers && Array.isArray(data.providers) && data.providers.length > 0
+      && KNOWN_PROVIDERS.has(data.providers[0].id)) {
+    return data
+  }
+  throw new Error('Invalid FMAPI Proprietary config response')
 }
 
 // ============================================================================

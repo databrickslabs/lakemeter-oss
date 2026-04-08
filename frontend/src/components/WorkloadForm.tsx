@@ -339,7 +339,9 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       { id: 'batch_inference', name: 'Batch Inference' },
     ],
   }
-  const fmapiDatabricksModels = fmapiDatabricksConfig || defaultFmapiDatabricksConfig
+  const fmapiDatabricksModels = (fmapiDatabricksConfig && fmapiDatabricksConfig.models && fmapiDatabricksConfig.models.llm)
+    ? fmapiDatabricksConfig
+    : defaultFmapiDatabricksConfig
   
   // Fallback FMAPI Proprietary config if store hasn't loaded yet
   // Models from lakemeter.sync_product_fmapi_proprietary
@@ -390,7 +392,9 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       { id: 'long', name: 'Long' },
     ],
   }
-  const fmapiProprietaryModels = fmapiProprietaryConfig || defaultFmapiProprietaryConfig
+  const fmapiProprietaryModels = (fmapiProprietaryConfig && Array.isArray(fmapiProprietaryConfig.providers))
+    ? fmapiProprietaryConfig
+    : defaultFmapiProprietaryConfig
   
   const [isSaving, setIsSaving] = useState(false)
   // Initialize useDirectHours from lineItem if available to prevent flash
