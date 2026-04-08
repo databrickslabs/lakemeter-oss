@@ -70,12 +70,18 @@ def _build_fmapi_line_items_direct(request, workload_type, cloud, region, tier,
     line_items = []
 
     token_types = []
-    if request.input_tokens_per_month and request.input_tokens_per_month > 0:
-        token_types.append(("input_token", request.input_tokens_per_month))
-    if request.output_tokens_per_month and request.output_tokens_per_month > 0:
-        token_types.append(("output_token", request.output_tokens_per_month))
-    if getattr(request, 'provisioned_hours_per_month', None) and request.provisioned_hours_per_month > 0:
-        token_types.append(("provisioned_scaling", request.provisioned_hours_per_month))
+
+    # Frontend sends quantity + rate_type (single rate per request)
+    if getattr(request, 'quantity', None) and request.quantity > 0 and getattr(request, 'rate_type', None):
+        token_types.append((request.rate_type, request.quantity))
+    else:
+        # Legacy: input_tokens_per_month / output_tokens_per_month / provisioned_hours_per_month
+        if request.input_tokens_per_month and request.input_tokens_per_month > 0:
+            token_types.append(("input_token", request.input_tokens_per_month))
+        if request.output_tokens_per_month and request.output_tokens_per_month > 0:
+            token_types.append(("output_token", request.output_tokens_per_month))
+        if getattr(request, 'provisioned_hours_per_month', None) and request.provisioned_hours_per_month > 0:
+            token_types.append(("provisioned_scaling", request.provisioned_hours_per_month))
 
     if not token_types:
         raise HTTPException(status_code=400, detail="Must provide at least one token quantity (input, output, or provisioned)")
@@ -119,7 +125,7 @@ def _build_fmapi_line_items_direct(request, workload_type, cloud, region, tier,
         dbu_price = _get_dbu_price_for_sku(cloud_lc, region, tier, sku_product_type)
         cost = dbu_quantity * dbu_price
 
-        is_token = rate_type in ("input_token", "output_token")
+        is_token = rate_type in ("input_token", "output_token", "cache_read", "cache_write")
 
         line_items.append({
             "rate_type": rate_type,
