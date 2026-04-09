@@ -739,7 +739,8 @@ export const useStore = create<Store>((set, get) => ({
         api.fetchFMAPIProprietaryConfig().catch(() => null),
         api.fetchServerlessModes().catch(() => STATIC_SERVERLESS_MODES),
         // Batch 2 items (cloud-specific)
-        api.fetchInstanceTypes(defaultCloud).catch(() => []),
+        // Instance types require region (set when estimate is loaded), skip on initial load
+        Promise.resolve([]),
         api.fetchModelServingGPUTypes(defaultCloud).catch(() => []),
         api.fetchRegions('aws').catch(() => []),
         api.fetchRegions('azure').catch(() => []),
@@ -962,7 +963,10 @@ export const useStore = create<Store>((set, get) => ({
     set({ selectedCloud: cloud })
     const region = get().selectedRegion
     get().fetchRegions(cloud)
-    get().fetchInstanceTypes(cloud, region || undefined)
+    // Only fetch instance types if region is set (region is required by the API)
+    if (region) {
+      get().fetchInstanceTypes(cloud, region)
+    }
     get().fetchModelServingGPUTypes(cloud)
     // NOTE: Removed fetchVMPricing (16+ MB) - VM costs are now fetched on-demand per instance
     get().fetchPhotonMultipliers(cloud)
@@ -973,7 +977,10 @@ export const useStore = create<Store>((set, get) => ({
     set({ selectedRegion: region })
     const cloud = get().selectedCloud
     const tier = get().selectedTier
-    get().fetchInstanceTypes(cloud, region || undefined)
+    // Only fetch instance types if region is set (region is required by the API)
+    if (region) {
+      get().fetchInstanceTypes(cloud, region)
+    }
     // NOTE: Removed fetchVMPricing (16+ MB) - VM costs are now fetched on-demand per instance
     // Fetch DBU rates when region changes
     if (region) {
@@ -1424,6 +1431,8 @@ export const useStore = create<Store>((set, get) => ({
           result = await api.calculateModelServing({
             ...baseParams,
             gpu_type: lineItem.model_serving_gpu_type || 'cpu',
+            scale_out: lineItem.model_serving_scale_out || 'small',
+            ...(lineItem.model_serving_scale_out === 'custom' ? { custom_concurrency: lineItem.model_serving_concurrency || 4 } : {}),
             hours_per_month: lineItem.hours_per_month || 730
           })
           break

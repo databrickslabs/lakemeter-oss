@@ -40,6 +40,8 @@ class LineItemBase(BaseModel):
 
     # Model Serving Configuration
     model_serving_gpu_type: Optional[str] = None
+    model_serving_concurrency: Optional[int] = None
+    model_serving_scale_out: Optional[str] = None
 
     # Foundation Model API Configuration (Proprietary)
     fmapi_provider: Optional[str] = None
@@ -54,6 +56,8 @@ class LineItemBase(BaseModel):
     lakebase_storage_gb: Optional[int] = None
     lakebase_ha_nodes: Optional[int] = None
     lakebase_backup_retention_days: Optional[int] = None
+    lakebase_pitr_gb: Optional[int] = None
+    lakebase_snapshot_gb: Optional[int] = None
 
     # Usage Configuration
     runs_per_day: Optional[int] = None
@@ -111,7 +115,9 @@ class LineItemUpdate(BaseModel):
     
     # Model Serving Configuration
     model_serving_gpu_type: Optional[str] = None
-    
+    model_serving_concurrency: Optional[int] = None
+    model_serving_scale_out: Optional[str] = None
+
     # Foundation Model API Configuration (Proprietary)
     fmapi_provider: Optional[str] = None
     fmapi_model: Optional[str] = None
@@ -119,13 +125,15 @@ class LineItemUpdate(BaseModel):
     fmapi_context_length: Optional[str] = None
     fmapi_rate_type: Optional[str] = None
     fmapi_quantity: Optional[Decimal] = None
-    
+
     # Lakebase Configuration
     lakebase_cu: Optional[float] = None
     lakebase_storage_gb: Optional[int] = None
     lakebase_ha_nodes: Optional[int] = None
     lakebase_backup_retention_days: Optional[int] = None
-    
+    lakebase_pitr_gb: Optional[int] = None
+    lakebase_snapshot_gb: Optional[int] = None
+
     # Usage Configuration
     runs_per_day: Optional[int] = None
     avg_runtime_minutes: Optional[int] = None

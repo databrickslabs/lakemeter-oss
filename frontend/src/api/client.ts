@@ -302,7 +302,7 @@ export const fetchInstanceTypes = async (cloud: string, region?: string, filters
   const { data } = await api.get('/instances/types', { params })
   // Transform API response to frontend format
   // API returns instance_type field, we map to both id and name
-  const items = Array.isArray(data) ? data : (data?.items || data?.data || [])
+  const items = Array.isArray(data) ? data : (data?.data?.instance_types || data?.items || data?.data || [])
   return items.map((item: any) => {
     const instanceType = item.instance_type || item.id || item.name || ''
     return {
@@ -954,6 +954,8 @@ export const calculateVectorSearch = async (request: VectorSearchRequest): Promi
 // Model Serving
 export interface ModelServingRequest extends BaseCalculationRequest {
   gpu_type: string
+  scale_out?: string
+  custom_concurrency?: number
   hours_per_month?: number
 }
 

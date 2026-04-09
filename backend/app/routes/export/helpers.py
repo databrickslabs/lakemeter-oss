@@ -115,6 +115,12 @@ def _model_serving_details(item) -> list:
             item.model_serving_gpu_type, item.model_serving_gpu_type
         )
         details.append(f"GPU: {name}")
+    # Show concurrency (from dedicated column or default 4)
+    concurrency = getattr(item, 'model_serving_concurrency', None) or 4
+    scale_out = getattr(item, 'model_serving_scale_out', None) or 'small'
+    scale_labels = {'small': 'Small', 'medium': 'Medium', 'large': 'Large', 'custom': 'Custom'}
+    label = scale_labels.get(scale_out, scale_out)
+    details.append(f"Scale-Out: {label} ({concurrency} concurrency)")
     return details
 
 

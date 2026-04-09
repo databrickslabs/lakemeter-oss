@@ -51,7 +51,7 @@ def get_instance_families(db: Session = Depends(get_db)):
 @router.get("/instances/types", tags=["Compute - Instance Types"])
 def get_instance_types(
     cloud: str = Query(..., description="Cloud provider: AWS, AZURE, GCP (required)"),
-    region: str = Query(..., description="Region code (required)"),
+    region: str = Query(..., description="Region code (required, filters by region availability)"),
     instance_family: str = Query(None, description="Filter by instance family"),
     min_vcpus: int = Query(None, ge=1),
     max_vcpus: int = Query(None, ge=1),
@@ -80,6 +80,8 @@ def get_instance_types(
         where_conditions = ["r.cloud = :cloud", "v.region = :region"]
         params = {"cloud": cloud.upper(), "region": region, "limit": limit, "offset": offset}
 
+        join_clause = "INNER JOIN lakemeter.sync_pricing_vm_costs v ON r.cloud = v.cloud AND r.instance_type = v.instance_type"
+
         if instance_family:
             where_conditions.append("r.instance_family = :instance_family")
             params["instance_family"] = instance_family
@@ -103,12 +105,10 @@ def get_instance_types(
             params["max_dbu_rate"] = max_dbu_rate
 
         where_clause = " AND ".join(where_conditions)
-
         count_query = text(f"""
             SELECT COUNT(DISTINCT r.instance_type) as total
             FROM lakemeter.sync_ref_instance_dbu_rates r
-            INNER JOIN lakemeter.sync_pricing_vm_costs v
-                ON r.cloud = v.cloud AND r.instance_type = v.instance_type
+            {join_clause}
             WHERE {where_clause}
         """)
         total_count = db.execute(count_query, params).scalar()
@@ -117,8 +117,7 @@ def get_instance_types(
             SELECT DISTINCT
                 r.instance_type, r.vcpus, r.memory_gb, r.instance_family, r.dbu_rate
             FROM lakemeter.sync_ref_instance_dbu_rates r
-            INNER JOIN lakemeter.sync_pricing_vm_costs v
-                ON r.cloud = v.cloud AND r.instance_type = v.instance_type
+            {join_clause}
             WHERE {where_clause}
             ORDER BY r.instance_type
             LIMIT :limit OFFSET :offset
@@ -191,6 +190,12 @@ def get_instance_vm_costs(
         error = validate_payment_option(payment_option)
         if error:
             return error
+
+    # Check cache first (keyed by all params to avoid stale filtered results)
+    cache_key = f"vm_costs:{cloud}:{region}:{instance_type}:{pricing_tier}:{payment_option}"
+    cached = ref_cache.get(cache_key)
+    if cached is not None:
+        return cached
 
     try:
         error = validate_region(cloud, region, db)
@@ -279,7 +284,9 @@ def get_instance_vm_costs(
             for r in results
         ]
 
-        return {"success": True, "data": response_data}
+        response = {"success": True, "data": response_data}
+        ref_cache.set(cache_key, response)
+        return response
     except Exception as e:
         logger.error(f"Error fetching instance VM costs: {e}")
         return {"success": False, "error": {"message": str(e), "code": "DATABASE_ERROR"}}
