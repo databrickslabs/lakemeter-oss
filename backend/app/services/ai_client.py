@@ -25,7 +25,9 @@ from app.config import log_info, log_warning, log_error
 
 
 # Claude endpoint configuration
-DATABRICKS_HOST = os.getenv("DATABRICKS_HOST", "https://fe-vm-lakemeter.cloud.databricks.com")
+_raw_host = os.getenv("DATABRICKS_HOST", "https://fe-vm-lakemeter.cloud.databricks.com")
+# Ensure DATABRICKS_HOST always has https:// protocol (Databricks Apps runtime may omit it)
+DATABRICKS_HOST = _raw_host if _raw_host.startswith("http") else f"https://{_raw_host}"
 MODEL_ENDPOINT = "databricks-claude-opus-4-6"
 CLAUDE_ENDPOINT = f"{DATABRICKS_HOST}/serving-endpoints/{MODEL_ENDPOINT}/invocations"
 
