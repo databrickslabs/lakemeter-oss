@@ -1663,6 +1663,9 @@ export default function Calculator() {
   
   // Get usage summary for a workload
   const getUsageSummary = (item: LineItem) => {
+    // Quantity-based workloads don't use run/hour usage
+    const wt = item.workload_type || ''
+    if (['AI_PARSE', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
     if (item.hours_per_month) {
       return `${item.hours_per_month}h/month`
     }
