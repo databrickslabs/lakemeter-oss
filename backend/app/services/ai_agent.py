@@ -42,6 +42,9 @@ When presenting workload types to users, ALWAYS use these names:
 - **FMAPI_DATABRICKS**: Foundation Model APIs (Databricks-hosted models like Llama, DBRX)
 - **FMAPI_PROPRIETARY**: Foundation Model APIs (GPT-5+, Claude, Gemini - all within Databricks security)
 - **LAKEBASE**: PostgreSQL-compatible database
+- **DATABRICKS_APPS**: Managed app hosting (small/medium/large sizes)
+- **AI_PARSE**: Document AI parsing (DBU-based or per-page pricing, complexity levels)
+- **SHUTTERSTOCK_IMAGEAI**: AI image generation (per-image pricing)
 
 ## Key Questions to Ask Users
 
@@ -906,7 +909,7 @@ The user will review and confirm before it's added to the estimate.""",
                 # === Common Fields ===
                 "workload_type": {
                     "type": "string",
-                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE"],
+                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "SHUTTERSTOCK_IMAGEAI"],
                     "description": "Type of Databricks workload. Note: Use DLT for SDP (Spark Declarative Pipelines) workloads - present as 'SDP' to users but use 'DLT' as the enum value."
                 },
                 "workload_name": {
@@ -1124,6 +1127,35 @@ The user will review and confirm before it's added to the estimate.""",
                 "lakebase_snapshot_gb": {
                     "type": "integer",
                     "description": "Snapshot storage in GB. 3.91x DSU multiplier. Example: 500GB × 3.91 DSU/GB × $0.023/DSU = $44.97/month."
+                },
+
+                # === Databricks Apps Specific ===
+                "databricks_apps_size": {
+                    "type": "string",
+                    "enum": ["medium", "large"],
+                    "description": "App size: medium (default) or large"
+                },
+
+                # === AI Parse Specific ===
+                "ai_parse_mode": {
+                    "type": "string",
+                    "enum": ["dbu", "pages"],
+                    "description": "Billing mode: 'dbu' (DBU-based) or 'pages' (per-page pricing)"
+                },
+                "ai_parse_complexity": {
+                    "type": "string",
+                    "enum": ["low_text", "low_images", "medium", "high"],
+                    "description": "Document complexity: low_text, low_images, medium, high"
+                },
+                "ai_parse_pages_thousands": {
+                    "type": "number",
+                    "description": "Number of pages to parse in thousands (e.g., 100 = 100,000 pages)"
+                },
+
+                # === Shutterstock ImageAI Specific ===
+                "shutterstock_images": {
+                    "type": "integer",
+                    "description": "Number of images to generate per month"
                 },
 
                 # === Notes (CONVERSATIONAL) ===
@@ -3373,6 +3405,18 @@ Each workload needs to be confirmed individually. Review the configurations and 
             elif rate_type == "output_token":
                 notes_parts.append("• 💡 Remember to add a matching INPUT token workload")
         
+        if wtype == "DATABRICKS_APPS":
+            workload.setdefault("databricks_apps_size", "medium")
+            workload["hours_per_month"] = workload.get("hours_per_month", 730)
+
+        if wtype == "AI_PARSE":
+            workload.setdefault("ai_parse_mode", "dbu")
+            workload.setdefault("ai_parse_complexity", "medium")
+            workload.setdefault("ai_parse_pages_thousands", 100)
+
+        if wtype == "SHUTTERSTOCK_IMAGEAI":
+            workload.setdefault("shutterstock_images", 1000)
+
         # IGNORE any brief notes provided by LLM - we generate comprehensive ones
         # existing_notes = workload.get("notes", "")  # DON'T use LLM's brief notes
         

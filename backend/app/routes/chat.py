@@ -359,31 +359,31 @@ async def confirm_workload(
         
         # Return the workload config for the frontend to create via regular API
         # This allows the UI to update properly via Zustand
+        # Pass through ALL fields from the confirmed workload to preserve AI-proposed values
+        # Only exclude internal tracking fields
+        _INTERNAL_FIELDS = {
+            "proposal_id", "status", "reason", "cloud",
+            "total_users", "concurrent_queries", "use_case_type",
+            "query_selectivity", "query_complexity", "typical_data_volume",
+            "model_serving_type", "model_serving_scale_to_zero",
+            "vector_search_endpoint_type",
+            "lakebase_expected_reads_per_sec", "lakebase_expected_bulk_writes_per_sec",
+            "lakebase_expected_incremental_writes_per_sec", "lakebase_avg_row_size_kb",
+            "lakebase_ha_enabled", "lakebase_num_read_replicas",
+            "jobs_worker_min", "jobs_worker_max",
+        }
+        workload_config = {
+            k: v for k, v in workload.items()
+            if k not in _INTERNAL_FIELDS and v is not None
+        }
+        # Ensure notes field has a value
+        if not workload_config.get("notes"):
+            workload_config["notes"] = f"Created by AI Assistant: {workload.get('reason', '')}"
+
         return {
             "success": True,
             "action": "confirmed",
-            "workload_config": {
-                "workload_name": workload["workload_name"],
-                "workload_type": workload["workload_type"],
-                "serverless_enabled": workload.get("serverless_enabled", False),
-                "photon_enabled": workload.get("photon_enabled", False),
-                "driver_node_type": workload.get("driver_node_type"),
-                "worker_node_type": workload.get("worker_node_type"),
-                "num_workers": workload.get("num_workers"),
-                "hours_per_month": workload.get("hours_per_month", 730),
-                "runs_per_day": workload.get("runs_per_day"),
-                "avg_runtime_minutes": workload.get("avg_runtime_minutes"),
-                "days_per_month": workload.get("days_per_month", 22),
-                "driver_pricing_tier": workload.get("driver_pricing_tier", "on_demand"),
-                "worker_pricing_tier": workload.get("worker_pricing_tier", "spot"),
-                "dlt_edition": workload.get("dlt_edition"),
-                "dbsql_warehouse_type": workload.get("dbsql_warehouse_type"),
-                "dbsql_warehouse_size": workload.get("dbsql_warehouse_size"),
-                "dbsql_num_clusters": workload.get("dbsql_num_clusters"),
-                "lakebase_cu": workload.get("lakebase_cu"),
-                "lakebase_ha_nodes": workload.get("lakebase_ha_nodes"),
-                "notes": workload.get("notes") or f"Created by AI Assistant: {workload.get('reason', '')}"
-            },
+            "workload_config": workload_config,
             "message": f"Workload '{workload['workload_name']}' confirmed. Use the returned config to create via /api/v1/estimates/{{estimate_id}}/line-items"
         }
     else:
