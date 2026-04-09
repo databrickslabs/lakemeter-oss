@@ -107,40 +107,67 @@ LAKEBASE_PASSWORD = dbutils.secrets.get(scope="lakemeter-credentials", key="lake
 
 ---
 
+## 🖥️ Databricks Apps Runtime Environment
+
+Docs: https://docs.databricks.com/aws/en/dev-tools/databricks-apps/system-env
+
+| Component | Version |
+|-----------|---------|
+| OS | Ubuntu 22.04 LTS |
+| Python | 3.11 (dedicated venv) |
+| Node.js | 22.16 |
+| npm | Available (no libraries pre-installed) |
+| uv | 0.10.2 |
+| Resources | 2 vCPUs, 6 GB RAM (default, configurable) |
+
+**Auto-set env vars**: `DATABRICKS_HOST`, `DATABRICKS_APP_PORT`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`, `DATABRICKS_APP_NAME`, `DATABRICKS_WORKSPACE_ID`
+
+**Key implication**: `app.yaml` command can run `cd frontend && npm ci && npm run build` before starting uvicorn — no need to sync pre-built static assets. Frontend builds from source during app startup.
+
+---
+
 ## 🚀 Deployment
 
-### Databricks App Deployment
+### Lakemeter OSS App (Primary)
+
+**App Name:** `lakemeter-oss`  
+**App URL:** `https://lakemeter-oss-335310294452632.aws.databricksapps.com`  
+**Workspace Source Path:** `/Workspace/Users/steven.tan@databricks.com/lakemeter_app`  
+**Local Source:** `lakemeter_app/`
+
+**CRITICAL: Use the `lakemeter-deploy` skill for ALL deployments.**  
+The skill ensures only essential files (backend/ + app.yaml) are in the workspace source path.  
+Having non-essential files (frontend/node_modules, docs, tests, ETL) causes 20-30min snapshot times or timeout failures.
+
+**Quick deploy commands:**
+```bash
+# 1. Build frontend (if frontend changed)
+cd lakemeter_app/frontend && npm run build
+
+# 2. Upload backend + app.yaml ONLY
+databricks workspace import-dir --profile lakemeter \
+  lakemeter_app/backend \
+  /Workspace/Users/steven.tan@databricks.com/lakemeter_app/backend \
+  --overwrite
+
+# 2b. Force-upload index.html (import-dir sometimes skips it)
+databricks workspace import --profile lakemeter --format AUTO \
+  --file lakemeter_app/backend/static/index.html \
+  /Workspace/Users/steven.tan@databricks.com/lakemeter_app/backend/static/index.html \
+  --overwrite
+
+# 3. Deploy
+databricks apps deploy lakemeter-oss --profile lakemeter
+```
+
+**Workspace must ONLY contain:** `backend/` and `app.yaml`. Nothing else.  
+ETL notebooks go to: `/Workspace/Users/steven.tan@databricks.com/lakemeter/etl`
+
+### Legacy App (lakemeter-api)
 
 **App Name:** `lakemeter-api`  
 **App URL:** `https://lakemeter-api-335310294452632.aws.databricksapps.com`  
 **Workspace Path:** `/Workspace/Users/steven.tan@databricks.com/lakemeter/steven_api_backend`
-
-**Deployment Workflow (3 Steps):**
-```bash
-# Step 1: Modify local files
-cd "/Users/steven.tan/Desktop/Ent 1 - Q4 FY 2026 Team Project/database_backend/steven_api_backend"
-# Edit app.py, validators.py, etc.
-
-# Step 2: Sync to workspace
-databricks workspace import --profile lakemeter \
-  --file app.py \
-  /Workspace/Users/steven.tan@databricks.com/lakemeter/steven_api_backend/app.py \
-  --overwrite
-
-databricks workspace import --profile lakemeter \
-  --file validators.py \
-  /Workspace/Users/steven.tan@databricks.com/lakemeter/steven_api_backend/validators.py \
-  --overwrite
-
-# Step 3: Redeploy app (DO NOT RESTART)
-databricks apps deploy lakemeter-api --profile lakemeter
-```
-
-**Check app status:**
-```bash
-databricks apps list --profile lakemeter
-databricks apps get lakemeter-api --profile lakemeter
-```
 
 ### Upload Notebooks
 ```bash

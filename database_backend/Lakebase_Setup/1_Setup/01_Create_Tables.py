@@ -349,7 +349,10 @@ CREATE TABLE lakemeter.line_items (
     -- Serverless products
     vector_search_mode VARCHAR(50),
     vector_capacity_millions DECIMAL(10,2),  -- Vector Search: capacity in millions of vectors (supports fractional)
+    vector_search_storage_gb DECIMAL(10,2) CHECK (vector_search_storage_gb >= 0),  -- Vector Search: total storage in GB
     model_serving_gpu_type VARCHAR(50),      -- Model Serving: GPU type (e.g., gpu_medium_a10g_1x, cpu_medium_2x)
+    model_serving_concurrency INT DEFAULT 4, -- Model Serving: scale-out concurrency (multiples of 4)
+    model_serving_scale_out VARCHAR(20),     -- Model Serving: scale-out preset (small, medium, large, custom)
     
     -- FMAPI config
     fmapi_provider VARCHAR(50),
@@ -364,7 +367,9 @@ CREATE TABLE lakemeter.line_items (
     lakebase_storage_gb INT,                  -- Storage in GB
     lakebase_ha_nodes INT DEFAULT 1,          -- Total number of nodes (1-3, 1=no HA)
     lakebase_backup_retention_days INT DEFAULT 7,  -- Backup retention (0=no backup, 1-35 days)
-    
+    lakebase_pitr_gb INT,                    -- Point-in-time restore storage (8.7x DSU multiplier)
+    lakebase_snapshot_gb INT,                -- Snapshot storage (3.91x DSU multiplier)
+
     -- Usage/frequency
     runs_per_day INT,
     avg_runtime_minutes INT,
@@ -916,7 +921,154 @@ print("\n✅ All enum constraints added")
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## 9b. Case Normalization Triggers
+# MAGIC
+# MAGIC Database-level triggers that automatically normalize enum fields to canonical case
+# MAGIC on INSERT and UPDATE. This prevents case sensitivity bugs regardless of how data enters the system.
+
+# COMMAND ----------
+
+print("\n" + "=" * 80)
+print("STEP 9b: Creating case normalization triggers")
+print("=" * 80)
+
+# Trigger function for estimates: cloud and tier → UPPERCASE
+execute_sql("""
+    CREATE OR REPLACE FUNCTION lakemeter.normalize_estimates_case()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        IF NEW.cloud IS NOT NULL THEN NEW.cloud = UPPER(NEW.cloud); END IF;
+        IF NEW.tier IS NOT NULL THEN NEW.tier = UPPER(NEW.tier); END IF;
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+""", "  Created function: normalize_estimates_case()")
+
+# Trigger function for line_items: UPPER for type fields, LOWER for mode/provider fields
+execute_sql("""
+    CREATE OR REPLACE FUNCTION lakemeter.normalize_line_items_case()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        -- UPPERCASE fields (enum types, cloud, editions)
+        IF NEW.cloud IS NOT NULL THEN NEW.cloud = UPPER(NEW.cloud); END IF;
+        IF NEW.workload_type IS NOT NULL THEN NEW.workload_type = UPPER(NEW.workload_type); END IF;
+        IF NEW.dbsql_warehouse_type IS NOT NULL THEN NEW.dbsql_warehouse_type = UPPER(NEW.dbsql_warehouse_type); END IF;
+        IF NEW.dlt_edition IS NOT NULL THEN NEW.dlt_edition = UPPER(NEW.dlt_edition); END IF;
+        -- LOWERCASE fields (modes, providers, pricing tiers)
+        IF NEW.serverless_mode IS NOT NULL THEN NEW.serverless_mode = LOWER(NEW.serverless_mode); END IF;
+        IF NEW.vector_search_mode IS NOT NULL THEN NEW.vector_search_mode = LOWER(NEW.vector_search_mode); END IF;
+        IF NEW.fmapi_provider IS NOT NULL THEN NEW.fmapi_provider = LOWER(NEW.fmapi_provider); END IF;
+        IF NEW.fmapi_rate_type IS NOT NULL THEN NEW.fmapi_rate_type = LOWER(NEW.fmapi_rate_type); END IF;
+        IF NEW.fmapi_endpoint_type IS NOT NULL THEN NEW.fmapi_endpoint_type = LOWER(NEW.fmapi_endpoint_type); END IF;
+        IF NEW.fmapi_context_length IS NOT NULL THEN NEW.fmapi_context_length = LOWER(NEW.fmapi_context_length); END IF;
+        IF NEW.model_serving_gpu_type IS NOT NULL THEN NEW.model_serving_gpu_type = LOWER(NEW.model_serving_gpu_type); END IF;
+        IF NEW.model_serving_scale_out IS NOT NULL THEN NEW.model_serving_scale_out = LOWER(NEW.model_serving_scale_out); END IF;
+        IF NEW.driver_pricing_tier IS NOT NULL THEN NEW.driver_pricing_tier = LOWER(NEW.driver_pricing_tier); END IF;
+        IF NEW.worker_pricing_tier IS NOT NULL THEN NEW.worker_pricing_tier = LOWER(NEW.worker_pricing_tier); END IF;
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+""", "  Created function: normalize_line_items_case()")
+
+# Create triggers on both tables
+execute_sql("""
+    DROP TRIGGER IF EXISTS trg_normalize_estimates_case ON lakemeter.estimates;
+    CREATE TRIGGER trg_normalize_estimates_case
+    BEFORE INSERT OR UPDATE ON lakemeter.estimates
+    FOR EACH ROW EXECUTE FUNCTION lakemeter.normalize_estimates_case();
+""", "  Created trigger on estimates")
+
+execute_sql("""
+    DROP TRIGGER IF EXISTS trg_normalize_line_items_case ON lakemeter.line_items;
+    CREATE TRIGGER trg_normalize_line_items_case
+    BEFORE INSERT OR UPDATE ON lakemeter.line_items
+    FOR EACH ROW EXECUTE FUNCTION lakemeter.normalize_line_items_case();
+""", "  Created trigger on line_items")
+
+print("\n✅ Case normalization triggers created")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## 10. Verification
+
+# COMMAND ----------
+
+print("\n" + "=" * 80)
+print("🔐 VERIFYING TABLE OWNERSHIP")
+print("=" * 80)
+print("\nEnsuring all lakemeter tables are owned by the sync role.")
+print("This is critical so that future migrations (ALTER TABLE) work without manual intervention.\n")
+
+conn = get_connection()
+cur = conn.cursor()
+
+# Get the current connected role
+cur.execute("SELECT current_user")
+current_role = cur.fetchone()[0]
+print(f"   Connected as: {current_role}")
+
+# Check ownership of all lakemeter tables
+cur.execute("""
+SELECT tablename, tableowner
+FROM pg_tables
+WHERE schemaname = 'lakemeter'
+ORDER BY tablename;
+""")
+tables_ownership = cur.fetchall()
+
+ownership_ok = True
+for tname, towner in tables_ownership:
+    if towner != current_role:
+        ownership_ok = False
+        print(f"   ⚠️  {tname} owned by '{towner}' (not '{current_role}')")
+        # Try to transfer ownership (only works if we are the owner or superuser)
+        try:
+            cur.execute(f"ALTER TABLE lakemeter.{tname} OWNER TO {current_role}")
+            conn.commit()
+            print(f"   ✅ Transferred ownership of {tname} to {current_role}")
+        except Exception as e:
+            conn.rollback()
+            print(f"   ❌ Cannot transfer ownership: {e}")
+            print(f"   💡 Run this in SQL Editor as '{towner}':")
+            print(f"      ALTER TABLE lakemeter.{tname} OWNER TO {current_role};")
+    else:
+        print(f"   ✅ {tname} owned by '{current_role}'")
+
+# Also verify function ownership
+cur.execute("""
+SELECT p.proname as function_name, pg_get_userbyid(p.proowner) as owner
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE n.nspname = 'lakemeter'
+ORDER BY p.proname;
+""")
+funcs = cur.fetchall()
+for fname, fowner in funcs:
+    if fowner != current_role:
+        print(f"   ⚠️  Function {fname}() owned by '{fowner}'")
+        try:
+            cur.execute(f"ALTER FUNCTION lakemeter.{fname}() OWNER TO {current_role}")
+            conn.commit()
+            print(f"   ✅ Transferred function {fname}() to {current_role}")
+        except Exception as e:
+            conn.rollback()
+            print(f"   ❌ Cannot transfer function ownership: {e}")
+
+cur.close()
+conn.close()
+
+if ownership_ok:
+    print("\n✅ All tables are owned by the sync role — migrations will work automatically.")
+else:
+    print("\n⚠️  Some tables had different owners. Check messages above.")
+    print("   For fresh installs, this is normal (tables just created by sync role).")
+    print("   For existing installs, ownership may need manual transfer by the original owner.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 11. Verification
 
 # COMMAND ----------
 
