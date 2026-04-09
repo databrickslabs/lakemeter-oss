@@ -66,6 +66,28 @@ SERVERLESS_MODES = ["standard", "performance"]
 PRICING_TIERS = ["on_demand", "1yr_reserved", "3yr_reserved"]
 
 
+# Databricks Apps sizes
+DATABRICKS_APPS_SIZES = ["medium", "large"]
+
+# Clean Room collaborator counts
+CLEAN_ROOM_COLLABORATORS = [1, 3, 5, 10]
+
+# AI Parse configurations
+AI_PARSE_COMPLEXITIES = ["low_text", "low_images", "medium", "high"]
+AI_PARSE_PAGES = [1.0, 10.0, 50.0]  # thousands of pages
+
+# Shutterstock image counts
+SHUTTERSTOCK_IMAGE_COUNTS = [100, 500, 1000, 5000]
+
+# Lakeflow Connect configurations
+LAKEFLOW_CONNECT_EDITIONS = ["CORE", "PRO", "ADVANCED"]
+LAKEFLOW_GATEWAY_INSTANCES = {
+    "AWS": "i3.xlarge",
+    "AZURE": "Standard_DS3_v2",
+    "GCP": "n1-standard-4",
+}
+
+
 def config_id(config: dict) -> str:
     """Generate a short ID for a cloud/region config for test parametrization."""
     return f"{config['cloud']}-{config['region']}-{config['tier']}"

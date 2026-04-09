@@ -127,7 +127,13 @@ def calculate_lakeflow_connect_cost(
                     dbu_quantity=float(gateway_row.dbu_per_month or 0),
                     dbu_price=float(gateway_row.dbu_price or 0),
                     driver_vm_cost=float(gateway_row.driver_vm_cost_per_month or 0),
-                    worker_vm_cost=float(gateway_row.worker_vm_cost_per_month or 0),
+                    worker_vm_cost=float(gateway_row.total_worker_vm_cost_per_month or 0),
+                    hours_per_month=gateway_hours,
+                    driver_vm_price_per_hour=float(gateway_row.driver_vm_cost_per_hour or 0),
+                    worker_vm_price_per_hour=float(gateway_row.worker_vm_cost_per_hour or 0),
+                    driver_pricing_tier=request.gateway_pricing_tier or "on_demand",
+                    worker_pricing_tier=request.gateway_pricing_tier or "on_demand",
+                    num_workers=0,
                 )
                 sku_breakdown.extend(gateway_breakdown)
                 total_cost += gw_total

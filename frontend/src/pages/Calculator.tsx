@@ -833,7 +833,27 @@ export default function Calculator() {
       case 'LAKEBASE':
         productType = 'DATABASE_SERVERLESS_COMPUTE'
         break
-      
+
+      case 'DATABRICKS_APPS':
+        productType = 'ALL_PURPOSE_SERVERLESS_COMPUTE'
+        break
+
+      case 'CLEAN_ROOM':
+        productType = 'CLEAN_ROOMS_COLLABORATOR'
+        break
+
+      case 'AI_PARSE':
+        productType = 'SERVERLESS_REAL_TIME_INFERENCE'
+        break
+
+      case 'SHUTTERSTOCK_IMAGEAI':
+        productType = 'SERVERLESS_REAL_TIME_INFERENCE'
+        break
+
+      case 'LAKEFLOW_CONNECT':
+        productType = 'DELTA_LIVE_TABLES_SERVERLESS'
+        break
+
       default:
         productType = 'JOBS_COMPUTE'
     }
@@ -1287,7 +1307,56 @@ export default function Calculator() {
         
         monthlyDBUs = fmapiPropQuantity * propDbuRate
         break
-      
+
+      case 'DATABRICKS_APPS': {
+        const appsSize = (effectiveItem.databricks_apps_size || 'medium').toLowerCase()
+        const appsDbuRates: Record<string, number> = { medium: 0.5, large: 1.0 }
+        dbuPerHour = appsDbuRates[appsSize] || 0.5
+        monthlyDBUs = dbuPerHour * hoursPerMonth
+        break
+      }
+
+      case 'CLEAN_ROOM': {
+        // Clean Room: 1 DBU per collaborator per day
+        const collaborators = effectiveItem.clean_room_collaborators || 1
+        const daysPerMonth = effectiveItem.days_per_month || 30
+        monthlyDBUs = collaborators * daysPerMonth * 1.0  // 1 DBU/collaborator/day
+        break
+      }
+
+      case 'AI_PARSE': {
+        const aiParseMode = (effectiveItem.ai_parse_mode || 'pages').toLowerCase()
+        if (aiParseMode === 'dbu') {
+          // Direct DBU mode — DBU quantity stored in hours_per_month
+          monthlyDBUs = effectiveItem.hours_per_month || 0
+        } else {
+          // Pages-based mode: pages(K) × complexity_rate
+          const complexityRates: Record<string, number> = {
+            'low_text': 12.5, 'low_images': 22.5, 'medium': 62.5, 'high': 87.5
+          }
+          const complexity = (effectiveItem.ai_parse_complexity || 'medium').toLowerCase()
+          const pagesK = effectiveItem.ai_parse_pages_thousands || 0
+          monthlyDBUs = pagesK * (complexityRates[complexity] || 62.5)
+        }
+        break
+      }
+
+      case 'SHUTTERSTOCK_IMAGEAI': {
+        // 0.857 DBU per image
+        const imageCount = effectiveItem.shutterstock_images || 0
+        monthlyDBUs = imageCount * 0.857
+        break
+      }
+
+      case 'LAKEFLOW_CONNECT': {
+        // Pipeline: DLT Serverless (same as DLT serverless calculation)
+        // For simplicity in inline calc, use hours × base rate
+        // The backend does the full calculation; this is for instant preview
+        dbuPerHour = 0.5  // Approximate base rate for DLT serverless
+        monthlyDBUs = dbuPerHour * hoursPerMonth
+        break
+      }
+
       default:
         monthlyDBUs = 0
     }
@@ -1745,8 +1814,42 @@ export default function Calculator() {
           details.push({ label: 'Clusters', value: `${item.dbsql_num_clusters}` })
         }
         break
+
+      case 'DATABRICKS_APPS':
+        details.push({ label: 'Size', value: (item.databricks_apps_size || 'medium').charAt(0).toUpperCase() + (item.databricks_apps_size || 'medium').slice(1) })
+        break
+
+      case 'CLEAN_ROOM':
+        if (item.clean_room_collaborators) {
+          details.push({ label: 'Collaborators', value: `${item.clean_room_collaborators}` })
+        }
+        break
+
+      case 'AI_PARSE':
+        if (item.ai_parse_mode === 'dbu') {
+          details.push({ label: 'Mode', value: 'Direct DBU' })
+        } else {
+          details.push({ label: 'Complexity', value: item.ai_parse_complexity || 'medium' })
+          if (item.ai_parse_pages_thousands) {
+            details.push({ label: 'Pages', value: `${item.ai_parse_pages_thousands}K` })
+          }
+        }
+        break
+
+      case 'SHUTTERSTOCK_IMAGEAI':
+        if (item.shutterstock_images) {
+          details.push({ label: 'Images', value: `${item.shutterstock_images.toLocaleString()}/mo` })
+        }
+        break
+
+      case 'LAKEFLOW_CONNECT':
+        details.push({ label: 'Pipeline', value: 'DLT Serverless' })
+        if (item.lakeflow_connect_gateway_enabled) {
+          details.push({ label: 'Gateway', value: 'Enabled' })
+        }
+        break
     }
-    
+
     return details
   }
   

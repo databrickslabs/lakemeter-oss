@@ -776,9 +776,16 @@ export const useStore = create<Store>((set, get) => ({
         fmapiProprietaryRates[key] = rate
       })
       
+      // Merge API workload types with fallback (ensure new types not yet in DB still appear)
+      const apiTypeSet = new Set((workloadTypes as WorkloadType[]).map((wt: WorkloadType) => wt.workload_type))
+      const mergedWorkloadTypes = [
+        ...(workloadTypes as WorkloadType[]),
+        ...state.workloadTypes.filter((wt: WorkloadType) => !apiTypeSet.has(wt.workload_type)),
+      ]
+
       // Set all state in one update
-      set({ 
-        workloadTypes,
+      set({
+        workloadTypes: mergedWorkloadTypes,
         cloudProviders, 
         dbsqlSizes, 
         dltEditions, 
