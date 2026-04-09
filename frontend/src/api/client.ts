@@ -1006,6 +1006,70 @@ export const calculateFMAPIProprietary = async (request: FMAPIProprietaryRequest
   return data
 }
 
+// Databricks Apps
+export interface DatabricksAppsRequest extends BaseCalculationRequest {
+  size?: string
+  hours_per_month?: number
+}
+
+export const calculateDatabricksApps = async (request: DatabricksAppsRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/databricks-apps', request)
+  return data
+}
+
+// Clean Room
+export interface CleanRoomRequest extends BaseCalculationRequest {
+  collaborators: number
+  days_per_month?: number
+}
+
+export const calculateCleanRoom = async (request: CleanRoomRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/clean-room', request)
+  return data
+}
+
+// AI Parse
+export interface AIParseRequest extends BaseCalculationRequest {
+  mode?: string
+  complexity?: string
+  pages_thousands?: number
+  hours_per_month?: number
+}
+
+export const calculateAIParse = async (request: AIParseRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/ai-parse', request)
+  return data
+}
+
+// Shutterstock ImageAI
+export interface ShutterstockImageAIRequest extends BaseCalculationRequest {
+  images_per_month: number
+}
+
+export const calculateShutterstockImageAI = async (request: ShutterstockImageAIRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/shutterstock-imageai', request)
+  return data
+}
+
+// Lakeflow Connect
+export interface LakeflowConnectRequest extends BaseCalculationRequest {
+  dlt_edition?: string
+  runs_per_day?: number
+  avg_runtime_minutes?: number
+  days_per_month?: number
+  hours_per_month?: number
+  gateway_enabled?: boolean
+  gateway_instance_type?: string
+  gateway_pricing_tier?: string
+  gateway_payment_option?: string
+  gateway_hours_per_month?: number
+}
+
+export const calculateLakeflowConnect = async (request: LakeflowConnectRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/lakeflow-connect', request)
+  return data
+}
+
 // Lakebase
 export interface LakebaseRequest extends BaseCalculationRequest {
   cu_size: number
@@ -1069,7 +1133,22 @@ export const calculateWorkloadCost = async (
     
     case 'LAKEBASE':
       return calculateLakebase(params as unknown as LakebaseRequest)
-    
+
+    case 'DATABRICKS_APPS':
+      return calculateDatabricksApps(params as unknown as DatabricksAppsRequest)
+
+    case 'CLEAN_ROOM':
+      return calculateCleanRoom(params as unknown as CleanRoomRequest)
+
+    case 'AI_PARSE':
+      return calculateAIParse(params as unknown as AIParseRequest)
+
+    case 'SHUTTERSTOCK_IMAGEAI':
+      return calculateShutterstockImageAI(params as unknown as ShutterstockImageAIRequest)
+
+    case 'LAKEFLOW_CONNECT':
+      return calculateLakeflowConnect(params as unknown as LakeflowConnectRequest)
+
     default:
       throw new Error(`Unknown workload type: ${workloadType}`)
   }

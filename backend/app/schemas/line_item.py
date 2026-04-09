@@ -51,6 +51,25 @@ class LineItemBase(BaseModel):
     fmapi_rate_type: Optional[str] = None  # input_token, output_token, cache_read, cache_write
     fmapi_quantity: Optional[Decimal] = None  # quantity in millions (M)
 
+    # Databricks Apps Configuration
+    databricks_apps_size: Optional[str] = None
+
+    # Clean Room Configuration
+    clean_room_collaborators: Optional[int] = None
+
+    # AI Parse Configuration
+    ai_parse_mode: Optional[str] = None
+    ai_parse_complexity: Optional[str] = None
+    ai_parse_pages_thousands: Optional[float] = None
+
+    # Shutterstock ImageAI Configuration
+    shutterstock_images: Optional[int] = None
+
+    # Lakeflow Connect Configuration
+    lakeflow_connect_pipeline_mode: Optional[str] = None
+    lakeflow_connect_gateway_enabled: Optional[bool] = False
+    lakeflow_connect_gateway_instance: Optional[str] = None
+
     # Lakebase Configuration
     lakebase_cu: Optional[float] = None
     lakebase_storage_gb: Optional[int] = None
@@ -126,6 +145,25 @@ class LineItemUpdate(BaseModel):
     fmapi_rate_type: Optional[str] = None
     fmapi_quantity: Optional[Decimal] = None
 
+    # Databricks Apps Configuration
+    databricks_apps_size: Optional[str] = None
+
+    # Clean Room Configuration
+    clean_room_collaborators: Optional[int] = None
+
+    # AI Parse Configuration
+    ai_parse_mode: Optional[str] = None
+    ai_parse_complexity: Optional[str] = None
+    ai_parse_pages_thousands: Optional[float] = None
+
+    # Shutterstock ImageAI Configuration
+    shutterstock_images: Optional[int] = None
+
+    # Lakeflow Connect Configuration
+    lakeflow_connect_pipeline_mode: Optional[str] = None
+    lakeflow_connect_gateway_enabled: Optional[bool] = None
+    lakeflow_connect_gateway_instance: Optional[str] = None
+
     # Lakebase Configuration
     lakebase_cu: Optional[float] = None
     lakebase_storage_gb: Optional[int] = None
@@ -139,13 +177,13 @@ class LineItemUpdate(BaseModel):
     avg_runtime_minutes: Optional[int] = None
     days_per_month: Optional[int] = None
     hours_per_month: Optional[int] = None
-    
+
     # Pricing Configuration
     driver_pricing_tier: Optional[str] = None
     worker_pricing_tier: Optional[str] = None
     driver_payment_option: Optional[str] = None
     worker_payment_option: Optional[str] = None
-    
+
     # Additional Configuration
     workload_config: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None

@@ -38,6 +38,10 @@ def _get_workload_display_name(workload_type: str) -> str:
         'FMAPI_PROPRIETARY': 'Foundation Models (Proprietary)',
         'LAKEBASE': 'Lakebase',
         'DATABRICKS_APPS': 'Databricks Apps',
+        'CLEAN_ROOM': 'Clean Room',
+        'AI_PARSE': 'AI Parse (Document AI)',
+        'SHUTTERSTOCK_IMAGEAI': 'Shutterstock ImageAI',
+        'LAKEFLOW_CONNECT': 'Lakeflow Connect',
     }
     return names.get(workload_type, workload_type)
 
@@ -64,7 +68,18 @@ def _get_workload_config_details(item) -> str:
     elif wt == 'DLT':
         details.extend(_dlt_details(item))
     elif wt == 'DATABRICKS_APPS':
-        details.append("Managed App")
+        size = (getattr(item, 'databricks_apps_size', None) or 'medium').capitalize()
+        details.append(f"Size: {size}")
+    elif wt == 'CLEAN_ROOM':
+        collaborators = getattr(item, 'clean_room_collaborators', None) or 1
+        details.append(f"Collaborators: {collaborators}")
+    elif wt == 'AI_PARSE':
+        details.extend(_ai_parse_details(item))
+    elif wt == 'SHUTTERSTOCK_IMAGEAI':
+        images = getattr(item, 'shutterstock_images', None) or 0
+        details.append(f"Images/mo: {images:,}")
+    elif wt == 'LAKEFLOW_CONNECT':
+        details.extend(_lakeflow_connect_details(item))
 
     return ' | '.join(details) if details else '-'
 
@@ -163,6 +178,34 @@ def _dlt_details(item) -> list:
         details.append(f"Edition: {item.dlt_edition.upper()}")
     if item.photon_enabled:
         details.append("Photon")
+    return details
+
+
+def _ai_parse_details(item) -> list:
+    details = []
+    mode = getattr(item, 'ai_parse_mode', None) or 'pages'
+    if mode == 'dbu':
+        details.append("Mode: Direct DBU")
+    else:
+        complexity_labels = {
+            'low_text': 'Low (Text Only)',
+            'low_images': 'Low (With Images)',
+            'medium': 'Medium',
+            'high': 'High',
+        }
+        complexity = getattr(item, 'ai_parse_complexity', None) or 'medium'
+        details.append(f"Complexity: {complexity_labels.get(complexity, complexity)}")
+        pages = getattr(item, 'ai_parse_pages_thousands', None) or 0
+        details.append(f"Pages: {float(pages):.0f}K")
+    return details
+
+
+def _lakeflow_connect_details(item) -> list:
+    details = []
+    details.append("Pipeline: DLT Serverless")
+    if getattr(item, 'lakeflow_connect_gateway_enabled', False):
+        gw_instance = getattr(item, 'lakeflow_connect_gateway_instance', None) or 'default'
+        details.append(f"Gateway: {gw_instance}")
     return details
 
 

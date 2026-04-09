@@ -217,7 +217,24 @@ export function calculateWorkloadCost(
     case 'LAKEBASE':
       productType = 'DATABASE_SERVERLESS_COMPUTE'
       break
-    
+
+    case 'DATABRICKS_APPS':
+      productType = 'ALL_PURPOSE_SERVERLESS_COMPUTE'
+      break
+
+    case 'CLEAN_ROOM':
+      productType = 'CLEAN_ROOMS_COLLABORATOR'
+      break
+
+    case 'AI_PARSE':
+    case 'SHUTTERSTOCK_IMAGEAI':
+      productType = 'SERVERLESS_REAL_TIME_INFERENCE'
+      break
+
+    case 'LAKEFLOW_CONNECT':
+      productType = 'DELTA_LIVE_TABLES_SERVERLESS'
+      break
+
     default:
       productType = 'JOBS_COMPUTE'
   }
@@ -559,6 +576,44 @@ export function calculateWorkloadCost(
       }
       break
     
+    case 'DATABRICKS_APPS':
+      const appsSize = (item.databricks_apps_size || 'medium').toLowerCase()
+      const appsDbuRates: Record<string, number> = { medium: 0.5, large: 1.0 }
+      dbuPerHour = appsDbuRates[appsSize] || 0.5
+      monthlyDBUs = dbuPerHour * hoursPerMonth
+      break
+
+    case 'CLEAN_ROOM':
+      const crCollaborators = item.clean_room_collaborators || 1
+      const crDaysPerMonth = item.days_per_month || 30
+      // 1 DBU per collaborator per day
+      monthlyDBUs = crCollaborators * crDaysPerMonth
+      break
+
+    case 'AI_PARSE':
+      const aiParseMode = (item.ai_parse_mode || 'pages').toLowerCase()
+      if (aiParseMode === 'dbu') {
+        monthlyDBUs = item.hours_per_month || 0
+      } else {
+        const complexityRates: Record<string, number> = {
+          low_text: 12.5, low_images: 22.5, medium: 62.5, high: 87.5
+        }
+        const aiComplexity = (item.ai_parse_complexity || 'medium').toLowerCase()
+        const pagesK = item.ai_parse_pages_thousands || 0
+        monthlyDBUs = pagesK * (complexityRates[aiComplexity] || 62.5)
+      }
+      break
+
+    case 'SHUTTERSTOCK_IMAGEAI':
+      const ssImages = item.shutterstock_images || 0
+      monthlyDBUs = ssImages * 0.857
+      break
+
+    case 'LAKEFLOW_CONNECT':
+      // Simplified: DLT Serverless pipeline only (gateway calc requires VM lookup)
+      monthlyDBUs = 0  // Requires API calc for accurate number
+      break
+
     default:
       monthlyDBUs = 0
   }
