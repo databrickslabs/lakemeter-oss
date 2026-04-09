@@ -109,10 +109,10 @@ export function calculateWorkloadCost(
   item: Partial<LineItem>,
   context: CostCalculationContext
 ): CostBreakdown {
-  const { 
-    cloud, region, dbuRatesMap, instanceTypes, dbsqlSizes, photonMultipliers, modelServingGPUTypes, 
+  const {
+    cloud, region, tier, dbuRatesMap, instanceTypes, dbsqlSizes, photonMultipliers, modelServingGPUTypes,
     getVMPrice, getFMAPIDatabricksRate, getFMAPIProprietaryRate, getVectorSearchRate,
-    getInstanceDBURate, getPhotonMultiplier: getBundlePhotonMultiplier, getDBUPrice 
+    getInstanceDBURate, getPhotonMultiplier: getBundlePhotonMultiplier, getDBUPrice
   } = context
   
   // If no region selected, return zero costs
@@ -461,8 +461,16 @@ export function calculateWorkloadCost(
     case 'LAKEBASE':
       const lakebaseCU = item.lakebase_cu || 1
       const lakebaseNodes = item.lakebase_ha_nodes || 1
-      
-      dbuPerHour = lakebaseCU * lakebaseNodes
+      // DBU multiplier per CU-hour varies by cloud/tier
+      // Azure Premium = AWS/GCP Enterprise per pricing page footnote
+      const lakebaseDBURates: Record<string, Record<string, number>> = {
+        'aws': { 'PREMIUM': 0.230, 'ENTERPRISE': 0.213 },
+        'azure': { 'PREMIUM': 0.213, 'ENTERPRISE': 0.213 },
+      }
+      const lakebaseCloudRates = lakebaseDBURates[cloud] || lakebaseDBURates['aws']
+      const lakebaseDBUPerCU = lakebaseCloudRates[tier?.toUpperCase() || 'PREMIUM'] || 0.213
+
+      dbuPerHour = lakebaseCU * lakebaseDBUPerCU * lakebaseNodes
       monthlyDBUs = dbuPerHour * hoursPerMonth
       
       // Storage calculation for Lakebase
@@ -475,11 +483,21 @@ export function calculateWorkloadCost(
       const lakebasePricePerDSU = 0.023  // $0.023 per DSU per month
       const lakebaseStorageCost = lakebaseTotalDSU * lakebasePricePerDSU
       
-      if (lakebaseStorageGB > 0) {
-        storageCost = lakebaseStorageCost
+      // PITR: 8.7x DSU multiplier
+      const pitrGB = item.lakebase_pitr_gb || 0
+      const pitrDSUPerGB = 8.7
+      const pitrCost = pitrGB * pitrDSUPerGB * lakebasePricePerDSU
+
+      // Snapshots: 3.91x DSU multiplier
+      const snapshotGB = item.lakebase_snapshot_gb || 0
+      const snapshotDSUPerGB = 3.91
+      const snapshotCost = snapshotGB * snapshotDSUPerGB * lakebasePricePerDSU
+
+      if (lakebaseStorageGB > 0 || pitrGB > 0 || snapshotGB > 0) {
+        storageCost = lakebaseStorageCost + pitrCost + snapshotCost
         storageDetails = {
           totalStorageGB: lakebaseStorageGB,
-          billableStorageGB: lakebaseStorageGB,  // No free tier for Lakebase
+          billableStorageGB: lakebaseStorageGB,
           dsuPerGB: lakebaseDSUPerGB,
           totalDSU: lakebaseTotalDSU,
           pricePerDSU: lakebasePricePerDSU

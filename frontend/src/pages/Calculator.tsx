@@ -1151,12 +1151,18 @@ export default function Calculator() {
       
       case 'LAKEBASE':
         // LAKEBASE (Managed PostgreSQL)
-        // Formula: DBU/Hour = cu_size × num_nodes
-        // Total Cost = DBU/Hour × hours_per_month × dbu_price
+        // Formula: DBU/Hour = cu_size × dbu_per_cu_hour × num_nodes
+        // dbu_per_cu_hour varies by cloud/tier (0.230 for AWS Premium, 0.213 for Enterprise/Azure)
         const lakebaseCU = effectiveItem.lakebase_cu || 1
         const lakebaseNodes = effectiveItem.lakebase_ha_nodes || 1  // 1-3 nodes for HA
-        
-        dbuPerHour = lakebaseCU * lakebaseNodes
+        const lakebaseDBURates: Record<string, Record<string, number>> = {
+          'aws': { 'PREMIUM': 0.230, 'ENTERPRISE': 0.213 },
+          'azure': { 'PREMIUM': 0.213, 'ENTERPRISE': 0.213 },
+        }
+        const lakebaseCloudRates = lakebaseDBURates[cloud] || lakebaseDBURates['aws']
+        const lakebaseDBUPerCU = lakebaseCloudRates[(formData.tier || 'PREMIUM').toUpperCase()] || 0.213
+
+        dbuPerHour = lakebaseCU * lakebaseDBUPerCU * lakebaseNodes
         monthlyDBUs = dbuPerHour * hoursPerMonth
         
         // Storage calculation for Lakebase (DSU-based pricing)
@@ -2819,6 +2825,12 @@ export default function Calculator() {
                                   if (wType === 'LAKEBASE') {
                                     const cu = effectiveItem.lakebase_cu || 1
                                     const haNodes = effectiveItem.lakebase_ha_nodes || 1
+                                    const lbDBURatesFormula: Record<string, Record<string, number>> = {
+                                      'aws': { 'PREMIUM': 0.230, 'ENTERPRISE': 0.213 },
+                                      'azure': { 'PREMIUM': 0.213, 'ENTERPRISE': 0.213 },
+                                    }
+                                    const lbCloudRates = lbDBURatesFormula[formData.cloud || 'aws'] || lbDBURatesFormula['aws']
+                                    const lbDBUPerCU = lbCloudRates[(formData.tier || 'PREMIUM').toUpperCase()] || 0.213
                                     const storageGB = effectiveItem.lakebase_storage_gb || 0
                                     const pitrGB = effectiveItem.lakebase_pitr_gb || 0
                                     const snapshotGB = effectiveItem.lakebase_snapshot_gb || 0
@@ -2846,6 +2858,8 @@ export default function Calculator() {
                                         <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                           <span className="text-blue-600 font-semibold">DBU:</span>
                                           <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{cu} CU</span>
+                                          <span>×</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lbDBUPerCU} DBU/CU-hr</span>
                                           <span>×</span>
                                           <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{haNodes} nodes</span>
                                           <span>×</span>
@@ -3528,11 +3542,19 @@ export default function Calculator() {
                                   const localSnapshotCost = snapshotGB * 3.91 * pricePerDSU
                                   const localTotalStorageCost = localStorageCost + localPitrCost + localSnapshotCost
                                   const hasStorageCosts = localTotalStorageCost > 0
+                                  const lbDBURatesCard: Record<string, Record<string, number>> = {
+                                    'aws': { 'PREMIUM': 0.230, 'ENTERPRISE': 0.213 },
+                                    'azure': { 'PREMIUM': 0.213, 'ENTERPRISE': 0.213 },
+                                  }
+                                  const lbCloudRatesCard = lbDBURatesCard[formData.cloud || 'aws'] || lbDBURatesCard['aws']
+                                  const lbDBUPerCUCard = lbCloudRatesCard[(formData.tier || 'PREMIUM').toUpperCase()] || 0.213
                                   return (
                                     <div className="space-y-1">
                                       <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                         <span className="text-blue-600 font-semibold">DBU:</span>
                                         <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{cu} CU</span>
+                                        <span>×</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lbDBUPerCUCard} DBU/CU-hr</span>
                                         <span>×</span>
                                         <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{nodes} nodes</span>
                                         <span>×</span>
