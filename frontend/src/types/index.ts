@@ -92,6 +92,25 @@ export interface LineItem {
   model_serving_concurrency?: number | null
   model_serving_scale_out?: string | null
   
+  // Databricks Apps Configuration
+  databricks_apps_size?: string | null  // medium, large
+
+  // Clean Room Configuration
+  clean_room_collaborators?: number | null  // 1-10
+
+  // AI Parse Configuration
+  ai_parse_mode?: string | null  // dbu, pages
+  ai_parse_complexity?: string | null  // low_text, low_images, medium, high
+  ai_parse_pages_thousands?: number | null
+
+  // Shutterstock ImageAI Configuration
+  shutterstock_images?: number | null
+
+  // Lakeflow Connect Configuration
+  lakeflow_connect_pipeline_mode?: string | null
+  lakeflow_connect_gateway_enabled?: boolean | null
+  lakeflow_connect_gateway_instance?: string | null
+
   // Lakebase Configuration
   lakebase_cu?: number | null
   lakebase_storage_gb?: number | null

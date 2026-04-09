@@ -58,6 +58,25 @@ class LineItem(Base):
     fmapi_rate_type = Column(String(20))  # input_token, output_token, cache_read, cache_write
     fmapi_quantity = Column(Numeric(18, 2))  # quantity in millions (M)
     
+    # Databricks Apps Configuration
+    databricks_apps_size = Column(String(20))  # medium, large
+
+    # Clean Room Configuration
+    clean_room_collaborators = Column(Integer)  # 1-10
+
+    # AI Parse Configuration
+    ai_parse_mode = Column(String(20))  # dbu, pages
+    ai_parse_complexity = Column(String(20))  # low_text, low_images, medium, high
+    ai_parse_pages_thousands = Column(Numeric(12, 2))  # pages in thousands
+
+    # Shutterstock ImageAI Configuration
+    shutterstock_images = Column(Integer)  # number of images per month
+
+    # Lakeflow Connect Configuration
+    lakeflow_connect_pipeline_mode = Column(String(20))  # serverless (DLT)
+    lakeflow_connect_gateway_enabled = Column(Boolean, default=False)
+    lakeflow_connect_gateway_instance = Column(String(100))  # gateway instance type (database connectors only)
+
     # Lakebase Configuration
     lakebase_cu = Column(Numeric(5, 1))
     lakebase_storage_gb = Column(Integer)

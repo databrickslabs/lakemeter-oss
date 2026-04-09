@@ -228,6 +228,62 @@ class VectorSearchCalculationRequest(BaseModel):
     discount_config: Optional[DiscountConfig] = Field(None)
 
 
+class DatabricksAppsCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    size: str = Field(default="medium", description="medium or large")
+    hours_per_month: Optional[float] = Field(None, ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+
+class CleanRoomCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    collaborators: int = Field(..., ge=1, le=10, description="Number of collaborators (1-10)")
+    days_per_month: Optional[int] = Field(None, ge=1, le=31)
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+
+class AIParseCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    mode: str = Field(default="pages", description="dbu (direct) or pages (pages-based)")
+    complexity: Optional[str] = Field(None, description="low_text, low_images, medium, high")
+    pages_thousands: Optional[float] = Field(None, ge=0, description="Number of pages (in thousands)")
+    hours_per_month: Optional[float] = Field(None, ge=0, description="Direct DBU hours (for dbu mode)")
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+
+class ShutterstockImageAICalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    images_per_month: int = Field(..., ge=0, description="Number of images per month")
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+
+class LakeflowConnectCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    # Pipeline (DLT Serverless)
+    dlt_edition: str = Field(default="ADVANCED", description="DLT edition: CORE, PRO, ADVANCED")
+    runs_per_day: Optional[int] = Field(None, ge=0)
+    avg_runtime_minutes: Optional[int] = Field(None, ge=0)
+    days_per_month: Optional[int] = Field(None, ge=1, le=31)
+    hours_per_month: Optional[float] = Field(None, ge=0)
+    # Gateway (classic DLT Advanced, database connectors only)
+    gateway_enabled: bool = Field(default=False)
+    gateway_instance_type: Optional[str] = Field(None, description="Gateway instance type")
+    gateway_pricing_tier: str = Field(default="on_demand")
+    gateway_payment_option: Optional[str] = Field(default="NA")
+    gateway_hours_per_month: Optional[float] = Field(None, ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+
 class LakebaseCalculationRequest(BaseModel):
     cloud: str = Field(...)
     region: str = Field(...)
