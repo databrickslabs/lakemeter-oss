@@ -47,7 +47,7 @@ const _vmCostInflight: Record<string, Promise<any>> = {}
 // =============================================================================
 // LOCAL STORAGE CACHE UTILITIES
 // =============================================================================
-const CACHE_VERSION = 'v6'  // Bumped - added validation for empty regions
+const CACHE_VERSION = 'v7'  // Bumped - added DATABRICKS_APPS, AI_PARSE, SHUTTERSTOCK_IMAGEAI; removed CLEAN_ROOM, LAKEFLOW_CONNECT
 const CACHE_KEY = `lakemeter_reference_data_${CACHE_VERSION}`
 const CACHE_TTL = 4 * 60 * 60 * 1000 // 4 hours in milliseconds (reduced from 24h)
 
@@ -670,8 +670,15 @@ export const useStore = create<Store>((set, get) => ({
       if (cached) {
         // Reconstruct regionsMap from cache (support both old and new format)
         const regionsMap = cached.regionsMap || { aws: cached.regions || [] }
-        set({ 
-          workloadTypes: cached.workloadTypes || state.workloadTypes,
+        // Merge cached workload types with fallback (ensure new types added to code but not yet in cache still appear)
+        const cachedTypes = cached.workloadTypes || []
+        const cachedTypeSet = new Set(cachedTypes.map((wt: WorkloadType) => wt.workload_type))
+        const mergedCachedWorkloadTypes = [
+          ...cachedTypes,
+          ...state.workloadTypes.filter((wt: WorkloadType) => !cachedTypeSet.has(wt.workload_type)),
+        ]
+        set({
+          workloadTypes: mergedCachedWorkloadTypes.length > 0 ? mergedCachedWorkloadTypes : state.workloadTypes,
           cloudProviders: cached.cloudProviders || STATIC_CLOUD_PROVIDERS,
           dbsqlSizes: cached.dbsqlSizes || STATIC_DBSQL_SIZES,
           dltEditions: cached.dltEditions || STATIC_DLT_EDITIONS,
