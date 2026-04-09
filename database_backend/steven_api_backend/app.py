@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Query, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Union
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,7 +40,12 @@ from validators import (
     validate_lakebase_num_nodes,
     validate_photon_sku_type,
     validate_product_type,
-    validate_tier
+    validate_tier,
+    validate_sku_specific_discounts,
+    validate_salesforce_account_id,
+    validate_workspace_id_for_account,
+    validate_product_types_list,
+    validate_pagination
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -380,21 +385,19 @@ def build_sku_breakdown_serverless(
 # DISCOUNT HELPER FUNCTIONS
 # ============================================================================
 
-async def get_discount_category_from_db(sku: str, db: AsyncSession) -> str:
+async def get_discount_category_from_db(sku: str, db: AsyncSession) -> tuple[str, bool]:
     """
-    Query discount category for a SKU from lakemeter.sku_discount_mapping table.
+    Query discount category and cross-service eligibility for a SKU.
     Falls back to inference if not found.
     
-    Args:
-        sku: SKU name (e.g., "JOBS_COMPUTE", "VM_ON_DEMAND")
-        db: Database session
-    
     Returns:
-        Discount category: dbu, vm, storage, platform_addon, support
+        Tuple of (discount_category, cross_service_eligible)
+        cross_service_eligible=True means the dbu_discount applies to this SKU.
+        cross_service_eligible=False means the SKU is EXCLUDED from cross-service discounts.
     """
     try:
         query = text("""
-            SELECT discount_category 
+            SELECT discount_category, COALESCE(cross_service_eligible, TRUE)
             FROM lakemeter.sku_discount_mapping 
             WHERE sku = :sku
         """)
@@ -402,15 +405,14 @@ async def get_discount_category_from_db(sku: str, db: AsyncSession) -> str:
         row = result.fetchone()
         
         if row:
-            return row[0]
+            return (row[0], bool(row[1]))
         
-        # Fallback: Infer from SKU name
         logger.warning(f"SKU '{sku}' not found in sku_discount_mapping, inferring category")
-        return infer_discount_category(sku)
+        return (infer_discount_category(sku), True)
         
     except Exception as e:
         logger.error(f"Error querying discount category for SKU '{sku}': {e}")
-        return infer_discount_category(sku)
+        return (infer_discount_category(sku), True)
 
 
 def infer_discount_category(sku: str) -> str:
@@ -443,56 +445,68 @@ def infer_discount_category(sku: str) -> str:
 
 async def get_discount_for_sku(
     sku: str, 
-    discount_config: dict,
+    discount_config: Union['DiscountConfig', dict],
     db: AsyncSession
 ) -> tuple[float, str]:
     """
     Get discount percentage for a SKU.
     
-    Priority (NO WILDCARDS):
-    1. Exact SKU match in sku_specific → return that discount
-    2. Global discount by category → return global discount
-    3. None → return 0
-    
-    Args:
-        sku: SKU name
-        discount_config: Discount configuration dict
-        db: Database session
+    Resolution order:
+    1. sku_specific exact match → always wins (ignores eligibility rules)
+    2. global dbu_discount → ONLY if SKU is cross_service_eligible
+    3. global vm/storage/platform_addon/support discount → by category
+    4. No match → 0%
     
     Returns:
-        Tuple of (discount_percentage, source)
+        Tuple of (discount_percentage, source_label)
+        source_label clearly describes what happened, e.g.:
+          "sku_specific:JOBS_COMPUTE"
+          "global:dbu"
+          "global:dbu:excluded_from_cross_service"  ← 0% because SKU is excluded
+          "global:vm"
+          "none"
     """
     if not discount_config:
         return (0.0, "none")
     
-    sku_specific = discount_config.get("sku_specific", {})
-    global_discounts = discount_config.get("global", {})
+    if hasattr(discount_config, 'sku_specific'):
+        sku_specific = discount_config.sku_specific
+        global_discounts = discount_config.global_discounts
+    else:
+        sku_specific = discount_config.get("sku_specific", {})
+        global_discounts = discount_config.get("global", {})
     
-    # 1. Check exact SKU match FIRST (highest priority)
+    # 1. Exact SKU match always wins — ignores cross-service eligibility
     if sku in sku_specific:
         return (float(sku_specific[sku]), f"sku_specific:{sku}")
     
-    # 2. Fall back to global by category (query database)
-    category = await get_discount_category_from_db(sku, db)
+    # 2. Look up category + cross-service eligibility from DB
+    category, cross_service_eligible = await get_discount_category_from_db(sku, db)
+    
+    def _get_global(field: str) -> float:
+        if hasattr(global_discounts, field):
+            return float(getattr(global_discounts, field))
+        return float(global_discounts.get(field, 0))
     
     if category == "dbu":
-        return (float(global_discounts.get("dbu_discount", 0)), "global:dbu")
+        if not cross_service_eligible:
+            return (0.0, "global:dbu:excluded_from_cross_service")
+        return (_get_global("dbu_discount"), "global:dbu")
     elif category == "vm":
-        return (float(global_discounts.get("vm_discount", 0)), "global:vm")
+        return (_get_global("vm_discount"), "global:vm")
     elif category == "storage":
-        return (float(global_discounts.get("storage_discount", 0)), "global:storage")
+        return (_get_global("storage_discount"), "global:storage")
     elif category == "platform_addon":
-        return (float(global_discounts.get("platform_addon_discount", 0)), "global:platform_addon")
+        return (_get_global("platform_addon_discount"), "global:platform_addon")
     elif category == "support":
-        return (float(global_discounts.get("support_discount", 0)), "global:support")
+        return (_get_global("support_discount"), "global:support")
     
-    # 3. No discount
     return (0.0, "none")
 
 
 async def apply_discount_to_sku_breakdown(
     sku_breakdown: list,
-    discount_config: dict,
+    discount_config: Union['DiscountConfig', dict],
     db: AsyncSession
 ) -> list:
     """
@@ -569,6 +583,114 @@ def calculate_total_discount_summary(sku_breakdown: list) -> dict:
     }
 
 
+def enhance_total_cost_with_discount(total_cost: dict, sku_breakdown: list) -> dict:
+    """
+    Enhances the total_cost structure with discount details by category.
+    Keeps existing fields unchanged and adds new discount-related fields.
+    
+    Args:
+        total_cost: Original total_cost dict with cost_per_month (and optional breakdown)
+        sku_breakdown: SKU breakdown list with discount details
+    
+    Returns:
+        Enhanced total_cost dict with additional discount fields
+    """
+    # Group SKU breakdown by type
+    by_type = {}
+    for item in sku_breakdown:
+        item_type = item["type"]
+        if item_type not in by_type:
+            by_type[item_type] = {
+                "cost_before": 0,
+                "cost_after": 0,
+                "discount_amount": 0
+            }
+        by_type[item_type]["cost_before"] += item["cost"]
+        by_type[item_type]["cost_after"] += item.get("cost_after_discount", item["cost"])
+        by_type[item_type]["discount_amount"] += item.get("discount", {}).get("amount", 0)
+    
+    # Build enhanced structure (keep existing fields)
+    enhanced = total_cost.copy()
+    
+    # Handle breakdown (if exists) or create one from by_type
+    if "breakdown" in total_cost:
+        # Classic workloads have breakdown
+        breakdown_after_discount = {}
+        for key in total_cost["breakdown"]:
+            # Map breakdown keys to types (dbu_cost -> dbu, vm_cost -> vm, storage_cost -> storage)
+            type_key = key.replace("_cost", "")
+            if type_key in by_type:
+                breakdown_after_discount[key] = round(by_type[type_key]["cost_after"], 2)
+            else:
+                breakdown_after_discount[key] = total_cost["breakdown"][key]
+        
+        enhanced["breakdown_after_discount"] = breakdown_after_discount
+        
+        # Add discount_by_category
+        discount_by_category = {}
+        for key in total_cost["breakdown"]:
+            type_key = key.replace("_cost", "")
+            if type_key in by_type and by_type[type_key]["discount_amount"] > 0:
+                cost_before = by_type[type_key]["cost_before"]
+                discount_amt = by_type[type_key]["discount_amount"]
+                discount_pct = (discount_amt / cost_before * 100) if cost_before > 0 else 0
+                discount_by_category[type_key] = {
+                    "amount": round(discount_amt, 2),
+                    "percentage": round(discount_pct, 2)
+                }
+            else:
+                discount_by_category[type_key] = {
+                    "amount": 0,
+                    "percentage": 0
+                }
+        
+        enhanced["discount_by_category"] = discount_by_category
+    else:
+        # Serverless workloads - create breakdown from by_type
+        breakdown_after_discount = {}
+        discount_by_category = {}
+        
+        for type_key, data in by_type.items():
+            cost_key = f"{type_key}_cost"
+            breakdown_after_discount[cost_key] = round(data["cost_after"], 2)
+            
+            if data["discount_amount"] > 0:
+                discount_pct = (data["discount_amount"] / data["cost_before"] * 100) if data["cost_before"] > 0 else 0
+                discount_by_category[type_key] = {
+                    "amount": round(data["discount_amount"], 2),
+                    "percentage": round(discount_pct, 2)
+                }
+        
+        enhanced["breakdown_after_discount"] = breakdown_after_discount
+        enhanced["discount_by_category"] = discount_by_category
+    
+    # Add grand totals
+    total_cost_before = sum(item["cost"] for item in sku_breakdown)
+    total_cost_after = sum(item.get("cost_after_discount", item["cost"]) for item in sku_breakdown)
+    total_discount = total_cost_before - total_cost_after
+    effective_discount_pct = (total_discount / total_cost_before * 100) if total_cost_before > 0 else 0
+    
+    enhanced["total_after_discount"] = round(total_cost_after, 2)
+    enhanced["total_discount"] = round(total_discount, 2)
+    enhanced["effective_discount_percentage"] = round(effective_discount_pct, 2)
+    
+    excluded_skus = [
+        item["sku"] for item in sku_breakdown
+        if item.get("discount", {}).get("source", "").endswith("excluded_from_cross_service")
+    ]
+    if excluded_skus:
+        enhanced["cross_service_exclusions"] = {
+            "excluded_skus": excluded_skus,
+            "reason": (
+                "These SKUs are excluded from the cross-service (dbu_discount) per "
+                "https://www.databricks.com/product/sku-groups#exclusions. "
+                "To discount them, add each SKU to sku_specific."
+            ),
+        }
+    
+    return enhanced
+
+
 @app.get("/", tags=["System"])
 def root():
     return {
@@ -588,6 +710,116 @@ async def health():
         "database_exists": db_exists,
         "database_healthy": db_healthy
     }
+
+
+@app.get("/api/v1/reference/discount-options", tags=["Reference Data"])
+async def get_discount_options(db: AsyncSession = Depends(get_async_db)):
+    """
+    Get available SKUs, their discount categories, and cross-service eligibility.
+
+    Each SKU includes a `cross_service_eligible` flag:
+    - **true** → `dbu_discount` from the global config applies to this SKU
+    - **false** → `dbu_discount` is SKIPPED; use `sku_specific` to discount this SKU
+
+    Ref: https://www.databricks.com/product/sku-groups#exclusions
+    """
+    try:
+        query = text("""
+            SELECT 
+                sku, 
+                discount_category, 
+                workload_group, 
+                description,
+                COALESCE(cross_service_eligible, TRUE) AS cross_service_eligible
+            FROM lakemeter.sku_discount_mapping
+            ORDER BY workload_group, sku
+        """)
+        
+        result = await db.execute(query)
+        rows = result.fetchall()
+        
+        skus = []
+        excluded_skus = []
+        workload_groups = set()
+        
+        for row in rows:
+            eligible = bool(row[4])
+            sku_data = {
+                "sku": row[0],
+                "discount_category": row[1],
+                "workload_group": row[2],
+                "description": row[3] if row[3] else f"{row[0]} workload",
+                "cross_service_eligible": eligible,
+            }
+            skus.append(sku_data)
+            if not eligible:
+                excluded_skus.append(row[0])
+            if row[2]:
+                workload_groups.add(row[2])
+        
+        discount_categories = {
+            "dbu": {
+                "name": "DBU (Databricks Units) — Cross-Service Discount",
+                "description": (
+                    "Applied ONLY to SKUs where cross_service_eligible=true. "
+                    "SKUs excluded from the cross-service group receive 0% from dbu_discount. "
+                    "To discount excluded SKUs, add them to sku_specific."
+                ),
+                "field_name": "dbu_discount",
+                "examples_included": ["JOBS_COMPUTE_(PHOTON)", "SQL_COMPUTE", "DLT_CORE_COMPUTE"],
+                "examples_excluded": ["SERVERLESS_REAL_TIME_INFERENCE_LAUNCH", "OPENAI_SERVING", "ANTHROPIC_SERVING"],
+            },
+            "vm": {
+                "name": "VM (Virtual Machine)",
+                "description": "Applies to underlying cloud VM costs",
+                "field_name": "vm_discount",
+            },
+            "storage": {
+                "name": "Storage",
+                "description": "Applies to storage costs (DSU, GB)",
+                "field_name": "storage_discount",
+            },
+            "platform_addon": {
+                "name": "Platform Add-ons",
+                "description": "Applies to additional platform features",
+                "field_name": "platform_addon_discount",
+            },
+            "support": {
+                "name": "Support",
+                "description": "Applies to Databricks support plans",
+                "field_name": "support_discount",
+            },
+        }
+        
+        return {
+            "success": True,
+            "data": {
+                "discount_categories": discount_categories,
+                "skus": skus,
+                "excluded_from_cross_service": excluded_skus,
+                "workload_groups": sorted(list(workload_groups)),
+                "total_sku_count": len(skus),
+                "cross_service_behavior": (
+                    "When dbu_discount > 0: SKUs with cross_service_eligible=true get the discount. "
+                    "SKUs with cross_service_eligible=false get 0% and the response shows "
+                    "source='global:dbu:excluded_from_cross_service'. "
+                    "To override, add the SKU to sku_specific."
+                ),
+            },
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching discount options: {e}")
+        import traceback
+        return {
+            "success": False,
+            "error": {
+                "code": "DATABASE_ERROR",
+                "message": str(e),
+                "traceback": traceback.format_exc()
+            }
+        }
+
 
 @app.get("/debug/headers", tags=["System"])
 async def debug_headers(request: Request):
@@ -875,6 +1107,544 @@ async def get_salesforce_usecases(
             "success": False,
             "error": {"message": str(e), "code": "DATABASE_ERROR"}
         }
+
+
+@app.get("/api/v1/salesforce/baseline-consumption-hierarchy", tags=["Salesforce"])
+async def get_baseline_consumption_hierarchy(
+    account_id: str = Query(..., description="Salesforce account ID(s) - comma-separated for multiple (required)"),
+    levels: str = Query("1,2,3,4", description="Comma-separated hierarchy levels to return (1-4). Default: all levels"),
+    level_4_limit: int = Query(1000, ge=1, le=10000, description="Max rows for Level 4 (SKU level) per account. Default: 1000, Max: 10000"),
+    level_4_offset: int = Query(0, ge=0, description="Pagination offset for Level 4 per account. Default: 0"),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Get baseline consumption data for one or more Salesforce accounts across all 4 hierarchy levels.
+    
+    Supports multiple account IDs (comma-separated). Returns consumption data organized
+    by account and hierarchy with filtering and pagination support.
+    
+    **Hierarchy Levels:**
+    - **Level 1 (ACCOUNT_LEVEL)**: Total consumption across entire customer account
+      - Dimensions: sfdc_account_id, sfdc_account_name
+      
+    - **Level 2 (PRODUCT_ACCOUNT_CLOUD)**: Breakdown by Databricks account and cloud
+      - Dimensions: sfdc_account_id, sfdc_account_name, product_account_id, cloud
+      - Note: One customer can have multiple Databricks accounts
+      
+    - **Level 3 (WORKSPACE_LEVEL)**: Breakdown by workspace
+      - Dimensions: sfdc_account_id, sfdc_account_name, product_account_id, cloud, 
+                   sfdc_workspace_object_id, sfdc_workspace_name
+      
+    - **Level 4 (SKU_LEVEL)**: Most granular - by SKU details (paginated per account)
+      - Dimensions: All above + tier, product_type, region, shield_sku, usage_unit
+    
+    **Time Periods & Metrics:**
+    - Rolling averages: 3m, 30d, 90d
+    - Monthly totals: m1-m12 (last 12 complete months)
+    - 6 metrics per period: usage_amount, usage_dollars, usage_dollars_at_list,
+      shield_usage_amount, shield_dollars, shield_dollars_at_list
+    
+    **Request Examples:**
+    - Single account: `?account_id=001...`
+    - Multiple accounts: `?account_id=001...,002...,003...`
+    - Executive view: `?account_id=001...&levels=1`
+    - Cloud breakdown: `?account_id=001...,002...&levels=1,2`
+    - SKU detail (paginated): `?account_id=001...&levels=4&level_4_limit=500&level_4_offset=0`
+    """
+    
+    # ========================================
+    # PARSE AND VALIDATE ACCOUNT IDS
+    # ========================================
+    
+    account_ids = [aid.strip() for aid in account_id.split(",") if aid.strip()]
+    
+    if not account_ids:
+        return JSONResponse(status_code=400, content={
+            "success": False,
+            "error": {
+                "code": "MISSING_ACCOUNT_ID",
+                "message": "At least one account_id is required",
+                "field": "account_id"
+            }
+        })
+    
+    validated_accounts = {}
+    invalid_accounts = []
+    
+    for aid in account_ids:
+        account_validation = await validate_salesforce_account_id(aid, db)
+        if account_validation.get("success"):
+            validated_accounts[aid] = {
+                "sfdc_account_id": account_validation["account_id"],
+                "sfdc_account_name": account_validation["account_name"]
+            }
+        else:
+            invalid_accounts.append({
+                "account_id": aid,
+                "error": account_validation.get("error", {})
+            })
+    
+    if not validated_accounts:
+        return JSONResponse(status_code=404, content={
+            "success": False,
+            "error": {
+                "code": "NO_VALID_ACCOUNTS",
+                "message": "None of the provided account IDs are valid",
+                "invalid_accounts": invalid_accounts
+            }
+        })
+    
+    # ========================================
+    # VALIDATE LEVELS PARAMETER
+    # ========================================
+    
+    # Validate levels parameter
+    try:
+        # Parse levels
+        requested_levels = [int(level.strip()) for level in levels.split(",")]
+        
+        # Check for valid values (1-4)
+        invalid_levels = [l for l in requested_levels if l not in [1, 2, 3, 4]]
+        if invalid_levels:
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "error": {
+                    "code": "INVALID_LEVELS",
+                    "message": "Invalid levels parameter. Must be comma-separated integers 1-4",
+                    "field": "levels",
+                    "provided": levels,
+                    "invalid_values": invalid_levels,
+                    "allowed_values": [1, 2, 3, 4]
+                }
+            })
+        
+        # Check for duplicates
+        if len(requested_levels) != len(set(requested_levels)):
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "error": {
+                    "code": "INVALID_LEVELS",
+                    "message": "Duplicate levels not allowed",
+                    "field": "levels",
+                    "provided": levels
+                }
+            })
+        
+        # Sort for consistent ordering
+        requested_levels = sorted(requested_levels)
+        
+    except ValueError:
+        return JSONResponse(status_code=400, content={
+            "success": False,
+            "error": {
+                "code": "INVALID_LEVELS",
+                "message": "Invalid levels format. Must be comma-separated integers (e.g., '1,2,3,4')",
+                "field": "levels",
+                "provided": levels,
+                "example": "1,2,3,4"
+            }
+        })
+    
+    # ========================================
+    # QUERY DATA FOR ALL VALID ACCOUNTS
+    # ========================================
+    
+    try:
+        valid_account_ids = list(validated_accounts.keys())
+        
+        # Build placeholders for account IDs and levels
+        account_placeholders = ",".join([f":account_{i}" for i in range(len(valid_account_ids))])
+        account_params = {f"account_{i}": aid for i, aid in enumerate(valid_account_ids)}
+        
+        levels_placeholder = ",".join([f":level_{i}" for i in range(len(requested_levels))])
+        levels_params = {f"level_{i}": level for i, level in enumerate(requested_levels)}
+        
+        # Single query for all accounts and levels
+        query_all = text(f"""
+            SELECT *
+            FROM lakemeter.sync_baseline_consumption
+            WHERE sfdc_account_id IN ({account_placeholders})
+              AND hierarchy_level IN ({levels_placeholder})
+            ORDER BY sfdc_account_id, hierarchy_level, product_account_id, cloud, sfdc_workspace_name, 
+                     product_type, tier, region
+        """)
+        
+        params_all = {**account_params, **levels_params}
+        result_all = await db.execute(query_all, params_all)
+        all_rows = result_all.fetchall()
+        columns = result_all.keys()
+        
+        # ========================================
+        # HELPER FUNCTIONS
+        # ========================================
+        
+        def extract_metrics(row_dict):
+            """Extract rolling averages and monthly data from a row"""
+            rolling_averages = {
+                "3m": {
+                    "usage_amount": row_dict.get("usage_amount_3m"),
+                    "usage_dollars": row_dict.get("usage_dollars_3m"),
+                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_3m"),
+                    "shield_usage_amount": row_dict.get("shield_usage_amount_3m"),
+                    "shield_dollars": row_dict.get("shield_dollars_3m"),
+                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_3m")
+                },
+                "30d": {
+                    "usage_amount": row_dict.get("usage_amount_30d"),
+                    "usage_dollars": row_dict.get("usage_dollars_30d"),
+                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_30d"),
+                    "shield_usage_amount": row_dict.get("shield_usage_amount_30d"),
+                    "shield_dollars": row_dict.get("shield_dollars_30d"),
+                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_30d")
+                },
+                "90d": {
+                    "usage_amount": row_dict.get("usage_amount_90d"),
+                    "usage_dollars": row_dict.get("usage_dollars_90d"),
+                    "usage_dollars_at_list": row_dict.get("usage_dollars_at_list_90d"),
+                    "shield_usage_amount": row_dict.get("shield_usage_amount_90d"),
+                    "shield_dollars": row_dict.get("shield_dollars_90d"),
+                    "shield_dollars_at_list": row_dict.get("shield_dollars_at_list_90d")
+                }
+            }
+            
+            monthly = {}
+            time_periods = [f"m{i}" for i in range(1, 13)]
+            for period in time_periods:
+                monthly[period] = {
+                    "usage_amount": row_dict.get(f"usage_amount_{period}"),
+                    "usage_dollars": row_dict.get(f"usage_dollars_{period}"),
+                    "usage_dollars_at_list": row_dict.get(f"usage_dollars_at_list_{period}"),
+                    "shield_usage_amount": row_dict.get(f"shield_usage_amount_{period}"),
+                    "shield_dollars": row_dict.get(f"shield_dollars_{period}"),
+                    "shield_dollars_at_list": row_dict.get(f"shield_dollars_at_list_{period}")
+                }
+            
+            return {
+                "rolling_averages": rolling_averages,
+                "monthly": monthly
+            }
+        
+        def process_account_data(account_rows, account_info):
+            """Process rows for a single account and return structured result"""
+            
+            # Group data by hierarchy level
+            hierarchy_data = {}
+            if 1 in requested_levels:
+                hierarchy_data["level_1_account"] = None
+            if 2 in requested_levels:
+                hierarchy_data["level_2_product_cloud"] = []
+            if 3 in requested_levels:
+                hierarchy_data["level_3_workspace"] = []
+            if 4 in requested_levels:
+                hierarchy_data["level_4_sku"] = []
+            
+            level_4_all_entries = []
+            
+            for row_dict in account_rows:
+                hierarchy_level = row_dict.get("hierarchy_level")
+                metrics = extract_metrics(row_dict)
+                
+                if hierarchy_level == 1 and 1 in requested_levels:
+                    hierarchy_data["level_1_account"] = {
+                        "dimensions": {
+                            "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                            "sfdc_account_name": row_dict.get("sfdc_account_name")
+                        },
+                        "metrics": metrics
+                    }
+                
+                elif hierarchy_level == 2 and 2 in requested_levels:
+                    hierarchy_data["level_2_product_cloud"].append({
+                        "dimensions": {
+                            "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                            "sfdc_account_name": row_dict.get("sfdc_account_name"),
+                            "product_account_id": row_dict.get("product_account_id"),
+                            "cloud": row_dict.get("cloud")
+                        },
+                        "metrics": metrics
+                    })
+                
+                elif hierarchy_level == 3 and 3 in requested_levels:
+                    hierarchy_data["level_3_workspace"].append({
+                        "dimensions": {
+                            "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                            "sfdc_account_name": row_dict.get("sfdc_account_name"),
+                            "product_account_id": row_dict.get("product_account_id"),
+                            "cloud": row_dict.get("cloud"),
+                            "sfdc_workspace_object_id": row_dict.get("sfdc_workspace_object_id"),
+                            "sfdc_workspace_name": row_dict.get("sfdc_workspace_name")
+                        },
+                        "metrics": metrics
+                    })
+                
+                elif hierarchy_level == 4 and 4 in requested_levels:
+                    level_4_all_entries.append({
+                        "dimensions": {
+                            "sfdc_account_id": row_dict.get("sfdc_account_id"),
+                            "sfdc_account_name": row_dict.get("sfdc_account_name"),
+                            "product_account_id": row_dict.get("product_account_id"),
+                            "cloud": row_dict.get("cloud"),
+                            "sfdc_workspace_object_id": row_dict.get("sfdc_workspace_object_id"),
+                            "sfdc_workspace_name": row_dict.get("sfdc_workspace_name"),
+                            "tier": row_dict.get("tier"),
+                            "product_type": row_dict.get("product_type"),
+                            "region": row_dict.get("region"),
+                            "shield_sku": row_dict.get("shield_sku"),
+                            "usage_unit": row_dict.get("usage_unit")
+                        },
+                        "metrics": metrics
+                    })
+            
+            # Apply Level 4 pagination per account
+            if 4 in requested_levels:
+                level_4_total = len(level_4_all_entries)
+                paginated = level_4_all_entries[level_4_offset:level_4_offset + level_4_limit]
+                hierarchy_data["level_4_sku"] = paginated
+            
+            # ========================================
+            # CALCULATE SUMMARY (from Level 1 if available)
+            # ========================================
+            
+            summary = {
+                "total_rows": len(account_rows),
+                "levels_returned": requested_levels
+            }
+            
+            level_1_rows = [r for r in account_rows if r.get("hierarchy_level") == 1]
+            if level_1_rows:
+                l1 = level_1_rows[0]
+                
+                total_usage_dollars_3m = float(l1.get("usage_dollars_3m") or 0)
+                total_usage_dollars_at_list_3m = float(l1.get("usage_dollars_at_list_3m") or 0)
+                total_shield_dollars_3m = float(l1.get("shield_dollars_3m") or 0)
+                
+                summary.update({
+                    "total_usage_dollars_3m": total_usage_dollars_3m,
+                    "total_usage_dollars_at_list_3m": total_usage_dollars_at_list_3m,
+                    "total_discount_dollars_3m": total_usage_dollars_at_list_3m - total_usage_dollars_3m,
+                    "total_discount_pct_3m": round(((total_usage_dollars_at_list_3m - total_usage_dollars_3m) / total_usage_dollars_at_list_3m * 100) if total_usage_dollars_at_list_3m > 0 else 0, 2),
+                    "total_shield_dollars_3m": total_shield_dollars_3m,
+                    "total_usage_amount_3m": float(l1.get("usage_amount_3m") or 0),
+                    
+                    "total_usage_dollars_30d": float(l1.get("usage_dollars_30d") or 0),
+                    "total_usage_dollars_at_list_30d": float(l1.get("usage_dollars_at_list_30d") or 0),
+                    
+                    "total_usage_dollars_90d": float(l1.get("usage_dollars_90d") or 0),
+                    "total_usage_dollars_at_list_90d": float(l1.get("usage_dollars_at_list_90d") or 0)
+                })
+            
+            # Calculate breakdowns
+            breakdown = {}
+            
+            # By Cloud (from Level 2)
+            level_2_rows = [r for r in account_rows if r.get("hierarchy_level") == 2]
+            if level_2_rows:
+                by_cloud = {}
+                for row in level_2_rows:
+                    cloud = row.get("cloud")
+                    if cloud and cloud != '__ALL__':
+                        spend = float(row.get("usage_dollars_3m") or 0)
+                        by_cloud[cloud] = by_cloud.get(cloud, 0) + spend
+                
+                breakdown["by_cloud"] = [
+                    {
+                        "cloud": cloud,
+                        "spend_3m": spend,
+                        "pct_of_total": round((spend / summary.get("total_usage_dollars_3m", 0) * 100) if summary.get("total_usage_dollars_3m", 0) > 0 else 0, 2)
+                    }
+                    for cloud, spend in sorted(by_cloud.items(), key=lambda x: x[1], reverse=True)
+                ]
+            
+            # By Product Type (from Level 4)
+            level_4_all_rows = [r for r in account_rows if r.get("hierarchy_level") == 4]
+            if level_4_all_rows:
+                by_product_type = {}
+                for row in level_4_all_rows:
+                    product_type = row.get("product_type")
+                    if product_type and product_type != '__ALL__':
+                        spend = float(row.get("usage_dollars_3m") or 0)
+                        by_product_type[product_type] = by_product_type.get(product_type, 0) + spend
+                
+                breakdown["by_product_type"] = [
+                    {
+                        "product_type": pt,
+                        "spend_3m": spend,
+                        "pct_of_total": round((spend / summary.get("total_usage_dollars_3m", 0) * 100) if summary.get("total_usage_dollars_3m", 0) > 0 else 0, 2)
+                    }
+                    for pt, spend in sorted(by_product_type.items(), key=lambda x: x[1], reverse=True)
+                ]
+            
+            # Top Workspaces (from Level 3)
+            level_3_rows = [r for r in account_rows if r.get("hierarchy_level") == 3]
+            if level_3_rows:
+                top_workspaces = sorted(level_3_rows, key=lambda x: float(x.get("usage_dollars_3m") or 0), reverse=True)[:10]
+                breakdown["top_workspaces"] = [
+                    {
+                        "workspace_name": ws.get("sfdc_workspace_name"),
+                        "workspace_id": ws.get("sfdc_workspace_object_id"),
+                        "product_account_id": ws.get("product_account_id"),
+                        "cloud": ws.get("cloud"),
+                        "spend_3m": float(ws.get("usage_dollars_3m") or 0),
+                        "pct_of_total": round((float(ws.get("usage_dollars_3m") or 0) / summary.get("total_usage_dollars_3m", 0) * 100) if summary.get("total_usage_dollars_3m", 0) > 0 else 0, 2)
+                    }
+                    for ws in top_workspaces
+                ]
+            
+            summary["breakdown"] = breakdown
+            
+            # Calculate trends (MoM, QoQ) from Level 1
+            if level_1_rows:
+                l1 = level_1_rows[0]
+                
+                current_month_spend = float(l1.get("usage_dollars_m12") or 0)
+                previous_month_spend = float(l1.get("usage_dollars_m11") or 0)
+                mom_change_dollars = current_month_spend - previous_month_spend
+                mom_change_pct = round((mom_change_dollars / previous_month_spend * 100) if previous_month_spend > 0 else 0, 2)
+                
+                current_quarter_avg = (
+                    float(l1.get("usage_dollars_m10") or 0) +
+                    float(l1.get("usage_dollars_m11") or 0) +
+                    float(l1.get("usage_dollars_m12") or 0)
+                ) / 3
+                
+                previous_quarter_avg = (
+                    float(l1.get("usage_dollars_m7") or 0) +
+                    float(l1.get("usage_dollars_m8") or 0) +
+                    float(l1.get("usage_dollars_m9") or 0)
+                ) / 3
+                
+                qoq_change_dollars = current_quarter_avg - previous_quarter_avg
+                qoq_change_pct = round((qoq_change_dollars / previous_quarter_avg * 100) if previous_quarter_avg > 0 else 0, 2)
+                
+                summary["trends"] = {
+                    "month_over_month": {
+                        "change_pct": mom_change_pct,
+                        "change_dollars": round(mom_change_dollars, 2),
+                        "current_month": current_month_spend,
+                        "previous_month": previous_month_spend,
+                        "calculation": "Compares m12 (last complete month) vs m11 (2 months ago)"
+                    },
+                    "quarter_over_quarter": {
+                        "change_pct": qoq_change_pct,
+                        "change_dollars": round(qoq_change_dollars, 2),
+                        "current_quarter_avg": round(current_quarter_avg, 2),
+                        "previous_quarter_avg": round(previous_quarter_avg, 2),
+                        "calculation": "Compares average of (m10, m11, m12) vs average of (m7, m8, m9)"
+                    }
+                }
+            
+            # ========================================
+            # BUILD LEVELS METADATA
+            # ========================================
+            
+            levels_metadata = {}
+            
+            if 1 in requested_levels:
+                levels_metadata["level_1"] = {
+                    "level": 1,
+                    "name": "ACCOUNT_LEVEL",
+                    "description": "Total consumption across entire customer",
+                    "dimension_keys": "sfdc_account_id, sfdc_account_name",
+                    "dimension_count": 2,
+                    "row_count": len(level_1_rows),
+                    "total_spend_3m": summary.get("total_usage_dollars_3m", 0)
+                }
+            
+            if 2 in requested_levels:
+                level_2_spend = sum([float(r.get("usage_dollars_3m") or 0) for r in level_2_rows])
+                levels_metadata["level_2"] = {
+                    "level": 2,
+                    "name": "PRODUCT_ACCOUNT_CLOUD",
+                    "description": "Breakdown by Databricks account and cloud",
+                    "dimension_keys": "sfdc_account_id, sfdc_account_name, product_account_id, cloud",
+                    "dimension_count": 4,
+                    "row_count": len(level_2_rows),
+                    "total_spend_3m": level_2_spend
+                }
+            
+            if 3 in requested_levels:
+                level_3_spend = sum([float(r.get("usage_dollars_3m") or 0) for r in level_3_rows])
+                levels_metadata["level_3"] = {
+                    "level": 3,
+                    "name": "WORKSPACE_LEVEL",
+                    "description": "Breakdown by workspace",
+                    "dimension_keys": "sfdc_account_id, sfdc_account_name, product_account_id, cloud, sfdc_workspace_object_id, sfdc_workspace_name",
+                    "dimension_count": 6,
+                    "row_count": len(level_3_rows),
+                    "total_spend_3m": level_3_spend
+                }
+            
+            if 4 in requested_levels:
+                level_4_spend = sum([float(r.get("usage_dollars_3m") or 0) for r in level_4_all_rows])
+                level_4_returned = len(hierarchy_data.get("level_4_sku", []))
+                level_4_total_count = len(level_4_all_rows)
+                levels_metadata["level_4"] = {
+                    "level": 4,
+                    "name": "SKU_LEVEL",
+                    "description": "Most granular by SKU details",
+                    "dimension_keys": "sfdc_account_id, sfdc_account_name, product_account_id, cloud, sfdc_workspace_object_id, sfdc_workspace_name, tier, product_type, region, shield_sku, usage_unit",
+                    "dimension_count": 11,
+                    "row_count": level_4_total_count,
+                    "total_spend_3m": level_4_spend,
+                    "returned": level_4_returned,
+                    "pagination": {
+                        "total": level_4_total_count,
+                        "limit": level_4_limit,
+                        "offset": level_4_offset,
+                        "has_more": (level_4_offset + level_4_returned) < level_4_total_count
+                    }
+                }
+            
+            return {
+                "account": account_info,
+                "summary": summary,
+                "levels_metadata": levels_metadata,
+                "data": hierarchy_data
+            }
+        
+        # ========================================
+        # GROUP ROWS BY ACCOUNT AND PROCESS
+        # ========================================
+        
+        all_row_dicts = [dict(zip(columns, row)) for row in all_rows]
+        
+        rows_by_account = {}
+        for row_dict in all_row_dicts:
+            aid = row_dict.get("sfdc_account_id")
+            if aid not in rows_by_account:
+                rows_by_account[aid] = []
+            rows_by_account[aid].append(row_dict)
+        
+        accounts_result = []
+        for aid, account_info in validated_accounts.items():
+            account_rows = rows_by_account.get(aid, [])
+            account_result = process_account_data(account_rows, account_info)
+            accounts_result.append(account_result)
+        
+        # ========================================
+        # BUILD RESPONSE
+        # ========================================
+        
+        response = {
+            "success": True,
+            "total_accounts": len(validated_accounts),
+            "accounts": accounts_result
+        }
+        
+        if invalid_accounts:
+            response["invalid_accounts"] = invalid_accounts
+        
+        return response
+    
+    except Exception as e:
+        logger.error(f"Error fetching baseline consumption hierarchy: {e}")
+        return JSONResponse(status_code=500, content={
+            "success": False,
+            "error": {
+                "code": "DATABASE_ERROR",
+                "message": str(e)
+            }
+        })
 
 
 @app.get("/api/v1/regions", tags=["Cloud & Regions"])
@@ -2216,88 +2986,180 @@ async def get_vector_search_modes(
 @app.get("/api/v1/lakebase/list", tags=["Lakebase"])
 async def list_lakebase_sizes():
     """
-    Get a simple list of all available Lakebase CU (Compute Unit) sizes.
-    CU sizes are the same across all clouds (AWS, AZURE, GCP).
-    Useful for populating dropdowns or validation.
+    Get all available Lakebase Compute Unit (CU) sizes with specs.
     
-    **Available CU sizes:** 1, 2, 4, 8
+    Each CU allocates ~2 GB RAM. Sizes are the same across all clouds (AWS, AZURE, GCP).
+    
+    **Two categories:**
+    - **Autoscale (0.5 - 32 CU):** Supports autoscaling and scale-to-zero.
+      Autoscaling range constraint: max - min <= 8 CU.
+    - **Fixed (36 - 112 CU):** Larger fixed-size computes, no autoscaling.
+    
+    **DBU per CU Hour (varies by cloud/tier):**
+    - AWS Premium: 0.230 DBU per CU hour
+    - AWS Enterprise: 0.213 DBU per CU hour
+    - Azure / GCP: 1.0 DBU per CU hour
     """
-    # Hardcoded CU sizes for Lakebase
-    cu_sizes = [1, 2, 4, 8]
+    autoscale_sizes = [
+        {"cu": 0.5, "ram_gb": 1, "max_connections": 104, "type": "autoscale"},
+        {"cu": 1, "ram_gb": 2, "max_connections": 209, "type": "autoscale"},
+        {"cu": 2, "ram_gb": 4, "max_connections": 419, "type": "autoscale"},
+        {"cu": 3, "ram_gb": 6, "max_connections": 629, "type": "autoscale"},
+        {"cu": 4, "ram_gb": 8, "max_connections": 839, "type": "autoscale"},
+        {"cu": 5, "ram_gb": 10, "max_connections": 1049, "type": "autoscale"},
+        {"cu": 6, "ram_gb": 12, "max_connections": 1258, "type": "autoscale"},
+        {"cu": 7, "ram_gb": 14, "max_connections": 1468, "type": "autoscale"},
+        {"cu": 8, "ram_gb": 16, "max_connections": 1678, "type": "autoscale"},
+        {"cu": 9, "ram_gb": 18, "max_connections": 1888, "type": "autoscale"},
+        {"cu": 10, "ram_gb": 20, "max_connections": 2098, "type": "autoscale"},
+        {"cu": 12, "ram_gb": 24, "max_connections": 2517, "type": "autoscale"},
+        {"cu": 14, "ram_gb": 28, "max_connections": 2937, "type": "autoscale"},
+        {"cu": 16, "ram_gb": 32, "max_connections": 3357, "type": "autoscale"},
+        {"cu": 24, "ram_gb": 48, "max_connections": 4000, "type": "autoscale"},
+        {"cu": 28, "ram_gb": 56, "max_connections": 4000, "type": "autoscale"},
+        {"cu": 32, "ram_gb": 64, "max_connections": 4000, "type": "autoscale"},
+    ]
+    
+    fixed_sizes = [
+        {"cu": 36, "ram_gb": 72, "max_connections": 4000, "type": "fixed"},
+        {"cu": 40, "ram_gb": 80, "max_connections": 4000, "type": "fixed"},
+        {"cu": 44, "ram_gb": 88, "max_connections": 4000, "type": "fixed"},
+        {"cu": 48, "ram_gb": 96, "max_connections": 4000, "type": "fixed"},
+        {"cu": 52, "ram_gb": 104, "max_connections": 4000, "type": "fixed"},
+        {"cu": 56, "ram_gb": 112, "max_connections": 4000, "type": "fixed"},
+        {"cu": 60, "ram_gb": 120, "max_connections": 4000, "type": "fixed"},
+        {"cu": 64, "ram_gb": 128, "max_connections": 4000, "type": "fixed"},
+        {"cu": 72, "ram_gb": 144, "max_connections": 4000, "type": "fixed"},
+        {"cu": 80, "ram_gb": 160, "max_connections": 4000, "type": "fixed"},
+        {"cu": 88, "ram_gb": 176, "max_connections": 4000, "type": "fixed"},
+        {"cu": 96, "ram_gb": 192, "max_connections": 4000, "type": "fixed"},
+        {"cu": 104, "ram_gb": 208, "max_connections": 4000, "type": "fixed"},
+        {"cu": 112, "ram_gb": 224, "max_connections": 4000, "type": "fixed"},
+    ]
+    
+    all_cu_values = [s["cu"] for s in autoscale_sizes + fixed_sizes]
     
     return {
         "success": True,
         "data": {
-            "count": len(cu_sizes),
-            "cu_sizes": cu_sizes,
-            "description": "Compute Units (CU) available for Lakebase. 1 CU = 1 DBU per hour."
+            "total_sizes": len(all_cu_values),
+            "all_cu_values": all_cu_values,
+            "autoscale_sizes": autoscale_sizes,
+            "fixed_sizes": fixed_sizes,
+            "dbu_per_cu_hour": {
+                "AWS": {"PREMIUM": 0.230, "ENTERPRISE": 0.213},
+                "AZURE": {"PREMIUM": 1.0, "ENTERPRISE": 1.0, "STANDARD": 1.0},
+                "GCP": {"PREMIUM": 1.0, "ENTERPRISE": 1.0}
+            },
+            "notes": {
+                "ram": "Each CU allocates approximately 2 GB RAM",
+                "autoscale": "Autoscaling supported for 0.5-32 CU. Range constraint: max - min <= 8 CU. Supports scale-to-zero.",
+                "fixed": "Fixed-size computes (36-112 CU) do not support autoscaling."
+            }
         }
     }
 
 
 @app.get("/api/v1/lakebase/calculate", tags=["Lakebase"])
 async def calculate_lakebase_dbu(
-    cu_size: int = Query(..., description="Compute Unit size (required): 1, 2, 4, or 8"),
-    num_nodes: int = Query(..., description="Number of nodes (required): 1 to 3")
+    cu_size: float = Query(..., description="Compute Unit size (required): 0.5 to 112. See /api/v1/lakebase/list for valid values."),
+    cloud: str = Query(..., description="Cloud provider (required): AWS, AZURE, GCP"),
+    tier: str = Query(..., description="Pricing tier (required): PREMIUM, ENTERPRISE"),
+    read_replicas: int = Query(0, ge=0, description="Number of read replicas (0 = primary only). Default: 0")
 ):
     """
-    Calculate Lakebase DBU usage based on CU size and number of nodes.
+    Calculate Lakebase DBU usage based on CU size, cloud, tier, and read replicas.
     
-    **CU size is REQUIRED** - Must be one of: 1, 2, 4, 8
-    **Number of nodes is REQUIRED** - Must be between 1 and 3
+    **DBU per CU Hour varies by cloud/tier:**
+    - AWS Premium: 0.230 DBU per CU hour
+    - AWS Enterprise: 0.213 DBU per CU hour
+    - Azure / GCP (all tiers): 1.0 DBU per CU hour
     
-    **Simple Formula (no database lookup, no cloud difference):**
-    - Total DBU per hour = CU size × Number of nodes
-    - 1 CU = 1 DBU per hour
-    - Same calculation for all clouds (AWS, AZURE, GCP)
+    **Formula:**
+    - DBU per hour (per compute) = CU size × DBU-per-CU-hour rate
+    - Total computes = 1 (primary) + read_replicas
+    - Total DBU per hour = DBU per hour × Total computes
     
     **Discovery Endpoint:**
-    - `/api/v1/lakebase/list` - Get all available CU sizes
+    - `/api/v1/lakebase/list` - Get all available CU sizes and DBU rates
     
-    **Example Calculations:**
-    - CU=2, Nodes=2 → 2 × 2 = 4 DBU/hour
-    - CU=4, Nodes=3 → 4 × 3 = 12 DBU/hour
-    - CU=8, Nodes=1 → 8 × 1 = 8 DBU/hour
+    **Example Calculations (AWS Enterprise, cu=4):**
+    - No replicas: 4 × 0.213 × 1 = 0.852 DBU/hour
+    - 1 replica: 4 × 0.213 × 2 = 1.704 DBU/hour
+    
+    **Example Calculations (Azure, cu=4):**
+    - No replicas: 4 × 1.0 × 1 = 4.0 DBU/hour
+    - 1 replica: 4 × 1.0 × 2 = 8.0 DBU/hour
     """
-    # Validate CU size
-    valid_cu_sizes = [1, 2, 4, 8]
+    valid_cu_sizes = [
+        0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 24, 28, 32,
+        36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112
+    ]
     if cu_size not in valid_cu_sizes:
         return {
             "success": False,
             "error": {
                 "code": "INVALID_CU_SIZE",
-                "message": f"Invalid CU size '{cu_size}'. Must be one of: {', '.join(map(str, valid_cu_sizes))}",
+                "message": f"Invalid CU size '{cu_size}'. See /api/v1/lakebase/list for valid values.",
                 "field": "cu_size",
                 "allowed_values": valid_cu_sizes
             }
         }
     
-    # Validate number of nodes
-    if num_nodes < 1 or num_nodes > 3:
+    cloud_upper = cloud.upper()
+    if cloud_upper not in ["AWS", "AZURE", "GCP"]:
         return {
             "success": False,
             "error": {
-                "code": "INVALID_NUM_NODES",
-                "message": f"Invalid number of nodes '{num_nodes}'. Must be between 1 and 3.",
-                "field": "num_nodes",
-                "allowed_values": [1, 2, 3]
+                "code": "INVALID_CLOUD",
+                "message": f"Invalid cloud '{cloud}'. Must be AWS, AZURE, or GCP.",
+                "field": "cloud",
+                "allowed_values": ["AWS", "AZURE", "GCP"]
             }
         }
     
-    # Simple calculation: Total DBU/hour = CU size × Number of nodes
-    # No database lookup needed - 1 CU always equals 1 DBU per hour
-    # Same for all clouds
-    total_dbu_per_hour = cu_size * num_nodes
+    tier_upper = tier.upper()
+    dbu_rates = {
+        "AWS": {"PREMIUM": 0.230, "ENTERPRISE": 0.213},
+        "AZURE": {"PREMIUM": 1.0, "ENTERPRISE": 1.0, "STANDARD": 1.0},
+        "GCP": {"PREMIUM": 1.0, "ENTERPRISE": 1.0}
+    }
+    
+    cloud_rates = dbu_rates.get(cloud_upper, {})
+    if tier_upper not in cloud_rates:
+        return {
+            "success": False,
+            "error": {
+                "code": "INVALID_TIER",
+                "message": f"Invalid tier '{tier}' for cloud '{cloud_upper}'. Must be one of: {list(cloud_rates.keys())}",
+                "field": "tier",
+                "allowed_values": list(cloud_rates.keys())
+            }
+        }
+    
+    dbu_per_cu_hour = cloud_rates[tier_upper]
+    total_computes = 1 + read_replicas
+    dbu_per_hour_per_compute = cu_size * dbu_per_cu_hour
+    total_dbu_per_hour = dbu_per_hour_per_compute * total_computes
+    
+    cu_spec_type = "autoscale" if cu_size <= 32 else "fixed"
+    ram_gb = int(cu_size * 2)
     
     return {
         "success": True,
         "data": {
             "cu_size": cu_size,
-            "num_nodes": num_nodes,
-            "total_dbu_per_hour": total_dbu_per_hour,
-            "calculation": f"{cu_size} CU × {num_nodes} nodes = {total_dbu_per_hour} DBU/hour",
-            "description": f"Lakebase instance with {cu_size} CU and {num_nodes} node(s)",
-            "note": "1 CU = 1 DBU per hour (same across all clouds)"
+            "cu_type": cu_spec_type,
+            "ram_gb": ram_gb,
+            "cloud": cloud_upper,
+            "tier": tier_upper,
+            "read_replicas": read_replicas,
+            "total_computes": total_computes,
+            "dbu_per_cu_hour": dbu_per_cu_hour,
+            "dbu_per_hour_per_compute": round(dbu_per_hour_per_compute, 6),
+            "total_dbu_per_hour": round(total_dbu_per_hour, 6),
+            "calculation": f"{cu_size} CU × {dbu_per_cu_hour} DBU/CU-hr × {total_computes} compute(s) = {round(total_dbu_per_hour, 6)} DBU/hour",
+            "description": f"Lakebase {cu_spec_type} compute with {cu_size} CU (~{ram_gb} GB RAM) and {read_replicas} read replica(s)"
         }
     }
 
@@ -2674,7 +3536,17 @@ async def get_model_serving_gpu_types(
                         "dbu_rate": float(r.dbu_rate) if r.dbu_rate else None
                     }
                     for r in results
-                ]
+                ],
+                "scale_out_presets": {
+                    "small": {"concurrency": 4, "dbu_multiplier": 4, "range": "4"},
+                    "medium": {"concurrency": 12, "dbu_multiplier": 12, "range": "8-16"},
+                    "large": {"concurrency": 40, "dbu_multiplier": 40, "range": "16-64"}
+                },
+                "custom_scale_out": {
+                    "min": 4,
+                    "step": 4,
+                    "note": "Custom concurrency must be a multiple of 4 (4, 8, 12, 16, ...)"
+                }
             }
         }
     except Exception as e:
@@ -3153,7 +4025,90 @@ async def get_fmapi_proprietary_models(
 # COST CALCULATION ENDPOINTS
 # ============================================================================
 
-# Request Models
+# Request Models - Discount Configuration
+class GlobalDiscountConfig(BaseModel):
+    """Global discount configuration by category.
+
+    CROSS-SERVICE DISCOUNT BEHAVIOR (dbu_discount):
+    ------------------------------------------------
+    The `dbu_discount` field represents the cross-service (EA) discount that
+    customers negotiate with Databricks. Per https://www.databricks.com/product/sku-groups#exclusions,
+    this discount does NOT apply to all DBU-based SKUs.
+
+    INCLUDED in cross-service discount (dbu_discount applies):
+      - Jobs Compute, All-Purpose Compute, DLT, SQL Compute, Serverless SQL,
+        Jobs Serverless, All-Purpose Serverless, Enhanced Security, Clean Rooms,
+        Database Serverless Compute
+
+    EXCLUDED from cross-service discount (dbu_discount does NOT apply):
+      - Serverless Real-Time Inference (Model Serving)
+      - Model Training
+      - OpenAI / Anthropic / Gemini Model Serving (FMAPI proprietary)
+      - Data Transfer (all egress SKUs)
+      - Databricks Storage
+
+    To discount an excluded SKU, use `sku_specific` with the exact SKU name.
+
+    AZURE NOTE: Azure does not have a published cross-service SKU group.
+    For Azure, dbu_discount is applied to all eligible DBU SKUs (same rules).
+    """
+    dbu_discount: float = Field(
+        default=0, ge=0, le=100,
+        description=(
+            "Cross-service DBU discount % (0-100). "
+            "Applied ONLY to SKUs included in the Databricks Cross-Service SKU Group. "
+            "EXCLUDED: FMAPI proprietary (OpenAI/Anthropic/Gemini), Model Training, "
+            "Serverless Inference, Data Transfer, Storage. "
+            "Use sku_specific to discount excluded SKUs."
+        ),
+    )
+    vm_discount: float = Field(default=0, ge=0, le=100, description="VM discount percentage (0-100)")
+    storage_discount: float = Field(default=0, ge=0, le=100, description="Storage discount percentage (0-100)")
+    platform_addon_discount: float = Field(default=0, ge=0, le=100, description="Platform add-on discount percentage (0-100)")
+    support_discount: float = Field(default=0, ge=0, le=100, description="Support discount percentage (0-100)")
+
+
+class DiscountConfig(BaseModel):
+    """Discount configuration for cost calculations.
+
+    DISCOUNT RESOLUTION ORDER (per SKU):
+    1. sku_specific  → exact SKU match wins (highest priority, ignores eligibility)
+    2. global.dbu_discount → applied ONLY if the SKU is cross-service eligible
+    3. global.vm_discount / storage_discount / etc. → applied by category
+    4. No match → 0% discount
+
+    If a SKU is EXCLUDED from the cross-service group, dbu_discount is skipped
+    and the response will show source="global:dbu:excluded_from_cross_service".
+    To override, add the SKU to sku_specific explicitly.
+    """
+    global_discounts: GlobalDiscountConfig = Field(alias="global", description="Global discounts by category")
+    sku_specific: dict[str, float] = Field(
+        default={},
+        description=(
+            "SKU-specific discount overrides (SKU name -> discount %). "
+            "These ALWAYS apply regardless of cross-service eligibility. "
+            "Use this to discount excluded SKUs like FMAPI proprietary models."
+        ),
+    )
+    notes: Optional[str] = Field(default=None, description="Notes about the discount")
+    effective_date: Optional[str] = Field(default=None, description="When discount becomes effective (YYYY-MM-DD)")
+    expiry_date: Optional[str] = Field(default=None, description="When discount expires (YYYY-MM-DD)")
+    
+    class Config:
+        populate_by_name = True  # Allow both 'global' and 'global_discounts'
+    
+    def validate_sku_specific(self) -> list[str]:
+        """Validate SKU-specific discount percentages and return errors"""
+        errors = []
+        for sku, discount_pct in self.sku_specific.items():
+            if not isinstance(discount_pct, (int, float)):
+                errors.append(f"SKU '{sku}': discount must be a number, got {type(discount_pct).__name__}")
+            elif discount_pct < 0 or discount_pct > 100:
+                errors.append(f"SKU '{sku}': discount must be between 0 and 100, got {discount_pct}")
+        return errors
+
+
+# Request Models - Workload Calculations
 class JobsClassicCalculationRequest(BaseModel):
     """Request model for JOBS Classic cost calculation"""
     # Core parameters
@@ -3180,7 +4135,7 @@ class JobsClassicCalculationRequest(BaseModel):
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
     
     # Discount configuration (optional)
-    discount_config: Optional[dict] = Field(None, description="Discount configuration with global and SKU-specific discounts")
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/jobs-classic", tags=["Cost Calculation"])
@@ -3463,6 +4418,12 @@ async def calculate_jobs_classic_cost(
             num_workers=request.num_workers
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
         # Apply discount if provided
         if request.discount_config:
             sku_breakdown = await apply_discount_to_sku_breakdown(
@@ -3521,8 +4482,14 @@ async def calculate_jobs_classic_cost(
             }
         }
         
-        # Add discount summary if discount was applied
+        # Enhance total_cost and add discount summary if discount was applied
         if request.discount_config:
+            # Enhance total_cost with discount details
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+            # Also add discount_summary for backward compatibility
             discount_summary = calculate_total_discount_summary(sku_breakdown)
             response_data["data"]["discount_summary"] = discount_summary
         
@@ -3891,6 +4858,9 @@ class JobsServerlessCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per job in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/jobs-serverless", tags=["Cost Calculation"])
@@ -3943,6 +4913,70 @@ async def calculate_jobs_serverless_cost(
       "num_workers": 2,
       "serverless_mode": "performance",
       "hours_per_month": 150
+    }
+    ```
+    
+    With Discounts:
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "driver_node_type": "m5.xlarge",
+      "worker_node_type": "m5.xlarge",
+      "num_workers": 4,
+      "serverless_mode": "standard",
+      "runs_per_day": 12,
+      "avg_runtime_minutes": 45,
+      "days_per_month": 22,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20
+        },
+        "sku_specific": {
+          "JOBS_SERVERLESS_COMPUTE": 28
+        },
+        "notes": "Enterprise serverless discount"
+      }
+    }
+    ```
+    
+    **Response with Discount (excerpt):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "JOBS_SERVERLESS",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "JOBS_SERVERLESS_COMPUTE",
+            "cost": 693.35,
+            "cost_after_discount": 499.21,
+            "unit_price_after_discount": 0.252,
+            "discount": {
+              "percentage": 28.0,
+              "amount": 194.14,
+              "source": "sku_specific:JOBS_SERVERLESS_COMPUTE"
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 693.35,
+          "breakdown_after_discount": {
+            "dbu_cost": 499.21
+          },
+          "discount_by_category": {
+            "dbu": {
+              "amount": 194.14,
+              "percentage": 28.0
+            }
+          },
+          "total_after_discount": 499.21,
+          "total_discount": 194.14,
+          "effective_discount_percentage": 28.0
+        }
+      }
     }
     ```
     """
@@ -4099,6 +5133,30 @@ async def calculate_jobs_serverless_cost(
             dbu_price=float(row.dbu_price) if row.dbu_price else 0
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
+        
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "note": "Serverless has no VM costs - only DBU costs"
+        }
+        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
+        
         return {
             "success": True,
             "data": {
@@ -4127,10 +5185,7 @@ async def calculate_jobs_serverless_cost(
                     "dbu_price": float(row[3]),
                     "dbu_cost_per_month": float(row[4])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "note": "Serverless has no VM costs - only DBU costs"
-                },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
             }
         }
@@ -4174,6 +5229,9 @@ class AllPurposeServerlessCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per session in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/all-purpose-serverless", tags=["Cost Calculation"])
@@ -4229,6 +5287,31 @@ async def calculate_all_purpose_serverless_cost(
       "num_workers": 2,
       "serverless_mode": "standard",
       "hours_per_month": 730
+    }
+    ```
+    
+    Option 3 - With Discounts:
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "driver_node_type": "m5.xlarge",
+      "worker_node_type": "m5.xlarge",
+      "num_workers": 4,
+      "serverless_mode": "performance",
+      "runs_per_day": 10,
+      "avg_runtime_minutes": 45,
+      "days_per_month": 22,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 25
+        },
+        "sku_specific": {
+          "ALL_PURPOSE_SERVERLESS_COMPUTE": 30
+        },
+        "notes": "Volume discount for serverless"
+      }
     }
     ```
     """
@@ -4378,22 +5461,36 @@ async def calculate_all_purpose_serverless_cost(
         )
         
         # Build SKU breakdown for discount application
-        
         sku_breakdown = build_sku_breakdown_serverless(
-        
             sku_type=sku_type,
-        
             dbu_cost=float(row.dbu_cost_per_month) if row.dbu_cost_per_month else 0,
-        
             dbu_quantity=float(row.dbu_per_month) if row.dbu_per_month else 0,
-        
             dbu_price=float(row.dbu_price) if row.dbu_price else 0
-        
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
         
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
         
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "note": "Serverless has no VM costs - only DBU costs"
+        }
         
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
         
         return {
             "success": True,
@@ -4423,10 +5520,7 @@ async def calculate_all_purpose_serverless_cost(
                     "dbu_price": float(row[3]),
                     "dbu_cost_per_month": float(row[4])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "note": "Serverless has no VM costs - only DBU costs"
-                },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
             }
         }
@@ -4470,6 +5564,9 @@ class DBSQLClassicProCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/dbsql-classic-pro", tags=["Cost Calculation"])
@@ -4525,6 +5622,79 @@ async def calculate_dbsql_classic_pro_cost(
       "vm_pricing_tier": "reserved_1y",
       "vm_payment_option": "no_upfront",
       "hours_per_month": 730
+    }
+    ```
+    
+    Option 3 - With Discounts (SKU-specific overrides global):
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "warehouse_type": "CLASSIC",
+      "warehouse_size": "Medium",
+      "num_clusters": 2,
+      "vm_pricing_tier": "on_demand",
+      "hours_per_month": 160,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 18,
+          "vm_discount": 12
+        },
+        "sku_specific": {
+          "SQL_COMPUTE": 22,
+          "VM_ON_DEMAND": 15
+        },
+        "notes": "SQL warehouse discount with SKU overrides"
+      }
+    }
+    ```
+    
+    **Response Structure (with SKU-specific discounts):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DBSQL_CLASSIC_PRO",
+        "total_cost": {
+          "cost_per_month": 4085.76,
+          "breakdown": {
+            "dbu_cost": 1689.6,
+            "vm_cost": 2396.16
+          },
+          "breakdown_after_discount": {
+            "dbu_cost": 1317.89,
+            "vm_cost": 2036.74
+          },
+          "discount_by_category": {
+            "dbu": { "amount": 371.71, "percentage": 22.0 },
+            "vm": { "amount": 359.42, "percentage": 15.0 }
+          },
+          "total_after_discount": 3354.63,
+          "total_discount": 731.13,
+          "effective_discount_percentage": 17.89
+        },
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SQL_COMPUTE",
+            "cost": 1689.6,
+            "cost_after_discount": 1317.89,
+            "unit_price_before_discount": 0.22,
+            "unit_price_after_discount": 0.1716,
+            "discount": { "percentage": 22.0, "amount": 371.71, "source": "sku_specific:SQL_COMPUTE" }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_ON_DEMAND",
+            "cost": 798.72,
+            "cost_after_discount": 678.91,
+            "unit_price_before_discount": 4.992,
+            "unit_price_after_discount": 4.2432,
+            "discount": { "percentage": 15.0, "amount": 119.81, "source": "sku_specific:VM_ON_DEMAND" }
+          }
+        ]
+      }
     }
     ```
     """
@@ -4708,6 +5878,33 @@ async def calculate_dbsql_classic_pro_cost(
             num_workers=1  # DBSQL has driver + workers bundled
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
+        
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "breakdown": {
+                "dbu_cost": float(row[4]),
+                "vm_cost": float(row[10])
+            }
+        }
+        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
+        
         return {
             "success": True,
             "data": {
@@ -4740,14 +5937,8 @@ async def calculate_dbsql_classic_pro_cost(
                     "total_worker_vm_cost_per_month": float(row[9]),
                     "vm_cost_per_month": float(row[10])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "breakdown": {
-                        "dbu_cost": float(row[4]),
-                        "vm_cost": float(row[10])
-                    },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
-                }
             }
         }
         
@@ -4785,6 +5976,9 @@ class DBSQLServerlessCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/dbsql-serverless", tags=["Cost Calculation"])
@@ -4834,6 +6028,61 @@ async def calculate_dbsql_serverless_cost(
       "warehouse_size": "Large",
       "num_clusters": 2,
       "hours_per_month": 730
+    }
+    ```
+    
+    Option 3 - With Discounts (SKU-specific overrides global):
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "warehouse_size": "Medium",
+      "num_clusters": 1,
+      "hours_per_month": 200,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 22
+        },
+        "sku_specific": {
+          "SERVERLESS_SQL_COMPUTE": 25
+        },
+        "notes": "Serverless SQL discount"
+      }
+    }
+    ```
+    
+    **Response Structure (with discounts):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DBSQL_SERVERLESS",
+        "total_cost": {
+          "cost_per_month": 3360.0,
+          "note": "Serverless has no VM costs - only DBU costs",
+          "breakdown_after_discount": {
+            "dbu_cost": 2520.0
+          },
+          "discount_by_category": {
+            "dbu": { "amount": 840.0, "percentage": 25.0 }
+          },
+          "total_after_discount": 2520.0,
+          "total_discount": 840.0,
+          "effective_discount_percentage": 25.0
+        },
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SERVERLESS_SQL_COMPUTE",
+            "cost": 3360.0,
+            "cost_after_discount": 2520.0,
+            "unit_price_before_discount": 0.7,
+            "unit_price_after_discount": 0.525,
+            "discount": { "percentage": 25.0, "amount": 840.0, "source": "sku_specific:SERVERLESS_SQL_COMPUTE" }
+          }
+        ]
+      }
     }
     ```
     """
@@ -4978,6 +6227,30 @@ async def calculate_dbsql_serverless_cost(
             dbu_price=float(row[3]) if row[3] else 0
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
+        
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "note": "Serverless has no VM costs - only DBU costs"
+        }
+        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
+        
         return {
             "success": True,
             "data": {
@@ -5000,10 +6273,7 @@ async def calculate_dbsql_serverless_cost(
                     "dbu_price": float(row[3]),
                     "dbu_cost_per_month": float(row[4])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "note": "Serverless warehouses have no VM costs"
-                },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
             }
         }
@@ -5053,6 +6323,9 @@ class DLTClassicCalculationRequest(BaseModel):
     avg_runtime_minutes: Optional[int] = Field(None, ge=0, description="Average runtime per run in minutes (optional if hours_per_month provided)")
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month (optional if hours_per_month provided)")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month (optional if run-based parameters provided)")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/dlt-classic", tags=["Cost Calculation"])
@@ -5116,6 +6389,91 @@ async def calculate_dlt_classic_cost(
       "driver_payment_option": "NA",
       "worker_payment_option": "no_upfront",
       "hours_per_month": 730
+    }
+    ```
+    
+    Option 3 - With Discounts (SKU-specific overrides global):
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "dlt_edition": "PRO",
+      "photon_enabled": true,
+      "driver_node_type": "m5.xlarge",
+      "worker_node_type": "m5.xlarge",
+      "num_workers": 3,
+      "driver_pricing_tier": "on_demand",
+      "worker_pricing_tier": "spot",
+      "hours_per_month": 150,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 15,
+          "vm_discount": 10
+        },
+        "sku_specific": {
+          "DLT_PRO_COMPUTE_(PHOTON)": 20,
+          "VM_SPOT": 12
+        },
+        "notes": "DLT pipeline discount with SKU overrides"
+      }
+    }
+    ```
+    
+    **Response Structure (with SKU-specific discounts):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DLT",
+        "total_cost": {
+          "cost_per_month": 361.08,
+          "breakdown": {
+            "dbu_cost": 300.15,
+            "vm_cost": 60.93
+          },
+          "breakdown_after_discount": {
+            "dbu_cost": 240.12,
+            "vm_cost": 54.19
+          },
+          "discount_by_category": {
+            "dbu": { "amount": 60.03, "percentage": 20.0 },
+            "vm": { "amount": 6.74, "percentage": 11.06 }
+          },
+          "total_after_discount": 294.31,
+          "total_discount": 66.77,
+          "effective_discount_percentage": 18.49
+        },
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "DLT_PRO_COMPUTE_(PHOTON)",
+            "cost": 300.15,
+            "cost_after_discount": 240.12,
+            "unit_price_before_discount": 0.25,
+            "unit_price_after_discount": 0.2,
+            "discount": { "percentage": 20.0, "amount": 60.03, "source": "sku_specific:DLT_PRO_COMPUTE_(PHOTON)" }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_ON_DEMAND",
+            "cost": 28.8,
+            "cost_after_discount": 25.92,
+            "unit_price_before_discount": 0.192,
+            "unit_price_after_discount": 0.1728,
+            "discount": { "percentage": 10.0, "amount": 2.88, "source": "global:vm" }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_SPOT",
+            "cost": 32.13,
+            "cost_after_discount": 28.27,
+            "unit_price_before_discount": 0.2142,
+            "unit_price_after_discount": 0.188496,
+            "discount": { "percentage": 12.0, "amount": 3.86, "source": "sku_specific:VM_SPOT" }
+          }
+        ]
+      }
     }
     ```
     """
@@ -5301,6 +6659,33 @@ async def calculate_dlt_classic_cost(
             num_workers=request.num_workers
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
+        
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "breakdown": {
+                "dbu_cost": float(row[4]),
+                "vm_cost": float(row[10])
+            }
+        }
+        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
+        
         return {
             "success": True,
             "data": {
@@ -5337,14 +6722,8 @@ async def calculate_dlt_classic_cost(
                     "total_worker_vm_cost_per_month": float(row[9]),
                     "vm_cost_per_month": float(row[10])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "breakdown": {
-                        "dbu_cost": float(row[4]),
-                        "vm_cost": float(row[10])
-                    },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
-                }
             }
         }
         
@@ -5372,6 +6751,9 @@ class DLTServerlessCalculationRequest(BaseModel):
     cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
+    
+    # Discount configuration
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
     
     # Note: Photon is ALWAYS enabled for serverless workloads (no parameter needed)
     # Note: DLT Serverless does NOT have editions - editions are only for Classic
@@ -5445,6 +6827,60 @@ async def calculate_dlt_serverless_cost(
       "num_workers": 3,
       "serverless_mode": "standard",
       "hours_per_month": 730
+    }
+    ```
+    
+    Option 3 - With Discounts:
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "driver_node_type": "m5.xlarge",
+      "worker_node_type": "m5.xlarge",
+      "num_workers": 4,
+      "serverless_mode": "standard",
+      "hours_per_month": 180,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20
+        },
+        "notes": "DLT serverless discount"
+      }
+    }
+    ```
+    
+    **Response Structure (with discounts):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DLT_SERVERLESS",
+        "total_cost": {
+          "cost_per_month": 630.32,
+          "note": "Serverless has no VM costs - only DBU costs",
+          "breakdown_after_discount": {
+            "dbu_cost": 504.26
+          },
+          "discount_by_category": {
+            "dbu": { "amount": 126.06, "percentage": 20.0 }
+          },
+          "total_after_discount": 504.26,
+          "total_discount": 126.06,
+          "effective_discount_percentage": 20.0
+        },
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "JOBS_SERVERLESS_COMPUTE",
+            "cost": 630.32,
+            "cost_after_discount": 504.26,
+            "unit_price_before_discount": 0.35,
+            "unit_price_after_discount": 0.28,
+            "discount": { "percentage": 20.0, "amount": 126.06, "source": "global:dbu" }
+          }
+        ]
+      }
     }
     ```
     """
@@ -5602,6 +7038,30 @@ async def calculate_dlt_serverless_cost(
             dbu_price=float(row[3])
         )
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown, 
+                request.discount_config, 
+                db
+            )
+        
+        # Build total_cost structure
+        total_cost = {
+            "cost_per_month": float(row[11]),
+            "note": "Serverless has no VM costs - only DBU costs"
+        }
+        
+        # Enhance total_cost with discount details if discounts applied
+        if request.discount_config:
+            total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
+        
         return {
             "success": True,
             "data": {
@@ -5630,10 +7090,7 @@ async def calculate_dlt_serverless_cost(
                     "dbu_price": float(row[3]),
                     "dbu_cost_per_month": float(row[4])
                 },
-                "total_cost": {
-                    "cost_per_month": float(row[11]),
-                    "note": "Serverless has no VM costs - only DBU costs"
-                },
+                "total_cost": total_cost,
                 "sku_breakdown": sku_breakdown
             }
         }
@@ -5665,6 +7122,7 @@ class VectorSearchCalculationRequest(BaseModel):
     vector_capacity_millions: float = Field(..., description="Vector capacity in millions", ge=0)
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
     storage_gb: float = Field(0, description="Total storage in GB (first 20 GB per unit is free)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/vector-search", tags=["Cost Calculation"])
@@ -5738,6 +7196,81 @@ async def calculate_vector_search_cost(
         "breakdown": {
           "dbu_cost": ...,
           "storage_cost": 2.30
+        }
+      }
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "mode": "standard",
+      "vector_capacity_millions": 100,
+      "hours_per_month": 730,
+      "storage_gb": 500,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 15,
+          "storage_discount": 10
+        },
+        "sku_specific": {
+          "SERVERLESS_REAL_TIME_INFERENCE": 25
+        },
+        "notes": "Q1 2026 discount - SKU-specific override for Vector Search"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "VECTOR_SEARCH",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SERVERLESS_REAL_TIME_INFERENCE",
+            "cost": 10220.0,
+            "cost_after_discount": 7665.0,
+            "qty": 73000.0,
+            "usage_unit": "DBU",
+            "unit_price_before_discount": 0.14,
+            "unit_price_after_discount": 0.105,
+            "discount": {
+              "percentage_applied": 25.0,
+              "source": "sku_specific:SERVERLESS_REAL_TIME_INFERENCE",
+              "amount_saved": 2555.0
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 10220.0,
+          "breakdown": {
+            "dbu_cost": 10220.0,
+            "storage_cost": 0.0
+          },
+          "breakdown_after_discount": {
+            "dbu_cost": 7665.0,
+            "storage_cost": 0.0
+          },
+          "discount_by_category": {
+            "dbu": {
+              "amount": 2555.0,
+              "percentage": 25.0
+            },
+            "storage": {
+              "amount": 0.0,
+              "percentage": 0.0
+            }
+          },
+          "total_after_discount": 7665.0,
+          "total_discount": 2555.0,
+          "effective_discount_percentage": 25.0,
+          "note": "Vector Search is serverless - no VM costs"
         }
       }
     }
@@ -5857,14 +7390,28 @@ async def calculate_vector_search_cost(
         if storage_cost_per_month > 0:
             sku_breakdown.append({
                 "type": "storage",
-                "sku": "VECTOR_SEARCH_STORAGE",
+                "sku": "DATABRICKS_STORAGE",
                 "cost": round(storage_cost_per_month, 2),
                 "qty": round(billable_storage_gb, 2),
                 "usage_unit": "DSU",
                 "unit_price_before_discount": round(price_per_gb_per_month, 6)
             })
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "VECTOR_SEARCH",
@@ -5906,6 +7453,15 @@ async def calculate_vector_search_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -5928,7 +7484,10 @@ class ModelServingCalculationRequest(BaseModel):
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     gpu_type: str = Field(..., description="GPU type (e.g., gpu_small_t4, gpu_xlarge_a100_80gb_8x)")
+    scale_out: str = Field("small", description="Scale-out preset: small (4), medium (12), large (40), or custom")
+    concurrency: Optional[int] = Field(None, description="Custom concurrency (required when scale_out='custom'). Must be a multiple of 4, minimum 4.")
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/model-serving", tags=["Cost Calculation"])
@@ -5941,20 +7500,64 @@ async def calculate_model_serving_cost(
     
     **GPU Types:** cpu, gpu_small_t4, gpu_medium_a10g_1x, gpu_xlarge_a100_80gb_8x, etc.
     
+    **Scale-out presets:**
+    - small: 4 concurrency (4 DBU multiplier)
+    - medium: 12 concurrency (avg of 8-16 range)
+    - large: 40 concurrency (avg of 16-64 range)
+    - custom: provide your own concurrency value (multiples of 4)
+    
     **Formula:**
     ```
-    DBU/Hour = gpu_type_dbu_rate
-    Total Cost = DBU/Hour × hours_per_month × dbu_price
+    DBU/Hour = gpu_dbu_rate × concurrency
+    DBU/Month = DBU/Hour × hours_per_month
+    Cost = DBU/Month × dbu_price
     ```
     
-    **Example Request:**
+    **Example Request (preset):**
     ```json
     {
       "cloud": "AWS",
       "region": "us-east-1",
       "tier": "PREMIUM",
       "gpu_type": "gpu_small_t4",
+      "scale_out": "medium",
       "hours_per_month": 730
+    }
+    ```
+    
+    **Example Request (custom concurrency):**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "gpu_type": "gpu_small_t4",
+      "scale_out": "custom",
+      "concurrency": 24,
+      "hours_per_month": 730
+    }
+    ```
+    
+    **Example Request (custom concurrency with discounts):**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "gpu_type": "gpu_small_t4",
+      "scale_out": "custom",
+      "concurrency": 24,
+      "hours_per_month": 730,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 15,
+          "storage_discount": 10
+        },
+        "sku_specific": {
+          "SERVERLESS_REAL_TIME_INFERENCE": 25
+        },
+        "notes": "Q1 2026 discount - SKU-specific override"
+      }
     }
     ```
     """
@@ -5970,16 +7573,48 @@ async def calculate_model_serving_cost(
     if error:
         raise HTTPException(status_code=400, detail=error["error"])
     
-    # Validate GPU type exists for this cloud
-    query_check = text("""
-        SELECT COUNT(*) FROM lakemeter.sync_product_serverless_rates
+    # Resolve concurrency from scale_out preset or custom value
+    scale_out_presets = {
+        "small": 4,
+        "medium": 12,
+        "large": 40
+    }
+    scale_out_lower = request.scale_out.lower()
+    
+    if scale_out_lower == "custom":
+        if request.concurrency is None:
+            raise HTTPException(status_code=400, detail={
+                "code": "MISSING_CONCURRENCY",
+                "message": "concurrency is required when scale_out='custom'.",
+                "field": "concurrency"
+            })
+        if request.concurrency < 4 or request.concurrency % 4 != 0:
+            raise HTTPException(status_code=400, detail={
+                "code": "INVALID_CONCURRENCY",
+                "message": f"concurrency must be a multiple of 4 (minimum 4). Got {request.concurrency}.",
+                "field": "concurrency"
+            })
+        effective_concurrency = request.concurrency
+    elif scale_out_lower in scale_out_presets:
+        effective_concurrency = scale_out_presets[scale_out_lower]
+    else:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_SCALE_OUT",
+            "message": f"scale_out must be one of: small, medium, large, custom. Got '{request.scale_out}'.",
+            "field": "scale_out",
+            "allowed_values": ["small", "medium", "large", "custom"]
+        })
+    
+    # Validate GPU type and get DBU rate
+    gpu_query = text("""
+        SELECT size_or_model as gpu_type, dbu_rate
+        FROM lakemeter.sync_product_serverless_rates
         WHERE product = 'model_serving' AND cloud = :cloud AND size_or_model = :gpu_type
     """)
-    result_check = await db.execute(query_check, {"cloud": request.cloud.upper(), "gpu_type": request.gpu_type})
-    count = result_check.scalar()
+    gpu_result = await db.execute(gpu_query, {"cloud": request.cloud.upper(), "gpu_type": request.gpu_type})
+    gpu_row = gpu_result.fetchone()
     
-    if count == 0:
-        # Fetch available GPU types for this cloud
+    if not gpu_row:
         query_available = text("""
             SELECT size_or_model as gpu_type, dbu_rate
             FROM lakemeter.sync_product_serverless_rates
@@ -5988,7 +7623,6 @@ async def calculate_model_serving_cost(
         """)
         result_available = await db.execute(query_available, {"cloud": request.cloud.upper()})
         available_gpus = result_available.fetchall()
-        
         gpu_list = [f"{row.gpu_type} ({row.dbu_rate} DBU/hour)" for row in available_gpus]
         
         raise HTTPException(
@@ -6002,34 +7636,14 @@ async def calculate_model_serving_cost(
         )
     
     try:
-        query = text("""
-            SELECT 
-                dbu_per_hour, hours_per_month, dbu_per_month, dbu_price, dbu_cost_per_month,
-                driver_vm_cost_per_hour, worker_vm_cost_per_hour, total_vm_cost_per_hour,
-                driver_vm_cost_per_month, total_worker_vm_cost_per_month, vm_cost_per_month, cost_per_month
-            FROM lakemeter.calculate_line_item_costs(
-                :p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8, :p9, :p10,
-                :p11, :p12, :p13, :p14, :p15, :p16, :p17, :p18, :p19, :p20,
-                :p21, :p22, :p23, :p24, :p25, :p26, :p27, :p28, :p29, :p30,
-                :p31, :p32, :p33, :p34, :p35
-            )
-        """)
+        # --- Independent calculation (no stored function) ---
+        gpu_dbu_rate = float(gpu_row.dbu_rate)
         
-        result = await db.execute(query, {
-            "p1": "MODEL_SERVING", "p2": request.cloud.upper(), "p3": request.region, "p4": request.tier.upper(),
-            "p5": False, "p6": False, "p7": None, "p8": None, "p9": None, "p10": 0,
-            "p11": "on_demand", "p12": "on_demand", "p13": 0, "p14": 0, "p15": 30,
-            "p16": request.hours_per_month, "p17": "standard", "p18": None, "p19": None, "p20": 1,
-            "p21": "on_demand", "p22": None, "p23": 0, "p24": request.gpu_type,
-            "p25": None, "p26": None, "p27": "global", "p28": "all",
-            "p29": "input_token", "p30": 0, "p31": 0, "p32": 1, "p33": "NA", "p34": "NA", "p35": "NA"
-        })
+        # DBU per hour = gpu_dbu_rate × concurrency
+        dbu_per_hour = gpu_dbu_rate * effective_concurrency
+        dbu_per_month = dbu_per_hour * request.hours_per_month
         
-        row = result.fetchone()
-        if not row:
-            raise HTTPException(status_code=500, detail="No calculation result returned")
-        
-        # Get SKU type from database (product_type from sync_pricing_dbu_rates)
+        # Get SKU type
         sku_type = await get_product_type_from_db(
             db=db,
             cloud=request.cloud,
@@ -6039,15 +7653,56 @@ async def calculate_model_serving_cost(
             serverless_enabled=True
         )
         
+        # Look up DBU price
+        dbu_price_query = text("""
+            SELECT price_per_dbu
+            FROM lakemeter.sync_pricing_dbu_rates
+            WHERE product_type = :product_type
+              AND cloud = :cloud
+              AND region = :region
+              AND tier = :tier
+              AND usage_unit = 'DBU'
+            LIMIT 1
+        """)
+        dbu_price_result = await db.execute(dbu_price_query, {
+            "product_type": sku_type,
+            "cloud": request.cloud.upper(),
+            "region": request.region,
+            "tier": request.tier.upper()
+        })
+        dbu_price_row = dbu_price_result.fetchone()
+        if not dbu_price_row:
+            raise HTTPException(status_code=500, detail={
+                "code": "PRICE_NOT_FOUND",
+                "message": f"No DBU price found for {sku_type} in {request.cloud.upper()}/{request.region}/{request.tier.upper()}"
+            })
+        
+        dbu_price = float(dbu_price_row[0])
+        dbu_cost_per_month = dbu_per_month * dbu_price
+        
         # Build SKU breakdown for discount application
         sku_breakdown = build_sku_breakdown_serverless(
             sku_type=sku_type,
-            dbu_cost=float(row[4]),
-            dbu_quantity=float(row[2]),
-            dbu_price=float(row[3])
+            dbu_cost=dbu_cost_per_month,
+            dbu_quantity=dbu_per_month,
+            dbu_price=dbu_price
         )
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "MODEL_SERVING",
@@ -6056,22 +7711,36 @@ async def calculate_model_serving_cost(
                     "cloud": request.cloud.upper(),
                     "region": request.region,
                     "tier": request.tier.upper(),
-                    "gpu_type": request.gpu_type
+                    "gpu_type": request.gpu_type,
+                    "scale_out": scale_out_lower,
+                    "concurrency": effective_concurrency
                 },
-                "usage": {"hours_per_month": float(row[1])},
+                "usage": {"hours_per_month": request.hours_per_month},
                 "dbu_calculation": {
-                    "dbu_per_hour": float(row[0]),
-                    "dbu_per_month": float(row[2]),
-                    "dbu_price": float(row[3]),
-                    "dbu_cost_per_month": float(row[4])
+                    "gpu_dbu_rate": gpu_dbu_rate,
+                    "concurrency": effective_concurrency,
+                    "dbu_per_hour": round(dbu_per_hour, 6),
+                    "dbu_per_month": round(dbu_per_month, 6),
+                    "dbu_price": dbu_price,
+                    "dbu_cost_per_month": round(dbu_cost_per_month, 2),
+                    "calculation": f"{gpu_dbu_rate} DBU/hr × {effective_concurrency} concurrency = {round(dbu_per_hour, 6)} DBU/hr × {request.hours_per_month} hrs = {round(dbu_per_month, 2)} DBU/mo × ${dbu_price}/DBU = ${round(dbu_cost_per_month, 2)}/mo"
                 },
                 "total_cost": {
-                    "cost_per_month": float(row[11]),
+                    "cost_per_month": round(dbu_cost_per_month, 2),
                     "note": "Model Serving is serverless - no VM costs"
                 },
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -6304,6 +7973,7 @@ class FMAPIDatabricksCalculationRequest(BaseModel):
     model: str = Field(..., description="Databricks model name (e.g., llama-3-3-70b, gpt-oss-120b, gemma-3-12b)")
     rate_type: str = Field(..., description="Rate type: input_token, output_token, provisioned_scaling, provisioned_entry")
     quantity: int = Field(..., description="Quantity (tokens or hours depending on rate_type)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/fmapi-databricks", tags=["Cost Calculation"])
@@ -6355,6 +8025,61 @@ async def calculate_fmapi_databricks_cost(
       "model": "gpt-oss-120b",
       "rate_type": "provisioned_scaling",
       "quantity": 730
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "model": "llama-3-3-70b",
+      "rate_type": "input_token",
+      "quantity": 1000000,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 18
+        },
+        "sku_specific": {
+          "OPENAI_MODEL_SERVING": 25
+        },
+        "notes": "Q1 2026 FMAPI Databricks discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "FMAPI_DATABRICKS",
+        "sku_breakdown": [
+          {
+            "type": "fmapi",
+            "sku": "OPENAI_MODEL_SERVING",
+            "cost": 0.5,
+            "cost_after_discount": 0.375,
+            "qty": 1.0,
+            "usage_unit": "DBU",
+            "unit_price_before_discount": 0.5,
+            "unit_price_after_discount": 0.375,
+            "discount": {
+              "percentage_applied": 25.0,
+              "source": "sku_specific:OPENAI_MODEL_SERVING",
+              "amount_saved": 0.125
+            }
+          }
+        ],
+        "cost": {
+          "total_cost": 0.5,
+          "total_after_discount": 0.375,
+          "total_discount": 0.125,
+          "effective_discount_percentage": 25.0,
+          "note": "Cost based on token or provisioned usage"
+        }
+      }
     }
     ```
     """
@@ -6439,7 +8164,21 @@ async def calculate_fmapi_databricks_cost(
             "unit_price_before_discount": round(dbu_price, 6)
         }]
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "FMAPI_DATABRICKS",
@@ -6460,6 +8199,15 @@ async def calculate_fmapi_databricks_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -6487,6 +8235,7 @@ class FMAPIProprietaryCalculationRequest(BaseModel):
     context_length: str = Field("short", description="Context length category: short, long, all")
     rate_type: str = Field(..., description="Rate type: input_token, output_token, provisioned_scaling, etc.")
     quantity: int = Field(..., description="Quantity (tokens or hours depending on rate_type)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/fmapi-proprietary", tags=["Cost Calculation"])
@@ -6541,6 +8290,64 @@ async def calculate_fmapi_proprietary_cost(
       "context_length": "short",
       "rate_type": "provisioned_scaling",
       "quantity": 730
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-5",
+      "endpoint_type": "global",
+      "context_length": "short",
+      "rate_type": "input_token",
+      "quantity": 1000000,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 22
+        },
+        "sku_specific": {
+          "ANTHROPIC_MODEL_SERVING": 28
+        },
+        "notes": "Q1 2026 FMAPI Proprietary discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "FMAPI_PROPRIETARY",
+        "sku_breakdown": [
+          {
+            "type": "fmapi",
+            "sku": "ANTHROPIC_MODEL_SERVING",
+            "cost": 3.0,
+            "cost_after_discount": 2.16,
+            "qty": 1.0,
+            "usage_unit": "DBU",
+            "unit_price_before_discount": 3.0,
+            "unit_price_after_discount": 2.16,
+            "discount": {
+              "percentage_applied": 28.0,
+              "source": "sku_specific:ANTHROPIC_MODEL_SERVING",
+              "amount_saved": 0.84
+            }
+          }
+        ],
+        "cost": {
+          "total_cost": 3.0,
+          "total_after_discount": 2.16,
+          "total_discount": 0.84,
+          "effective_discount_percentage": 28.0,
+          "note": "Cost based on token or provisioned usage"
+        }
+      }
     }
     ```
     """
@@ -6625,7 +8432,21 @@ async def calculate_fmapi_proprietary_cost(
             "unit_price_before_discount": round(dbu_price, 6)
         }]
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "FMAPI_PROPRIETARY",
@@ -6648,6 +8469,15 @@ async def calculate_fmapi_proprietary_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -6669,10 +8499,11 @@ class LakebaseCalculationRequest(BaseModel):
     cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
-    cu_size: int = Field(..., description="Compute unit size: 1, 2, 4, or 8", ge=1, le=8)
-    num_nodes: int = Field(..., description="Number of nodes: 1-3 for HA", ge=1, le=3)
+    cu_size: float = Field(..., description="Compute unit size: 0.5 to 112. See /api/v1/lakebase/list for valid values.", ge=0.5, le=112)
+    num_nodes: int = Field(..., description="Number of nodes: 1-3 (1 = primary only, 2+ includes read replicas)", ge=1, le=3)
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
     storage_gb: float = Field(0, description="Storage in GB (max 8 TB = 8192 GB, no free tier)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/lakebase", tags=["Cost Calculation"])
@@ -6683,14 +8514,20 @@ async def calculate_lakebase_cost(
     """
     Calculate cost for Lakebase (managed PostgreSQL) workload.
     
-    **CU Sizes:** 1, 2, 4, 8  
-    **Nodes:** 1-3 (for high availability)
+    **CU Sizes:** 0.5 to 112 (see /api/v1/lakebase/list for full list)
+    **num_nodes:** 1-3 total nodes (1 = primary only, 2+ includes read replicas).
     **Storage:** 0 - 8192 GB (8 TB max), no free tier
+    
+    **DBU per CU Hour (varies by cloud/tier):**
+    - AWS Premium: 0.230 DBU per CU hour
+    - AWS Enterprise: 0.213 DBU per CU hour
+    - Azure / GCP (all tiers): 1.0 DBU per CU hour
     
     **Formula:**
     ```
-    DBU/Hour = cu_size × num_nodes
-    DBU Cost = DBU/Hour × hours_per_month × dbu_price
+    DBU/Hour per compute = cu_size × dbu_per_cu_hour
+    Total DBU/Hour = DBU/Hour per compute × num_nodes
+    DBU Cost = Total DBU/Hour × hours_per_month × dbu_price
     
     Storage:
     Total DSU = storage_gb × 15 (each GB consumes 15 DSU)
@@ -6704,36 +8541,11 @@ async def calculate_lakebase_cost(
     {
       "cloud": "AWS",
       "region": "us-east-1",
-      "tier": "PREMIUM",
+      "tier": "ENTERPRISE",
       "cu_size": 4,
-      "num_nodes": 2,
+      "num_nodes": 1,
       "hours_per_month": 730,
       "storage_gb": 500
-    }
-    ```
-    
-    **Example Response:**
-    ```json
-    {
-      "dbu_calculation": {
-        "dbu_per_hour": 8,
-        "dbu_cost_per_month": 408.80
-      },
-      "storage_calculation": {
-        "storage_gb": 500,
-        "max_storage_gb": 8192,
-        "dsu_per_gb": 15,
-        "total_dsu": 7500,
-        "price_per_dsu": 0.023,
-        "storage_cost_per_month": 172.50
-      },
-      "total_cost": {
-        "cost_per_month": 581.30,
-        "breakdown": {
-          "dbu_cost": 408.80,
-          "storage_cost": 172.50
-        }
-      }
     }
     ```
     """
@@ -6750,13 +8562,26 @@ async def calculate_lakebase_cost(
     if error:
         raise HTTPException(status_code=400, detail=error["error"])
     
-    error = await validate_lakebase_cu_size(request.cu_size, db)
-    if error:
-        raise HTTPException(status_code=400, detail=error["error"])
+    # Validate CU size against full list
+    valid_cu_sizes = [
+        0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 24, 28, 32,
+        36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112
+    ]
+    if request.cu_size not in valid_cu_sizes:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_CU_SIZE",
+            "message": f"Invalid CU size '{request.cu_size}'. See /api/v1/lakebase/list for valid values.",
+            "field": "cu_size",
+            "allowed_values": valid_cu_sizes
+        })
     
-    error = await validate_lakebase_num_nodes(request.num_nodes, db)
-    if error:
-        raise HTTPException(status_code=400, detail=error["error"])
+    if request.num_nodes < 1 or request.num_nodes > 3:
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_NUM_NODES",
+            "message": f"num_nodes must be between 1 and 3. Got {request.num_nodes}.",
+            "field": "num_nodes",
+            "allowed_values": [1, 2, 3]
+        })
     
     # Storage constants for Lakebase
     MAX_STORAGE_GB = 8192  # 8 TB
@@ -6779,7 +8604,6 @@ async def calculate_lakebase_cost(
     
     if request.storage_gb > 0:
         try:
-            # Get DSU price from database
             storage_price_query = text("""
                 SELECT price_per_dbu as price_per_dsu 
                 FROM lakemeter.sync_pricing_dbu_rates
@@ -6805,36 +8629,33 @@ async def calculate_lakebase_cost(
             logger.warning(f"Could not fetch storage price for Lakebase: {e}")
     
     try:
-        query = text("""
-            SELECT 
-                dbu_per_hour, hours_per_month, dbu_per_month, dbu_price, dbu_cost_per_month,
-                driver_vm_cost_per_hour, worker_vm_cost_per_hour, total_vm_cost_per_hour,
-                driver_vm_cost_per_month, total_worker_vm_cost_per_month, vm_cost_per_month, cost_per_month
-            FROM lakemeter.calculate_line_item_costs(
-                :p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8, :p9, :p10,
-                :p11, :p12, :p13, :p14, :p15, :p16, :p17, :p18, :p19, :p20,
-                :p21, :p22, :p23, :p24, :p25, :p26, :p27, :p28, :p29, :p30,
-                :p31, :p32, :p33, :p34, :p35
-            )
-        """)
+        # --- Independent DBU calculation (no stored function) ---
+        # DBU per CU hour varies by cloud/tier
+        dbu_per_cu_hour_rates = {
+            "AWS": {"PREMIUM": 0.230, "ENTERPRISE": 0.213},
+            "AZURE": {"PREMIUM": 1.0, "ENTERPRISE": 1.0, "STANDARD": 1.0},
+            "GCP": {"PREMIUM": 1.0, "ENTERPRISE": 1.0}
+        }
         
-        result = await db.execute(query, {
-            "p1": "LAKEBASE", "p2": request.cloud.upper(), "p3": request.region, "p4": request.tier.upper(),
-            "p5": False, "p6": False, "p7": None, "p8": None, "p9": None, "p10": 0,
-            "p11": "on_demand", "p12": "on_demand", "p13": 0, "p14": 0, "p15": 30,
-            "p16": request.hours_per_month, "p17": "standard", "p18": None, "p19": None, "p20": 1,
-            "p21": "on_demand", "p22": None, "p23": 0, "p24": None,
-            "p25": None, "p26": None, "p27": "global", "p28": "all",
-            "p29": "input_token", "p30": 0,
-            "p31": request.cu_size, "p32": request.num_nodes,
-            "p33": "NA", "p34": "NA", "p35": "NA"
-        })
+        cloud_upper = request.cloud.upper()
+        tier_upper = request.tier.upper()
         
-        row = result.fetchone()
-        if not row:
-            raise HTTPException(status_code=500, detail="No calculation result returned")
+        cloud_rates = dbu_per_cu_hour_rates.get(cloud_upper, {})
+        dbu_per_cu_hour = cloud_rates.get(tier_upper)
+        if dbu_per_cu_hour is None:
+            raise HTTPException(status_code=400, detail={
+                "code": "UNSUPPORTED_CLOUD_TIER",
+                "message": f"No Lakebase DBU rate for {cloud_upper}/{tier_upper}.",
+                "field": "tier"
+            })
         
-        # Get SKU type from database (product_type from sync_pricing_dbu_rates)
+        # num_nodes = total nodes (1 = primary only, 2+ includes read replicas)
+        total_computes = request.num_nodes
+        dbu_per_hour_per_compute = request.cu_size * dbu_per_cu_hour
+        total_dbu_per_hour = dbu_per_hour_per_compute * total_computes
+        dbu_per_month = total_dbu_per_hour * request.hours_per_month
+        
+        # Look up the DBU list price from sync_pricing_dbu_rates
         sku_type = await get_product_type_from_db(
             db=db,
             cloud=request.cloud,
@@ -6844,48 +8665,94 @@ async def calculate_lakebase_cost(
             serverless_enabled=True
         )
         
-        # Calculate total cost including storage
-        dbu_cost_per_month = float(row[4])
+        dbu_price_query = text("""
+            SELECT price_per_dbu
+            FROM lakemeter.sync_pricing_dbu_rates
+            WHERE product_type = :product_type
+              AND cloud = :cloud
+              AND region = :region
+              AND tier = :tier
+              AND usage_unit = 'DBU'
+            LIMIT 1
+        """)
+        dbu_price_result = await db.execute(dbu_price_query, {
+            "product_type": sku_type,
+            "cloud": cloud_upper,
+            "region": request.region,
+            "tier": tier_upper
+        })
+        dbu_price_row = dbu_price_result.fetchone()
+        if not dbu_price_row:
+            raise HTTPException(status_code=500, detail={
+                "code": "PRICE_NOT_FOUND",
+                "message": f"No DBU price found for {sku_type} in {cloud_upper}/{request.region}/{tier_upper}"
+            })
+        
+        dbu_price = float(dbu_price_row[0])
+        dbu_cost_per_month = dbu_per_month * dbu_price
         total_cost_per_month = dbu_cost_per_month + storage_cost_per_month
         
-        # Build SKU breakdown for discount application (DBU + DSU Storage)
+        # Build SKU breakdown for discount application
         sku_breakdown = build_sku_breakdown_serverless(
             sku_type=sku_type,
             dbu_cost=dbu_cost_per_month,
-            dbu_quantity=float(row[2]),
-            dbu_price=float(row[3])
+            dbu_quantity=dbu_per_month,
+            dbu_price=dbu_price
         )
         
         # Add DSU storage SKU if there's storage
         if storage_cost_per_month > 0:
             sku_breakdown.append({
                 "type": "storage",
-                "sku": "LAKEBASE_STORAGE_DSU",
+                "sku": "DATABRICKS_STORAGE",
                 "cost": round(storage_cost_per_month, 2),
                 "qty": round(total_dsu, 2),
                 "usage_unit": "DSU",
                 "unit_price_before_discount": round(price_per_dsu, 6)
             })
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        cu_type = "autoscale" if request.cu_size <= 32 else "fixed"
+        ram_gb = int(request.cu_size * 2)
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "LAKEBASE",
                 "sku_type": sku_type,
                 "configuration": {
-                    "cloud": request.cloud.upper(),
+                    "cloud": cloud_upper,
                     "region": request.region,
-                    "tier": request.tier.upper(),
+                    "tier": tier_upper,
                     "cu_size": request.cu_size,
+                    "cu_type": cu_type,
+                    "ram_gb": ram_gb,
                     "num_nodes": request.num_nodes,
+                    "total_computes": total_computes,
                     "storage_gb": request.storage_gb
                 },
-                "usage": {"hours_per_month": float(row[1])},
+                "usage": {"hours_per_month": request.hours_per_month},
                 "dbu_calculation": {
-                    "dbu_per_hour": float(row[0]),
-                    "dbu_per_month": float(row[2]),
-                    "dbu_price": float(row[3]),
-                    "dbu_cost_per_month": dbu_cost_per_month
+                    "dbu_per_cu_hour": dbu_per_cu_hour,
+                    "dbu_per_hour_per_compute": round(dbu_per_hour_per_compute, 6),
+                    "total_dbu_per_hour": round(total_dbu_per_hour, 6),
+                    "dbu_per_month": round(dbu_per_month, 6),
+                    "dbu_price": dbu_price,
+                    "dbu_cost_per_month": round(dbu_cost_per_month, 2),
+                    "calculation": f"{request.cu_size} CU × {dbu_per_cu_hour} DBU/CU-hr × {total_computes} compute(s) = {round(total_dbu_per_hour, 6)} DBU/hr × {request.hours_per_month} hrs = {round(dbu_per_month, 2)} DBU/mo × ${dbu_price}/DBU = ${round(dbu_cost_per_month, 2)}/mo"
                 },
                 "storage_calculation": {
                     "storage_gb": request.storage_gb,
@@ -6893,19 +8760,28 @@ async def calculate_lakebase_cost(
                     "dsu_per_gb": DSU_PER_GB,
                     "total_dsu": total_dsu,
                     "price_per_dsu": price_per_dsu,
-                    "storage_cost_per_month": storage_cost_per_month
+                    "storage_cost_per_month": round(storage_cost_per_month, 2)
                 },
                 "total_cost": {
-                    "cost_per_month": total_cost_per_month,
+                    "cost_per_month": round(total_cost_per_month, 2),
                     "breakdown": {
-                        "dbu_cost": dbu_cost_per_month,
-                        "storage_cost": storage_cost_per_month
+                        "dbu_cost": round(dbu_cost_per_month, 2),
+                        "storage_cost": round(storage_cost_per_month, 2)
                     },
-                    "note": "Lakebase is serverless - no VM costs"
+                    "note": "Lakebase is serverless - no VM costs. num_nodes = total nodes (1 = primary only, 2+ includes read replicas)."
                 },
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -6964,6 +8840,7 @@ class DatabricksAppsCalculationRequest(BaseModel):
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     size: str = Field(..., description="App size: medium or large")
     hours_per_month: float = Field(730, description="Hours per month (default: 730 = 24/7)", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.post("/api/v1/calculate/databricks-apps", tags=["Cost Calculation"])
@@ -7006,6 +8883,55 @@ async def calculate_databricks_apps_cost(
       },
       "total_cost": {
         "cost_per_month": 200.75
+      }
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "size": "medium",
+      "hours_per_month": 730,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 18
+        },
+        "sku_specific": {
+          "ALL_PURPOSE_SERVERLESS_COMPUTE": 25
+        },
+        "notes": "Q1 2026 Databricks Apps discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DATABRICKS_APPS",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "ALL_PURPOSE_SERVERLESS_COMPUTE",
+            "cost": 273.75,
+            "cost_after_discount": 205.31,
+            "discount": {
+              "percentage_applied": 25.0,
+              "source": "sku_specific:ALL_PURPOSE_SERVERLESS_COMPUTE",
+              "amount_saved": 68.44
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 273.75,
+          "total_after_discount": 205.31,
+          "total_discount": 68.44,
+          "effective_discount_percentage": 25.0
+        }
       }
     }
     ```
@@ -7082,7 +9008,21 @@ async def calculate_databricks_apps_cost(
             dbu_price=dbu_price
         )
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "DATABRICKS_APPS",
@@ -7109,6 +9049,15 @@ async def calculate_databricks_apps_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -7131,6 +9080,7 @@ class CleanRoomCalculationRequest(BaseModel):
     region: str = Field(..., description="Region code (e.g., us-east-1, southeastasia)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     num_collaborators: int = Field(..., description="Number of collaborators (1-10, excludes the org setting up the clean room)", ge=1)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
     days_per_month: int = Field(30, description="Days per month (default: 30)", ge=1, le=31)
 
 
@@ -7204,6 +9154,58 @@ async def calculate_clean_room_cost(
       }
     }
     ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "num_collaborators": 3,
+      "days_per_month": 20,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 22
+        },
+        "sku_specific": {
+          "CLEAN_ROOMS_COLLABORATOR": 30
+        },
+        "notes": "Q1 2026 Clean Room discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "CLEAN_ROOM",
+        "sku_breakdown": [
+          {
+            "type": "collaborator",
+            "sku": "CLEAN_ROOMS_COLLABORATOR",
+            "cost": 3000.0,
+            "cost_after_discount": 2100.0,
+            "qty": 60.0,
+            "usage_unit": "DAY",
+            "discount": {
+              "percentage_applied": 30.0,
+              "source": "sku_specific:CLEAN_ROOMS_COLLABORATOR",
+              "amount_saved": 900.0
+            }
+          }
+        ],
+        "total_cost": {
+          "cost_per_month": 3000.0,
+          "total_after_discount": 2100.0,
+          "total_discount": 900.0,
+          "effective_discount_percentage": 30.0,
+          "note": "Excludes the organization that sets up the clean room"
+        }
+      }
+    }
+    ```
     """
     # Validate cloud, region, tier
     error = await validate_cloud(request.cloud)
@@ -7272,7 +9274,21 @@ async def calculate_clean_room_cost(
             "unit_price_before_discount": round(rate_per_collaborator_per_day, 6)
         }]
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "CLEAN_ROOM",
@@ -7296,6 +9312,15 @@ async def calculate_clean_room_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -7357,6 +9382,8 @@ class AIParseCalculationRequest(BaseModel):
     # Method 2: Pages + Complexity
     num_pages: Optional[int] = Field(None, description="Number of pages to parse", ge=0)
     complexity: Optional[str] = Field(None, description="Complexity: low_text, low_images, medium, high")
+    
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.get("/api/v1/ai-parse/complexities", tags=["AI Parse"])
@@ -7447,6 +9474,57 @@ async def calculate_ai_parse_cost(
       "region": "us-east-1",
       "tier": "PREMIUM",
       "dbu_quantity": 500
+    }
+    ```
+    
+    **Example Request with Discounts (Pages-based):**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "num_pages": 1000,
+      "complexity": "medium",
+      "discount_config": {
+        "global": {
+          "dbu_discount": 15
+        },
+        "sku_specific": {
+          "SERVERLESS_REAL_TIME_INFERENCE": 28
+        },
+        "notes": "Q1 2026 AI-Parse discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "AI_PARSE",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SERVERLESS_REAL_TIME_INFERENCE",
+            "cost": 4.375,
+            "cost_after_discount": 3.15,
+            "qty": 62.5,
+            "usage_unit": "DBU",
+            "discount": {
+              "percentage_applied": 28.0,
+              "source": "sku_specific:SERVERLESS_REAL_TIME_INFERENCE",
+              "amount_saved": 1.225
+            }
+          }
+        ],
+        "total_cost": {
+          "cost": 4.375,
+          "total_after_discount": 3.15,
+          "total_discount": 1.225,
+          "effective_discount_percentage": 28.0
+        }
+      }
     }
     ```
     """
@@ -7558,6 +9636,20 @@ async def calculate_ai_parse_cost(
             "unit_price_before_discount": round(dbu_rate, 6)
         }]
         
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
         # Build response
         response_data = {
             "workload_type": "AI_PARSE",
@@ -7591,6 +9683,13 @@ async def calculate_ai_parse_cost(
         else:
             response_data["configuration"]["dbu_quantity"] = request.dbu_quantity
         
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["total_cost"] = enhance_total_cost_with_discount(
+                response_data["total_cost"],
+                sku_breakdown
+            )
+        
         return {
             "success": True,
             "data": response_data
@@ -7621,6 +9720,7 @@ class ShutterstockImageAICalculationRequest(BaseModel):
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     num_images: int = Field(..., description="Number of images to process", ge=1)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.get("/api/v1/shutterstock-imageai/info", tags=["Shutterstock ImageAI"])
@@ -7683,6 +9783,56 @@ async def calculate_shutterstock_imageai_cost(
       }
     }
     ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "num_images": 100,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20
+        },
+        "sku_specific": {
+          "SERVERLESS_REAL_TIME_INFERENCE": 30
+        },
+        "notes": "Q1 2026 Shutterstock ImageAI discount - SKU-specific override"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "SHUTTERSTOCK_IMAGEAI",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "SERVERLESS_REAL_TIME_INFERENCE",
+            "cost": 6.0,
+            "cost_after_discount": 4.2,
+            "qty": 85.7,
+            "usage_unit": "DBU",
+            "discount": {
+              "percentage_applied": 30.0,
+              "source": "sku_specific:SERVERLESS_REAL_TIME_INFERENCE",
+              "amount_saved": 1.8
+            }
+          }
+        ],
+        "total_cost": {
+          "cost": 6.0,
+          "total_after_discount": 4.2,
+          "total_discount": 1.8,
+          "effective_discount_percentage": 30.0
+        }
+      }
+    }
+    ```
     """
     # Validate cloud, region, tier
     error = await validate_cloud(request.cloud)
@@ -7740,7 +9890,21 @@ async def calculate_shutterstock_imageai_cost(
             "unit_price_before_discount": round(dbu_rate, 6)
         }]
         
-        return {
+        # Validate SKU names in sku_specific discount config if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                raise HTTPException(status_code=400, detail=error["error"])
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(
+                sku_breakdown,
+                request.discount_config,
+                db
+            )
+        
+        response_data = {
             "success": True,
             "data": {
                 "workload_type": "SHUTTERSTOCK_IMAGEAI",
@@ -7763,6 +9927,15 @@ async def calculate_shutterstock_imageai_cost(
                 "sku_breakdown": sku_breakdown
             }
         }
+        
+        # Enhance total_cost with discount details if discount was applied
+        if request.discount_config:
+            response_data["data"]["total_cost"] = enhance_total_cost_with_discount(
+                response_data["data"]["total_cost"],
+                sku_breakdown
+            )
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -7795,6 +9968,7 @@ class DatabricksSupportCalculationRequest(BaseModel):
     """Request model for Databricks Support cost calculation"""
     support_tier: str = Field(..., description="Support tier: business, enhanced, production, mission_critical")
     annual_product_commit: float = Field(..., description="Annual product commitment in USD", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.get("/api/v1/databricks-support/tiers", tags=["Databricks Support"])
@@ -7825,7 +9999,10 @@ async def get_support_tiers():
 
 
 @app.post("/api/v1/calculate/databricks-support", tags=["Cost Calculation"])
-async def calculate_databricks_support_cost(request: DatabricksSupportCalculationRequest):
+async def calculate_databricks_support_cost(
+    request: DatabricksSupportCalculationRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
     """
     Calculate Databricks Support cost.
     
@@ -7847,6 +10024,52 @@ async def calculate_databricks_support_cost(request: DatabricksSupportCalculatio
     {
       "support_tier": "enhanced",
       "annual_product_commit": 200000
+    }
+    ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "support_tier": "production",
+      "annual_product_commit": 500000,
+      "discount_config": {
+        "global": {
+          "support_discount": 25
+        },
+        "notes": "Q1 2026 Support discount - 25% off all support tiers"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "DATABRICKS_SUPPORT",
+        "sku_breakdown": [
+          {
+            "type": "support",
+            "sku": "DATABRICKS_SUPPORT",
+            "cost": 10416.67,
+            "cost_after_discount": 7812.5,
+            "qty": 1,
+            "usage_unit": "MONTH",
+            "discount": {
+              "percentage_applied": 25.0,
+              "source": "global:support",
+              "amount_saved": 2604.17
+            }
+          }
+        ],
+        "total_cost": {
+          "annual_cost": 125000,
+          "monthly_cost": 10416.67,
+          "total_after_discount": 7812.5,
+          "total_discount": 2604.17,
+          "effective_discount_percentage": 25.0
+        }
+      }
     }
     ```
     """
@@ -7876,9 +10099,29 @@ async def calculate_databricks_support_cost(request: DatabricksSupportCalculatio
         "sku": sku_type,
         "cost": round(annual_cost / 12, 2),  # monthly cost
         "qty": 1,
-        "usage_unit": "DBU",
+        "usage_unit": "MONTH",
         "unit_price_before_discount": round(annual_cost / 12, 2)
     }]
+    
+    # Validate SKU-specific discounts if provided
+    if request.discount_config and request.discount_config.sku_specific:
+        error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+        if error:
+            return error
+    
+    # Apply discounts if provided
+    if request.discount_config:
+        sku_breakdown = await apply_discount_to_sku_breakdown(sku_breakdown, request.discount_config, db)
+    
+    # Build base response
+    total_cost = {
+        "annual_cost": annual_cost,
+        "monthly_cost": annual_cost / 12
+    }
+    
+    # Enhance with discount summary if discounts applied
+    if request.discount_config:
+        total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
     
     return {
         "success": True,
@@ -7897,10 +10140,7 @@ async def calculate_databricks_support_cost(request: DatabricksSupportCalculatio
                 "percentage_based_cost": percentage_cost,
                 "applied_cost": "minimum" if min_annual > percentage_cost else "percentage"
             },
-            "total_cost": {
-                "annual_cost": annual_cost,
-                "monthly_cost": annual_cost / 12
-            },
+            "total_cost": total_cost,
             "sku_breakdown": sku_breakdown
         }
     }
@@ -7922,6 +10162,7 @@ class EnhancedSecurityCalculationRequest(BaseModel):
     """Request model for Enhanced Security and Compliance cost calculation"""
     cloud: str = Field(..., description="Cloud provider: AWS, AZURE, GCP")
     product_spend: float = Field(..., description="Product spend at list price (before discounts) in USD", ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.get("/api/v1/enhanced-security/info", tags=["Enhanced Security"])
@@ -7948,7 +10189,10 @@ async def get_enhanced_security_info():
 
 
 @app.post("/api/v1/calculate/enhanced-security", tags=["Cost Calculation"])
-async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationRequest):
+async def calculate_enhanced_security_cost(
+    request: EnhancedSecurityCalculationRequest,
+    db: AsyncSession = Depends(get_async_db)
+):
     """
     Calculate Enhanced Security and Compliance add-on cost.
     
@@ -7971,6 +10215,51 @@ async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationR
       "product_spend": 100000
     }
     ```
+    
+    **Example Request with Discounts:**
+    ```json
+    {
+      "cloud": "AWS",
+      "product_spend": 100000,
+      "discount_config": {
+        "global": {
+          "platform_addon_discount": 30
+        },
+        "notes": "Q1 2026 Enhanced Security discount - 30% off platform add-on"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "ENHANCED_SECURITY_COMPLIANCE",
+        "sku_breakdown": [
+          {
+            "type": "platform_addon",
+            "sku": "ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES",
+            "cost": 15000.0,
+            "cost_after_discount": 10500.0,
+            "qty": 100000.0,
+            "usage_unit": "PRODUCT_LIST_PRICE_CONSUMPTION",
+            "discount": {
+              "percentage_applied": 30.0,
+              "source": "global:platform_addon",
+              "amount_saved": 4500.0
+            }
+          }
+        ],
+        "total_cost": {
+          "cost": 15000.0,
+          "total_after_discount": 10500.0,
+          "total_discount": 4500.0,
+          "effective_discount_percentage": 30.0
+        }
+      }
+    }
+    ```
     """
     cloud_upper = request.cloud.upper()
     
@@ -7984,18 +10273,37 @@ async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationR
     percentage = ENHANCED_SECURITY_RATES[cloud_upper]
     addon_cost = request.product_spend * (percentage / 100)
     
-    # SKU type for Enhanced Security (cloud-specific, no regional variation)
-    sku_type = f"ENHANCED_SECURITY_{cloud_upper}"
+    # SKU type for Enhanced Security - Use the standard SKU name
+    sku_type = "ENHANCED_SECURITY_AND_COMPLIANCE_FOR_WORKSPACES"
     
     # Build SKU breakdown (not traditional DBU - it's an add-on fee)
     sku_breakdown = [{
-        "type": "addon",
+        "type": "platform_addon",
         "sku": sku_type,
         "cost": round(addon_cost, 2),
         "qty": round(request.product_spend, 2),
         "usage_unit": "PRODUCT_LIST_PRICE_CONSUMPTION",
         "unit_price_before_discount": round(percentage / 100, 6)  # as decimal
     }]
+    
+    # Validate SKU-specific discounts if provided
+    if request.discount_config and request.discount_config.sku_specific:
+        error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+        if error:
+            return error
+    
+    # Apply discounts if provided
+    if request.discount_config:
+        sku_breakdown = await apply_discount_to_sku_breakdown(sku_breakdown, request.discount_config, db)
+    
+    # Build base response
+    total_cost = {
+        "cost": addon_cost
+    }
+    
+    # Enhance with discount summary if discounts applied
+    if request.discount_config:
+        total_cost = enhance_total_cost_with_discount(total_cost, sku_breakdown)
     
     return {
         "success": True,
@@ -8012,9 +10320,7 @@ async def calculate_enhanced_security_cost(request: EnhancedSecurityCalculationR
                 "percentage": percentage,
                 "addon_cost": addon_cost
             },
-            "total_cost": {
-                "cost": addon_cost
-            },
+            "total_cost": total_cost,
             "sku_breakdown": sku_breakdown
         }
     }
@@ -8096,6 +10402,9 @@ class LakeflowConnectCalculationRequest(BaseModel):
     gateway_driver_instance: Optional[str] = Field(None, description="Override default driver (AWS: r5n.2xlarge, Azure: Standard_E8d_v4, GCP: n2-highmem-8)")
     gateway_worker_instance: Optional[str] = Field(None, description="Override default worker (AWS: m5.large, Azure: Standard_F4s, GCP: n2-standard-4)")
     gateway_num_workers: int = Field(1, description="Number of gateway workers (default: 1)", ge=1)
+    
+    # ===== DISCOUNT CONFIGURATION =====
+    discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration with global and SKU-specific discounts")
 
 
 @app.get("/api/v1/lakeflow-connect/info", tags=["Lakeflow Connect"])
@@ -8251,6 +10560,172 @@ async def calculate_lakeflow_connect_cost(
     - AWS: r5n.2xlarge (8 vCPU, 64GB) driver + m5.large (2 vCPU, 8GB) worker
     - Azure: Standard_E8d_v4 (8 vCPU, 64GB) driver + Standard_F4s (4 vCPU, 8GB) worker
     - GCP: n2-highmem-8 (8 vCPU, 64GB) driver + n2-standard-4 (4 vCPU, 16GB) worker
+    
+    **Example Request with Discounts (Database Connector with Gateway):**
+    ```json
+    {
+      "connector_type": "database",
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "pipeline_driver_node_type": "m5.xlarge",
+      "pipeline_worker_node_type": "m5.xlarge",
+      "pipeline_num_workers": 2,
+      "pipeline_serverless_mode": "standard",
+      "pipeline_hours_per_month": 100,
+      "gateway_hours_per_month": 730,
+      "gateway_num_workers": 1,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 20,
+          "vm_discount": 15
+        },
+        "notes": "Q1 2026 Lakeflow Connect discount - applies to both DLT Serverless and Classic DLT Gateway"
+      }
+    }
+    ```
+    
+    **Example Response with Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "LAKEFLOW_CONNECT",
+        "connector_type": "database",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "JOBS_SERVERLESS_COMPUTE",
+            "cost": 210.11,
+            "cost_after_discount": 168.09,
+            "source": "ingestion_pipeline",
+            "discount": {
+              "percentage_applied": 20.0,
+              "source": "global:dbu",
+              "amount_saved": 42.02
+            }
+          },
+          {
+            "type": "dbu",
+            "sku": "DLT_ADVANCED_COMPUTE",
+            "cost": 912.5,
+            "cost_after_discount": 730.0,
+            "source": "ingestion_gateway",
+            "discount": {
+              "percentage_applied": 20.0,
+              "source": "global:dbu",
+              "amount_saved": 182.5
+            }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_ON_DEMAND",
+            "cost": 116.06,
+            "cost_after_discount": 98.65,
+            "source": "ingestion_gateway",
+            "discount": {
+              "percentage_applied": 15.0,
+              "source": "global:vm",
+              "amount_saved": 17.41
+            }
+          }
+        ],
+        "total_cost": {
+          "ingestion_pipeline": 210.11,
+          "ingestion_gateway": 1028.56,
+          "total": 1238.67,
+          "total_after_discount": 996.74,
+          "total_discount": 241.93,
+          "effective_discount_percentage": 19.53
+        }
+      }
+    }
+    ```
+    
+    **Example Request with SKU-Specific Discounts:**
+    ```json
+    {
+      "connector_type": "database",
+      "cloud": "AWS",
+      "region": "us-east-1",
+      "tier": "PREMIUM",
+      "pipeline_driver_node_type": "m5.xlarge",
+      "pipeline_worker_node_type": "m5.xlarge",
+      "pipeline_num_workers": 2,
+      "pipeline_serverless_mode": "standard",
+      "pipeline_hours_per_month": 100,
+      "gateway_hours_per_month": 730,
+      "gateway_num_workers": 1,
+      "discount_config": {
+        "global": {
+          "dbu_discount": 15,
+          "vm_discount": 10
+        },
+        "sku_specific": {
+          "DLT_ADVANCED_COMPUTE": 30,
+          "VM_ON_DEMAND": 20
+        },
+        "notes": "Q1 2026 Lakeflow Connect - Heavier discount on gateway components (DLT Advanced + VMs)"
+      }
+    }
+    ```
+    
+    **Example Response with SKU-Specific Discounts:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "workload_type": "LAKEFLOW_CONNECT",
+        "connector_type": "database",
+        "sku_breakdown": [
+          {
+            "type": "dbu",
+            "sku": "JOBS_SERVERLESS_COMPUTE",
+            "cost": 210.11,
+            "cost_after_discount": 178.59,
+            "source": "ingestion_pipeline",
+            "discount": {
+              "percentage_applied": 15.0,
+              "source": "global:dbu",
+              "amount_saved": 31.52
+            }
+          },
+          {
+            "type": "dbu",
+            "sku": "DLT_ADVANCED_COMPUTE",
+            "cost": 912.5,
+            "cost_after_discount": 638.75,
+            "source": "ingestion_gateway",
+            "discount": {
+              "percentage_applied": 30.0,
+              "source": "sku_specific:DLT_ADVANCED_COMPUTE",
+              "amount_saved": 273.75
+            }
+          },
+          {
+            "type": "vm",
+            "sku": "VM_ON_DEMAND",
+            "cost": 116.06,
+            "cost_after_discount": 92.85,
+            "source": "ingestion_gateway",
+            "discount": {
+              "percentage_applied": 20.0,
+              "source": "sku_specific:VM_ON_DEMAND",
+              "amount_saved": 23.21
+            }
+          }
+        ],
+        "total_cost": {
+          "ingestion_pipeline": 210.11,
+          "ingestion_gateway": 1028.56,
+          "total": 1238.67,
+          "total_after_discount": 910.19,
+          "total_discount": 328.48,
+          "effective_discount_percentage": 26.52
+        }
+      }
+    }
+    ```
     """
     connector_type = request.connector_type.lower()
     cloud_upper = request.cloud.upper()
@@ -8447,14 +10922,24 @@ async def calculate_lakeflow_connect_cost(
                 sku_breakdown.append(sku_with_source)
         
         # Add gateway SKU breakdown (only for database connectors)
-        # Note: For DLT Classic, sku_breakdown is nested under total_cost
+        # Note: For DLT Classic, sku_breakdown is at root level of data
         if connector_type == "database" and gateway_data:
-            gateway_sku_breakdown = gateway_data.get("total_cost", {}).get("sku_breakdown", [])
+            gateway_sku_breakdown = gateway_data.get("sku_breakdown", [])
             if gateway_sku_breakdown:
                 for sku in gateway_sku_breakdown:
                     sku_with_source = sku.copy()
                     sku_with_source["source"] = "ingestion_gateway"
                     sku_breakdown.append(sku_with_source)
+        
+        # Validate SKU-specific discounts if provided
+        if request.discount_config and request.discount_config.sku_specific:
+            error = await validate_sku_specific_discounts(request.discount_config.sku_specific, db)
+            if error:
+                return error
+        
+        # Apply discounts if provided
+        if request.discount_config:
+            sku_breakdown = await apply_discount_to_sku_breakdown(sku_breakdown, request.discount_config, db)
         
         # Build configuration based on input type
         config = {
@@ -8474,6 +10959,17 @@ async def calculate_lakeflow_connect_cost(
         else:
             config["pipeline_hours_per_month"] = request.pipeline_hours_per_month
         
+        # Build base total_cost
+        total_cost_obj = {
+            "ingestion_pipeline": ingestion_cost,
+            "ingestion_gateway": gateway_cost,
+            "total": total_cost
+        }
+        
+        # Enhance with discount summary if discounts applied
+        if request.discount_config:
+            total_cost_obj = enhance_total_cost_with_discount(total_cost_obj, sku_breakdown)
+        
         response_data = {
             "workload_type": "LAKEFLOW_CONNECT",
             "connector_type": connector_type,
@@ -8481,11 +10977,7 @@ async def calculate_lakeflow_connect_cost(
             "connector_examples": LAKEFLOW_CONNECTOR_TYPES[connector_type]["examples"],
             "configuration": config,
             "ingestion_pipeline": ingestion_pipeline_result,
-            "total_cost": {
-                "ingestion_pipeline": ingestion_cost,
-                "ingestion_gateway": gateway_cost,
-                "total": total_cost
-            },
+            "total_cost": total_cost_obj,
             "sku_breakdown": sku_breakdown
         }
         

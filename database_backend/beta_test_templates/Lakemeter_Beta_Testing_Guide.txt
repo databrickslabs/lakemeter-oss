@@ -1,0 +1,363 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LAKEMETER BETA TESTING GUIDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHAT IS LAKEMETER?
+
+Lakemeter is a Databricks sizing calculator with AI-copilot that helps solution architects estimate Databricks costs. Inspired by AWS, Azure, and GCP calculators, it enables you to create detailed cost estimates with multiple workload line items.
+
+Time Required: 30-40 minutes
+Testing Focus: Create estimates, add workloads, use AI copilot, save & export
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LAKEMETER CAPABILITIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLOUDS SUPPORTED
+• AWS
+• Azure
+• GCP
+
+REGIONS
+• All available Databricks regions
+
+PRICING TIERS
+• Standard
+• Premium
+• Enterprise (AWS and GCP only)
+
+WORKLOAD TYPES (13 total)
+1. JOBS Classic - Batch processing with VM costs
+2. JOBS Serverless - Serverless batch processing
+3. All-Purpose Classic - Interactive clusters with VMs
+4. All-Purpose Serverless - Serverless interactive
+5. DBSQL Classic/Pro - SQL warehouses with VMs
+6. DBSQL Serverless - Serverless SQL warehouses
+7. DLT Classic - Delta Live Tables with VMs
+8. DLT Serverless - Serverless DLT
+9. Model Serving - GPU-based ML serving
+10. FMAPI Databricks - Databricks-hosted models
+11. FMAPI Proprietary - OpenAI, Anthropic, Google models
+12. Vector Search - Semantic search
+13. Lakebase - Managed PostgreSQL
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+KEY FEATURES TO TEST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Create Estimate - Start new cost estimate
+• Add Line Items - Add multiple workload lines manually
+• AI Copilot - Get AI suggestions to help configure workloads (manual selection required)
+• Save Estimate - Save work for later
+• Export to Excel - Download estimate as spreadsheet
+• Login & View Saved Estimates - Access saved work
+• Salesforce Tagging - Tag with account/opportunity/use case
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT IS NOT COVERED (OUT OF SCOPE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The following Databricks products and features are NOT included in this beta release:
+
+DATA INGESTION & CONNECTIVITY
+1. Lakeflow Connect - Connector-based data ingestion
+10. Data Transfer & Connectivity costs
+
+DATA MANAGEMENT
+2. Delta Sharing costs (Views, Materialized Views, Streaming Tables)
+11. Storage costs (Vector Search indices, Lakebase storage)
+12. Clean Room
+
+AI & ML FEATURES
+3. ai_parse_documents function
+4. AI Gateway
+5. AI Evaluation
+6. Shutterstock ImageAI
+7. Agent Bricks
+
+PLATFORM SERVICES
+8. Platform Add-ons
+9. Databricks Managed Services:
+   - Lakehouse Monitoring
+   - Predictive Optimization
+   - Fine-Grained Access Control (FGAC)
+   - Data Classification
+
+OTHER
+13. All Beta products (not generally available)
+
+NOTES
+• For general ai_queries, use FMAPI workload type with batch inference rate type
+• AI Copilot provides configuration suggestions only - you must manually select and apply configurations in the frontend. Automatic population will be available in a future release.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TESTING INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1: CREATE YOUR FIRST ESTIMATE (5 minutes)
+
+1. Access Lakemeter: [URL to be provided]
+2. Click "New Estimate" or "Create Estimate"
+3. Fill in estimate details:
+   - Estimate Name (e.g., "Customer Name - Production Workloads")
+   - Select Cloud: AWS, Azure, or GCP
+   - Select Region from dropdown
+   - Select Tier: Standard, Premium, or Enterprise
+4. Optional: Tag with Salesforce
+   - Account
+   - Opportunity  
+   - Use Case
+
+Test Checkpoint:
+□ Can you create a new estimate successfully?
+
+
+STEP 2: ADD LINE ITEMS MANUALLY (10 minutes)
+
+Add at least 3 different workload types manually.
+
+Example Line Item 1: JOBS CLASSIC
+• Workload Type: JOBS Classic
+• Driver Instance: m5.xlarge
+• Worker Instance: m5.xlarge
+• Number of Workers: 10
+• Photon Enabled: Yes
+• Driver Pricing: On-demand
+• Worker Pricing: Spot
+• Usage: 8 runs/day, 60 min/run, 22 days/month
+
+Example Line Item 2: DBSQL SERVERLESS
+• Workload Type: DBSQL Serverless
+• Warehouse Size: Medium
+• Number of Clusters: 1
+• Usage: 730 hours/month
+
+Example Line Item 3: MODEL SERVING
+• Workload Type: Model Serving
+• GPU Type: gpu_small_t4
+• Usage: 730 hours/month
+
+Test Checkpoints:
+□ Can you add multiple line items?
+□ Do costs calculate correctly for each line?
+□ Can you see total estimate cost?
+□ Can you edit line items after adding?
+□ Can you delete line items?
+
+
+STEP 3: USE AI COPILOT (10 minutes)
+
+Test the AI Copilot feature to get configuration suggestions.
+
+IMPORTANT: AI Copilot provides suggestions only. You must manually select and apply the recommended configurations in the frontend.
+
+Workflow:
+1. Enter workload description in AI Copilot
+2. Review AI's configuration suggestions
+3. Manually select/apply suggested values in the frontend form
+4. Add line item to estimate
+
+Try these prompts:
+
+1. "Add a nightly ETL job that processes 500GB of data, runs for 2 hours"
+   - Review AI suggestions (workload type, instance types, etc.)
+   - Manually select suggested configurations
+   - Add to estimate
+
+2. "Add 50 business analysts querying data 8 hours per day"
+   - Review AI suggestions
+   - Manually apply to frontend
+   - Add to estimate
+
+3. "Add a streaming workload processing Kafka data 24/7"
+   - Review AI suggestions
+   - Manually configure based on suggestions
+   - Add to estimate
+
+Test Checkpoints:
+□ Does AI understand the workload description?
+□ Does AI recommend appropriate workload type?
+□ Does AI suggest reasonable instance types and configurations?
+□ Are suggestions clear and actionable?
+□ Can you easily transfer suggestions to the frontend form?
+□ Can you edit AI suggestions before applying?
+□ After manual application, are costs calculated correctly?
+
+
+STEP 4: SAVE & EXPORT (5 minutes)
+
+SAVE ESTIMATE
+1. Click "Save" or "Save Estimate"
+2. Verify estimate is saved
+
+EXPORT TO EXCEL
+1. Click "Export" or "Download"  
+2. Open the Excel file
+3. Verify it includes:
+   - Estimate name and details
+   - All line items with configurations
+   - Cost breakdown (DBU + VM costs)
+   - Total monthly cost
+
+Test Checkpoints:
+□ Can you save estimates?
+□ Can you export to Excel?
+□ Is Excel file formatted correctly?
+□ Are all details included?
+
+
+STEP 5: VIEW SAVED ESTIMATES (5 minutes)
+
+1. Navigate to "My Estimates" or "Saved Estimates"
+2. Find your previously saved estimate
+3. Open the estimate
+4. Verify all line items are preserved
+
+Test Checkpoints:
+□ Can you see list of saved estimates?
+□ Can you open saved estimates?
+□ Are all line items preserved correctly?
+□ Can you edit saved estimates?
+
+
+STEP 6: TEST SALESFORCE INTEGRATION (5 minutes)
+
+1. Create a new estimate
+2. Tag with Salesforce:
+   - Search and select Account
+   - Select Opportunity (filtered by account)
+   - Select Use Case (filtered by account)
+3. Save estimate
+4. Return to estimate list
+5. Verify tags are visible
+
+Test Checkpoints:
+□ Can you search and select Salesforce accounts?
+□ Do opportunities filter by selected account?
+□ Do use cases filter by selected account?
+□ Are tags saved with estimate?
+□ Can you filter estimates by Salesforce tags?
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FEEDBACK SUBMISSION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+QUICK FEEDBACK (5 minutes)
+Fill out this Google Form: [Link to be provided]
+
+The form covers:
+1. HIGH-LEVEL RATING
+   • Overall experience (1-5 scale)
+   • Would you use this with customers? (Yes/No)
+
+2. LOW-LEVEL RATING (Rate 1-5)
+   • Ease of use
+   • AI Copilot quality
+   • Cost accuracy
+   • Save/Export functionality
+
+3. WHAT YOU WANT TO SEE MOST
+   • Top 1-3 improvements or features needed
+   • What would make this more useful for your work?
+
+
+BUG REPORTING (if you found issues)
+Use this Google Sheet for detailed bug reports: [Link to be provided]
+
+Include:
+• Screenshot of the issue (if applicable)
+• What you did
+• What went wrong
+• Expected behavior
+• Severity: Critical / High / Medium / Low
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TESTING COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Minimum requirements:
+□ Created 1-2 estimates with multiple line items
+□ Tested at least 3-5 different workload types
+□ Tried AI Copilot suggestions
+□ Tested save and export
+□ Filled in Google Sheet feedback
+
+That's it! Thank you for your time.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTEXT: SIMILAR CALCULATORS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Lakemeter is inspired by cloud pricing calculators:
+
+AWS Pricing Calculator
+https://calculator.aws
+
+Azure Pricing Calculator  
+https://azure.microsoft.com/pricing/calculator
+
+GCP Pricing Calculator
+https://cloud.google.com/products/calculator
+
+Standard Calculator Workflow:
+1. Create estimate/scenario
+2. Add services/workloads one by one
+3. Configure each service
+4. View running total
+5. Save and share
+6. Export to Excel/PDF
+
+Lakemeter Additions:
+• AI Copilot to provide configuration suggestions (manual application required)
+• Databricks-specific knowledge (DBUs, SKUs, multipliers)
+• Salesforce integration for customer/opportunity tracking
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUICK QUESTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: How long will this take?
+A: 30-40 minutes for basic testing. More if you want to explore thoroughly.
+
+Q: How many workload types should I test?
+A: At least 3-5. Focus on ones you know well.
+
+Q: What if I find a bug?
+A: Note it in the Google Sheet. If critical, contact the team immediately.
+
+Q: What if costs seem wrong?
+A: Note which workload type and configuration in the feedback sheet.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBMISSION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Complete your feedback in the shared Google Sheet (all 4 tabs).
+
+The team can see your feedback in real-time as you submit it.
+
+For urgent issues, contact: [Team contact to be provided]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THANK YOU
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Your feedback as a solution architect is invaluable. You understand customer requirements, typical workload patterns, and how to present costs effectively. This tool is built for solution architects - your input will directly shape the final product.
+
+Thank you for participating in the Lakemeter beta program.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Lakemeter Beta Testing Guide
+Version 1.0 • December 2024
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
