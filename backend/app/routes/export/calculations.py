@@ -54,8 +54,8 @@ def _calculate_dbu_per_hour(item, cloud: str = 'aws', tier: str = 'PREMIUM') -> 
         # Multiply CU by DBU-per-CU-hour rate (matches API's LAKEBASE_DBU_RATES)
         lakebase_dbu_rates = {
             'aws': {'PREMIUM': 0.230, 'ENTERPRISE': 0.213},
-            'azure': {'PREMIUM': 1.0, 'ENTERPRISE': 1.0},
-            'gcp': {'PREMIUM': 1.0, 'ENTERPRISE': 1.0},
+            'azure': {'PREMIUM': 0.213, 'ENTERPRISE': 0.213},
+            # GCP: Lakebase not available yet
         }
         cloud_lc = cloud.strip().lower() if cloud else 'aws'
         tier_upper = tier.strip().upper() if tier else 'PREMIUM'

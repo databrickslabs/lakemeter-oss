@@ -1159,23 +1159,25 @@ export default function Calculator() {
         dbuPerHour = lakebaseCU * lakebaseNodes
         monthlyDBUs = dbuPerHour * hoursPerMonth
         
-        // Storage calculation for Lakebase
-        // Total DSU = storage_gb × 15 (each GB consumes 15 DSU)
-        // Storage Cost = Total DSU × price_per_dsu ($0.023/DSU/month)
-        // Max storage: 8192 GB (8 TB)
+        // Storage calculation for Lakebase (DSU-based pricing)
+        // Storage: 15x DSU/GB, PITR: 8.7x DSU/GB, Snapshots: 3.91x DSU/GB
+        // Cost = GB × DSU_multiplier × $/DSU ($0.023/DSU/month)
         const lakebaseStorageGB = Math.min(effectiveItem.lakebase_storage_gb || 0, 8192)
-        const lakebaseDSUPerGB = 15
-        const lakebaseTotalDSU = lakebaseStorageGB * lakebaseDSUPerGB
-        const lakebasePricePerDSU = 0.023  // $0.023 per DSU per month
-        const lakebaseStorageCost = lakebaseTotalDSU * lakebasePricePerDSU
-        
-        if (lakebaseStorageGB > 0) {
-          storageCost = lakebaseStorageCost
+        const lakebasePitrGB = effectiveItem.lakebase_pitr_gb || 0
+        const lakebaseSnapshotGB = effectiveItem.lakebase_snapshot_gb || 0
+        const lakebasePricePerDSU = 0.023
+        const lakebaseStorageCost = lakebaseStorageGB * 15 * lakebasePricePerDSU
+        const lakebasePitrCost = lakebasePitrGB * 8.7 * lakebasePricePerDSU
+        const lakebaseSnapshotCost = lakebaseSnapshotGB * 3.91 * lakebasePricePerDSU
+        const lakebaseTotalStorageCost = lakebaseStorageCost + lakebasePitrCost + lakebaseSnapshotCost
+
+        if (lakebaseTotalStorageCost > 0) {
+          storageCost = lakebaseTotalStorageCost
           storageDetails = {
             totalStorageGB: lakebaseStorageGB,
-            billableStorageGB: lakebaseStorageGB,  // No free tier for Lakebase
-            dsuPerGB: lakebaseDSUPerGB,
-            totalDSU: lakebaseTotalDSU,
+            billableStorageGB: lakebaseStorageGB,
+            dsuPerGB: 15,
+            totalDSU: lakebaseStorageGB * 15,
             pricePerDSU: lakebasePricePerDSU
           }
         }
@@ -2818,10 +2820,14 @@ export default function Calculator() {
                                     const cu = effectiveItem.lakebase_cu || 1
                                     const haNodes = effectiveItem.lakebase_ha_nodes || 1
                                     const storageGB = effectiveItem.lakebase_storage_gb || 0
-                                    const dsuPerGB = 15
-                                    const totalDSU = storageGB * dsuPerGB
+                                    const pitrGB = effectiveItem.lakebase_pitr_gb || 0
+                                    const snapshotGB = effectiveItem.lakebase_snapshot_gb || 0
                                     const pricePerDSU = 0.023
-                                    const localStorageCost = totalDSU * pricePerDSU
+                                    const localStorageCost = storageGB * 15 * pricePerDSU
+                                    const localPitrCost = pitrGB * 8.7 * pricePerDSU
+                                    const localSnapshotCost = snapshotGB * 3.91 * pricePerDSU
+                                    const localTotalStorageCost = localStorageCost + localPitrCost + localSnapshotCost
+                                    const hasStorageCosts = localTotalStorageCost > 0
                                     return (
                                       <div className="space-y-1">
                                         {/* Hours calculation (if run-based) */}
@@ -2856,22 +2862,50 @@ export default function Calculator() {
                                             <span className="text-purple-600 font-semibold">Storage:</span>
                                             <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{storageGB} GB</span>
                                             <span>×</span>
-                                            <span>{dsuPerGB} DSU/GB</span>
+                                            <span>15 DSU/GB</span>
                                             <span>=</span>
-                                            <span className="font-semibold">{formatNumber(totalDSU)} DSU</span>
+                                            <span className="font-semibold">{formatNumber(storageGB * 15)} DSU</span>
                                             <span>×</span>
                                             <span>${pricePerDSU}/DSU/mo</span>
                                             <span>=</span>
                                             <span className="text-purple-500 font-semibold">{formatCurrency(localStorageCost)}</span>
                                           </div>
                                         )}
+                                        {pitrGB > 0 && (
+                                          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                            <span className="text-purple-600 font-semibold">Point-in-Time Restore:</span>
+                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{pitrGB} GB</span>
+                                            <span>×</span>
+                                            <span>8.7 DSU/GB</span>
+                                            <span>=</span>
+                                            <span className="font-semibold">{formatNumber(pitrGB * 8.7)} DSU</span>
+                                            <span>×</span>
+                                            <span>${pricePerDSU}/DSU/mo</span>
+                                            <span>=</span>
+                                            <span className="text-purple-500 font-semibold">{formatCurrency(localPitrCost)}</span>
+                                          </div>
+                                        )}
+                                        {snapshotGB > 0 && (
+                                          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                            <span className="text-purple-600 font-semibold">Snapshots:</span>
+                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{snapshotGB} GB</span>
+                                            <span>×</span>
+                                            <span>3.91 DSU/GB</span>
+                                            <span>=</span>
+                                            <span className="font-semibold">{formatNumber(snapshotGB * 3.91)} DSU</span>
+                                            <span>×</span>
+                                            <span>${pricePerDSU}/DSU/mo</span>
+                                            <span>=</span>
+                                            <span className="text-purple-500 font-semibold">{formatCurrency(localSnapshotCost)}</span>
+                                          </div>
+                                        )}
                                         <div className="flex items-center gap-1 text-[10px] font-mono flex-wrap pt-1 border-t border-dashed border-[var(--border-primary)]">
                                           <span className="text-[var(--text-secondary)] font-semibold">Total:</span>
                                           <span className="text-blue-500">{formatCurrency(costs.dbuCost)}</span>
-                                          {storageGB > 0 && (
+                                          {hasStorageCosts && (
                                             <>
                                               <span>+</span>
-                                              <span className="text-purple-500">{formatCurrency(localStorageCost)}</span>
+                                              <span className="text-purple-500">{formatCurrency(localTotalStorageCost)}</span>
                                             </>
                                           )}
                                           <span>=</span>
@@ -3486,10 +3520,14 @@ export default function Calculator() {
                                   const cu = effectiveItem.lakebase_cu || 1
                                   const nodes = effectiveItem.lakebase_ha_nodes || 1
                                   const storageGB = effectiveItem.lakebase_storage_gb || 0
-                                  const dsuPerGB = 15
-                                  const totalDSU = storageGB * dsuPerGB
+                                  const pitrGB = effectiveItem.lakebase_pitr_gb || 0
+                                  const snapshotGB = effectiveItem.lakebase_snapshot_gb || 0
                                   const pricePerDSU = 0.023
-                                  const localStorageCost = totalDSU * pricePerDSU
+                                  const localStorageCost = storageGB * 15 * pricePerDSU
+                                  const localPitrCost = pitrGB * 8.7 * pricePerDSU
+                                  const localSnapshotCost = snapshotGB * 3.91 * pricePerDSU
+                                  const localTotalStorageCost = localStorageCost + localPitrCost + localSnapshotCost
+                                  const hasStorageCosts = localTotalStorageCost > 0
                                   return (
                                     <div className="space-y-1">
                                       <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
@@ -3511,22 +3549,50 @@ export default function Calculator() {
                                           <span className="text-purple-600 font-semibold">Storage:</span>
                                           <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{storageGB} GB</span>
                                           <span>×</span>
-                                          <span>{dsuPerGB} DSU/GB</span>
+                                          <span>15 DSU/GB</span>
                                           <span>=</span>
-                                          <span className="font-semibold">{formatNumber(totalDSU)} DSU</span>
+                                          <span className="font-semibold">{formatNumber(storageGB * 15)} DSU</span>
                                           <span>×</span>
                                           <span>${pricePerDSU}/DSU/mo</span>
                                           <span>=</span>
                                           <span className="text-purple-500 font-semibold">{formatCurrency(localStorageCost)}</span>
                                         </div>
                                       )}
+                                      {pitrGB > 0 && (
+                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                          <span className="text-purple-600 font-semibold">Point-in-Time Restore:</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{pitrGB} GB</span>
+                                          <span>×</span>
+                                          <span>8.7 DSU/GB</span>
+                                          <span>=</span>
+                                          <span className="font-semibold">{formatNumber(pitrGB * 8.7)} DSU</span>
+                                          <span>×</span>
+                                          <span>${pricePerDSU}/DSU/mo</span>
+                                          <span>=</span>
+                                          <span className="text-purple-500 font-semibold">{formatCurrency(localPitrCost)}</span>
+                                        </div>
+                                      )}
+                                      {snapshotGB > 0 && (
+                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                          <span className="text-purple-600 font-semibold">Snapshots:</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{snapshotGB} GB</span>
+                                          <span>×</span>
+                                          <span>3.91 DSU/GB</span>
+                                          <span>=</span>
+                                          <span className="font-semibold">{formatNumber(snapshotGB * 3.91)} DSU</span>
+                                          <span>×</span>
+                                          <span>${pricePerDSU}/DSU/mo</span>
+                                          <span>=</span>
+                                          <span className="text-purple-500 font-semibold">{formatCurrency(localSnapshotCost)}</span>
+                                        </div>
+                                      )}
                                       <div className="flex items-center gap-1 text-[10px] font-mono flex-wrap pt-1 border-t border-dashed border-[var(--border-primary)]">
                                         <span className="text-[var(--text-secondary)] font-semibold">Total:</span>
                                         <span className="text-blue-500">{formatCurrency(costs.dbuCost)}</span>
-                                        {storageGB > 0 && (
+                                        {hasStorageCosts && (
                                           <>
                                             <span>+</span>
-                                            <span className="text-purple-500">{formatCurrency(localStorageCost)}</span>
+                                            <span className="text-purple-500">{formatCurrency(localTotalStorageCost)}</span>
                                           </>
                                         )}
                                         <span>=</span>

@@ -1926,9 +1926,10 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 className="w-full text-sm"
                 placeholder="e.g., 500"
               />
+              <span className="text-[10px] text-[var(--text-tertiary)]">15x DSU multiplier</span>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">PITR Storage (GB)</label>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Point-in-Time Restore (GB)</label>
               <input
                 type="number"
                 min={0}
