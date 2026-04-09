@@ -327,3 +327,106 @@ def get_fmapi_proprietary_models(
     except Exception as e:
         logger.error(f"Error fetching FMAPI proprietary models: {e}")
         return {"success": False, "error": {"message": str(e), "code": "DATABASE_ERROR"}}
+
+
+# ── Config endpoints (for WorkloadForm dropdowns) ─────────────────────────
+
+
+@router.get("/fmapi-databricks", tags=["FMAPI - Databricks"])
+def get_fmapi_databricks_config(db: Session = Depends(get_db)):
+    """Return FMAPI Databricks config for WorkloadForm: model types, inference types, models."""
+    cached = ref_cache.get("fmapi_databricks_config")
+    if cached is not None:
+        return cached
+
+    try:
+        query = text("""
+            SELECT DISTINCT model, rate_type
+            FROM lakemeter.sync_product_fmapi_databricks
+            ORDER BY model, rate_type
+        """)
+        results = db.execute(query).fetchall()
+
+        # Group models and collect rate types
+        models = sorted(set(r.model for r in results))
+        rate_types = sorted(set(r.rate_type for r in results))
+
+        # Infer model types from model names
+        model_type_map = {}
+        for m in models:
+            if any(k in m.lower() for k in ["embed", "bge", "gte"]):
+                model_type_map.setdefault("embedding", []).append(m)
+            elif any(k in m.lower() for k in ["rerank"]):
+                model_type_map.setdefault("reranking", []).append(m)
+            else:
+                model_type_map.setdefault("chat", []).append(m)
+
+        response = {
+            "model_types": [
+                {"id": mt, "name": mt.title(), "models": [{"id": m, "name": m} for m in ms]}
+                for mt, ms in model_type_map.items()
+            ],
+            "inference_types": [{"id": rt, "name": rt.replace("_", " ").title()} for rt in rate_types],
+        }
+        ref_cache.set("fmapi_databricks_config", response)
+        return response
+    except Exception as e:
+        logger.error(f"Error fetching FMAPI Databricks config: {e}")
+        return {"model_types": [], "inference_types": []}
+
+
+@router.get("/fmapi-proprietary", tags=["FMAPI - Proprietary"])
+def get_fmapi_proprietary_config(db: Session = Depends(get_db)):
+    """Return FMAPI Proprietary config for WorkloadForm: providers with models, endpoint types, context lengths."""
+    cached = ref_cache.get("fmapi_proprietary_config")
+    if cached is not None:
+        return cached
+
+    try:
+        query = text("""
+            SELECT DISTINCT provider, model, endpoint_type, context_length
+            FROM lakemeter.sync_product_fmapi_proprietary
+            ORDER BY provider, model
+        """)
+        results = db.execute(query).fetchall()
+
+        # Build provider → models map
+        provider_models: dict = {}
+        endpoint_types_set: set = set()
+        context_lengths_set: set = set()
+
+        for r in results:
+            p = r.provider.lower()
+            if p not in provider_models:
+                provider_models[p] = set()
+            provider_models[p].add(r.model)
+            if r.endpoint_type:
+                endpoint_types_set.add(r.endpoint_type)
+            if r.context_length:
+                context_lengths_set.add(r.context_length)
+
+        provider_names = {"openai": "OpenAI", "anthropic": "Anthropic", "google": "Google"}
+
+        response = {
+            "providers": [
+                {
+                    "id": p,
+                    "name": provider_names.get(p, p.title()),
+                    "models": [{"id": m, "name": m} for m in sorted(models)],
+                }
+                for p, models in sorted(provider_models.items())
+            ],
+            "endpoint_types": [
+                {"id": et, "name": et.replace("_", " ").title()}
+                for et in sorted(endpoint_types_set)
+            ],
+            "context_lengths": [
+                {"id": cl, "name": cl.replace("_", " ").title()}
+                for cl in sorted(context_lengths_set)
+            ],
+        }
+        ref_cache.set("fmapi_proprietary_config", response)
+        return response
+    except Exception as e:
+        logger.error(f"Error fetching FMAPI Proprietary config: {e}")
+        return {"providers": [], "endpoint_types": [], "context_lengths": []}

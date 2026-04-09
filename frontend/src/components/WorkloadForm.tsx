@@ -429,7 +429,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         vector_search_mode: lineItem.vector_search_mode || 'standard',
         vector_capacity_millions: lineItem.vector_capacity_millions || 1,
         model_serving_gpu_type: lineItem.model_serving_gpu_type || 'cpu',
-        model_serving_num_endpoints: 1,
+        model_serving_scale_out: lineItem.model_serving_scale_out || 'small',
+        model_serving_concurrency: lineItem.model_serving_concurrency || 4,
         lakebase_cu: lineItem.lakebase_cu || 1,
         lakebase_storage_gb: lineItem.lakebase_storage_gb || 0,
         lakebase_ha_nodes: lineItem.lakebase_ha_nodes || 1,
@@ -475,7 +476,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       vector_capacity_millions: 1,
       vector_search_storage_gb: 0,
       model_serving_gpu_type: 'cpu',
-      model_serving_num_endpoints: 1,
+      model_serving_scale_out: 'small',
+      model_serving_concurrency: 4,
       lakebase_cu: 1,
       lakebase_storage_gb: 0,
       lakebase_ha_nodes: 1,
@@ -523,7 +525,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     vector_capacity_millions: 1,
     vector_search_storage_gb: 0,
     model_serving_gpu_type: 'cpu',
-    model_serving_num_endpoints: 1,
+    model_serving_scale_out: 'small',
+    model_serving_concurrency: 4,
     lakebase_cu: 1,
     lakebase_storage_gb: 0,
     lakebase_ha_nodes: 1,
@@ -572,7 +575,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         vector_capacity_millions: lineItem.vector_capacity_millions || 1,
         vector_search_storage_gb: lineItem.vector_search_storage_gb || 0,
         model_serving_gpu_type: lineItem.model_serving_gpu_type || 'cpu',
-        model_serving_num_endpoints: 1,
+        model_serving_scale_out: lineItem.model_serving_scale_out || 'small',
+        model_serving_concurrency: lineItem.model_serving_concurrency || 4,
         lakebase_cu: lineItem.lakebase_cu || 1,
         lakebase_storage_gb: lineItem.lakebase_storage_gb || 0,
         lakebase_ha_nodes: lineItem.lakebase_ha_nodes || 1,
@@ -718,6 +722,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       vector_capacity_millions: form.vector_capacity_millions,
       vector_search_storage_gb: form.vector_search_storage_gb,
       model_serving_gpu_type: form.model_serving_gpu_type,
+      model_serving_concurrency: form.model_serving_concurrency,
+      model_serving_scale_out: form.model_serving_scale_out,
       lakebase_cu: form.lakebase_cu,
       lakebase_storage_gb: form.lakebase_storage_gb,
       lakebase_ha_nodes: form.lakebase_ha_nodes,
@@ -847,8 +853,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       // Model Serving config
       if (form.workload_type === 'MODEL_SERVING') {
         data.model_serving_gpu_type = form.model_serving_gpu_type
+        data.model_serving_scale_out = form.model_serving_scale_out
+        data.model_serving_concurrency = form.model_serving_concurrency
       } else {
         data.model_serving_gpu_type = null
+        data.model_serving_scale_out = null
+        data.model_serving_concurrency = null
       }
       
       // Lakebase config
@@ -1620,16 +1630,44 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Number of Endpoints</label>
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={form.model_serving_num_endpoints}
-                onChange={(e) => setForm(f => ({ ...f, model_serving_num_endpoints: parseInt(e.target.value) || 1 }))}
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Compute Scale-Out</label>
+              <select
+                value={form.model_serving_scale_out}
+                onChange={(e) => {
+                  const preset: Record<string, number> = { small: 4, medium: 12, large: 40 }
+                  const val = e.target.value
+                  setForm(f => ({
+                    ...f,
+                    model_serving_scale_out: val,
+                    model_serving_concurrency: val === 'custom' ? (f.model_serving_concurrency || 4) : (preset[val] || 4),
+                  }))
+                }}
                 className="w-full text-sm"
-              />
+              >
+                <option value="small">Small (4 concurrency)</option>
+                <option value="medium">Medium (8-16 concurrency, default 12)</option>
+                <option value="large">Large (16-64 concurrency, default 40)</option>
+                <option value="custom">Custom</option>
+              </select>
             </div>
+            {form.model_serving_scale_out === 'custom' && (
+              <div>
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Custom Concurrency</label>
+                <input
+                  type="number"
+                  min={4}
+                  max={256}
+                  step={4}
+                  value={form.model_serving_concurrency}
+                  onChange={(e) => {
+                    const val = Math.max(4, Math.round((parseInt(e.target.value) || 4) / 4) * 4)
+                    setForm(f => ({ ...f, model_serving_concurrency: val }))
+                  }}
+                  className="w-full text-sm"
+                />
+                <span className="text-[10px] text-[var(--text-tertiary)]">Must be a multiple of 4</span>
+              </div>
+            )}
           </>
         )}
         

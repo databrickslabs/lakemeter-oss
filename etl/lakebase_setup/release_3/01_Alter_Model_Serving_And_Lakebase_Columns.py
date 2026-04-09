@@ -122,9 +122,9 @@ result = execute_sql(
 print("\n🔍 Checking if main table exists...")
 table_check = query_sql(
     """
-    SELECT table_name, 
+    SELECT table_name,
            (SELECT count(*) FROM lakemeter.line_items) as row_count
-    FROM information_schema.tables 
+    FROM information_schema.tables
     WHERE table_schema = 'lakemeter'
       AND table_name = 'line_items';
     """,
@@ -136,6 +136,58 @@ if table_check:
 else:
     print("❌ Main table NOT found!")
     raise Exception("Main table lakemeter.line_items does not exist")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 3b. Verify Table Ownership (Required for ALTER TABLE)
+
+# COMMAND ----------
+
+print("\n🔍 Checking table ownership...")
+print("   ALTER TABLE requires ownership of the table.\n")
+
+ownership_check = query_sql("""
+SELECT t.tablename, t.tableowner, current_user as connected_as,
+       (t.tableowner = current_user) as can_alter
+FROM pg_tables t
+WHERE t.schemaname = 'lakemeter'
+  AND t.tablename IN ('line_items')
+ORDER BY t.tablename;
+""", "Ownership check")
+
+if ownership_check:
+    for row in ownership_check:
+        can_alter = row['can_alter']
+        print(f"   Table: {row['tablename']}")
+        print(f"   Owner: {row['tableowner']}")
+        print(f"   Connected as: {row['connected_as']}")
+        print(f"   Can ALTER: {'✅ YES' if can_alter else '❌ NO'}")
+
+        if not can_alter:
+            print(f"\n   ⚠️  Connected role '{row['connected_as']}' does not own '{row['tablename']}'.")
+            print(f"   Attempting ownership transfer...")
+
+            # Try to transfer ownership (works if current user has appropriate privileges)
+            transfer_result = execute_sql(
+                f"ALTER TABLE lakemeter.{row['tablename']} OWNER TO {row['connected_as']}",
+                f"Transfer ownership of {row['tablename']} to {row['connected_as']}"
+            )
+
+            if not transfer_result:
+                print(f"\n   ❌ CANNOT PROCEED: Need the table owner ('{row['tableowner']}') to run:")
+                print(f"      ALTER TABLE lakemeter.{row['tablename']} OWNER TO {row['connected_as']};")
+                print(f"\n   Or run this migration notebook as '{row['tableowner']}' instead.")
+                print(f"\n   💡 TIP: Run 01_Create_Tables.py first — it includes ownership verification.")
+                raise Exception(
+                    f"Table '{row['tablename']}' is owned by '{row['tableowner']}', "
+                    f"not '{row['connected_as']}'. Transfer ownership first."
+                )
+            else:
+                print(f"   ✅ Ownership transferred successfully!")
+else:
+    print("   ❌ Could not check ownership")
+    raise Exception("Cannot verify table ownership")
 
 # Check if backup table exists
 print("\n🔍 Checking if backup table exists...")
@@ -203,10 +255,16 @@ print("1. MODEL SERVING CONCURRENCY - Main Table")
 print("=" * 80)
 
 execute_sql("""
-ALTER TABLE lakemeter.line_items 
+ALTER TABLE lakemeter.line_items
 ADD COLUMN IF NOT EXISTS model_serving_concurrency INT DEFAULT 4
 CHECK (model_serving_concurrency >= 4 AND model_serving_concurrency % 4 = 0);
 """, "Added model_serving_concurrency column (multiples of 4, default 4)")
+
+execute_sql("""
+ALTER TABLE lakemeter.line_items
+ADD COLUMN IF NOT EXISTS model_serving_scale_out VARCHAR(20)
+CHECK (model_serving_scale_out IS NULL OR model_serving_scale_out IN ('small', 'medium', 'large', 'custom'));
+""", "Added model_serving_scale_out column (small/medium/large/custom)")
 
 # COMMAND ----------
 
@@ -222,9 +280,13 @@ print("=" * 80)
 if backup_tables:
     for backup_table in backup_tables:
         execute_sql(f"""
-ALTER TABLE lakemeter.{backup_table} 
+ALTER TABLE lakemeter.{backup_table}
 ADD COLUMN IF NOT EXISTS model_serving_concurrency INT DEFAULT 4;
 """, f"Added model_serving_concurrency to {backup_table}")
+        execute_sql(f"""
+ALTER TABLE lakemeter.{backup_table}
+ADD COLUMN IF NOT EXISTS model_serving_scale_out VARCHAR(20);
+""", f"Added model_serving_scale_out to {backup_table}")
 else:
     print("⚠️  No backup tables found, skipping")
 

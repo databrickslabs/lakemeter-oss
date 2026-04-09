@@ -496,6 +496,8 @@ def run_setup_sql(ctx: dict, instance_info: dict, cfg: dict):
         ("lakebase_storage_gb", "INT"),
         ("lakebase_ha_nodes", "INT DEFAULT 1"),
         ("lakebase_backup_retention_days", "INT DEFAULT 7"),
+        ("lakebase_pitr_gb", "INT"),
+        ("lakebase_snapshot_gb", "INT"),
         ("runs_per_day", "INT"),
         ("avg_runtime_minutes", "INT"),
         ("days_per_month", "INT DEFAULT 30"),
@@ -716,6 +718,8 @@ def _create_tables_inline(cur):
             lakebase_storage_gb INT,
             lakebase_ha_nodes INT DEFAULT 1,
             lakebase_backup_retention_days INT DEFAULT 7,
+            lakebase_pitr_gb INT,
+            lakebase_snapshot_gb INT,
             -- Usage/frequency
             runs_per_day INT,
             avg_runtime_minutes INT,
