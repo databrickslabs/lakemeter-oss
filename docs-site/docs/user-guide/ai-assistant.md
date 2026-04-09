@@ -23,7 +23,7 @@ Behind the scenes, the assistant uses five specialized tools:
 
 | Tool | What it does |
 |------|-------------|
-| **Propose Workload** | Creates a fully configured workload (any of the 9 types) and adds it to your estimate after you confirm |
+| **Propose Workload** | Creates a fully configured workload (any of the 12 types) and adds it to your estimate after you confirm |
 | **Ask Clarifying Questions** | Asks follow-up questions when your request is ambiguous before proposing anything |
 | **Get Estimate Summary** | Reads your current estimate to understand what you already have |
 | **Analyze Estimate** | Reviews your workloads and suggests cost optimizations or configuration improvements |

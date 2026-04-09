@@ -254,6 +254,9 @@ All calculation endpoints accept workload parameters and return cost breakdowns.
 | `POST /api/v1/calculate/fmapi-proprietary` | FMAPI (Proprietary) |
 | `POST /api/v1/calculate/vector-search` | Vector Search |
 | `POST /api/v1/calculate/lakebase` | Lakebase |
+| `POST /api/v1/calculate/databricks-apps` | Databricks Apps |
+| `POST /api/v1/calculate/ai-parse` | AI Parse (Document AI) |
+| `POST /api/v1/calculate/shutterstock-imageai` | Shutterstock ImageAI |
 
 ### Example: Jobs Classic
 
@@ -283,6 +286,42 @@ All calculation endpoints accept workload parameters and return cost breakdowns.
   "num_nodes": 2,
   "storage_gb": 100,
   "hours_per_month": 730
+}
+```
+
+### Example: Databricks Apps
+
+```json
+{
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "size": "medium",
+  "hours_per_month": 730
+}
+```
+
+### Example: AI Parse
+
+```json
+{
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "mode": "pages",
+  "complexity": "medium",
+  "pages_thousands": 10
+}
+```
+
+### Example: Shutterstock ImageAI
+
+```json
+{
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "images_per_month": 500
 }
 ```
 
@@ -447,7 +486,7 @@ PUT /api/v1/users/{user_id}
 GET /api/v1/workload-types
 ```
 
-Returns all 9 workload types with their UI configuration flags.
+Returns all 12 workload types with their UI configuration flags.
 
 ### Get Workload Type
 

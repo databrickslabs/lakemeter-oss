@@ -96,7 +96,7 @@ Connects to the Lakebase instance using owner credentials (via `generate_databas
 - Creates the database (e.g., `lakemeter_pricing`) if it doesn't exist
 - Creates the `lakemeter` schema
 - Creates 9 application tables: `users`, `templates`, `ref_cloud_tiers`, `estimates`, `ref_workload_types`, `line_items`, `conversation_messages`, `decision_records`, `sharing`
-- Seeds reference data: 9 workload types and 8 cloud/tier combinations
+- Seeds reference data: 12 workload types and 8 cloud/tier combinations
 - Adds indexes on `line_items(estimate_id)` and `line_items(workload_type)`
 - Adds the `discount_config` JSONB column to estimates
 - Updates the Lakebase CU size constraint (supports 0.5 and 1–112)

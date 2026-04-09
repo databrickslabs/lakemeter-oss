@@ -14,7 +14,7 @@ sidebar_position: 10
 
 ### What is Lakemeter?
 
-Lakemeter is a cost estimation tool for the Databricks platform. It lets you model workloads across 9 Databricks product types (Jobs, DBSQL, DLT, Model Serving, Vector Search, FMAPI, Lakebase, and more), calculate monthly and annual costs based on real Databricks pricing data, and export professional Excel reports for procurement or planning.
+Lakemeter is a cost estimation tool for the Databricks platform. It lets you model workloads across 12 Databricks product types (Jobs, DBSQL, DLT, Model Serving, Vector Search, FMAPI, Lakebase, Databricks Apps, AI Parse, Shutterstock ImageAI, and more), calculate monthly and annual costs based on real Databricks pricing data, and export professional Excel reports for procurement or planning.
 
 ### How accurate are the cost estimates?
 
@@ -47,6 +47,9 @@ See the [Getting Started](./getting-started) guide for how to set these when cre
 | LLM inference (Llama, DBRX, etc.) | [FMAPI — Databricks](./fmapi-databricks) |
 | LLM inference (Claude, GPT, Gemini) | [FMAPI — Proprietary](./fmapi-proprietary) |
 | Managed PostgreSQL database | [Lakebase](./lakebase) |
+| Hosting a web app on Databricks | Databricks Apps |
+| Parsing documents with AI | AI Parse (Document AI) |
+| Generating images with AI | Shutterstock ImageAI |
 
 ### What's the difference between Classic and Serverless?
 
@@ -86,7 +89,7 @@ Lakemeter uses DBU rates from Databricks reference pricing tables, loaded at dep
 
 ### A workload type is grayed out — why?
 
-Some workload types are only available on **Premium** or **Enterprise** tiers. If you selected the Standard tier for your estimate, workloads like DBSQL Serverless, Vector Search, FMAPI, and Model Serving will be disabled. Change your estimate's tier to Premium or Enterprise to unlock them.
+Some workload types are only available on **Premium** or **Enterprise** tiers. If you selected the Standard tier for your estimate, workloads like DBSQL Serverless, Vector Search, FMAPI, Model Serving, Databricks Apps, AI Parse, and Shutterstock ImageAI will be disabled. Change your estimate's tier to Premium or Enterprise to unlock them.
 
 ### The cost seems too high or too low — what should I check?
 

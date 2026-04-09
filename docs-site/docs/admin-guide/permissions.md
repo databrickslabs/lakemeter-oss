@@ -135,7 +135,7 @@ The test suite includes dedicated permission tests in `tests/test_lakebase_permi
 | Token expiry validation | Token has a future expiry timestamp |
 | DB connectivity | SP can connect to Lakebase with the generated token |
 | PG16 version check | Connected instance runs PostgreSQL 16+ |
-| Workload type read | SP can read all 9 workload types from pricing tables |
+| Workload type read | SP can read all 12 workload types from pricing tables |
 | DBU rate read | SP can read DBU rates with values > 0 |
 | VM cost read | SP can read VM cost data |
 | CRUD on users table | SP can INSERT, SELECT, UPDATE, DELETE on the users table |

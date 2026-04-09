@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Which Workload Type Do I Need?
 
-Lakemeter supports 9 workload types covering the full Databricks platform. This page helps you choose the right one for your use case.
+Lakemeter supports 12 workload types covering the full Databricks platform. This page helps you choose the right one for your use case.
 
 ![All workloads in a Lakemeter estimate](/img/all-workloads-overview.png)
 *A Lakemeter estimate showing multiple workload types with their individual costs and configuration summaries.*
@@ -25,6 +25,9 @@ Lakemeter supports 9 workload types covering the full Databricks platform. This 
 | Call open-source LLMs (Llama, DBRX, Gemma) | **FMAPI Databricks** | [FMAPI — Databricks](/user-guide/fmapi-databricks) |
 | Call commercial LLMs (Claude, GPT, Gemini) | **FMAPI Proprietary** | [FMAPI — Proprietary](/user-guide/fmapi-proprietary) |
 | Use a managed PostgreSQL database | **Lakebase** | [Lakebase](/user-guide/lakebase) |
+| Host a web app on Databricks | **Databricks Apps** | — |
+| Parse documents with AI | **AI Parse (Document AI)** | — |
+| Generate images with AI | **Shutterstock ImageAI** | — |
 
 ## Workload categories
 
@@ -50,6 +53,9 @@ These workloads are always serverless with no VM costs. Pricing is based on **GP
 | **FMAPI Databricks** | DBU per million tokens or DBU/hr (provisioned) | Tokens or hours | Never |
 | **FMAPI Proprietary** | DBU per million tokens | Tokens | Never |
 | **Lakebase** | DBU/hr (compute) + DSU (storage) | Hours + GB | Never |
+| **Databricks Apps** | DBU/hr by app size | Hours | Never |
+| **AI Parse** | DBU per 1000 pages | Pages | Never |
+| **Shutterstock ImageAI** | Fixed per image | Images | Never |
 
 ## Common fields
 
@@ -95,6 +101,9 @@ Some workloads require a **Premium** pricing tier or above:
 | FMAPI Databricks | No | Yes |
 | FMAPI Proprietary | No | Yes |
 | Lakebase | No | Yes |
+| Databricks Apps | No | Yes |
+| AI Parse | No | Yes |
+| Shutterstock ImageAI | No | Yes |
 
 If you select Standard tier for your estimate, workloads that require Premium will not be available.
 
