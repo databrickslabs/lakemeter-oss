@@ -62,6 +62,21 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
                 f"FMAPI rate not found for {item.fmapi_model or 'unknown model'}, using fallback {dbu_hr}")
         return hours, 0, 0, dbu_hr * hours, ''
     else:
+        wt = (item.workload_type or '').upper()
+        # AI Parse: quantity-based (pages × complexity rate)
+        if wt == 'AI_PARSE':
+            complexity_rates = {
+                'low_text': 12.5, 'low_images': 22.5, 'medium': 62.5, 'high': 87.5
+            }
+            complexity = (getattr(item, 'ai_parse_complexity', None) or 'medium').lower()
+            pages_k = float(getattr(item, 'ai_parse_pages_thousands', 0) or 0)
+            total_dbus = pages_k * complexity_rates.get(complexity, 62.5)
+            return 0, 0, 0, total_dbus, ''
+        # Shutterstock ImageAI: quantity-based (images × 0.857 DBU)
+        if wt == 'SHUTTERSTOCK_IMAGEAI':
+            images = int(getattr(item, 'shutterstock_images', 0) or 0)
+            total_dbus = images * 0.857
+            return 0, 0, 0, total_dbus, ''
         hours = _calculate_hours_per_month(item)
         return hours, 0, 0, dbu_per_hour * hours, ''
 
