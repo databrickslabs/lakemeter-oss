@@ -493,6 +493,15 @@ def run_setup_sql(ctx: dict, instance_info: dict, cfg: dict):
         ("fmapi_rate_type", "VARCHAR(20)"),
         ("fmapi_quantity", "BIGINT"),
         ("lakebase_cu", "NUMERIC(5,1)"),
+        ("databricks_apps_size", "VARCHAR(20)"),
+        ("clean_room_collaborators", "INTEGER"),
+        ("ai_parse_mode", "VARCHAR(20)"),
+        ("ai_parse_complexity", "VARCHAR(20)"),
+        ("ai_parse_pages_thousands", "NUMERIC(12,2)"),
+        ("shutterstock_images", "INTEGER"),
+        ("lakeflow_connect_pipeline_mode", "VARCHAR(20)"),
+        ("lakeflow_connect_gateway_enabled", "BOOLEAN"),
+        ("lakeflow_connect_gateway_instance", "VARCHAR(100)"),
         ("lakebase_storage_gb", "INT"),
         ("lakebase_ha_nodes", "INT DEFAULT 1"),
         ("lakebase_backup_retention_days", "INT DEFAULT 7"),
@@ -713,6 +722,20 @@ def _create_tables_inline(cur):
             fmapi_context_length VARCHAR(20),
             fmapi_rate_type VARCHAR(20),
             fmapi_quantity BIGINT,
+            -- Databricks Apps config
+            databricks_apps_size VARCHAR(20),
+            -- Clean Room config
+            clean_room_collaborators INTEGER,
+            -- AI Parse config
+            ai_parse_mode VARCHAR(20),
+            ai_parse_complexity VARCHAR(20),
+            ai_parse_pages_thousands NUMERIC(12,2),
+            -- Shutterstock ImageAI config
+            shutterstock_images INTEGER,
+            -- Lakeflow Connect config
+            lakeflow_connect_pipeline_mode VARCHAR(20),
+            lakeflow_connect_gateway_enabled BOOLEAN,
+            lakeflow_connect_gateway_instance VARCHAR(100),
             -- Lakebase config
             lakebase_cu NUMERIC(5,1),
             lakebase_storage_gb INT,
@@ -765,21 +788,26 @@ def _create_tables_inline(cur):
 
     # Seed data
     seed_workload_types = [
-        ("ALL_PURPOSE", "All-Purpose Compute", "compute", "Interactive notebooks and development"),
-        ("JOBS", "Jobs Compute", "compute", "Automated workflows and pipelines"),
-        ("DLT", "Delta Live Tables", "compute", "Declarative ETL pipelines"),
-        ("SQL_WAREHOUSE", "SQL Warehouse", "sql", "SQL analytics and BI queries"),
-        ("MODEL_SERVING", "Model Serving", "ai", "Real-time model inference"),
-        ("VECTOR_SEARCH", "Vector Search", "ai", "Vector similarity search"),
-        ("FMAPI", "Foundation Model APIs", "ai", "Foundation model inference"),
-        ("LAKEBASE", "Lakebase", "database", "Managed PostgreSQL database"),
-        ("SERVERLESS_COMPUTE", "Serverless Compute", "compute", "Serverless notebooks and jobs"),
+        ("ALL_PURPOSE", "All-Purpose Compute", "Interactive notebooks and development"),
+        ("JOBS", "Jobs Compute", "Automated workflows and pipelines"),
+        ("DLT", "Delta Live Tables", "Declarative ETL pipelines"),
+        ("SQL_WAREHOUSE", "SQL Warehouse", "SQL analytics and BI queries"),
+        ("MODEL_SERVING", "Model Serving", "Real-time model inference"),
+        ("VECTOR_SEARCH", "Vector Search", "Vector similarity search"),
+        ("FMAPI", "Foundation Model APIs", "Foundation model inference"),
+        ("LAKEBASE", "Lakebase", "Managed PostgreSQL database"),
+        ("SERVERLESS_COMPUTE", "Serverless Compute", "Serverless notebooks and jobs"),
+        ("DATABRICKS_APPS", "Databricks Apps", "Managed application hosting"),
+        ("CLEAN_ROOM", "Clean Room", "Secure multi-party data collaboration"),
+        ("AI_PARSE", "AI Parse (Document AI)", "Intelligent document parsing"),
+        ("SHUTTERSTOCK_IMAGEAI", "Shutterstock ImageAI", "AI-powered image generation"),
+        ("LAKEFLOW_CONNECT", "Lakeflow Connect", "Managed data ingestion connectors"),
     ]
     for wt in seed_workload_types:
         cur.execute(
             """INSERT INTO lakemeter.ref_workload_types
-               (workload_type, display_name, category, description)
-               VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING""",
+               (workload_type, display_name, description)
+               VALUES (%s, %s, %s) ON CONFLICT DO NOTHING""",
             wt,
         )
 

@@ -264,6 +264,83 @@ class E2EClient:
             payload["discount_config"] = discount_config
         return self.calculate("/calculate/lakebase", payload)
 
+    # ── New Workload Types ─────────────────────────────────────────────────
+
+    def calculate_databricks_apps(self, cloud: str, region: str, tier: str,
+                                   size: str = "medium",
+                                   usage: Optional[dict] = None,
+                                   discount_config: Optional[dict] = None) -> dict:
+        payload = {
+            "cloud": cloud, "region": region, "tier": tier,
+            "size": size,
+        }
+        if usage:
+            payload.update(usage)
+        if discount_config:
+            payload["discount_config"] = discount_config
+        return self.calculate("/calculate/databricks-apps", payload)
+
+    def calculate_clean_room(self, cloud: str, region: str, tier: str,
+                              collaborators: int,
+                              days_per_month: int = 30,
+                              discount_config: Optional[dict] = None) -> dict:
+        payload = {
+            "cloud": cloud, "region": region, "tier": tier,
+            "collaborators": collaborators, "days_per_month": days_per_month,
+        }
+        if discount_config:
+            payload["discount_config"] = discount_config
+        return self.calculate("/calculate/clean-room", payload)
+
+    def calculate_ai_parse(self, cloud: str, region: str, tier: str,
+                            mode: str = "pages",
+                            complexity: Optional[str] = None,
+                            pages_thousands: Optional[float] = None,
+                            hours_per_month: Optional[float] = None,
+                            discount_config: Optional[dict] = None) -> dict:
+        payload: dict = {
+            "cloud": cloud, "region": region, "tier": tier,
+            "mode": mode,
+        }
+        if complexity:
+            payload["complexity"] = complexity
+        if pages_thousands is not None:
+            payload["pages_thousands"] = pages_thousands
+        if hours_per_month is not None:
+            payload["hours_per_month"] = hours_per_month
+        if discount_config:
+            payload["discount_config"] = discount_config
+        return self.calculate("/calculate/ai-parse", payload)
+
+    def calculate_shutterstock(self, cloud: str, region: str, tier: str,
+                                images_per_month: int,
+                                discount_config: Optional[dict] = None) -> dict:
+        payload = {
+            "cloud": cloud, "region": region, "tier": tier,
+            "images_per_month": images_per_month,
+        }
+        if discount_config:
+            payload["discount_config"] = discount_config
+        return self.calculate("/calculate/shutterstock-imageai", payload)
+
+    def calculate_lakeflow_connect(self, cloud: str, region: str, tier: str,
+                                    dlt_edition: str = "ADVANCED",
+                                    gateway_enabled: bool = False,
+                                    gateway_instance_type: Optional[str] = None,
+                                    usage: Optional[dict] = None,
+                                    discount_config: Optional[dict] = None) -> dict:
+        payload: dict = {
+            "cloud": cloud, "region": region, "tier": tier,
+            "dlt_edition": dlt_edition, "gateway_enabled": gateway_enabled,
+        }
+        if gateway_instance_type:
+            payload["gateway_instance_type"] = gateway_instance_type
+        if usage:
+            payload.update(usage)
+        if discount_config:
+            payload["discount_config"] = discount_config
+        return self.calculate("/calculate/lakeflow-connect", payload)
+
     # ── Export ─────────────────────────────────────────────────────────────
 
     def export_excel(self, estimate_id: str) -> BytesIO:
