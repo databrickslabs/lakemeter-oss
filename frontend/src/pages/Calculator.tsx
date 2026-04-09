@@ -838,20 +838,12 @@ export default function Calculator() {
         productType = 'ALL_PURPOSE_SERVERLESS_COMPUTE'
         break
 
-      case 'CLEAN_ROOM':
-        productType = 'CLEAN_ROOMS_COLLABORATOR'
-        break
-
       case 'AI_PARSE':
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
         break
 
       case 'SHUTTERSTOCK_IMAGEAI':
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
-        break
-
-      case 'LAKEFLOW_CONNECT':
-        productType = 'DELTA_LIVE_TABLES_SERVERLESS'
         break
 
       default:
@@ -1316,28 +1308,14 @@ export default function Calculator() {
         break
       }
 
-      case 'CLEAN_ROOM': {
-        // Clean Room: 1 DBU per collaborator per day
-        const collaborators = effectiveItem.clean_room_collaborators || 1
-        const daysPerMonth = effectiveItem.days_per_month || 30
-        monthlyDBUs = collaborators * daysPerMonth * 1.0  // 1 DBU/collaborator/day
-        break
-      }
-
       case 'AI_PARSE': {
-        const aiParseMode = (effectiveItem.ai_parse_mode || 'pages').toLowerCase()
-        if (aiParseMode === 'dbu') {
-          // Direct DBU mode — DBU quantity stored in hours_per_month
-          monthlyDBUs = effectiveItem.hours_per_month || 0
-        } else {
-          // Pages-based mode: pages(K) × complexity_rate
-          const complexityRates: Record<string, number> = {
-            'low_text': 12.5, 'low_images': 22.5, 'medium': 62.5, 'high': 87.5
-          }
-          const complexity = (effectiveItem.ai_parse_complexity || 'medium').toLowerCase()
-          const pagesK = effectiveItem.ai_parse_pages_thousands || 0
-          monthlyDBUs = pagesK * (complexityRates[complexity] || 62.5)
+        // Pages-based mode: pages(K) × complexity_rate
+        const complexityRates: Record<string, number> = {
+          'low_text': 12.5, 'low_images': 22.5, 'medium': 62.5, 'high': 87.5
         }
+        const complexity = (effectiveItem.ai_parse_complexity || 'medium').toLowerCase()
+        const pagesK = effectiveItem.ai_parse_pages_thousands || 0
+        monthlyDBUs = pagesK * (complexityRates[complexity] || 62.5)
         break
       }
 
@@ -1345,15 +1323,6 @@ export default function Calculator() {
         // 0.857 DBU per image
         const imageCount = effectiveItem.shutterstock_images || 0
         monthlyDBUs = imageCount * 0.857
-        break
-      }
-
-      case 'LAKEFLOW_CONNECT': {
-        // Pipeline: DLT Serverless (same as DLT serverless calculation)
-        // For simplicity in inline calc, use hours × base rate
-        // The backend does the full calculation; this is for instant preview
-        dbuPerHour = 0.5  // Approximate base rate for DLT serverless
-        monthlyDBUs = dbuPerHour * hoursPerMonth
         break
       }
 
@@ -1819,33 +1788,16 @@ export default function Calculator() {
         details.push({ label: 'Size', value: (item.databricks_apps_size || 'medium').charAt(0).toUpperCase() + (item.databricks_apps_size || 'medium').slice(1) })
         break
 
-      case 'CLEAN_ROOM':
-        if (item.clean_room_collaborators) {
-          details.push({ label: 'Collaborators', value: `${item.clean_room_collaborators}` })
-        }
-        break
-
       case 'AI_PARSE':
-        if (item.ai_parse_mode === 'dbu') {
-          details.push({ label: 'Mode', value: 'Direct DBU' })
-        } else {
-          details.push({ label: 'Complexity', value: item.ai_parse_complexity || 'medium' })
-          if (item.ai_parse_pages_thousands) {
-            details.push({ label: 'Pages', value: `${item.ai_parse_pages_thousands}K` })
-          }
+        details.push({ label: 'Complexity', value: item.ai_parse_complexity || 'medium' })
+        if (item.ai_parse_pages_thousands) {
+          details.push({ label: 'Pages', value: `${item.ai_parse_pages_thousands}K/mo` })
         }
         break
 
       case 'SHUTTERSTOCK_IMAGEAI':
         if (item.shutterstock_images) {
           details.push({ label: 'Images', value: `${item.shutterstock_images.toLocaleString()}/mo` })
-        }
-        break
-
-      case 'LAKEFLOW_CONNECT':
-        details.push({ label: 'Pipeline', value: 'DLT Serverless' })
-        if (item.lakeflow_connect_gateway_enabled) {
-          details.push({ label: 'Gateway', value: 'Enabled' })
         }
         break
     }
@@ -3159,33 +3111,107 @@ export default function Calculator() {
                                     )
                                   }
                                   
+                                  // Databricks Apps formula
+                                  if (wType === 'DATABRICKS_APPS') {
+                                    const appsSize = (effectiveItem.databricks_apps_size || 'medium').toLowerCase()
+                                    const appsDbuRate = appsSize === 'large' ? 1.0 : 0.5
+                                    return (
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                          <span className="text-blue-600 font-semibold">DBU:</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{appsSize.charAt(0).toUpperCase() + appsSize.slice(1)}</span>
+                                          <span className="text-[var(--text-muted)]">({appsDbuRate} DBU/hr)</span>
+                                          <span>×</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(0)}h</span>
+                                          <span>=</span>
+                                          <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                          <span>×</span>
+                                          <span>${dbuPriceDisplay}/DBU</span>
+                                          <span>=</span>
+                                          <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
+                                        </div>
+                                      </div>
+                                    )
+                                  }
+
+                                  // AI Parse formula
+                                  if (wType === 'AI_PARSE') {
+                                    const aiComplexity = (effectiveItem.ai_parse_complexity || 'medium').toLowerCase()
+                                    const aiComplexityRates: Record<string, number> = {
+                                      'low_text': 12.5, 'low_images': 22.5, 'medium': 62.5, 'high': 87.5
+                                    }
+                                    const aiRate = aiComplexityRates[aiComplexity] || 62.5
+                                    const aiPagesK = effectiveItem.ai_parse_pages_thousands || 0
+                                    const complexityLabels: Record<string, string> = {
+                                      'low_text': 'Low (Text)', 'low_images': 'Low (Images)', 'medium': 'Medium', 'high': 'High'
+                                    }
+                                    return (
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                          <span className="text-blue-600 font-semibold">DBU:</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{aiPagesK}K pages</span>
+                                          <span>×</span>
+                                          <span>{aiRate} DBU/1K</span>
+                                          <span className="text-[var(--text-muted)]">({complexityLabels[aiComplexity] || 'Medium'})</span>
+                                          <span>=</span>
+                                          <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                          <span>×</span>
+                                          <span>${dbuPriceDisplay}/DBU</span>
+                                          <span>=</span>
+                                          <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
+                                        </div>
+                                      </div>
+                                    )
+                                  }
+
+                                  // Shutterstock ImageAI formula
+                                  if (wType === 'SHUTTERSTOCK_IMAGEAI') {
+                                    const ssImages = effectiveItem.shutterstock_images || 0
+                                    return (
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                          <span className="text-blue-600 font-semibold">DBU:</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{ssImages.toLocaleString()} images</span>
+                                          <span>×</span>
+                                          <span>0.857 DBU/image</span>
+                                          <span>=</span>
+                                          <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                          <span>×</span>
+                                          <span>${dbuPriceDisplay}/DBU</span>
+                                          <span>=</span>
+                                          <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
+                                        </div>
+                                      </div>
+                                    )
+                                  }
+
                                   // Compute workloads (JOBS, ALL_PURPOSE, DLT) - verbose formula with actual rates
                                   const numWorkers = effectiveItem.num_workers || 0
                                   const driverNode = effectiveItem.driver_node_type || ''
                                   const workerNode = effectiveItem.worker_node_type || ''
                                   const photonEnabled = effectiveItem.photon_enabled
                                   const hasVMCost = costs.vmCost > 0 && !isServerless
-                                  
+
                                   // Look up actual DBU rates - prefer cached API data, fallback to instanceTypes
                                   const cloud = formData.cloud || 'aws'
                                   const region = formData.region || ''
                                   const driverInstance = instanceTypes.find(it => it.id === driverNode || it.name === driverNode)
                                   const workerInstance = instanceTypes.find(it => it.id === workerNode || it.name === workerNode)
-                                  
+
                                   // Use getInstanceDbuRate (from dynamic API) with fallback to instanceTypes
                                   const driverDBURate = getInstanceDbuRate(cloud, driverNode) || driverInstance?.dbu_rate || 0
                                   const workerDBURate = getInstanceDbuRate(cloud, workerNode) || workerInstance?.dbu_rate || 0
-                                  
+
                                   // Get VM costs using getVMPrice (same as cost calculation) - this properly fetches from VM pricing cache
-                                  const driverVMCost = region && driverNode 
+                                  const driverVMCost = region && driverNode
                                     ? getVMPrice(cloud, region, driverNode, effectiveItem.driver_pricing_tier || 'on_demand', effectiveItem.driver_payment_option || 'no_upfront')
                                     : null
-                                  const workerVMCost = region && workerNode 
+                                  const workerVMCost = region && workerNode
                                     ? getVMPrice(cloud, region, workerNode, effectiveItem.worker_pricing_tier || 'spot', effectiveItem.worker_payment_option || 'NA')
                                     : null
-                                  
+
                                   const dbuPerHour = costs.dbuPerHour || 0
-                                  
+
                                   return (
                                     <div className="space-y-1.5">
                                       {/* Hours calculation (if run-based) */}
@@ -3774,31 +3800,105 @@ export default function Calculator() {
                                   )
                                 }
                                 
+                                // Databricks Apps formula (card view)
+                                if (wType === 'DATABRICKS_APPS') {
+                                  const appsSize = (effectiveItem.databricks_apps_size || 'medium').toLowerCase()
+                                  const appsDbuRate = appsSize === 'large' ? 1.0 : 0.5
+                                  return (
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                        <span className="text-blue-600 font-semibold">DBU:</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{appsSize.charAt(0).toUpperCase() + appsSize.slice(1)}</span>
+                                        <span className="text-[var(--text-muted)]">({appsDbuRate} DBU/hr)</span>
+                                        <span>×</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(0)}h</span>
+                                        <span>=</span>
+                                        <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                        <span>×</span>
+                                        <span>${dbuPriceDisplay}/DBU</span>
+                                        <span>=</span>
+                                        <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
+                                      </div>
+                                    </div>
+                                  )
+                                }
+
+                                // AI Parse formula (card view)
+                                if (wType === 'AI_PARSE') {
+                                  const aiComplexity = (effectiveItem.ai_parse_complexity || 'medium').toLowerCase()
+                                  const aiComplexityRates: Record<string, number> = {
+                                    'low_text': 12.5, 'low_images': 22.5, 'medium': 62.5, 'high': 87.5
+                                  }
+                                  const aiRate = aiComplexityRates[aiComplexity] || 62.5
+                                  const aiPagesK = effectiveItem.ai_parse_pages_thousands || 0
+                                  const complexityLabels: Record<string, string> = {
+                                    'low_text': 'Low (Text)', 'low_images': 'Low (Images)', 'medium': 'Medium', 'high': 'High'
+                                  }
+                                  return (
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                        <span className="text-blue-600 font-semibold">DBU:</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{aiPagesK}K pages</span>
+                                        <span>×</span>
+                                        <span>{aiRate} DBU/1K</span>
+                                        <span className="text-[var(--text-muted)]">({complexityLabels[aiComplexity] || 'Medium'})</span>
+                                        <span>=</span>
+                                        <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                        <span>×</span>
+                                        <span>${dbuPriceDisplay}/DBU</span>
+                                        <span>=</span>
+                                        <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
+                                      </div>
+                                    </div>
+                                  )
+                                }
+
+                                // Shutterstock ImageAI formula (card view)
+                                if (wType === 'SHUTTERSTOCK_IMAGEAI') {
+                                  const ssImages = effectiveItem.shutterstock_images || 0
+                                  return (
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                        <span className="text-blue-600 font-semibold">DBU:</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{ssImages.toLocaleString()} images</span>
+                                        <span>×</span>
+                                        <span>0.857 DBU/image</span>
+                                        <span>=</span>
+                                        <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                        <span>×</span>
+                                        <span>${dbuPriceDisplay}/DBU</span>
+                                        <span>=</span>
+                                        <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
+                                      </div>
+                                    </div>
+                                  )
+                                }
+
                                 // Compute workloads (JOBS, ALL_PURPOSE, DLT, DBSQL)
                                 const numWorkers = effectiveItem.num_workers || 0
                                 const driverNode = effectiveItem.driver_node_type || ''
                                 const workerNode = effectiveItem.worker_node_type || ''
                                 const photonEnabled = effectiveItem.photon_enabled
                                 const hasVMCost = costs.vmCost > 0 && !isServerless
-                                
+
                                 // Look up actual DBU rates
                                 const cloud = formData.cloud || 'aws'
                                 const region = formData.region || ''
                                 const driverInstance = instanceTypes.find(it => it.id === driverNode || it.name === driverNode)
                                 const workerInstance = instanceTypes.find(it => it.id === workerNode || it.name === workerNode)
-                                
+
                                 const driverDBURate = getInstanceDbuRate(cloud, driverNode) || driverInstance?.dbu_rate || 0
                                 const workerDBURate = getInstanceDbuRate(cloud, workerNode) || workerInstance?.dbu_rate || 0
-                                
-                                const driverVMCost = region && driverNode 
+
+                                const driverVMCost = region && driverNode
                                   ? getVMPrice(cloud, region, driverNode, effectiveItem.driver_pricing_tier || 'on_demand', effectiveItem.driver_payment_option || 'no_upfront')
                                   : null
-                                const workerVMCost = region && workerNode 
+                                const workerVMCost = region && workerNode
                                   ? getVMPrice(cloud, region, workerNode, effectiveItem.worker_pricing_tier || 'spot', effectiveItem.worker_payment_option || 'NA')
                                   : null
-                                
+
                                 const dbuPerHour = costs.dbuPerHour || 0
-                                
+
                                 return (
                                   <div className="space-y-1.5">
                                     {/* Hours calculation (if run-based) */}

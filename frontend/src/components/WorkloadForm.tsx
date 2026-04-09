@@ -83,10 +83,8 @@ const PREMIUM_ONLY_WORKLOAD_TYPES = new Set([
   'FMAPI_PROPRIETARY',
   'LAKEBASE',
   'DATABRICKS_APPS',
-  'CLEAN_ROOM',
   'AI_PARSE',
   'SHUTTERSTOCK_IMAGEAI',
-  'LAKEFLOW_CONNECT',
 ])
 
 // Helper to check if a workload type is available for the selected tier
@@ -911,16 +909,9 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.databricks_apps_size = null
       }
 
-      // Clean Room config
-      if (form.workload_type === 'CLEAN_ROOM') {
-        data.clean_room_collaborators = form.clean_room_collaborators
-      } else {
-        data.clean_room_collaborators = null
-      }
-
-      // AI Parse config
+      // AI Parse config (pages-based only)
       if (form.workload_type === 'AI_PARSE') {
-        data.ai_parse_mode = form.ai_parse_mode
+        data.ai_parse_mode = 'pages'
         data.ai_parse_complexity = form.ai_parse_complexity
         data.ai_parse_pages_thousands = form.ai_parse_pages_thousands
       } else {
@@ -934,17 +925,6 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.shutterstock_images = form.shutterstock_images
       } else {
         data.shutterstock_images = null
-      }
-
-      // Lakeflow Connect config
-      if (form.workload_type === 'LAKEFLOW_CONNECT') {
-        data.lakeflow_connect_pipeline_mode = form.lakeflow_connect_pipeline_mode
-        data.lakeflow_connect_gateway_enabled = form.lakeflow_connect_gateway_enabled
-        data.lakeflow_connect_gateway_instance = form.lakeflow_connect_gateway_instance || null
-      } else {
-        data.lakeflow_connect_pipeline_mode = null
-        data.lakeflow_connect_gateway_enabled = null
-        data.lakeflow_connect_gateway_instance = null
       }
 
       // Lakebase config
@@ -1005,31 +985,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.runs_per_day = null
         data.avg_runtime_minutes = null
         data.days_per_month = null
-      } else if (form.workload_type === 'CLEAN_ROOM') {
-        // Clean Room uses days_per_month only
+      } else if (form.workload_type === 'AI_PARSE' || form.workload_type === 'SHUTTERSTOCK_IMAGEAI') {
+        // Quantity-based workloads - no hours, runs, or days needed
         data.hours_per_month = null
         data.runs_per_day = null
         data.avg_runtime_minutes = null
-        data.days_per_month = form.days_per_month || 30
-      } else if (form.workload_type === 'AI_PARSE' || form.workload_type === 'SHUTTERSTOCK_IMAGEAI') {
-        // Quantity-based workloads
-        data.hours_per_month = form.ai_parse_mode === 'dbu' ? (form.hours_per_month || 0) : null
-        data.runs_per_day = null
-        data.avg_runtime_minutes = null
         data.days_per_month = null
-      } else if (form.workload_type === 'LAKEFLOW_CONNECT') {
-        // Lakeflow Connect uses run-based or direct hours
-        if (useDirectHours) {
-          data.hours_per_month = form.hours_per_month || 730
-          data.runs_per_day = null
-          data.avg_runtime_minutes = null
-          data.days_per_month = null
-        } else {
-          data.hours_per_month = null
-          data.runs_per_day = form.runs_per_day
-          data.avg_runtime_minutes = form.avg_runtime_minutes
-          data.days_per_month = form.days_per_month
-        }
       } else if (selectedWorkloadType?.show_fmapi_config) {
         // For FMAPI - use quantity-based, no hours
         data.hours_per_month = form.hours_per_month || null
@@ -2121,66 +2082,34 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           </div>
         )}
 
-        {/* Clean Room Config */}
-        {form.workload_type === 'CLEAN_ROOM' && (
-          <div>
-            <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Collaborators</label>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              step={1}
-              value={form.clean_room_collaborators || 1}
-              onChange={(e) => setForm(f => ({ ...f, clean_room_collaborators: Math.min(10, Math.max(1, parseInt(e.target.value) || 1)) }))}
-              className="w-full text-sm"
-            />
-            <span className="text-[10px] text-[var(--text-tertiary)]">1 DBU per collaborator per day (max 10)</span>
-          </div>
-        )}
-
         {/* AI Parse Config */}
         {form.workload_type === 'AI_PARSE' && (
           <>
             <div>
-              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Mode</label>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Complexity</label>
               <select
-                value={form.ai_parse_mode || 'pages'}
-                onChange={(e) => setForm(f => ({ ...f, ai_parse_mode: e.target.value }))}
+                value={form.ai_parse_complexity || 'medium'}
+                onChange={(e) => setForm(f => ({ ...f, ai_parse_complexity: e.target.value }))}
                 className="w-full text-sm"
               >
-                <option value="pages">Pages-based</option>
-                <option value="dbu">Direct DBU</option>
+                <option value="low_text">Low - Text Only (12.5 DBU/1K pages)</option>
+                <option value="low_images">Low - With Images (22.5 DBU/1K pages)</option>
+                <option value="medium">Medium (62.5 DBU/1K pages)</option>
+                <option value="high">High (87.5 DBU/1K pages)</option>
               </select>
             </div>
-            {(form.ai_parse_mode || 'pages') === 'pages' && (
-              <>
-                <div>
-                  <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Complexity</label>
-                  <select
-                    value={form.ai_parse_complexity || 'medium'}
-                    onChange={(e) => setForm(f => ({ ...f, ai_parse_complexity: e.target.value }))}
-                    className="w-full text-sm"
-                  >
-                    <option value="low_text">Low - Text Only (12.5 DBU/1K pages)</option>
-                    <option value="low_images">Low - With Images (22.5 DBU/1K pages)</option>
-                    <option value="medium">Medium (62.5 DBU/1K pages)</option>
-                    <option value="high">High (87.5 DBU/1K pages)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Pages (thousands)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={form.ai_parse_pages_thousands || 0}
-                    onChange={(e) => setForm(f => ({ ...f, ai_parse_pages_thousands: parseFloat(e.target.value) || 0 }))}
-                    className="w-full text-sm"
-                    placeholder="e.g., 100 (= 100K pages)"
-                  />
-                </div>
-              </>
-            )}
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Pages/Month (thousands)</label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={form.ai_parse_pages_thousands || 0}
+                onChange={(e) => setForm(f => ({ ...f, ai_parse_pages_thousands: parseFloat(e.target.value) || 0 }))}
+                className="w-full text-sm"
+                placeholder="e.g., 100 (= 100K pages)"
+              />
+            </div>
           </>
         )}
 
@@ -2199,38 +2128,6 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
             />
             <span className="text-[10px] text-[var(--text-tertiary)]">0.857 DBU per image</span>
           </div>
-        )}
-
-        {/* Lakeflow Connect Config */}
-        {form.workload_type === 'LAKEFLOW_CONNECT' && (
-          <>
-            <div className="col-span-full">
-              <p className="text-xs text-[var(--text-muted)]">Pipeline uses DLT Serverless (Advanced edition). Configure usage below.</p>
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
-                <input
-                  type="checkbox"
-                  checked={form.lakeflow_connect_gateway_enabled || false}
-                  onChange={(e) => setForm(f => ({ ...f, lakeflow_connect_gateway_enabled: e.target.checked }))}
-                  className="rounded"
-                />
-                Enable Gateway (Database Connectors)
-              </label>
-            </div>
-            {form.lakeflow_connect_gateway_enabled && (
-              <div>
-                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Gateway Instance</label>
-                <input
-                  type="text"
-                  value={form.lakeflow_connect_gateway_instance || ''}
-                  onChange={(e) => setForm(f => ({ ...f, lakeflow_connect_gateway_instance: e.target.value }))}
-                  className="w-full text-sm"
-                  placeholder="e.g., i3.xlarge (auto-selected per cloud)"
-                />
-              </div>
-            )}
-          </>
         )}
 
         {/* Usage Input Method Toggle - for compute workloads only */}
@@ -2299,8 +2196,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
               </div>
             )}
             
-            {/* Days per month - hide for FMAPI, Vector Search, Model Serving, Lakebase (they use hours_per_month directly) */}
-            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && (
+            {/* Days per month - hide for FMAPI, Vector Search, Model Serving, Lakebase, Databricks Apps, AI Parse, Shutterstock (they use hours or quantity directly) */}
+            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
               <div>
                 <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Days/Month</label>
                 <input

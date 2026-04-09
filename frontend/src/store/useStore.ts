@@ -363,10 +363,8 @@ export const useStore = create<Store>((set, get) => ({
     { workload_type: 'FMAPI_PROPRIETARY', display_name: 'Foundation Models (Proprietary)', description: 'External foundation model APIs', sku_product_type_standard: 'FOUNDATION_MODEL_TRAINING', show_fmapi_config: true },
     { workload_type: 'LAKEBASE', display_name: 'Lakebase', description: 'Database workloads', sku_product_type_standard: 'DATABASE_SERVERLESS_COMPUTE', show_lakebase_config: true },
     { workload_type: 'DATABRICKS_APPS', display_name: 'Databricks Apps', description: 'Managed app hosting', sku_product_type_standard: 'ALL_PURPOSE_SERVERLESS_COMPUTE', show_usage_hours: true },
-    { workload_type: 'CLEAN_ROOM', display_name: 'Clean Room', description: 'Secure data collaboration', sku_product_type_standard: 'CLEAN_ROOMS_COLLABORATOR', show_usage_runs: true },
     { workload_type: 'AI_PARSE', display_name: 'AI Parse (Document AI)', description: 'Document parsing and extraction', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
     { workload_type: 'SHUTTERSTOCK_IMAGEAI', display_name: 'Shutterstock ImageAI', description: 'AI image generation', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
-    { workload_type: 'LAKEFLOW_CONNECT', display_name: 'Lakeflow Connect', description: 'Data ingestion pipelines', sku_product_type_standard: 'DELTA_LIVE_TABLES_SERVERLESS', show_usage_runs: true },
   ] as WorkloadType[],
   // Use static data as defaults - instant display, no waiting for API
   cloudProviders: STATIC_CLOUD_PROVIDERS,
@@ -1490,21 +1488,12 @@ export const useStore = create<Store>((set, get) => ({
           })
           break
 
-        case 'CLEAN_ROOM':
-          result = await api.calculateCleanRoom({
-            ...baseParams,
-            collaborators: lineItem.clean_room_collaborators || 1,
-            days_per_month: lineItem.days_per_month || 30,
-          })
-          break
-
         case 'AI_PARSE':
           result = await api.calculateAIParse({
             ...baseParams,
-            mode: lineItem.ai_parse_mode || 'pages',
+            mode: 'pages',
             complexity: lineItem.ai_parse_complexity || 'medium',
             pages_thousands: lineItem.ai_parse_pages_thousands || 1,
-            hours_per_month: lineItem.hours_per_month || 0,
           })
           break
 
@@ -1512,19 +1501,6 @@ export const useStore = create<Store>((set, get) => ({
           result = await api.calculateShutterstockImageAI({
             ...baseParams,
             images_per_month: lineItem.shutterstock_images || 100,
-          })
-          break
-
-        case 'LAKEFLOW_CONNECT':
-          result = await api.calculateLakeflowConnect({
-            ...baseParams,
-            dlt_edition: 'ADVANCED',
-            runs_per_day: lineItem.runs_per_day || undefined,
-            avg_runtime_minutes: lineItem.avg_runtime_minutes || undefined,
-            days_per_month: lineItem.days_per_month || undefined,
-            hours_per_month: lineItem.hours_per_month || undefined,
-            gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
-            gateway_instance_type: lineItem.lakeflow_connect_gateway_instance || undefined,
           })
           break
       }
