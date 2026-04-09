@@ -28,8 +28,8 @@ app = FastAPI(
     title="Lakemeter API",
     description="Databricks Pricing Calculator API - Estimate and manage Databricks workload costs",
     version="1.0.0",
-    docs_url=None if settings.is_production else "/docs",
-    redoc_url=None if settings.is_production else "/redoc",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
     redirect_slashes=False
 )
 
