@@ -376,6 +376,8 @@ def duplicate_estimate(
             vector_search_storage_gb=original_item.vector_search_storage_gb,
             # Model Serving
             model_serving_gpu_type=original_item.model_serving_gpu_type,
+            model_serving_concurrency=original_item.model_serving_concurrency,
+            model_serving_scale_out=original_item.model_serving_scale_out,
             # FMAPI
             fmapi_provider=original_item.fmapi_provider,
             fmapi_model=original_item.fmapi_model,
@@ -472,6 +474,8 @@ def clone_estimate(
             vector_search_storage_gb=original_item.vector_search_storage_gb,
             # Model Serving
             model_serving_gpu_type=original_item.model_serving_gpu_type,
+            model_serving_concurrency=original_item.model_serving_concurrency,
+            model_serving_scale_out=original_item.model_serving_scale_out,
             # FMAPI
             fmapi_provider=original_item.fmapi_provider,
             fmapi_model=original_item.fmapi_model,

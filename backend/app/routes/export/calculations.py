@@ -153,7 +153,8 @@ def _calc_vector_search_dbu(item, cloud, warnings):
 def _calc_model_serving_dbu(item, cloud, warnings):
     """Calculate DBU/hr for Model Serving workloads.
 
-    DBU/hr = gpu_dbu_rate × concurrency (from model_serving_concurrency column).
+    DBU/hr = gpu_dbu_rate × concurrency.
+    Concurrency source priority: dedicated column > workload_config JSON > default 4.
     """
     gpu_type = (item.model_serving_gpu_type or 'cpu').lower()
     key = f"{cloud}:{gpu_type}"
@@ -162,8 +163,13 @@ def _calc_model_serving_dbu(item, cloud, warnings):
         warnings.append(f"Model Serving rate not found for {key}")
         return 0, warnings
     base_rate = info.get('dbu_rate', 0)
-    config = getattr(item, 'workload_config', None) or {}
-    concurrency = int(config.get('model_serving_concurrency', 4))
+    # Prefer dedicated column, fall back to workload_config JSON, then default 4
+    concurrency = getattr(item, 'model_serving_concurrency', None)
+    if not concurrency:
+        config = getattr(item, 'workload_config', None) or {}
+        concurrency = int(config.get('model_serving_concurrency', 4))
+    else:
+        concurrency = int(concurrency)
     return base_rate * concurrency, warnings
 
 
