@@ -1,0 +1,407 @@
+{
+  "aws:classic:2X-Large": {
+    "dbu_per_hour": 144.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:classic:2X-Small": {
+    "dbu_per_hour": 4.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:classic:3X-Large": {
+    "dbu_per_hour": 272.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:classic:4X-Large": {
+    "dbu_per_hour": 528.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:classic:Large": {
+    "dbu_per_hour": 40.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:classic:Medium": {
+    "dbu_per_hour": 24.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:classic:Small": {
+    "dbu_per_hour": 12.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:classic:X-Large": {
+    "dbu_per_hour": 80.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:classic:X-Small": {
+    "dbu_per_hour": 6.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:pro:2X-Large": {
+    "dbu_per_hour": 144.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:pro:2X-Small": {
+    "dbu_per_hour": 4.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:pro:3X-Large": {
+    "dbu_per_hour": 272.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:pro:4X-Large": {
+    "dbu_per_hour": 528.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:pro:Large": {
+    "dbu_per_hour": 40.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:pro:Medium": {
+    "dbu_per_hour": 24.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:pro:Small": {
+    "dbu_per_hour": 12.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:pro:X-Large": {
+    "dbu_per_hour": 80.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:pro:X-Small": {
+    "dbu_per_hour": 6.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "aws:serverless:2X-Large": {
+    "dbu_per_hour": 144.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "aws:serverless:2X-Small": {
+    "dbu_per_hour": 4.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "aws:serverless:3X-Large": {
+    "dbu_per_hour": 272.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "aws:serverless:4X-Large": {
+    "dbu_per_hour": 528.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "aws:serverless:Large": {
+    "dbu_per_hour": 40.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "aws:serverless:Medium": {
+    "dbu_per_hour": 24.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "aws:serverless:Small": {
+    "dbu_per_hour": 12.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "aws:serverless:X-Large": {
+    "dbu_per_hour": 80.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "aws:serverless:X-Small": {
+    "dbu_per_hour": 6.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "azure:classic:2X-Large": {
+    "dbu_per_hour": 144.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:classic:2X-Small": {
+    "dbu_per_hour": 4.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:classic:3X-Large": {
+    "dbu_per_hour": 272.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:classic:4X-Large": {
+    "dbu_per_hour": 528.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:classic:Large": {
+    "dbu_per_hour": 40.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:classic:Medium": {
+    "dbu_per_hour": 24.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:classic:Small": {
+    "dbu_per_hour": 12.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:classic:X-Large": {
+    "dbu_per_hour": 80.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:classic:X-Small": {
+    "dbu_per_hour": 6.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:pro:2X-Large": {
+    "dbu_per_hour": 144.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:pro:2X-Small": {
+    "dbu_per_hour": 4.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:pro:3X-Large": {
+    "dbu_per_hour": 272.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:pro:4X-Large": {
+    "dbu_per_hour": 528.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:pro:Large": {
+    "dbu_per_hour": 40.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:pro:Medium": {
+    "dbu_per_hour": 24.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:pro:Small": {
+    "dbu_per_hour": 12.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:pro:X-Large": {
+    "dbu_per_hour": 80.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:pro:X-Small": {
+    "dbu_per_hour": 6.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "azure:serverless:2X-Large": {
+    "dbu_per_hour": 144.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "azure:serverless:2X-Small": {
+    "dbu_per_hour": 4.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "azure:serverless:3X-Large": {
+    "dbu_per_hour": 272.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "azure:serverless:4X-Large": {
+    "dbu_per_hour": 528.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "azure:serverless:Large": {
+    "dbu_per_hour": 40.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "azure:serverless:Medium": {
+    "dbu_per_hour": 24.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "azure:serverless:Small": {
+    "dbu_per_hour": 12.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "azure:serverless:X-Large": {
+    "dbu_per_hour": 80.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "azure:serverless:X-Small": {
+    "dbu_per_hour": 6.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "gcp:classic:2X-Large": {
+    "dbu_per_hour": 144.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:classic:2X-Small": {
+    "dbu_per_hour": 4.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:classic:3X-Large": {
+    "dbu_per_hour": 272.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:classic:4X-Large": {
+    "dbu_per_hour": 528.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:classic:Large": {
+    "dbu_per_hour": 40.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:classic:Medium": {
+    "dbu_per_hour": 24.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:classic:Small": {
+    "dbu_per_hour": 12.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:classic:X-Large": {
+    "dbu_per_hour": 80.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:classic:X-Small": {
+    "dbu_per_hour": 6.0,
+    "sku_product_type": "SQL_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:pro:2X-Large": {
+    "dbu_per_hour": 144.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:pro:2X-Small": {
+    "dbu_per_hour": 4.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:pro:3X-Large": {
+    "dbu_per_hour": 272.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:pro:4X-Large": {
+    "dbu_per_hour": 528.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:pro:Large": {
+    "dbu_per_hour": 40.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:pro:Medium": {
+    "dbu_per_hour": 24.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:pro:Small": {
+    "dbu_per_hour": 12.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:pro:X-Large": {
+    "dbu_per_hour": 80.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:pro:X-Small": {
+    "dbu_per_hour": 6.0,
+    "sku_product_type": "SQL_PRO_COMPUTE",
+    "includes_compute": false
+  },
+  "gcp:serverless:2X-Large": {
+    "dbu_per_hour": 144.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "gcp:serverless:2X-Small": {
+    "dbu_per_hour": 4.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "gcp:serverless:3X-Large": {
+    "dbu_per_hour": 272.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "gcp:serverless:4X-Large": {
+    "dbu_per_hour": 528.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "gcp:serverless:Large": {
+    "dbu_per_hour": 40.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "gcp:serverless:Medium": {
+    "dbu_per_hour": 24.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "gcp:serverless:Small": {
+    "dbu_per_hour": 12.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "gcp:serverless:X-Large": {
+    "dbu_per_hour": 80.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  },
+  "gcp:serverless:X-Small": {
+    "dbu_per_hour": 6.0,
+    "sku_product_type": "SERVERLESS_SQL_COMPUTE",
+    "includes_compute": true
+  }
+}

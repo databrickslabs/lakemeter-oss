@@ -1,0 +1,96 @@
+:root {
+  --ifm-color-primary: #FF3621;
+  --ifm-color-primary-dark: #e62e18;
+  --ifm-color-primary-darker: #d92b16;
+  --ifm-color-primary-darkest: #b32312;
+  --ifm-color-primary-light: #ff4d3a;
+  --ifm-color-primary-lighter: #ff5947;
+  --ifm-color-primary-lightest: #ff7d70;
+  --ifm-code-font-size: 95%;
+  --ifm-font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #FF5747;
+  --ifm-color-primary-dark: #ff3a27;
+  --ifm-color-primary-darker: #ff2b17;
+  --ifm-color-primary-darkest: #e30d00;
+  --ifm-color-primary-light: #ff7467;
+  --ifm-color-primary-lighter: #ff8377;
+  --ifm-color-primary-lightest: #ffb0a7;
+  --ifm-background-color: #1a1a2e;
+  --ifm-background-surface-color: #16213e;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+.hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+.hero__title {
+  font-size: 3rem;
+  font-weight: 700;
+}
+
+.hero__subtitle {
+  font-size: 1.4rem;
+  opacity: 0.9;
+}
+
+/* Card styling for feature sections */
+.card {
+  border-radius: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Table styling */
+table {
+  display: table;
+  width: 100%;
+}
+
+table th {
+  background-color: var(--ifm-color-primary);
+  color: white;
+}
+
+[data-theme='dark'] table th {
+  background-color: rgba(255, 87, 71, 0.2);
+  color: var(--ifm-color-primary-lighter);
+}
+
+/* API reference code blocks */
+.api-method {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-right: 8px;
+}
+
+.api-method-get {
+  background-color: #61affe;
+  color: white;
+}
+
+.api-method-post {
+  background-color: #49cc90;
+  color: white;
+}
+
+.api-method-put {
+  background-color: #fca130;
+  color: white;
+}
+
+.api-method-delete {
+  background-color: #f93e3e;
+  color: white;
+}

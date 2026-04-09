@@ -1,0 +1,6422 @@
+{
+  "aws": {
+    "c5.12xlarge": {
+      "dbu_rate": 7.28,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c5.18xlarge": {
+      "dbu_rate": 10.92,
+      "vcpus": 72.0,
+      "memory_gb": 144.0,
+      "family": "Compute Optimized"
+    },
+    "c5.24xlarge": {
+      "dbu_rate": 14.56,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c5.4xlarge": {
+      "dbu_rate": 2.43,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c5.9xlarge": {
+      "dbu_rate": 5.46,
+      "vcpus": 36.0,
+      "memory_gb": 72.0,
+      "family": "Compute Optimized"
+    },
+    "c5a.12xlarge": {
+      "dbu_rate": 7.28,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c5a.16xlarge": {
+      "dbu_rate": 9.72,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c5a.24xlarge": {
+      "dbu_rate": 14.56,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c5a.2xlarge": {
+      "dbu_rate": 1.21,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c5a.4xlarge": {
+      "dbu_rate": 2.43,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c5a.8xlarge": {
+      "dbu_rate": 4.86,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c5a.xlarge": {
+      "dbu_rate": 0.61,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c5ad.12xlarge": {
+      "dbu_rate": 8.22,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c5ad.16xlarge": {
+      "dbu_rate": 10.96,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c5ad.24xlarge": {
+      "dbu_rate": 16.44,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c5ad.2xlarge": {
+      "dbu_rate": 1.37,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c5ad.4xlarge": {
+      "dbu_rate": 2.74,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c5ad.8xlarge": {
+      "dbu_rate": 5.48,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c5ad.xlarge": {
+      "dbu_rate": 0.69,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c5d.12xlarge": {
+      "dbu_rate": 7.28,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c5d.18xlarge": {
+      "dbu_rate": 10.92,
+      "vcpus": 72.0,
+      "memory_gb": 144.0,
+      "family": "Compute Optimized"
+    },
+    "c5d.24xlarge": {
+      "dbu_rate": 14.56,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c5d.2xlarge": {
+      "dbu_rate": 1.21,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c5d.4xlarge": {
+      "dbu_rate": 2.43,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c5d.9xlarge": {
+      "dbu_rate": 5.46,
+      "vcpus": 36.0,
+      "memory_gb": 72.0,
+      "family": "Compute Optimized"
+    },
+    "c5d.xlarge": {
+      "dbu_rate": 0.61,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c5n.18xlarge": {
+      "dbu_rate": 13.97,
+      "vcpus": 72.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c5n.2xlarge": {
+      "dbu_rate": 1.55,
+      "vcpus": 8.0,
+      "memory_gb": 21.0,
+      "family": "Compute Optimized"
+    },
+    "c5n.4xlarge": {
+      "dbu_rate": 3.11,
+      "vcpus": 16.0,
+      "memory_gb": 42.0,
+      "family": "Compute Optimized"
+    },
+    "c5n.9xlarge": {
+      "dbu_rate": 6.99,
+      "vcpus": 36.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c5n.metal": {
+      "dbu_rate": 13.97,
+      "vcpus": 72.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c5n.xlarge": {
+      "dbu_rate": 0.78,
+      "vcpus": 4.0,
+      "memory_gb": 10.5,
+      "family": "Compute Optimized"
+    },
+    "c6g.12xlarge": {
+      "dbu_rate": 9.24,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c6g.16xlarge": {
+      "dbu_rate": 12.32,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c6g.2xlarge": {
+      "dbu_rate": 1.54,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c6g.4xlarge": {
+      "dbu_rate": 3.08,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c6g.8xlarge": {
+      "dbu_rate": 6.16,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c6g.xlarge": {
+      "dbu_rate": 0.77,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c6gd.12xlarge": {
+      "dbu_rate": 9.24,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c6gd.16xlarge": {
+      "dbu_rate": 12.32,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c6gd.2xlarge": {
+      "dbu_rate": 1.54,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c6gd.4xlarge": {
+      "dbu_rate": 3.08,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c6gd.8xlarge": {
+      "dbu_rate": 6.16,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c6gd.xlarge": {
+      "dbu_rate": 0.77,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c6i.12xlarge": {
+      "dbu_rate": 8.34,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c6i.16xlarge": {
+      "dbu_rate": 11.13,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c6i.24xlarge": {
+      "dbu_rate": 16.69,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c6i.2xlarge": {
+      "dbu_rate": 1.39,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c6i.32xlarge": {
+      "dbu_rate": 22.25,
+      "vcpus": 128.0,
+      "memory_gb": 256.0,
+      "family": "Compute Optimized"
+    },
+    "c6i.4xlarge": {
+      "dbu_rate": 2.78,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c6i.8xlarge": {
+      "dbu_rate": 5.56,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c6i.xlarge": {
+      "dbu_rate": 0.7,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c6id.12xlarge": {
+      "dbu_rate": 8.34,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c6id.16xlarge": {
+      "dbu_rate": 11.13,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c6id.24xlarge": {
+      "dbu_rate": 16.69,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c6id.2xlarge": {
+      "dbu_rate": 1.39,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c6id.32xlarge": {
+      "dbu_rate": 22.25,
+      "vcpus": 128.0,
+      "memory_gb": 256.0,
+      "family": "Compute Optimized"
+    },
+    "c6id.4xlarge": {
+      "dbu_rate": 2.78,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c6id.8xlarge": {
+      "dbu_rate": 5.56,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c6id.xlarge": {
+      "dbu_rate": 0.7,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c6in.12xlarge": {
+      "dbu_rate": 8.34,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c6in.16xlarge": {
+      "dbu_rate": 11.13,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c6in.24xlarge": {
+      "dbu_rate": 16.69,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c6in.2xlarge": {
+      "dbu_rate": 1.39,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c6in.32xlarge": {
+      "dbu_rate": 22.25,
+      "vcpus": 128.0,
+      "memory_gb": 256.0,
+      "family": "Compute Optimized"
+    },
+    "c6in.4xlarge": {
+      "dbu_rate": 2.78,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c6in.8xlarge": {
+      "dbu_rate": 5.56,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c6in.xlarge": {
+      "dbu_rate": 0.7,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c7a.12xlarge": {
+      "dbu_rate": 9.9,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c7a.16xlarge": {
+      "dbu_rate": 13.2,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c7a.24xlarge": {
+      "dbu_rate": 19.8,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c7a.2xlarge": {
+      "dbu_rate": 1.65,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c7a.32xlarge": {
+      "dbu_rate": 26.4,
+      "vcpus": 128.0,
+      "memory_gb": 256.0,
+      "family": "Compute Optimized"
+    },
+    "c7a.48xlarge": {
+      "dbu_rate": 39.6,
+      "vcpus": 192.0,
+      "memory_gb": 384.0,
+      "family": "Compute Optimized"
+    },
+    "c7a.4xlarge": {
+      "dbu_rate": 3.3,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c7a.8xlarge": {
+      "dbu_rate": 6.6,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c7a.xlarge": {
+      "dbu_rate": 0.83,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c7g.12xlarge": {
+      "dbu_rate": 10.86,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c7g.16xlarge": {
+      "dbu_rate": 14.48,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c7g.2xlarge": {
+      "dbu_rate": 1.81,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c7g.4xlarge": {
+      "dbu_rate": 3.62,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c7g.8xlarge": {
+      "dbu_rate": 7.24,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c7g.xlarge": {
+      "dbu_rate": 0.9,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c7gd.12xlarge": {
+      "dbu_rate": 10.86,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c7gd.16xlarge": {
+      "dbu_rate": 14.48,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c7gd.2xlarge": {
+      "dbu_rate": 1.81,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c7gd.4xlarge": {
+      "dbu_rate": 3.62,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c7gd.8xlarge": {
+      "dbu_rate": 7.24,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c7gd.xlarge": {
+      "dbu_rate": 0.9,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.12xlarge": {
+      "dbu_rate": 9.18,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.16xlarge": {
+      "dbu_rate": 12.24,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.24xlarge": {
+      "dbu_rate": 18.36,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.2xlarge": {
+      "dbu_rate": 1.53,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.48xlarge": {
+      "dbu_rate": 36.72,
+      "vcpus": 192.0,
+      "memory_gb": 384.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.4xlarge": {
+      "dbu_rate": 3.06,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.8xlarge": {
+      "dbu_rate": 6.12,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.large": {
+      "dbu_rate": 0.38,
+      "vcpus": 2.0,
+      "memory_gb": 4.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.metal-24xl": {
+      "dbu_rate": 18.36,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.metal-48xl": {
+      "dbu_rate": 36.72,
+      "vcpus": 192.0,
+      "memory_gb": 384.0,
+      "family": "Compute Optimized"
+    },
+    "c7i.xlarge": {
+      "dbu_rate": 0.77,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "c8g.12xlarge": {
+      "dbu_rate": 12.9,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "General Purpose"
+    },
+    "c8g.16xlarge": {
+      "dbu_rate": 17.2,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "c8g.24xlarge": {
+      "dbu_rate": 25.8,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "c8g.2xlarge": {
+      "dbu_rate": 2.15,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "c8g.48xlarge": {
+      "dbu_rate": 51.6,
+      "vcpus": 192.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "c8g.4xlarge": {
+      "dbu_rate": 4.3,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "c8g.8xlarge": {
+      "dbu_rate": 8.6,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "c8g.large": {
+      "dbu_rate": 0.54,
+      "vcpus": 2.0,
+      "memory_gb": 4.0,
+      "family": "General Purpose"
+    },
+    "c8g.medium": {
+      "dbu_rate": 0.27,
+      "vcpus": 1.0,
+      "memory_gb": 2.0,
+      "family": "General Purpose"
+    },
+    "c8g.xlarge": {
+      "dbu_rate": 1.08,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "c8gd.12xlarge": {
+      "dbu_rate": 12.9,
+      "vcpus": 48.0,
+      "memory_gb": 96.0,
+      "family": "General Purpose"
+    },
+    "c8gd.16xlarge": {
+      "dbu_rate": 17.2,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "c8gd.24xlarge": {
+      "dbu_rate": 25.8,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "c8gd.2xlarge": {
+      "dbu_rate": 2.15,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "c8gd.48xlarge": {
+      "dbu_rate": 51.6,
+      "vcpus": 192.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "c8gd.4xlarge": {
+      "dbu_rate": 4.3,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "c8gd.8xlarge": {
+      "dbu_rate": 8.6,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "c8gd.large": {
+      "dbu_rate": 0.54,
+      "vcpus": 2.0,
+      "memory_gb": 4.0,
+      "family": "General Purpose"
+    },
+    "c8gd.xlarge": {
+      "dbu_rate": 1.08,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "d3.2xlarge": {
+      "dbu_rate": 3.2,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Storage Optimized"
+    },
+    "d3.4xlarge": {
+      "dbu_rate": 6.4,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Storage Optimized"
+    },
+    "d3.8xlarge": {
+      "dbu_rate": 12.8,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Storage Optimized"
+    },
+    "d3.xlarge": {
+      "dbu_rate": 1.6,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Storage Optimized"
+    },
+    "d3en.12xlarge": {
+      "dbu_rate": 20.16,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "Storage Optimized"
+    },
+    "d3en.2xlarge": {
+      "dbu_rate": 3.36,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "Storage Optimized"
+    },
+    "d3en.4xlarge": {
+      "dbu_rate": 6.72,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "Storage Optimized"
+    },
+    "d3en.6xlarge": {
+      "dbu_rate": 10.08,
+      "vcpus": 24.0,
+      "memory_gb": 96.0,
+      "family": "Storage Optimized"
+    },
+    "d3en.8xlarge": {
+      "dbu_rate": 13.44,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "Storage Optimized"
+    },
+    "d3en.xlarge": {
+      "dbu_rate": 1.68,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "Storage Optimized"
+    },
+    "g4dn.12xlarge": {
+      "dbu_rate": 8.56,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "GPU"
+    },
+    "g4dn.16xlarge": {
+      "dbu_rate": 11.41,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "GPU"
+    },
+    "g4dn.2xlarge": {
+      "dbu_rate": 1.43,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "GPU"
+    },
+    "g4dn.4xlarge": {
+      "dbu_rate": 2.85,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "GPU"
+    },
+    "g4dn.8xlarge": {
+      "dbu_rate": 5.7,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "GPU"
+    },
+    "g4dn.xlarge": {
+      "dbu_rate": 0.71,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "GPU"
+    },
+    "g5.12xlarge": {
+      "dbu_rate": 7.688711111111111,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "GPU"
+    },
+    "g5.16xlarge": {
+      "dbu_rate": 5.552355555555556,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "GPU"
+    },
+    "g5.24xlarge": {
+      "dbu_rate": 11.039644444444445,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "GPU"
+    },
+    "g5.2xlarge": {
+      "dbu_rate": 1.6429333333333331,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "GPU"
+    },
+    "g5.48xlarge": {
+      "dbu_rate": 22.07928888888889,
+      "vcpus": 192.0,
+      "memory_gb": 768.0,
+      "family": "GPU"
+    },
+    "g5.4xlarge": {
+      "dbu_rate": 2.201422222222222,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "GPU"
+    },
+    "g5.8xlarge": {
+      "dbu_rate": 3.3183999999999996,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "GPU"
+    },
+    "g5.xlarge": {
+      "dbu_rate": 1.363688888888889,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "GPU"
+    },
+    "g6.12xlarge": {
+      "dbu_rate": 6.088360248,
+      "vcpus": 96.0,
+      "memory_gb": 192.0,
+      "family": "GPU"
+    },
+    "g6.16xlarge": {
+      "dbu_rate": 4.494167702,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "GPU"
+    },
+    "g6.24xlarge": {
+      "dbu_rate": 8.830900621,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "GPU"
+    },
+    "g6.2xlarge": {
+      "dbu_rate": 1.293875776,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "GPU"
+    },
+    "g6.48xlarge": {
+      "dbu_rate": 17.66180124,
+      "vcpus": 192.0,
+      "memory_gb": 768.0,
+      "family": "GPU"
+    },
+    "g6.4xlarge": {
+      "dbu_rate": 1.750304348,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "GPU"
+    },
+    "g6.8xlarge": {
+      "dbu_rate": 2.664484472,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "GPU"
+    },
+    "g6.xlarge": {
+      "dbu_rate": 1.065,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "GPU"
+    },
+    "g6e.12xlarge": {
+      "dbu_rate": 14.00322857,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "GPU"
+    },
+    "g6e.16xlarge": {
+      "dbu_rate": 10.33658571,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "GPU"
+    },
+    "g6e.24xlarge": {
+      "dbu_rate": 20.31107143,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "GPU"
+    },
+    "g6e.2xlarge": {
+      "dbu_rate": 2.975914285,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "GPU"
+    },
+    "g6e.48xlarge": {
+      "dbu_rate": 40.62214285,
+      "vcpus": 192.0,
+      "memory_gb": 1536.0,
+      "family": "GPU"
+    },
+    "g6e.4xlarge": {
+      "dbu_rate": 4.0257,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "GPU"
+    },
+    "g6e.8xlarge": {
+      "dbu_rate": 6.128314286,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "GPU"
+    },
+    "g6e.xlarge": {
+      "dbu_rate": 2.4495,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "GPU"
+    },
+    "gr6.4xlarge": {
+      "dbu_rate": 2.036068323,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "gr6.8xlarge": {
+      "dbu_rate": 3.236012422,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "i2.2xlarge": {
+      "dbu_rate": 3.0,
+      "vcpus": 8.0,
+      "memory_gb": 61.0,
+      "family": "General Purpose"
+    },
+    "i2.4xlarge": {
+      "dbu_rate": 6.0,
+      "vcpus": 16.0,
+      "memory_gb": 122.0,
+      "family": "General Purpose"
+    },
+    "i2.8xlarge": {
+      "dbu_rate": 12.0,
+      "vcpus": 32.0,
+      "memory_gb": 244.0,
+      "family": "General Purpose"
+    },
+    "i2.xlarge": {
+      "dbu_rate": 1.5,
+      "vcpus": 4.0,
+      "memory_gb": 30.5,
+      "family": "General Purpose"
+    },
+    "i3.16xlarge": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 488.0,
+      "family": "Storage Optimized"
+    },
+    "i3.2xlarge": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 61.0,
+      "family": "Storage Optimized"
+    },
+    "i3.4xlarge": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 122.0,
+      "family": "Storage Optimized"
+    },
+    "i3.8xlarge": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 244.0,
+      "family": "Storage Optimized"
+    },
+    "i3.large": {
+      "dbu_rate": 0.75,
+      "vcpus": 2.0,
+      "memory_gb": 15.3,
+      "family": "Storage Optimized"
+    },
+    "i3.xlarge": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 30.5,
+      "family": "Storage Optimized"
+    },
+    "i3en.12xlarge": {
+      "dbu_rate": 17.4,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Storage Optimized"
+    },
+    "i3en.24xlarge": {
+      "dbu_rate": 34.8,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Storage Optimized"
+    },
+    "i3en.2xlarge": {
+      "dbu_rate": 2.9,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Storage Optimized"
+    },
+    "i3en.3xlarge": {
+      "dbu_rate": 4.35,
+      "vcpus": 12.0,
+      "memory_gb": 96.0,
+      "family": "Storage Optimized"
+    },
+    "i3en.6xlarge": {
+      "dbu_rate": 8.7,
+      "vcpus": 24.0,
+      "memory_gb": 192.0,
+      "family": "Storage Optimized"
+    },
+    "i3en.large": {
+      "dbu_rate": 0.75,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Storage Optimized"
+    },
+    "i3en.xlarge": {
+      "dbu_rate": 1.45,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Storage Optimized"
+    },
+    "i4g.16xlarge": {
+      "dbu_rate": 19.8,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Storage Optimized"
+    },
+    "i4g.2xlarge": {
+      "dbu_rate": 2.48,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Storage Optimized"
+    },
+    "i4g.4xlarge": {
+      "dbu_rate": 4.95,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Storage Optimized"
+    },
+    "i4g.8xlarge": {
+      "dbu_rate": 9.9,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Storage Optimized"
+    },
+    "i4g.large": {
+      "dbu_rate": 0.62,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Storage Optimized"
+    },
+    "i4g.xlarge": {
+      "dbu_rate": 1.24,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Storage Optimized"
+    },
+    "i4i.16xlarge": {
+      "dbu_rate": 22.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Storage Optimized"
+    },
+    "i4i.2xlarge": {
+      "dbu_rate": 2.75,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Storage Optimized"
+    },
+    "i4i.32xlarge": {
+      "dbu_rate": 44.0,
+      "vcpus": 128.0,
+      "memory_gb": 1024.0,
+      "family": "Storage Optimized"
+    },
+    "i4i.4xlarge": {
+      "dbu_rate": 5.5,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Storage Optimized"
+    },
+    "i4i.8xlarge": {
+      "dbu_rate": 11.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Storage Optimized"
+    },
+    "i4i.large": {
+      "dbu_rate": 0.69,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Storage Optimized"
+    },
+    "i4i.xlarge": {
+      "dbu_rate": 1.38,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Storage Optimized"
+    },
+    "i7i.12xlarge": {
+      "dbu_rate": 23.4,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "i7i.16xlarge": {
+      "dbu_rate": 31.2,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "i7i.24xlarge": {
+      "dbu_rate": 46.8,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "i7i.2xlarge": {
+      "dbu_rate": 3.9,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "i7i.48xlarge": {
+      "dbu_rate": 93.6,
+      "vcpus": 192.0,
+      "memory_gb": 1536.0,
+      "family": "General Purpose"
+    },
+    "i7i.4xlarge": {
+      "dbu_rate": 7.8,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "i7i.8xlarge": {
+      "dbu_rate": 15.6,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "i7i.large": {
+      "dbu_rate": 0.98,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "i7i.xlarge": {
+      "dbu_rate": 1.95,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "i8g.12xlarge": {
+      "dbu_rate": 24.78,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "i8g.16xlarge": {
+      "dbu_rate": 33.04,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "i8g.24xlarge": {
+      "dbu_rate": 49.56,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "i8g.2xlarge": {
+      "dbu_rate": 4.13,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "i8g.48xlarge": {
+      "dbu_rate": 99.12,
+      "vcpus": 192.0,
+      "memory_gb": 1536.0,
+      "family": "General Purpose"
+    },
+    "i8g.4xlarge": {
+      "dbu_rate": 8.26,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "i8g.8xlarge": {
+      "dbu_rate": 16.52,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "i8g.large": {
+      "dbu_rate": 1.03,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "i8g.xlarge": {
+      "dbu_rate": 2.07,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "im4gn.16xlarge": {
+      "dbu_rate": 19.31628318584071,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "im4gn.2xlarge": {
+      "dbu_rate": 2.414535398230089,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "im4gn.4xlarge": {
+      "dbu_rate": 4.829070796460178,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "im4gn.8xlarge": {
+      "dbu_rate": 9.658141592920355,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "im4gn.large": {
+      "dbu_rate": 0.6036338495575222,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "im4gn.xlarge": {
+      "dbu_rate": 1.2072676991150444,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "is4gen.2xlarge": {
+      "dbu_rate": 3.825,
+      "vcpus": 8.0,
+      "memory_gb": 48.0,
+      "family": "General Purpose"
+    },
+    "is4gen.4xlarge": {
+      "dbu_rate": 7.65,
+      "vcpus": 16.0,
+      "memory_gb": 96.0,
+      "family": "General Purpose"
+    },
+    "is4gen.8xlarge": {
+      "dbu_rate": 15.3,
+      "vcpus": 32.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "is4gen.large": {
+      "dbu_rate": 0.95625,
+      "vcpus": 2.0,
+      "memory_gb": 12.0,
+      "family": "General Purpose"
+    },
+    "is4gen.xlarge": {
+      "dbu_rate": 1.9125,
+      "vcpus": 4.0,
+      "memory_gb": 24.0,
+      "family": "General Purpose"
+    },
+    "m4.10xlarge": {
+      "dbu_rate": 8.0,
+      "vcpus": 40.0,
+      "memory_gb": 160.0,
+      "family": "General Purpose"
+    },
+    "m4.16xlarge": {
+      "dbu_rate": 12.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m4.2xlarge": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m4.4xlarge": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m4.large": {
+      "dbu_rate": 0.4,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m4.xlarge": {
+      "dbu_rate": 0.75,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m5.12xlarge": {
+      "dbu_rate": 8.23,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m5.16xlarge": {
+      "dbu_rate": 10.96,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m5.24xlarge": {
+      "dbu_rate": 16.46,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m5.2xlarge": {
+      "dbu_rate": 1.37,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m5.4xlarge": {
+      "dbu_rate": 2.74,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m5.8xlarge": {
+      "dbu_rate": 5.48,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m5.large": {
+      "dbu_rate": 0.34,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m5.xlarge": {
+      "dbu_rate": 0.69,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m5a.12xlarge": {
+      "dbu_rate": 7.371428571,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m5a.16xlarge": {
+      "dbu_rate": 9.828571429,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m5a.24xlarge": {
+      "dbu_rate": 14.74285714,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m5a.2xlarge": {
+      "dbu_rate": 1.228571429,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m5a.4xlarge": {
+      "dbu_rate": 2.457142857,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m5a.8xlarge": {
+      "dbu_rate": 4.914285714,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m5a.large": {
+      "dbu_rate": 0.3071428571,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m5a.xlarge": {
+      "dbu_rate": 0.6142857143,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m5d.12xlarge": {
+      "dbu_rate": 8.23,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m5d.16xlarge": {
+      "dbu_rate": 10.96,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m5d.24xlarge": {
+      "dbu_rate": 16.46,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m5d.2xlarge": {
+      "dbu_rate": 1.37,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m5d.4xlarge": {
+      "dbu_rate": 2.74,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m5d.8xlarge": {
+      "dbu_rate": 5.48,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m5d.large": {
+      "dbu_rate": 0.34,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m5d.xlarge": {
+      "dbu_rate": 0.69,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m5dn.12xlarge": {
+      "dbu_rate": 9.792,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m5dn.16xlarge": {
+      "dbu_rate": 13.056,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m5dn.24xlarge": {
+      "dbu_rate": 19.584,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m5dn.2xlarge": {
+      "dbu_rate": 1.632,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m5dn.4xlarge": {
+      "dbu_rate": 3.264,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m5dn.8xlarge": {
+      "dbu_rate": 6.528,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m5dn.large": {
+      "dbu_rate": 0.408,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m5dn.metal": {
+      "dbu_rate": 19.584,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m5dn.xlarge": {
+      "dbu_rate": 0.816,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m5n.12xlarge": {
+      "dbu_rate": 8.568,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m5n.16xlarge": {
+      "dbu_rate": 11.424,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m5n.24xlarge": {
+      "dbu_rate": 17.136,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m5n.2xlarge": {
+      "dbu_rate": 1.428,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m5n.4xlarge": {
+      "dbu_rate": 2.856,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m5n.8xlarge": {
+      "dbu_rate": 5.712,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m5n.large": {
+      "dbu_rate": 0.357,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m5n.metal": {
+      "dbu_rate": 17.136,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m5n.xlarge": {
+      "dbu_rate": 0.714,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m5zn.12xlarge": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m5zn.2xlarge": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m5zn.3xlarge": {
+      "dbu_rate": 3.0,
+      "vcpus": 12.0,
+      "memory_gb": 48.0,
+      "family": "General Purpose"
+    },
+    "m5zn.6xlarge": {
+      "dbu_rate": 6.0,
+      "vcpus": 24.0,
+      "memory_gb": 96.0,
+      "family": "General Purpose"
+    },
+    "m5zn.large": {
+      "dbu_rate": 0.4964,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m5zn.metal": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m5zn.xlarge": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m6g.12xlarge": {
+      "dbu_rate": 9.21,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m6g.16xlarge": {
+      "dbu_rate": 12.28,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m6g.2xlarge": {
+      "dbu_rate": 1.54,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m6g.4xlarge": {
+      "dbu_rate": 3.07,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m6g.8xlarge": {
+      "dbu_rate": 6.13,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m6g.large": {
+      "dbu_rate": 0.39,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m6g.xlarge": {
+      "dbu_rate": 0.77,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m6gd.12xlarge": {
+      "dbu_rate": 9.21,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m6gd.16xlarge": {
+      "dbu_rate": 12.28,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m6gd.2xlarge": {
+      "dbu_rate": 1.54,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m6gd.4xlarge": {
+      "dbu_rate": 3.07,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m6gd.8xlarge": {
+      "dbu_rate": 6.13,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m6gd.large": {
+      "dbu_rate": 0.39,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m6gd.xlarge": {
+      "dbu_rate": 0.77,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m6i.12xlarge": {
+      "dbu_rate": 9.120000000000001,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m6i.16xlarge": {
+      "dbu_rate": 12.16,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m6i.24xlarge": {
+      "dbu_rate": 18.240000000000002,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m6i.2xlarge": {
+      "dbu_rate": 1.52,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m6i.32xlarge": {
+      "dbu_rate": 24.32,
+      "vcpus": 128.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "m6i.4xlarge": {
+      "dbu_rate": 3.04,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m6i.8xlarge": {
+      "dbu_rate": 6.08,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m6i.large": {
+      "dbu_rate": 0.38,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m6i.xlarge": {
+      "dbu_rate": 0.76,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m6id.12xlarge": {
+      "dbu_rate": 9.120000000000001,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m6id.16xlarge": {
+      "dbu_rate": 12.16,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m6id.24xlarge": {
+      "dbu_rate": 18.240000000000002,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m6id.2xlarge": {
+      "dbu_rate": 1.52,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m6id.32xlarge": {
+      "dbu_rate": 24.32,
+      "vcpus": 128.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "m6id.4xlarge": {
+      "dbu_rate": 3.04,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m6id.8xlarge": {
+      "dbu_rate": 6.08,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m6id.large": {
+      "dbu_rate": 0.38,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m6id.xlarge": {
+      "dbu_rate": 0.76,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m6idn.12xlarge": {
+      "dbu_rate": 9.120000000000001,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m6idn.16xlarge": {
+      "dbu_rate": 12.16,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m6idn.24xlarge": {
+      "dbu_rate": 18.240000000000002,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m6idn.2xlarge": {
+      "dbu_rate": 1.52,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m6idn.32xlarge": {
+      "dbu_rate": 24.32,
+      "vcpus": 128.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "m6idn.4xlarge": {
+      "dbu_rate": 3.04,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m6idn.8xlarge": {
+      "dbu_rate": 6.08,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m6idn.large": {
+      "dbu_rate": 0.38,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m6idn.xlarge": {
+      "dbu_rate": 0.76,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m6in.12xlarge": {
+      "dbu_rate": 9.120000000000001,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m6in.16xlarge": {
+      "dbu_rate": 12.16,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m6in.24xlarge": {
+      "dbu_rate": 18.240000000000002,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m6in.2xlarge": {
+      "dbu_rate": 1.52,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m6in.32xlarge": {
+      "dbu_rate": 24.32,
+      "vcpus": 128.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "m6in.4xlarge": {
+      "dbu_rate": 3.04,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m6in.8xlarge": {
+      "dbu_rate": 6.08,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m6in.large": {
+      "dbu_rate": 0.38,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m6in.xlarge": {
+      "dbu_rate": 0.76,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m7a.12xlarge": {
+      "dbu_rate": 10.8,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m7a.16xlarge": {
+      "dbu_rate": 14.4,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m7a.24xlarge": {
+      "dbu_rate": 21.6,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m7a.2xlarge": {
+      "dbu_rate": 1.8,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m7a.32xlarge": {
+      "dbu_rate": 28.8,
+      "vcpus": 128.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "m7a.48xlarge": {
+      "dbu_rate": 43.2,
+      "vcpus": 192.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "m7a.4xlarge": {
+      "dbu_rate": 3.6,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m7a.8xlarge": {
+      "dbu_rate": 7.2,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m7a.xlarge": {
+      "dbu_rate": 0.9,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m7g.12xlarge": {
+      "dbu_rate": 11.52,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m7g.16xlarge": {
+      "dbu_rate": 15.36,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m7g.2xlarge": {
+      "dbu_rate": 1.92,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m7g.4xlarge": {
+      "dbu_rate": 3.84,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m7g.8xlarge": {
+      "dbu_rate": 7.68,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m7g.large": {
+      "dbu_rate": 0.48,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m7g.xlarge": {
+      "dbu_rate": 0.96,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m7gd.12xlarge": {
+      "dbu_rate": 11.52,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m7gd.16xlarge": {
+      "dbu_rate": 15.36,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m7gd.2xlarge": {
+      "dbu_rate": 1.92,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m7gd.4xlarge": {
+      "dbu_rate": 3.84,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m7gd.8xlarge": {
+      "dbu_rate": 7.68,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m7gd.large": {
+      "dbu_rate": 0.48,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m7gd.xlarge": {
+      "dbu_rate": 0.96,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m7i.12xlarge": {
+      "dbu_rate": 10.02,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m7i.16xlarge": {
+      "dbu_rate": 13.36,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m7i.24xlarge": {
+      "dbu_rate": 20.04,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m7i.2xlarge": {
+      "dbu_rate": 1.67,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m7i.48xlarge": {
+      "dbu_rate": 40.08,
+      "vcpus": 192.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "m7i.4xlarge": {
+      "dbu_rate": 3.34,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m7i.8xlarge": {
+      "dbu_rate": 6.68,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m7i.large": {
+      "dbu_rate": 0.42,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m7i.metal-24xl": {
+      "dbu_rate": 20.04,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m7i.metal-48xl": {
+      "dbu_rate": 40.08,
+      "vcpus": 192.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "m7i.xlarge": {
+      "dbu_rate": 0.84,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m8g.12xlarge": {
+      "dbu_rate": 13.71,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m8g.16xlarge": {
+      "dbu_rate": 18.28,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m8g.24xlarge": {
+      "dbu_rate": 27.42,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m8g.2xlarge": {
+      "dbu_rate": 2.28,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m8g.48xlarge": {
+      "dbu_rate": 54.84,
+      "vcpus": 192.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "m8g.4xlarge": {
+      "dbu_rate": 4.57,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m8g.8xlarge": {
+      "dbu_rate": 9.14,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m8g.large": {
+      "dbu_rate": 0.57,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m8g.medium": {
+      "dbu_rate": 0.29,
+      "vcpus": 1.0,
+      "memory_gb": 4.0,
+      "family": "General Purpose"
+    },
+    "m8g.xlarge": {
+      "dbu_rate": 1.14,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m8gd.12xlarge": {
+      "dbu_rate": 13.71,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m8gd.16xlarge": {
+      "dbu_rate": 18.28,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m8gd.24xlarge": {
+      "dbu_rate": 27.42,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m8gd.2xlarge": {
+      "dbu_rate": 2.28,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m8gd.48xlarge": {
+      "dbu_rate": 54.84,
+      "vcpus": 192.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "m8gd.4xlarge": {
+      "dbu_rate": 4.57,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m8gd.8xlarge": {
+      "dbu_rate": 9.14,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m8gd.large": {
+      "dbu_rate": 0.57,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m8gd.xlarge": {
+      "dbu_rate": 1.14,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "m8i.12xlarge": {
+      "dbu_rate": 11.22,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "m8i.16xlarge": {
+      "dbu_rate": 14.96,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "m8i.24xlarge": {
+      "dbu_rate": 22.44,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "m8i.2xlarge": {
+      "dbu_rate": 1.87,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "m8i.48xlarge": {
+      "dbu_rate": 44.88,
+      "vcpus": 192.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "m8i.4xlarge": {
+      "dbu_rate": 3.74,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "m8i.8xlarge": {
+      "dbu_rate": 7.48,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "m8i.large": {
+      "dbu_rate": 0.4675,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "m8i.xlarge": {
+      "dbu_rate": 0.935,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "p2.16xlarge": {
+      "dbu_rate": 19.52,
+      "vcpus": 64.0,
+      "memory_gb": 732.0,
+      "family": "GPU"
+    },
+    "p2.8xlarge": {
+      "dbu_rate": 9.76,
+      "vcpus": 32.0,
+      "memory_gb": 488.0,
+      "family": "GPU"
+    },
+    "p2.xlarge": {
+      "dbu_rate": 1.22,
+      "vcpus": 4.0,
+      "memory_gb": 61.0,
+      "family": "GPU"
+    },
+    "p3.16xlarge": {
+      "dbu_rate": 33.2,
+      "vcpus": 64.0,
+      "memory_gb": 488.0,
+      "family": "GPU"
+    },
+    "p3.2xlarge": {
+      "dbu_rate": 4.15,
+      "vcpus": 8.0,
+      "memory_gb": 61.0,
+      "family": "GPU"
+    },
+    "p3.8xlarge": {
+      "dbu_rate": 16.6,
+      "vcpus": 32.0,
+      "memory_gb": 244.0,
+      "family": "GPU"
+    },
+    "p3dn.24xlarge": {
+      "dbu_rate": 42.33,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "GPU"
+    },
+    "p4d.24xlarge": {
+      "dbu_rate": 44.4548,
+      "vcpus": 96.0,
+      "memory_gb": 1152.0,
+      "family": "GPU"
+    },
+    "p4de.24xlarge": {
+      "dbu_rate": 55.5685,
+      "vcpus": 96.0,
+      "memory_gb": 1152.0,
+      "family": "GPU"
+    },
+    "p5.48xlarge": {
+      "dbu_rate": 88.9096,
+      "vcpus": 192.0,
+      "memory_gb": 2048.0,
+      "family": "GPU"
+    },
+    "r4.16xlarge": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 488.0,
+      "family": "Memory Optimized"
+    },
+    "r5.12xlarge": {
+      "dbu_rate": 10.8,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r5.16xlarge": {
+      "dbu_rate": 14.4,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r5.24xlarge": {
+      "dbu_rate": 21.6,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r5.2xlarge": {
+      "dbu_rate": 1.8,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r5.4xlarge": {
+      "dbu_rate": 3.6,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r5.8xlarge": {
+      "dbu_rate": 7.2,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r5.large": {
+      "dbu_rate": 0.45,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r5.xlarge": {
+      "dbu_rate": 0.9,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r5a.12xlarge": {
+      "dbu_rate": 9.685714286,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r5a.16xlarge": {
+      "dbu_rate": 12.91428571,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r5a.24xlarge": {
+      "dbu_rate": 19.37142857,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r5a.2xlarge": {
+      "dbu_rate": 1.614285714,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r5a.4xlarge": {
+      "dbu_rate": 3.228571429,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r5a.8xlarge": {
+      "dbu_rate": 6.457142857,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r5a.large": {
+      "dbu_rate": 0.41,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r5a.xlarge": {
+      "dbu_rate": 0.8142857143,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r5d.12xlarge": {
+      "dbu_rate": 10.8,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r5d.16xlarge": {
+      "dbu_rate": 14.4,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r5d.24xlarge": {
+      "dbu_rate": 21.6,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r5d.2xlarge": {
+      "dbu_rate": 1.8,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r5d.4xlarge": {
+      "dbu_rate": 3.6,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r5d.8xlarge": {
+      "dbu_rate": 7.2,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r5d.large": {
+      "dbu_rate": 0.45,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r5d.xlarge": {
+      "dbu_rate": 0.9,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r5dn.12xlarge": {
+      "dbu_rate": 12.528,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r5dn.16xlarge": {
+      "dbu_rate": 16.704,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r5dn.24xlarge": {
+      "dbu_rate": 25.056,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r5dn.2xlarge": {
+      "dbu_rate": 2.088,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r5dn.4xlarge": {
+      "dbu_rate": 4.176,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r5dn.8xlarge": {
+      "dbu_rate": 8.352,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r5dn.large": {
+      "dbu_rate": 0.522,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r5dn.metal": {
+      "dbu_rate": 25.056,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r5dn.xlarge": {
+      "dbu_rate": 1.044,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r5n.12xlarge": {
+      "dbu_rate": 10.8,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r5n.16xlarge": {
+      "dbu_rate": 14.4,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r5n.24xlarge": {
+      "dbu_rate": 21.6,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r5n.2xlarge": {
+      "dbu_rate": 1.8,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r5n.4xlarge": {
+      "dbu_rate": 3.6,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r5n.8xlarge": {
+      "dbu_rate": 7.2,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r5n.large": {
+      "dbu_rate": 0.45,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r5n.metal": {
+      "dbu_rate": 21.6,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r5n.xlarge": {
+      "dbu_rate": 0.9,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r6g.12xlarge": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r6g.16xlarge": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r6g.2xlarge": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r6g.4xlarge": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r6g.8xlarge": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r6g.large": {
+      "dbu_rate": 0.5,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r6g.xlarge": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r6gd.12xlarge": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r6gd.16xlarge": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r6gd.2xlarge": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r6gd.4xlarge": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r6gd.8xlarge": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r6gd.large": {
+      "dbu_rate": 0.5,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r6gd.xlarge": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r6i.12xlarge": {
+      "dbu_rate": 12.24,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r6i.16xlarge": {
+      "dbu_rate": 16.32,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r6i.24xlarge": {
+      "dbu_rate": 24.48,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r6i.2xlarge": {
+      "dbu_rate": 2.04,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r6i.32xlarge": {
+      "dbu_rate": 32.64,
+      "vcpus": 128.0,
+      "memory_gb": 1024.0,
+      "family": "Memory Optimized"
+    },
+    "r6i.4xlarge": {
+      "dbu_rate": 4.08,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r6i.8xlarge": {
+      "dbu_rate": 8.16,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r6i.large": {
+      "dbu_rate": 0.51,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r6i.xlarge": {
+      "dbu_rate": 1.02,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r6id.12xlarge": {
+      "dbu_rate": 12.24,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r6id.16xlarge": {
+      "dbu_rate": 16.32,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r6id.24xlarge": {
+      "dbu_rate": 24.48,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r6id.2xlarge": {
+      "dbu_rate": 2.04,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r6id.32xlarge": {
+      "dbu_rate": 32.64,
+      "vcpus": 128.0,
+      "memory_gb": 1024.0,
+      "family": "Memory Optimized"
+    },
+    "r6id.4xlarge": {
+      "dbu_rate": 4.08,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r6id.8xlarge": {
+      "dbu_rate": 8.16,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r6id.large": {
+      "dbu_rate": 0.51,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r6id.xlarge": {
+      "dbu_rate": 1.02,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r6idn.12xlarge": {
+      "dbu_rate": 12.24,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r6idn.16xlarge": {
+      "dbu_rate": 16.32,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r6idn.24xlarge": {
+      "dbu_rate": 24.48,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r6idn.2xlarge": {
+      "dbu_rate": 2.04,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r6idn.32xlarge": {
+      "dbu_rate": 32.64,
+      "vcpus": 128.0,
+      "memory_gb": 1024.0,
+      "family": "Memory Optimized"
+    },
+    "r6idn.4xlarge": {
+      "dbu_rate": 4.08,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r6idn.8xlarge": {
+      "dbu_rate": 8.16,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r6idn.large": {
+      "dbu_rate": 0.51,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r6idn.xlarge": {
+      "dbu_rate": 1.02,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r6in.12xlarge": {
+      "dbu_rate": 12.24,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r6in.16xlarge": {
+      "dbu_rate": 16.32,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r6in.24xlarge": {
+      "dbu_rate": 24.48,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r6in.2xlarge": {
+      "dbu_rate": 2.04,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r6in.32xlarge": {
+      "dbu_rate": 32.64,
+      "vcpus": 128.0,
+      "memory_gb": 1024.0,
+      "family": "Memory Optimized"
+    },
+    "r6in.4xlarge": {
+      "dbu_rate": 4.08,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r6in.8xlarge": {
+      "dbu_rate": 8.16,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r6in.large": {
+      "dbu_rate": 0.51,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r6in.xlarge": {
+      "dbu_rate": 1.02,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r7a.48xlarge": {
+      "dbu_rate": 58.08,
+      "vcpus": 192.0,
+      "memory_gb": 1536.0,
+      "family": "Memory Optimized"
+    },
+    "r7g.12xlarge": {
+      "dbu_rate": 15.120000000000001,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r7g.16xlarge": {
+      "dbu_rate": 20.16,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r7g.2xlarge": {
+      "dbu_rate": 2.52,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r7g.4xlarge": {
+      "dbu_rate": 5.04,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r7g.8xlarge": {
+      "dbu_rate": 10.08,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r7g.large": {
+      "dbu_rate": 0.63,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r7g.xlarge": {
+      "dbu_rate": 1.26,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r7gd.12xlarge": {
+      "dbu_rate": 15.12,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r7gd.16xlarge": {
+      "dbu_rate": 20.16,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r7gd.2xlarge": {
+      "dbu_rate": 2.52,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r7gd.4xlarge": {
+      "dbu_rate": 5.04,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r7gd.8xlarge": {
+      "dbu_rate": 10.08,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r7gd.large": {
+      "dbu_rate": 0.63,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r7gd.xlarge": {
+      "dbu_rate": 1.26,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.12xlarge": {
+      "dbu_rate": 13.44,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.16xlarge": {
+      "dbu_rate": 17.92,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.24xlarge": {
+      "dbu_rate": 26.88,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.2xlarge": {
+      "dbu_rate": 2.24,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.48xlarge": {
+      "dbu_rate": 53.76,
+      "vcpus": 192.0,
+      "memory_gb": 1536.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.4xlarge": {
+      "dbu_rate": 4.48,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.8xlarge": {
+      "dbu_rate": 8.96,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.large": {
+      "dbu_rate": 0.56,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.metal-24xl": {
+      "dbu_rate": 26.88,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.metal-48xl": {
+      "dbu_rate": 53.76,
+      "vcpus": 192.0,
+      "memory_gb": 1536.0,
+      "family": "Memory Optimized"
+    },
+    "r7i.xlarge": {
+      "dbu_rate": 1.12,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r7iz.12xlarge": {
+      "dbu_rate": 14.52,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "r7iz.16xlarge": {
+      "dbu_rate": 19.36,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "r7iz.2xlarge": {
+      "dbu_rate": 2.42,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "r7iz.32xlarge": {
+      "dbu_rate": 38.72,
+      "vcpus": 128.0,
+      "memory_gb": 1024.0,
+      "family": "Memory Optimized"
+    },
+    "r7iz.4xlarge": {
+      "dbu_rate": 4.84,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "r7iz.8xlarge": {
+      "dbu_rate": 9.68,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "r7iz.xlarge": {
+      "dbu_rate": 1.21,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "r8g.12xlarge": {
+      "dbu_rate": 18.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "r8g.16xlarge": {
+      "dbu_rate": 24.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "r8g.24xlarge": {
+      "dbu_rate": 36.0,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "r8g.2xlarge": {
+      "dbu_rate": 3.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "r8g.48xlarge": {
+      "dbu_rate": 72.0,
+      "vcpus": 192.0,
+      "memory_gb": 1536.0,
+      "family": "General Purpose"
+    },
+    "r8g.4xlarge": {
+      "dbu_rate": 6.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "r8g.8xlarge": {
+      "dbu_rate": 12.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "r8g.large": {
+      "dbu_rate": 0.75,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "r8g.xlarge": {
+      "dbu_rate": 1.5,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "r8gd.12xlarge": {
+      "dbu_rate": 18.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "r8gd.16xlarge": {
+      "dbu_rate": 24.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "r8gd.24xlarge": {
+      "dbu_rate": 36.0,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "r8gd.2xlarge": {
+      "dbu_rate": 3.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "r8gd.48xlarge": {
+      "dbu_rate": 72.0,
+      "vcpus": 192.0,
+      "memory_gb": 1536.0,
+      "family": "General Purpose"
+    },
+    "r8gd.4xlarge": {
+      "dbu_rate": 6.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "r8gd.8xlarge": {
+      "dbu_rate": 12.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "r8gd.large": {
+      "dbu_rate": 0.75,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "r8gd.xlarge": {
+      "dbu_rate": 1.5,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "r8i.12xlarge": {
+      "dbu_rate": 15.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "r8i.16xlarge": {
+      "dbu_rate": 20.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "r8i.24xlarge": {
+      "dbu_rate": 30.0,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "r8i.2xlarge": {
+      "dbu_rate": 2.5,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "r8i.48xlarge": {
+      "dbu_rate": 60.0,
+      "vcpus": 192.0,
+      "memory_gb": 1536.0,
+      "family": "General Purpose"
+    },
+    "r8i.4xlarge": {
+      "dbu_rate": 5.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "r8i.8xlarge": {
+      "dbu_rate": 10.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "r8i.large": {
+      "dbu_rate": 0.63,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "r8i.xlarge": {
+      "dbu_rate": 1.25,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "x2gd.12xlarge": {
+      "dbu_rate": 17.52,
+      "vcpus": 48.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "x2gd.16xlarge": {
+      "dbu_rate": 23.36,
+      "vcpus": 64.0,
+      "memory_gb": 1024.0,
+      "family": "Memory Optimized"
+    },
+    "x2gd.2xlarge": {
+      "dbu_rate": 2.92,
+      "vcpus": 8.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "x2gd.4xlarge": {
+      "dbu_rate": 5.84,
+      "vcpus": 16.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "x2gd.8xlarge": {
+      "dbu_rate": 11.68,
+      "vcpus": 32.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "x2gd.large": {
+      "dbu_rate": 0.73,
+      "vcpus": 2.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "x2gd.xlarge": {
+      "dbu_rate": 1.46,
+      "vcpus": 4.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "z1d.12xlarge": {
+      "dbu_rate": 15.94,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "z1d.2xlarge": {
+      "dbu_rate": 2.66,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "z1d.3xlarge": {
+      "dbu_rate": 3.99,
+      "vcpus": 12.0,
+      "memory_gb": 96.0,
+      "family": "Memory Optimized"
+    },
+    "z1d.6xlarge": {
+      "dbu_rate": 7.97,
+      "vcpus": 24.0,
+      "memory_gb": 192.0,
+      "family": "Memory Optimized"
+    },
+    "z1d.large": {
+      "dbu_rate": 0.66,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "z1d.xlarge": {
+      "dbu_rate": 1.33,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    }
+  },
+  "azure": {
+    "Standard_2X-Large": {
+      "dbu_rate": 144.0,
+      "vcpus": 576.0,
+      "memory_gb": 4608.0,
+      "family": "General Purpose"
+    },
+    "Standard_2X-Small": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_3X-Large": {
+      "dbu_rate": 272.0,
+      "vcpus": 1088.0,
+      "memory_gb": 8704.0,
+      "family": "General Purpose"
+    },
+    "Standard_4X-Large": {
+      "dbu_rate": 528.0,
+      "vcpus": 2112.0,
+      "memory_gb": 16896.0,
+      "family": "General Purpose"
+    },
+    "Standard_D128ds_v6": {
+      "dbu_rate": 35.84,
+      "vcpus": 128.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "Standard_D12_v2": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 28.0,
+      "family": "General Purpose"
+    },
+    "Standard_D13_v2": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 56.0,
+      "family": "General Purpose"
+    },
+    "Standard_D14_v2": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 112.0,
+      "family": "General Purpose"
+    },
+    "Standard_D15_v2": {
+      "dbu_rate": 5.0,
+      "vcpus": 20.0,
+      "memory_gb": 140.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16_v3": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16a_v4": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16ads_v5": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16ads_v6": {
+      "dbu_rate": 5.1,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16as_v4": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16as_v5": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16d_v4": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16ds_v4": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16ds_v5": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16ds_v6": {
+      "dbu_rate": 4.48,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16pds_v6": {
+      "dbu_rate": 4.68,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16ps_v6": {
+      "dbu_rate": 4.68,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16s_v3": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16s_v4": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D16s_v5": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_D2ads_v6": {
+      "dbu_rate": 0.64,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "Standard_D2ds_v6": {
+      "dbu_rate": 0.56,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32_v3": {
+      "dbu_rate": 6.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32a_v4": {
+      "dbu_rate": 6.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32ads_v5": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32ads_v6": {
+      "dbu_rate": 10.2,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32as_v4": {
+      "dbu_rate": 6.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32as_v5": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32d_v4": {
+      "dbu_rate": 6.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32ds_v4": {
+      "dbu_rate": 6.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32ds_v5": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32ds_v6": {
+      "dbu_rate": 8.96,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32pds_v6": {
+      "dbu_rate": 9.36,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32ps_v6": {
+      "dbu_rate": 9.36,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32s_v3": {
+      "dbu_rate": 6.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32s_v4": {
+      "dbu_rate": 6.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D32s_v5": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_D3_v2": {
+      "dbu_rate": 0.75,
+      "vcpus": 4.0,
+      "memory_gb": 14.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48a_v4": {
+      "dbu_rate": 9.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48ads_v5": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48ads_v6": {
+      "dbu_rate": 15.3,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48as_v4": {
+      "dbu_rate": 9.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48as_v5": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48d_v4": {
+      "dbu_rate": 9.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48ds_v4": {
+      "dbu_rate": 9.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48ds_v5": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48ds_v6": {
+      "dbu_rate": 13.44,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48pds_v6": {
+      "dbu_rate": 14.04,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48ps_v6": {
+      "dbu_rate": 14.04,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48s_v4": {
+      "dbu_rate": 9.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D48s_v5": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4_v2": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 28.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4a_v4": {
+      "dbu_rate": 0.75,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4ads_v5": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4ads_v6": {
+      "dbu_rate": 1.28,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4as_v5": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4d_v4": {
+      "dbu_rate": 0.75,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4ds_v4": {
+      "dbu_rate": 0.75,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4ds_v5": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4ds_v6": {
+      "dbu_rate": 1.12,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4pds_v6": {
+      "dbu_rate": 1.17,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4ps_v6": {
+      "dbu_rate": 1.17,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4s_v3": {
+      "dbu_rate": 0.75,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4s_v4": {
+      "dbu_rate": 0.75,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D4s_v5": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_D5_v2": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 56.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64_v3": {
+      "dbu_rate": 12.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64a_v4": {
+      "dbu_rate": 12.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64ads_v5": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64ads_v6": {
+      "dbu_rate": 20.4,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64as_v4": {
+      "dbu_rate": 12.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64as_v5": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64d_v4": {
+      "dbu_rate": 12.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64ds_v4": {
+      "dbu_rate": 12.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64ds_v5": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64ds_v6": {
+      "dbu_rate": 17.92,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64pds_v6": {
+      "dbu_rate": 18.72,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64ps_v6": {
+      "dbu_rate": 18.72,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64s_v3": {
+      "dbu_rate": 12.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64s_v4": {
+      "dbu_rate": 12.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D64s_v5": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8_v3": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8a_v4": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8ads_v5": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8ads_v6": {
+      "dbu_rate": 2.55,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8as_v4": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8as_v5": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8d_v4": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8ds_v4": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8ds_v5": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8ds_v6": {
+      "dbu_rate": 2.24,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8pds_v6": {
+      "dbu_rate": 2.34,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8ps_v6": {
+      "dbu_rate": 2.34,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8s_v3": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8s_v4": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D8s_v5": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_D96a_v4": {
+      "dbu_rate": 18.0,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_D96ads_v5": {
+      "dbu_rate": 24.0,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_D96ads_v6": {
+      "dbu_rate": 30.6,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_D96as_v4": {
+      "dbu_rate": 18.0,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_D96as_v5": {
+      "dbu_rate": 24.0,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_D96ds_v5": {
+      "dbu_rate": 24.0,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_D96ds_v6": {
+      "dbu_rate": 26.88,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_D96pds_v6": {
+      "dbu_rate": 28.08,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_D96ps_v6": {
+      "dbu_rate": 28.08,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_D96s_v5": {
+      "dbu_rate": 24.0,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC16ads_v5": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC16ads_v6": {
+      "dbu_rate": 5.1,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC16as_v5": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC2ads_v6": {
+      "dbu_rate": 0.64,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC32ads_v5": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC32ads_v6": {
+      "dbu_rate": 10.2,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC32as_v5": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC48ads_v5": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC48ads_v6": {
+      "dbu_rate": 15.3,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC48as_v5": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC4ads_v5": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC4ads_v6": {
+      "dbu_rate": 1.28,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC4as_v5": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC64ads_v5": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC64ads_v6": {
+      "dbu_rate": 20.4,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC64as_v5": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC8ads_v5": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC8ads_v6": {
+      "dbu_rate": 2.55,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC8as_v5": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC96ads_v5": {
+      "dbu_rate": 24.0,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC96ads_v6": {
+      "dbu_rate": 30.6,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_DC96as_v5": {
+      "dbu_rate": 24.0,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_DS12_v2": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 28.0,
+      "family": "General Purpose"
+    },
+    "Standard_DS13_v2": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 56.0,
+      "family": "General Purpose"
+    },
+    "Standard_DS14_v2": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 112.0,
+      "family": "General Purpose"
+    },
+    "Standard_DS15_v2": {
+      "dbu_rate": 5.0,
+      "vcpus": 20.0,
+      "memory_gb": 140.0,
+      "family": "General Purpose"
+    },
+    "Standard_DS1_v2": {
+      "dbu_rate": 0.2,
+      "vcpus": 1.0,
+      "memory_gb": 3.5,
+      "family": "General Purpose"
+    },
+    "Standard_DS2_v2": {
+      "dbu_rate": 0.4,
+      "vcpus": 2.0,
+      "memory_gb": 7.0,
+      "family": "General Purpose"
+    },
+    "Standard_DS3_v2": {
+      "dbu_rate": 0.75,
+      "vcpus": 4.0,
+      "memory_gb": 14.0,
+      "family": "General Purpose"
+    },
+    "Standard_DS4_v2": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 28.0,
+      "family": "General Purpose"
+    },
+    "Standard_DS5_v2": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 56.0,
+      "family": "General Purpose"
+    },
+    "Standard_E128ds_v6": {
+      "dbu_rate": 49.28,
+      "vcpus": 128.0,
+      "memory_gb": 1024.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16_v3": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16a_v4": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16ads_v5": {
+      "dbu_rate": 5.5,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16ads_v6": {
+      "dbu_rate": 7.02,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16as_v4": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16as_v5": {
+      "dbu_rate": 5.5,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16d_v4": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16ds_v4": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16ds_v5": {
+      "dbu_rate": 5.5,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16ds_v6": {
+      "dbu_rate": 6.16,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16pds_v6": {
+      "dbu_rate": 6.44,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16ps_v6": {
+      "dbu_rate": 6.44,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16s_v3": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16s_v4": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E16s_v5": {
+      "dbu_rate": 5.5,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20a_v4": {
+      "dbu_rate": 5.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20ads_v5": {
+      "dbu_rate": 7.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20ads_v6": {
+      "dbu_rate": 8.78,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20as_v4": {
+      "dbu_rate": 5.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20as_v5": {
+      "dbu_rate": 7.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20d_v4": {
+      "dbu_rate": 5.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20ds_v4": {
+      "dbu_rate": 5.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20ds_v5": {
+      "dbu_rate": 7.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20ds_v6": {
+      "dbu_rate": 7.7,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20s_v4": {
+      "dbu_rate": 5.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E20s_v5": {
+      "dbu_rate": 7.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E2_v3": {
+      "dbu_rate": 0.5,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E2ads_v6": {
+      "dbu_rate": 0.88,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E2ds_v5": {
+      "dbu_rate": 0.75,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E2ds_v6": {
+      "dbu_rate": 0.77,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E2pds_v6": {
+      "dbu_rate": 0.81,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32_v3": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32a_v4": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32ads_v5": {
+      "dbu_rate": 11.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32ads_v6": {
+      "dbu_rate": 14.04,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32as_v4": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32as_v5": {
+      "dbu_rate": 11.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32d_v4": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32ds_v4": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32ds_v5": {
+      "dbu_rate": 11.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32ds_v6": {
+      "dbu_rate": 12.32,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32pds_v6": {
+      "dbu_rate": 12.88,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32ps_v6": {
+      "dbu_rate": 12.88,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32s_v3": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32s_v4": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E32s_v5": {
+      "dbu_rate": 11.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48a_v4": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48ads_v5": {
+      "dbu_rate": 16.5,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48ads_v6": {
+      "dbu_rate": 21.06,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48as_v4": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48as_v5": {
+      "dbu_rate": 16.5,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48d_v4": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48ds_v4": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48ds_v5": {
+      "dbu_rate": 16.5,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48ds_v6": {
+      "dbu_rate": 18.48,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48pds_v6": {
+      "dbu_rate": 19.32,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48ps_v6": {
+      "dbu_rate": 19.32,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48s_v4": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E48s_v5": {
+      "dbu_rate": 16.5,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4_v3": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4a_v4": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4ads_v5": {
+      "dbu_rate": 1.5,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4ads_v6": {
+      "dbu_rate": 1.76,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4as_v4": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4as_v5": {
+      "dbu_rate": 1.5,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4d_v4": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4ds_v4": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4ds_v5": {
+      "dbu_rate": 1.5,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4ds_v6": {
+      "dbu_rate": 1.54,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4pds_v6": {
+      "dbu_rate": 1.61,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4ps_v6": {
+      "dbu_rate": 1.61,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4s_v4": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E4s_v5": {
+      "dbu_rate": 1.5,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64_v3": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 432.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64a_v4": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64ads_v5": {
+      "dbu_rate": 22.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64ads_v6": {
+      "dbu_rate": 28.08,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64as_v4": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 432.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64as_v5": {
+      "dbu_rate": 22.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64d_v4": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 504.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64ds_v4": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 504.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64ds_v5": {
+      "dbu_rate": 22.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64ds_v6": {
+      "dbu_rate": 24.64,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64pds_v6": {
+      "dbu_rate": 25.76,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64ps_v6": {
+      "dbu_rate": 25.76,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64s_v3": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 432.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64s_v4": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 504.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E64s_v5": {
+      "dbu_rate": 22.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E80ids_v4": {
+      "dbu_rate": 20.0,
+      "vcpus": 80.0,
+      "memory_gb": 504.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E80is_v4": {
+      "dbu_rate": 20.0,
+      "vcpus": 80.0,
+      "memory_gb": 504.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8_v3": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8a_v4": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8ads_v5": {
+      "dbu_rate": 2.75,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8ads_v6": {
+      "dbu_rate": 3.51,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8as_v4": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8as_v5": {
+      "dbu_rate": 2.75,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8d_v4": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8ds_v4": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8ds_v5": {
+      "dbu_rate": 2.75,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8ds_v6": {
+      "dbu_rate": 3.08,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8pds_v6": {
+      "dbu_rate": 3.22,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8ps_v6": {
+      "dbu_rate": 3.22,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8s_v3": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8s_v4": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E8s_v5": {
+      "dbu_rate": 2.75,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E96a_v4": {
+      "dbu_rate": 24.0,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E96ads_v5": {
+      "dbu_rate": 33.0,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E96ads_v6": {
+      "dbu_rate": 42.12,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E96as_v4": {
+      "dbu_rate": 24.0,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E96as_v5": {
+      "dbu_rate": 33.0,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E96ds_v5": {
+      "dbu_rate": 33.0,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E96ds_v6": {
+      "dbu_rate": 36.96,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E96pds_v6": {
+      "dbu_rate": 38.64,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E96ps_v6": {
+      "dbu_rate": 38.64,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_E96s_v5": {
+      "dbu_rate": 33.0,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC16ads_v5": {
+      "dbu_rate": 5.5,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC16ads_v6": {
+      "dbu_rate": 7.02,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC16as_v5": {
+      "dbu_rate": 5.5,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC16as_v6": {
+      "dbu_rate": 7.02,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC20ads_v5": {
+      "dbu_rate": 7.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC20ads_v6": {
+      "dbu_rate": 8.78,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC20as_v5": {
+      "dbu_rate": 7.0,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC20as_v6": {
+      "dbu_rate": 8.78,
+      "vcpus": 20.0,
+      "memory_gb": 160.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC2ads_v6": {
+      "dbu_rate": 0.88,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC2as_v6": {
+      "dbu_rate": 0.88,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC32ads_v5": {
+      "dbu_rate": 11.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC32ads_v6": {
+      "dbu_rate": 14.04,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC32as_v5": {
+      "dbu_rate": 11.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC32as_v6": {
+      "dbu_rate": 14.04,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC48ads_v5": {
+      "dbu_rate": 16.5,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC48ads_v6": {
+      "dbu_rate": 21.06,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC48as_v5": {
+      "dbu_rate": 16.5,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC48as_v6": {
+      "dbu_rate": 21.06,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC4ads_v5": {
+      "dbu_rate": 1.5,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC4ads_v6": {
+      "dbu_rate": 1.76,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC4as_v5": {
+      "dbu_rate": 1.5,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC4as_v6": {
+      "dbu_rate": 1.76,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC64ads_v5": {
+      "dbu_rate": 22.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC64ads_v6": {
+      "dbu_rate": 28.08,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC64as_v5": {
+      "dbu_rate": 22.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC64as_v6": {
+      "dbu_rate": 28.08,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC8ads_v5": {
+      "dbu_rate": 2.75,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC8ads_v6": {
+      "dbu_rate": 3.51,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC8as_v5": {
+      "dbu_rate": 2.75,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC8as_v6": {
+      "dbu_rate": 3.51,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC96ads_v5": {
+      "dbu_rate": 33.0,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC96ads_v6": {
+      "dbu_rate": 42.12,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC96as_v5": {
+      "dbu_rate": 33.0,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_EC96as_v6": {
+      "dbu_rate": 42.12,
+      "vcpus": 96.0,
+      "memory_gb": 672.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_F16": {
+      "dbu_rate": 2.0,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F16s": {
+      "dbu_rate": 2.0,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F16s_v2": {
+      "dbu_rate": 3.0,
+      "vcpus": 16.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F32s_v2": {
+      "dbu_rate": 6.0,
+      "vcpus": 32.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F4": {
+      "dbu_rate": 0.5,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F4s": {
+      "dbu_rate": 0.5,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F4s_v2": {
+      "dbu_rate": 0.75,
+      "vcpus": 4.0,
+      "memory_gb": 8.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F64s_v2": {
+      "dbu_rate": 12.0,
+      "vcpus": 64.0,
+      "memory_gb": 128.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F72s_v2": {
+      "dbu_rate": 13.5,
+      "vcpus": 72.0,
+      "memory_gb": 144.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F8": {
+      "dbu_rate": 1.0,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F8s": {
+      "dbu_rate": 1.0,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_F8s_v2": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "Standard_H16": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 112.0,
+      "family": "General Purpose"
+    },
+    "Standard_H8": {
+      "dbu_rate": 2.5,
+      "vcpus": 8.0,
+      "memory_gb": 56.0,
+      "family": "General Purpose"
+    },
+    "Standard_L16as_v3": {
+      "dbu_rate": 5.5,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L16s": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L16s_v2": {
+      "dbu_rate": 4.0,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L16s_v3": {
+      "dbu_rate": 5.5,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L32as_v3": {
+      "dbu_rate": 11.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L32s": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L32s_v2": {
+      "dbu_rate": 8.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L32s_v3": {
+      "dbu_rate": 11.0,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L48as_v3": {
+      "dbu_rate": 16.5,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L48s_v3": {
+      "dbu_rate": 16.5,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L4s": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L64as_v3": {
+      "dbu_rate": 22.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L64s_v2": {
+      "dbu_rate": 16.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L64s_v3": {
+      "dbu_rate": 22.0,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L80as_v3": {
+      "dbu_rate": 27.5,
+      "vcpus": 80.0,
+      "memory_gb": 640.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L80s_v2": {
+      "dbu_rate": 20.0,
+      "vcpus": 80.0,
+      "memory_gb": 640.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L80s_v3": {
+      "dbu_rate": 27.5,
+      "vcpus": 80.0,
+      "memory_gb": 640.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L8as_v3": {
+      "dbu_rate": 2.75,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L8s": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L8s_v2": {
+      "dbu_rate": 2.0,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_L8s_v3": {
+      "dbu_rate": 2.75,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_Large": {
+      "dbu_rate": 40.0,
+      "vcpus": 160.0,
+      "memory_gb": 1280.0,
+      "family": "Storage Optimized"
+    },
+    "Standard_Medium": {
+      "dbu_rate": 24.0,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "Memory Optimized"
+    },
+    "Standard_NC12": {
+      "dbu_rate": 3.0,
+      "vcpus": 12.0,
+      "memory_gb": 112.0,
+      "family": "GPU"
+    },
+    "Standard_NC12s_v3": {
+      "dbu_rate": 10.0,
+      "vcpus": 12.0,
+      "memory_gb": 224.0,
+      "family": "GPU"
+    },
+    "Standard_NC16as_T4_v3": {
+      "dbu_rate": 2.5,
+      "vcpus": 16.0,
+      "memory_gb": 110.0,
+      "family": "GPU"
+    },
+    "Standard_NC24": {
+      "dbu_rate": 6.0,
+      "vcpus": 24.0,
+      "memory_gb": 224.0,
+      "family": "GPU"
+    },
+    "Standard_NC24ads_A100_v4": {
+      "dbu_rate": 10.0,
+      "vcpus": 24.0,
+      "memory_gb": 220.0,
+      "family": "GPU"
+    },
+    "Standard_NC24s_v3": {
+      "dbu_rate": 20.0,
+      "vcpus": 24.0,
+      "memory_gb": 448.0,
+      "family": "GPU"
+    },
+    "Standard_NC40ads_H100_V5": {
+      "dbu_rate": 13.0585975,
+      "vcpus": 40.0,
+      "memory_gb": 320.0,
+      "family": "GPU"
+    },
+    "Standard_NC48ads_A100_v4": {
+      "dbu_rate": 20.0,
+      "vcpus": 48.0,
+      "memory_gb": 440.0,
+      "family": "GPU"
+    },
+    "Standard_NC4as_T4_v3": {
+      "dbu_rate": 1.0,
+      "vcpus": 4.0,
+      "memory_gb": 28.0,
+      "family": "GPU"
+    },
+    "Standard_NC64as_T4_v3": {
+      "dbu_rate": 10.0,
+      "vcpus": 64.0,
+      "memory_gb": 440.0,
+      "family": "GPU"
+    },
+    "Standard_NC6s_v3": {
+      "dbu_rate": 5.0,
+      "vcpus": 6.0,
+      "memory_gb": 112.0,
+      "family": "GPU"
+    },
+    "Standard_NC80ads_H100_V5": {
+      "dbu_rate": 26.117195,
+      "vcpus": 80.0,
+      "memory_gb": 640.0,
+      "family": "GPU"
+    },
+    "Standard_NC8as_T4_v3": {
+      "dbu_rate": 1.5,
+      "vcpus": 8.0,
+      "memory_gb": 56.0,
+      "family": "GPU"
+    },
+    "Standard_NC96ads_A100_v4": {
+      "dbu_rate": 44.0,
+      "vcpus": 96.0,
+      "memory_gb": 880.0,
+      "family": "GPU"
+    },
+    "Standard_NCCads_H100_v5": {
+      "dbu_rate": 13.0585975,
+      "vcpus": 40.0,
+      "memory_gb": 320.0,
+      "family": "GPU"
+    },
+    "Standard_ND96asr_v4": {
+      "dbu_rate": 44.0,
+      "vcpus": 96.0,
+      "memory_gb": 900.0,
+      "family": "GPU"
+    },
+    "Standard_ND96isr_H100_V5": {
+      "dbu_rate": 88.9096,
+      "vcpus": 96.0,
+      "memory_gb": 1900.0,
+      "family": "GPU"
+    },
+    "Standard_NV36adms_A10_v5": {
+      "dbu_rate": 6.0,
+      "vcpus": 36.0,
+      "memory_gb": 880.0,
+      "family": "GPU"
+    },
+    "Standard_NV36ads_A10_v5": {
+      "dbu_rate": 4.0,
+      "vcpus": 36.0,
+      "memory_gb": 440.0,
+      "family": "GPU"
+    },
+    "Standard_NV72ads_A10_v5": {
+      "dbu_rate": 8.0,
+      "vcpus": 72.0,
+      "memory_gb": 880.0,
+      "family": "GPU"
+    },
+    "Standard_Small": {
+      "dbu_rate": 12.0,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "Standard_X-Large": {
+      "dbu_rate": 80.0,
+      "vcpus": 320.0,
+      "memory_gb": 2560.0,
+      "family": "General Purpose"
+    },
+    "Standard_X-Small": {
+      "dbu_rate": 6.0,
+      "vcpus": 24.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    }
+  },
+  "gcp": {
+    "a2-highgpu-1g": {
+      "dbu_rate": 5.43,
+      "vcpus": 12.0,
+      "memory_gb": 85.0,
+      "family": "GPU"
+    },
+    "a2-highgpu-2g": {
+      "dbu_rate": 10.86,
+      "vcpus": 24.0,
+      "memory_gb": 170.0,
+      "family": "GPU"
+    },
+    "a2-highgpu-4g": {
+      "dbu_rate": 21.72,
+      "vcpus": 48.0,
+      "memory_gb": 340.0,
+      "family": "GPU"
+    },
+    "a2-highgpu-8g": {
+      "dbu_rate": 43.44,
+      "vcpus": 96.0,
+      "memory_gb": 680.0,
+      "family": "GPU"
+    },
+    "a2-megagpu-16g": {
+      "dbu_rate": 63.839999999999996,
+      "vcpus": 96.0,
+      "memory_gb": 1360.0,
+      "family": "GPU"
+    },
+    "a2-ultragpu-1g": {
+      "dbu_rate": 7.9799999999999995,
+      "vcpus": 12.0,
+      "memory_gb": 170.0,
+      "family": "GPU"
+    },
+    "a2-ultragpu-2g": {
+      "dbu_rate": 15.959999999999999,
+      "vcpus": 24.0,
+      "memory_gb": 340.0,
+      "family": "GPU"
+    },
+    "a2-ultragpu-4g": {
+      "dbu_rate": 31.919999999999998,
+      "vcpus": 48.0,
+      "memory_gb": 680.0,
+      "family": "GPU"
+    },
+    "a2-ultragpu-8g": {
+      "dbu_rate": 63.839999999999996,
+      "vcpus": 96.0,
+      "memory_gb": 1360.0,
+      "family": "GPU"
+    },
+    "a3-highgpu-1g": {
+      "dbu_rate": 14.127,
+      "vcpus": 26.0,
+      "memory_gb": 234.0,
+      "family": "General Purpose"
+    },
+    "a3-highgpu-2g": {
+      "dbu_rate": 28.254,
+      "vcpus": 26.0,
+      "memory_gb": 234.0,
+      "family": "General Purpose"
+    },
+    "a3-highgpu-4g": {
+      "dbu_rate": 56.509,
+      "vcpus": 26.0,
+      "memory_gb": 234.0,
+      "family": "General Purpose"
+    },
+    "a3-highgpu-8g": {
+      "dbu_rate": 113.018,
+      "vcpus": 26.0,
+      "memory_gb": 234.0,
+      "family": "General Purpose"
+    },
+    "c2-standard-16": {
+      "dbu_rate": 2.88,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c2-standard-30": {
+      "dbu_rate": 5.3999999999999995,
+      "vcpus": 30.0,
+      "memory_gb": 120.0,
+      "family": "Compute Optimized"
+    },
+    "c2-standard-4": {
+      "dbu_rate": 0.72,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c2-standard-60": {
+      "dbu_rate": 10.799999999999999,
+      "vcpus": 60.0,
+      "memory_gb": 240.0,
+      "family": "Compute Optimized"
+    },
+    "c2-standard-8": {
+      "dbu_rate": 1.44,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c3-highmem-22": {
+      "dbu_rate": 6.6,
+      "vcpus": 22.0,
+      "memory_gb": 176.0,
+      "family": "Compute Optimized"
+    },
+    "c3-highmem-4": {
+      "dbu_rate": 1.2,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c3-highmem-44": {
+      "dbu_rate": 13.2,
+      "vcpus": 44.0,
+      "memory_gb": 352.0,
+      "family": "Compute Optimized"
+    },
+    "c3-highmem-8": {
+      "dbu_rate": 2.4,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "Compute Optimized"
+    },
+    "c3-highmem-88": {
+      "dbu_rate": 26.4,
+      "vcpus": 88.0,
+      "memory_gb": 704.0,
+      "family": "Compute Optimized"
+    },
+    "c3-standard-22 (-lssd)": {
+      "dbu_rate": 4.68,
+      "vcpus": 22.0,
+      "memory_gb": 88.0,
+      "family": "Compute Optimized"
+    },
+    "c3-standard-4  (-lssd)": {
+      "dbu_rate": 0.85,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "Compute Optimized"
+    },
+    "c3-standard-44 (-lssd)": {
+      "dbu_rate": 9.35,
+      "vcpus": 44.0,
+      "memory_gb": 176.0,
+      "family": "Compute Optimized"
+    },
+    "c3-standard-8 (-lssd)": {
+      "dbu_rate": 1.7,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "Compute Optimized"
+    },
+    "c3-standard-88 (-lssd)": {
+      "dbu_rate": 18.7,
+      "vcpus": 88.0,
+      "memory_gb": 352.0,
+      "family": "Compute Optimized"
+    },
+    "c3d-highmem-16 (-lssd)": {
+      "dbu_rate": 4.8,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "c3d-highmem-180 (-lssd)": {
+      "dbu_rate": 54.0,
+      "vcpus": 180.0,
+      "memory_gb": 1440.0,
+      "family": "General Purpose"
+    },
+    "c3d-highmem-30 (-lssd)": {
+      "dbu_rate": 9.0,
+      "vcpus": 30.0,
+      "memory_gb": 240.0,
+      "family": "General Purpose"
+    },
+    "c3d-highmem-360 (-lssd)": {
+      "dbu_rate": 108.0,
+      "vcpus": 360.0,
+      "memory_gb": 2880.0,
+      "family": "General Purpose"
+    },
+    "c3d-highmem-4 (-lssd)": {
+      "dbu_rate": 1.2,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "c3d-highmem-60 (-lssd)": {
+      "dbu_rate": 18.0,
+      "vcpus": 60.0,
+      "memory_gb": 480.0,
+      "family": "General Purpose"
+    },
+    "c3d-highmem-8 (-lssd)": {
+      "dbu_rate": 2.4,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "c3d-highmem-90 (-lssd)": {
+      "dbu_rate": 27.0,
+      "vcpus": 90.0,
+      "memory_gb": 720.0,
+      "family": "General Purpose"
+    },
+    "c3d-standard-16 (-lssd)": {
+      "dbu_rate": 3.4,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "c3d-standard-180 (-lssd)": {
+      "dbu_rate": 38.25,
+      "vcpus": 180.0,
+      "memory_gb": 720.0,
+      "family": "General Purpose"
+    },
+    "c3d-standard-30 (-lssd)": {
+      "dbu_rate": 6.38,
+      "vcpus": 30.0,
+      "memory_gb": 120.0,
+      "family": "General Purpose"
+    },
+    "c3d-standard-360 (-lssd)": {
+      "dbu_rate": 76.5,
+      "vcpus": 360.0,
+      "memory_gb": 1440.0,
+      "family": "General Purpose"
+    },
+    "c3d-standard-4 (-lssd)": {
+      "dbu_rate": 0.85,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "c3d-standard-60 (-lssd)": {
+      "dbu_rate": 12.75,
+      "vcpus": 60.0,
+      "memory_gb": 240.0,
+      "family": "General Purpose"
+    },
+    "c3d-standard-8 (-lssd)": {
+      "dbu_rate": 1.7,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "c3d-standard-90 (-lssd)": {
+      "dbu_rate": 19.13,
+      "vcpus": 90.0,
+      "memory_gb": 360.0,
+      "family": "General Purpose"
+    },
+    "c4-standard-16": {
+      "dbu_rate": 4.24,
+      "vcpus": 16.0,
+      "memory_gb": 60.0,
+      "family": "General Purpose"
+    },
+    "c4-standard-2": {
+      "dbu_rate": 0.53,
+      "vcpus": 2.0,
+      "memory_gb": 7.0,
+      "family": "General Purpose"
+    },
+    "c4-standard-24": {
+      "dbu_rate": 6.36,
+      "vcpus": 24.0,
+      "memory_gb": 90.0,
+      "family": "General Purpose"
+    },
+    "c4-standard-32": {
+      "dbu_rate": 8.48,
+      "vcpus": 32.0,
+      "memory_gb": 120.0,
+      "family": "General Purpose"
+    },
+    "c4-standard-4": {
+      "dbu_rate": 1.06,
+      "vcpus": 4.0,
+      "memory_gb": 15.0,
+      "family": "General Purpose"
+    },
+    "c4-standard-8": {
+      "dbu_rate": 2.12,
+      "vcpus": 8.0,
+      "memory_gb": 30.0,
+      "family": "General Purpose"
+    },
+    "c4a-highmem-16 (-lssd)": {
+      "dbu_rate": 7.92,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "c4a-highmem-32 (-lssd)": {
+      "dbu_rate": 15.84,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "c4a-highmem-4 (-lssd)": {
+      "dbu_rate": 1.98,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "c4a-highmem-48 (-lssd)": {
+      "dbu_rate": 23.76,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "c4a-highmem-64 (-lssd)": {
+      "dbu_rate": 31.68,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "c4a-highmem-72 (-lssd)": {
+      "dbu_rate": 35.64,
+      "vcpus": 72.0,
+      "memory_gb": 576.0,
+      "family": "General Purpose"
+    },
+    "c4a-highmem-8 (-lssd)": {
+      "dbu_rate": 3.96,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "c4a-standard-16 (-lssd)": {
+      "dbu_rate": 5.6,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "c4a-standard-32 (-lssd)": {
+      "dbu_rate": 11.2,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "c4a-standard-4 (-lssd)": {
+      "dbu_rate": 1.4,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "c4a-standard-48 (-lssd)": {
+      "dbu_rate": 16.8,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "c4a-standard-64 (-lssd)": {
+      "dbu_rate": 22.4,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "c4a-standard-72 (-lssd)": {
+      "dbu_rate": 25.2,
+      "vcpus": 72.0,
+      "memory_gb": 288.0,
+      "family": "General Purpose"
+    },
+    "c4a-standard-8 (-lssd)": {
+      "dbu_rate": 2.8,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "c4d-standard-16": {
+      "dbu_rate": 5.94,
+      "vcpus": 16.0,
+      "memory_gb": 62.0,
+      "family": "General Purpose"
+    },
+    "c4d-standard-2": {
+      "dbu_rate": 0.7425,
+      "vcpus": 2.0,
+      "memory_gb": 7.0,
+      "family": "General Purpose"
+    },
+    "c4d-standard-32": {
+      "dbu_rate": 11.88,
+      "vcpus": 32.0,
+      "memory_gb": 124.0,
+      "family": "General Purpose"
+    },
+    "c4d-standard-4": {
+      "dbu_rate": 1.485,
+      "vcpus": 4.0,
+      "memory_gb": 15.0,
+      "family": "General Purpose"
+    },
+    "c4d-standard-8": {
+      "dbu_rate": 2.97,
+      "vcpus": 8.0,
+      "memory_gb": 31.0,
+      "family": "General Purpose"
+    },
+    "e2_highcpu_16": {
+      "dbu_rate": 2.16,
+      "vcpus": 16.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "e2_highcpu_32": {
+      "dbu_rate": 4.32,
+      "vcpus": 32.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "e2_highmem_16": {
+      "dbu_rate": 3.84,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "e2_highmem_2": {
+      "dbu_rate": 0.48,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "e2_highmem_4": {
+      "dbu_rate": 0.96,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "e2_highmem_8": {
+      "dbu_rate": 1.92,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "e2_standard_16": {
+      "dbu_rate": 2.88,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "e2_standard_32": {
+      "dbu_rate": 5.76,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "e2_standard_4": {
+      "dbu_rate": 0.72,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "e2_standard_8": {
+      "dbu_rate": 1.44,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "g2-standard-12": {
+      "dbu_rate": 4.32,
+      "vcpus": 12.0,
+      "memory_gb": 48.0,
+      "family": "GPU"
+    },
+    "g2-standard-16": {
+      "dbu_rate": 5.76,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "GPU"
+    },
+    "g2-standard-24": {
+      "dbu_rate": 8.64,
+      "vcpus": 24.0,
+      "memory_gb": 96.0,
+      "family": "GPU"
+    },
+    "g2-standard-32": {
+      "dbu_rate": 11.52,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "GPU"
+    },
+    "g2-standard-4": {
+      "dbu_rate": 1.44,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "GPU"
+    },
+    "g2-standard-48": {
+      "dbu_rate": 17.28,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "GPU"
+    },
+    "g2-standard-8": {
+      "dbu_rate": 2.88,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "GPU"
+    },
+    "g2-standard-96": {
+      "dbu_rate": 34.56,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "GPU"
+    },
+    "n1-highcpu-16": {
+      "dbu_rate": 2.136,
+      "vcpus": 16.0,
+      "memory_gb": 14.4,
+      "family": "General Purpose"
+    },
+    "n1-highcpu-32": {
+      "dbu_rate": 4.272,
+      "vcpus": 32.0,
+      "memory_gb": 28.8,
+      "family": "General Purpose"
+    },
+    "n1-highcpu-64": {
+      "dbu_rate": 8.544,
+      "vcpus": 64.0,
+      "memory_gb": 57.6,
+      "family": "General Purpose"
+    },
+    "n1-highcpu-96": {
+      "dbu_rate": 12.815999999999999,
+      "vcpus": 96.0,
+      "memory_gb": 86.4,
+      "family": "General Purpose"
+    },
+    "n1-highmem-16": {
+      "dbu_rate": 3.48,
+      "vcpus": 16.0,
+      "memory_gb": 104.0,
+      "family": "General Purpose"
+    },
+    "n1-highmem-32": {
+      "dbu_rate": 6.96,
+      "vcpus": 32.0,
+      "memory_gb": 208.0,
+      "family": "General Purpose"
+    },
+    "n1-highmem-4": {
+      "dbu_rate": 0.87,
+      "vcpus": 4.0,
+      "memory_gb": 26.0,
+      "family": "General Purpose"
+    },
+    "n1-highmem-64": {
+      "dbu_rate": 13.92,
+      "vcpus": 64.0,
+      "memory_gb": 416.0,
+      "family": "General Purpose"
+    },
+    "n1-highmem-8": {
+      "dbu_rate": 1.74,
+      "vcpus": 8.0,
+      "memory_gb": 52.0,
+      "family": "General Purpose"
+    },
+    "n1-highmem-96": {
+      "dbu_rate": 20.88,
+      "vcpus": 96.0,
+      "memory_gb": 624.0,
+      "family": "General Purpose"
+    },
+    "n1-standard-16": {
+      "dbu_rate": 2.82,
+      "vcpus": 16.0,
+      "memory_gb": 60.0,
+      "family": "General Purpose"
+    },
+    "n1-standard-32": {
+      "dbu_rate": 5.64,
+      "vcpus": 32.0,
+      "memory_gb": 120.0,
+      "family": "General Purpose"
+    },
+    "n1-standard-4": {
+      "dbu_rate": 0.71,
+      "vcpus": 4.0,
+      "memory_gb": 15.0,
+      "family": "General Purpose"
+    },
+    "n1-standard-64": {
+      "dbu_rate": 11.28,
+      "vcpus": 64.0,
+      "memory_gb": 240.0,
+      "family": "General Purpose"
+    },
+    "n1-standard-8": {
+      "dbu_rate": 1.41,
+      "vcpus": 8.0,
+      "memory_gb": 30.0,
+      "family": "General Purpose"
+    },
+    "n1-standard-96": {
+      "dbu_rate": 16.92,
+      "vcpus": 96.0,
+      "memory_gb": 360.0,
+      "family": "General Purpose"
+    },
+    "n2-highcpu-16": {
+      "dbu_rate": 2.16,
+      "vcpus": 16.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "n2-highcpu-32": {
+      "dbu_rate": 4.32,
+      "vcpus": 32.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "n2-highcpu-48": {
+      "dbu_rate": 6.4799999999999995,
+      "vcpus": 48.0,
+      "memory_gb": 48.0,
+      "family": "General Purpose"
+    },
+    "n2-highcpu-64": {
+      "dbu_rate": 8.64,
+      "vcpus": 64.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "n2-highcpu-80": {
+      "dbu_rate": 10.799999999999999,
+      "vcpus": 80.0,
+      "memory_gb": 80.0,
+      "family": "General Purpose"
+    },
+    "n2-highmem-16": {
+      "dbu_rate": 3.84,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "n2-highmem-2": {
+      "dbu_rate": 0.48,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "n2-highmem-32": {
+      "dbu_rate": 7.68,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "n2-highmem-4": {
+      "dbu_rate": 0.96,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "n2-highmem-48": {
+      "dbu_rate": 11.52,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "n2-highmem-64": {
+      "dbu_rate": 15.36,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "n2-highmem-8": {
+      "dbu_rate": 1.92,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "n2-highmem-80": {
+      "dbu_rate": 19.2,
+      "vcpus": 80.0,
+      "memory_gb": 640.0,
+      "family": "General Purpose"
+    },
+    "n2-standard-16": {
+      "dbu_rate": 2.88,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "n2-standard-32": {
+      "dbu_rate": 5.76,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "n2-standard-4": {
+      "dbu_rate": 0.72,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "n2-standard-48": {
+      "dbu_rate": 8.64,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "n2-standard-64": {
+      "dbu_rate": 11.52,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "n2-standard-8": {
+      "dbu_rate": 1.44,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "n2-standard-80": {
+      "dbu_rate": 14.399999999999999,
+      "vcpus": 80.0,
+      "memory_gb": 320.0,
+      "family": "General Purpose"
+    },
+    "n2d-highcpu-128": {
+      "dbu_rate": 17.28,
+      "vcpus": 128.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "n2d-highcpu-16": {
+      "dbu_rate": 2.16,
+      "vcpus": 16.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "n2d-highcpu-224": {
+      "dbu_rate": 30.24,
+      "vcpus": 224.0,
+      "memory_gb": 224.0,
+      "family": "General Purpose"
+    },
+    "n2d-highcpu-32": {
+      "dbu_rate": 4.32,
+      "vcpus": 32.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "n2d-highcpu-48": {
+      "dbu_rate": 6.4799999999999995,
+      "vcpus": 48.0,
+      "memory_gb": 48.0,
+      "family": "General Purpose"
+    },
+    "n2d-highcpu-64": {
+      "dbu_rate": 8.64,
+      "vcpus": 64.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "n2d-highcpu-80": {
+      "dbu_rate": 10.799999999999999,
+      "vcpus": 80.0,
+      "memory_gb": 80.0,
+      "family": "General Purpose"
+    },
+    "n2d-highcpu-96": {
+      "dbu_rate": 12.959999999999999,
+      "vcpus": 96.0,
+      "memory_gb": 96.0,
+      "family": "General Purpose"
+    },
+    "n2d-highmem-16": {
+      "dbu_rate": 3.84,
+      "vcpus": 16.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "n2d-highmem-2": {
+      "dbu_rate": 0.48,
+      "vcpus": 2.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "n2d-highmem-32": {
+      "dbu_rate": 7.68,
+      "vcpus": 32.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "n2d-highmem-4": {
+      "dbu_rate": 0.96,
+      "vcpus": 4.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "n2d-highmem-48": {
+      "dbu_rate": 11.52,
+      "vcpus": 48.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "n2d-highmem-64": {
+      "dbu_rate": 15.36,
+      "vcpus": 64.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "n2d-highmem-8": {
+      "dbu_rate": 1.92,
+      "vcpus": 8.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "n2d-highmem-80": {
+      "dbu_rate": 19.2,
+      "vcpus": 80.0,
+      "memory_gb": 640.0,
+      "family": "General Purpose"
+    },
+    "n2d-highmem-96": {
+      "dbu_rate": 23.04,
+      "vcpus": 96.0,
+      "memory_gb": 768.0,
+      "family": "General Purpose"
+    },
+    "n2d-standard-128": {
+      "dbu_rate": 23.04,
+      "vcpus": 128.0,
+      "memory_gb": 512.0,
+      "family": "General Purpose"
+    },
+    "n2d-standard-16": {
+      "dbu_rate": 2.88,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "n2d-standard-224": {
+      "dbu_rate": 40.32,
+      "vcpus": 224.0,
+      "memory_gb": 896.0,
+      "family": "General Purpose"
+    },
+    "n2d-standard-32": {
+      "dbu_rate": 5.76,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "n2d-standard-4": {
+      "dbu_rate": 0.72,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "n2d-standard-48": {
+      "dbu_rate": 8.64,
+      "vcpus": 48.0,
+      "memory_gb": 192.0,
+      "family": "General Purpose"
+    },
+    "n2d-standard-64": {
+      "dbu_rate": 11.52,
+      "vcpus": 64.0,
+      "memory_gb": 256.0,
+      "family": "General Purpose"
+    },
+    "n2d-standard-8": {
+      "dbu_rate": 1.44,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    },
+    "n2d-standard-80": {
+      "dbu_rate": 14.399999999999999,
+      "vcpus": 80.0,
+      "memory_gb": 320.0,
+      "family": "General Purpose"
+    },
+    "n2d-standard-96": {
+      "dbu_rate": 17.28,
+      "vcpus": 96.0,
+      "memory_gb": 384.0,
+      "family": "General Purpose"
+    },
+    "n4-standard-16": {
+      "dbu_rate": 3.36,
+      "vcpus": 16.0,
+      "memory_gb": 64.0,
+      "family": "General Purpose"
+    },
+    "n4-standard-2": {
+      "dbu_rate": 0.42,
+      "vcpus": 2.0,
+      "memory_gb": 8.0,
+      "family": "General Purpose"
+    },
+    "n4-standard-32": {
+      "dbu_rate": 6.72,
+      "vcpus": 32.0,
+      "memory_gb": 128.0,
+      "family": "General Purpose"
+    },
+    "n4-standard-4": {
+      "dbu_rate": 0.84,
+      "vcpus": 4.0,
+      "memory_gb": 16.0,
+      "family": "General Purpose"
+    },
+    "n4-standard-8": {
+      "dbu_rate": 1.68,
+      "vcpus": 8.0,
+      "memory_gb": 32.0,
+      "family": "General Purpose"
+    }
+  }
+}

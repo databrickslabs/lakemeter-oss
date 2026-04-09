@@ -1,0 +1,15 @@
+{
+  "generated_at": "2025-12-31T23:43:25.284655",
+  "total_entries": 4309,
+  "files": [
+    "instance-dbu-rates.json",
+    "dbu-multipliers.json",
+    "dbu-rates.json",
+    "dbsql-rates.json",
+    "dbsql-warehouse-config.json",
+    "vector-search-rates.json",
+    "model-serving-rates.json",
+    "fmapi-databricks-rates.json",
+    "fmapi-proprietary-rates.json"
+  ]
+}

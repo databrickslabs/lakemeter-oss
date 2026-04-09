@@ -1,0 +1,23 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["backend"]
+addopts = "--ignore=tests/ai_assistant"
+markers = [
+    "ai: AI assistant tests requiring live FMAPI (deselected by default)",
+]
+
+[tool.coverage.run]
+source = ["backend/app"]
+
+[tool.coverage.paths]
+source = [
+    "backend/app",
+    "app",
+]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+]
