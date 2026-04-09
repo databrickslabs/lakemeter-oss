@@ -1,0 +1,326 @@
+{
+  "aws:classic:2X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.16xlarge",
+    "worker_count": 64,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:classic:2X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.2xlarge",
+    "worker_count": 1,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:classic:3X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.16xlarge",
+    "worker_count": 128,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:classic:4X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.16xlarge",
+    "worker_count": 256,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:classic:Large": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.8xlarge",
+    "worker_count": 16,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:classic:Medium": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.8xlarge",
+    "worker_count": 8,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:classic:Small": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.4xlarge",
+    "worker_count": 4,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:classic:X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.16xlarge",
+    "worker_count": 32,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:classic:X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.2xlarge",
+    "worker_count": 2,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:pro:2X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.16xlarge",
+    "worker_count": 64,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:pro:2X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.2xlarge",
+    "worker_count": 1,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:pro:3X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.16xlarge",
+    "worker_count": 128,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:pro:4X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.16xlarge",
+    "worker_count": 256,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:pro:Large": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.8xlarge",
+    "worker_count": 16,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:pro:Medium": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.8xlarge",
+    "worker_count": 8,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:pro:Small": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.4xlarge",
+    "worker_count": 4,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:pro:X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.16xlarge",
+    "worker_count": 32,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "aws:pro:X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "i3.2xlarge",
+    "worker_count": 2,
+    "worker_instance_type": "i3.2xlarge"
+  },
+  "azure:classic:2X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E64ds_v4",
+    "worker_count": 64,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:classic:2X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E8ds_v4",
+    "worker_count": 1,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:classic:3X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E64ds_v4",
+    "worker_count": 128,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:classic:4X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E64ds_v4",
+    "worker_count": 256,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:classic:Large": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E32ds_v4",
+    "worker_count": 16,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:classic:Medium": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E32ds_v4",
+    "worker_count": 8,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:classic:Small": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E16ds_v4",
+    "worker_count": 4,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:classic:X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E64ds_v4",
+    "worker_count": 32,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:classic:X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E8ds_v4",
+    "worker_count": 2,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:pro:2X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E64ds_v4",
+    "worker_count": 64,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:pro:2X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E8ds_v4",
+    "worker_count": 1,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:pro:3X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E64ds_v4",
+    "worker_count": 128,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:pro:4X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E64ds_v4",
+    "worker_count": 256,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:pro:Large": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E32ds_v4",
+    "worker_count": 16,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:pro:Medium": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E32ds_v4",
+    "worker_count": 8,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:pro:Small": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E16ds_v4",
+    "worker_count": 4,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:pro:X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E64ds_v4",
+    "worker_count": 32,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "azure:pro:X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "Standard_E8ds_v4",
+    "worker_count": 2,
+    "worker_instance_type": "Standard_E8ds_v4"
+  },
+  "gcp:classic:2X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-64",
+    "worker_count": 64,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:classic:2X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-8",
+    "worker_count": 1,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:classic:3X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-64",
+    "worker_count": 128,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:classic:4X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-64",
+    "worker_count": 256,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:classic:Large": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-32",
+    "worker_count": 16,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:classic:Medium": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-32",
+    "worker_count": 8,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:classic:Small": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-16",
+    "worker_count": 4,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:classic:X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-64",
+    "worker_count": 32,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:classic:X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-8",
+    "worker_count": 2,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:pro:2X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-64",
+    "worker_count": 64,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:pro:2X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-8",
+    "worker_count": 1,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:pro:3X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-64",
+    "worker_count": 128,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:pro:4X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-64",
+    "worker_count": 256,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:pro:Large": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-32",
+    "worker_count": 16,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:pro:Medium": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-32",
+    "worker_count": 8,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:pro:Small": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-16",
+    "worker_count": 4,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:pro:X-Large": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-64",
+    "worker_count": 32,
+    "worker_instance_type": "n2-highmem-8"
+  },
+  "gcp:pro:X-Small": {
+    "driver_count": 1,
+    "driver_instance_type": "n2-highmem-8",
+    "worker_count": 2,
+    "worker_instance_type": "n2-highmem-8"
+  }
+}

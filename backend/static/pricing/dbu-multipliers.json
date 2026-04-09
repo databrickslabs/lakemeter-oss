@@ -1,0 +1,257 @@
+{
+  "aws:ALL_PURPOSE_COMPUTE:photon": {
+    "multiplier": 2.0,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "aws:ALL_PURPOSE_SERVERLESS_COMPUTE:databricks_app": {
+    "multiplier": 0.5,
+    "category": "INTERACTIVE_SERVERLESS",
+    "feature": "databricks_app"
+  },
+  "aws:ALL_PURPOSE_SERVERLESS_COMPUTE:serverless_notebook": {
+    "multiplier": 1.0,
+    "category": "INTERACTIVE_SERVERLESS",
+    "feature": "serverless_notebook"
+  },
+  "aws:DATABASE_SERVERLESS_COMPUTE:lakebase": {
+    "multiplier": 1.0,
+    "category": "DATABASE_SERVERLESS",
+    "feature": "lakebase"
+  },
+  "aws:DLT_ADVANCED_COMPUTE:photon": {
+    "multiplier": 2.9,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "aws:DLT_CORE_COMPUTE:photon": {
+    "multiplier": 2.9,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "aws:DLT_PRO_COMPUTE:photon": {
+    "multiplier": 2.9,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "aws:JOBS_COMPUTE:photon": {
+    "multiplier": 2.9,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "aws:JOBS_SERVERLESS_COMPUTE:data_classification": {
+    "multiplier": 3.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "data_classification"
+  },
+  "aws:JOBS_SERVERLESS_COMPUTE:data_quality_monitoring": {
+    "multiplier": 2.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "data_quality_monitoring"
+  },
+  "aws:JOBS_SERVERLESS_COMPUTE:fine_grained_access_control": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "fine_grained_access_control"
+  },
+  "aws:JOBS_SERVERLESS_COMPUTE:materialized_views_streaming_tables": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "materialized_views_streaming_tables"
+  },
+  "aws:JOBS_SERVERLESS_COMPUTE:online_tables_capacity": {
+    "multiplier": 2.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "online_tables_capacity"
+  },
+  "aws:JOBS_SERVERLESS_COMPUTE:online_tables_sync": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "online_tables_sync"
+  },
+  "aws:JOBS_SERVERLESS_COMPUTE:predictive_optimization": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "predictive_optimization"
+  },
+  "aws:JOBS_SERVERLESS_COMPUTE:serverless_dlt": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "serverless_dlt"
+  },
+  "aws:JOBS_SERVERLESS_COMPUTE:serverless_jobs": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "serverless_jobs"
+  },
+  "azure:ALL_PURPOSE_COMPUTE:photon": {
+    "multiplier": 2.0,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "azure:ALL_PURPOSE_SERVERLESS_COMPUTE:databricks_app": {
+    "multiplier": 0.5,
+    "category": "INTERACTIVE_SERVERLESS",
+    "feature": "databricks_app"
+  },
+  "azure:ALL_PURPOSE_SERVERLESS_COMPUTE:serverless_notebook": {
+    "multiplier": 1.0,
+    "category": "INTERACTIVE_SERVERLESS",
+    "feature": "serverless_notebook"
+  },
+  "azure:DATABASE_SERVERLESS_COMPUTE:lakebase": {
+    "multiplier": 1.0,
+    "category": "DATABASE_SERVERLESS",
+    "feature": "lakebase"
+  },
+  "azure:DLT_ADVANCED_COMPUTE:photon": {
+    "multiplier": 2.5,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "azure:DLT_CORE_COMPUTE:photon": {
+    "multiplier": 2.5,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "azure:DLT_PRO_COMPUTE:photon": {
+    "multiplier": 2.5,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "azure:JOBS_COMPUTE:photon": {
+    "multiplier": 2.5,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "azure:JOBS_SERVERLESS_COMPUTE:data_classification": {
+    "multiplier": 3.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "data_classification"
+  },
+  "azure:JOBS_SERVERLESS_COMPUTE:data_quality_monitoring": {
+    "multiplier": 2.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "data_quality_monitoring"
+  },
+  "azure:JOBS_SERVERLESS_COMPUTE:fine_grained_access_control": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "fine_grained_access_control"
+  },
+  "azure:JOBS_SERVERLESS_COMPUTE:materialized_views_streaming_tables": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "materialized_views_streaming_tables"
+  },
+  "azure:JOBS_SERVERLESS_COMPUTE:online_tables_capacity": {
+    "multiplier": 2.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "online_tables_capacity"
+  },
+  "azure:JOBS_SERVERLESS_COMPUTE:online_tables_sync": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "online_tables_sync"
+  },
+  "azure:JOBS_SERVERLESS_COMPUTE:predictive_optimization": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "predictive_optimization"
+  },
+  "azure:JOBS_SERVERLESS_COMPUTE:serverless_dlt": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "serverless_dlt"
+  },
+  "azure:JOBS_SERVERLESS_COMPUTE:serverless_jobs": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "serverless_jobs"
+  },
+  "gcp:ALL_PURPOSE_COMPUTE:photon": {
+    "multiplier": 2.0,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "gcp:ALL_PURPOSE_SERVERLESS_COMPUTE:databricks_app": {
+    "multiplier": 0.5,
+    "category": "INTERACTIVE_SERVERLESS",
+    "feature": "databricks_app"
+  },
+  "gcp:ALL_PURPOSE_SERVERLESS_COMPUTE:serverless_notebook": {
+    "multiplier": 1.0,
+    "category": "INTERACTIVE_SERVERLESS",
+    "feature": "serverless_notebook"
+  },
+  "gcp:DATABASE_SERVERLESS_COMPUTE:lakebase": {
+    "multiplier": 1.0,
+    "category": "DATABASE_SERVERLESS",
+    "feature": "lakebase"
+  },
+  "gcp:DLT_ADVANCED_COMPUTE:photon": {
+    "multiplier": 2.5,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "gcp:DLT_CORE_COMPUTE:photon": {
+    "multiplier": 2.5,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "gcp:DLT_PRO_COMPUTE:photon": {
+    "multiplier": 2.5,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "gcp:JOBS_COMPUTE:photon": {
+    "multiplier": 2.5,
+    "category": "CLASSIC_COMPUTE",
+    "feature": "photon"
+  },
+  "gcp:JOBS_SERVERLESS_COMPUTE:data_classification": {
+    "multiplier": 3.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "data_classification"
+  },
+  "gcp:JOBS_SERVERLESS_COMPUTE:data_quality_monitoring": {
+    "multiplier": 2.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "data_quality_monitoring"
+  },
+  "gcp:JOBS_SERVERLESS_COMPUTE:fine_grained_access_control": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "fine_grained_access_control"
+  },
+  "gcp:JOBS_SERVERLESS_COMPUTE:materialized_views_streaming_tables": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "materialized_views_streaming_tables"
+  },
+  "gcp:JOBS_SERVERLESS_COMPUTE:online_tables_capacity": {
+    "multiplier": 2.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "online_tables_capacity"
+  },
+  "gcp:JOBS_SERVERLESS_COMPUTE:online_tables_sync": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "online_tables_sync"
+  },
+  "gcp:JOBS_SERVERLESS_COMPUTE:predictive_optimization": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "predictive_optimization"
+  },
+  "gcp:JOBS_SERVERLESS_COMPUTE:serverless_dlt": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "serverless_dlt"
+  },
+  "gcp:JOBS_SERVERLESS_COMPUTE:serverless_jobs": {
+    "multiplier": 1.0,
+    "category": "AUTOMATED_SERVERLESS",
+    "feature": "serverless_jobs"
+  }
+}

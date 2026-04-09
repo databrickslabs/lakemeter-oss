@@ -1,0 +1,38 @@
+{
+  "aws:standard": {
+    "dbu_rate": 4.0,
+    "input_divisor": 2000000,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Standard endpoint - 2M vectors per unit"
+  },
+  "aws:storage_optimized": {
+    "dbu_rate": 18.29,
+    "input_divisor": 64000000,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Storage optimized - 64M vectors per unit"
+  },
+  "azure:standard": {
+    "dbu_rate": 4.0,
+    "input_divisor": 2000000,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Standard endpoint - 2M vectors per unit"
+  },
+  "azure:storage_optimized": {
+    "dbu_rate": 18.29,
+    "input_divisor": 64000000,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Storage optimized - 64M vectors per unit"
+  },
+  "gcp:standard": {
+    "dbu_rate": 4.0,
+    "input_divisor": 2000000,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Standard endpoint - 2M vectors per unit"
+  },
+  "gcp:storage_optimized": {
+    "dbu_rate": 18.29,
+    "input_divisor": 64000000,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Storage optimized - 64M vectors per unit"
+  }
+}

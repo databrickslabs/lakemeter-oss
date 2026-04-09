@@ -1,0 +1,39 @@
+# Databricks App Configuration
+# Single combined app serving both frontend (static) and backend (API)
+
+command:
+  - "/bin/bash"
+  - "-c"
+  - "PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+env:
+  # Environment flag - controls logging verbosity and docs visibility
+  - name: "ENVIRONMENT"
+    value: "production"
+  
+  # Database connection (using Databricks-managed secrets)
+  - name: "DATABRICKS_HOST"
+    value: "https://fe-vm-lakemeter.cloud.databricks.com"
+  - name: "DATABRICKS_SECRETS_SCOPE"
+    valueFrom: "lakemeter-secrets-scope"
+  - name: "LAKEBASE_INSTANCE_NAME"
+    valueFrom: "lakemeter-lakebase-instance"
+  - name: "DB_HOST"
+    valueFrom: "lakemeter-db-host"
+  - name: "DB_USER"
+    valueFrom: "lakemeter-db-user"
+  - name: "DB_NAME"
+    valueFrom: "lakemeter-db-name"
+  - name: "SP_CLIENT_ID_KEY"
+    value: "sp_clientid"
+  - name: "SP_SECRET_KEY"
+    value: "sp_secret"
+  
+  # CORS - empty for same-origin (combined deployment)
+  - name: "CORS_ORIGINS"
+    value: ""
+
+# Resource allocation (optional - uses defaults if not specified)
+# resources:
+#   num_cpus: 1
+#   memory_mb: 2048

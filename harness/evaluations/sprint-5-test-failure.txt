@@ -1,0 +1,23 @@
+_workload_coverage.py::TestWorkloadCoverage::test_workload_has_calculation_tests[VECTOR_SEARCH-sprint_8]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestWorkloadCoverage::test_workload_has_calculation_tests[LAKEBASE-sprint_9]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestWorkloadCoverage::test_workload_has_export_tests[JOBS-sprint_1]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestWorkloadCoverage::test_workload_has_export_tests[ALL_PURPOSE-sprint_2]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestWorkloadCoverage::test_workload_has_export_tests[DLT-sprint_3]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestWorkloadCoverage::test_workload_has_export_tests[DBSQL-sprint_4]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestWorkloadCoverage::test_workload_has_export_tests[MODEL_SERVING-sprint_5]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestWorkloadCoverage::test_workload_has_export_tests[FMAPI_DATABRICKS-sprint_6]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestWorkloadCoverage::test_workload_has_export_tests[FMAPI_PROPRIETARY-sprint_7]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestWorkloadCoverage::test_workload_has_export_tests[VECTOR_SEARCH-sprint_8]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestWorkloadCoverage::test_workload_has_export_tests[LAKEBASE-sprint_9]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestMultiWorkloadCoverage::test_multi_workload_dir_exists[sprint_10-Multi-workload combined scenarios]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestMultiWorkloadCoverage::test_multi_workload_dir_exists[sprint_11-Multi-workload ML pipeline (VS + FMAPI_PROP + MS)]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestMultiWorkloadCoverage::test_sprint_10_has_cross_workload_tests
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestMultiWorkloadCoverage::test_sprint_11_has_regression_tests
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestAIAssistantCoverage::test_ai_sprint1_jobs_tests
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestAIAssistantCoverage::test_ai_sprint2_allpurpose_tests
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestRegressionCoverage::test_sprint_regression_file_exists[1]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestRegressionCoverage::test_sprint_regression_file_exists[2]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestRegressionCoverage::test_sprint_regression_file_exists[3]
+FAILED tests/test_integration_validation/test_workload_coverage.py::TestRegressionCoverage::test_sprint_regression_file_exists[4]
+============ 84 failed, 1969 passed, 2 skipped in 143.44s (0:02:23) ============
+

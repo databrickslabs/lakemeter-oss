@@ -1,252 +1,286 @@
-# PromptSizer
+# Lakemeter - Databricks Pricing Calculator
 
-AI-powered Databricks cost estimation tool that analyzes workload descriptions and automatically calculates DBU (Databricks Billing Unit) costs.
-
-## Overview
-
-**PromptSizer** helps field engineers and customers quickly estimate Databricks infrastructure costs by:
-1. Analyzing natural language workload descriptions using AI
-2. Recommending appropriate Databricks SKUs and infrastructure configurations
-3. Calculating DBU consumption and monthly costs
-4. Exporting configurations to CSV for presentations and planning
+A full-stack application for creating, managing, and exporting Databricks pricing estimates. Built with React + Tailwind CSS frontend and FastAPI backend, connected to a Databricks Lakebase database with OAuth authentication.
 
 ## Features
 
-### AI-Powered Workload Analysis
-- Automatically classifies workloads into families:
-  - **Ingestion** - Connector-based data ingestion (Lakeflow Connect)
-  - **SQL Analytics** - SQL queries and BI-ETL (SQL Warehouses)
-  - **Interactive Compute** - Notebook exploration and experimentation
-- Recommends optimal SKUs, instance types, and configurations
+### Authentication & Security
+- **Databricks Apps SSO**: Automatic user authentication via Databricks Apps headers
+- **User-scoped Estimates**: Users can only see estimates they own or have been shared with
+- **OAuth Token Management**: Automatic token refresh for Lakebase database connections
 
-### Interactive Configuration Table
-Configure infrastructure parameters:
-- **Workload Type** - Select workload family
-- **SKU** - Billing SKU type (Jobs Classic, Serverless, SQL Pro, etc.)
-- **Driver/Worker Instances** - Choose from 100+ AWS instance types
-- **Worker Count** - Number of worker nodes (1-20)
-- **Run Duration** - Hours per run
-- **Frequency** - Runs per day and days per month
+### Workload Types (from Lakebase)
+The workload types are dynamically loaded from the `lakemeter.ref_workload_types` table:
 
-### Automated DBU Cost Calculation
-- **DBU/Hour** - Based on worker instance type (2X-Small: 4 DBU, 4X-Large: 528 DBU)
-- **DBU/Day** - `DBU/Hour × Run Duration × Runs/Day`
-- **DBU/Month** - `DBU/Day × Days/Month`
-- **Monthly Cost** - `DBU/Month × SKU Rate` (rates from $0.20-$0.69 per DBU)
+| Workload Type | Display Name | SKU (Standard) | SKU (Photon) | SKU (Serverless) |
+|---------------|--------------|----------------|--------------|------------------|
+| JOBS | Jobs Compute | JOBS_COMPUTE | JOBS_COMPUTE_(PHOTON) | JOBS_SERVERLESS_COMPUTE |
+| ALL_PURPOSE | All-Purpose Compute | ALL_PURPOSE_COMPUTE | ALL_PURPOSE_COMPUTE_(PHOTON) | INTERACTIVE_SERVERLESS_COMPUTE |
+| DLT | Delta Live Tables | DLT_CORE_COMPUTE | DLT_CORE_COMPUTE_(PHOTON) | DELTA_LIVE_TABLES_SERVERLESS |
+| DBSQL | Databricks SQL | SQL_COMPUTE | SQL_PRO_COMPUTE | SERVERLESS_SQL_COMPUTE |
+| VECTOR_SEARCH | Vector Search | - | - | VECTOR_SEARCH_ENDPOINT |
+| MODEL_SERVING | Model Serving | - | - | SERVERLESS_REAL_TIME_INFERENCE |
+| FMAPI_DATABRICKS | Foundation Models (Databricks) | - | - | SERVERLESS_REAL_TIME_INFERENCE |
+| FMAPI_PROPRIETARY | Foundation Models (Proprietary) | - | - | Various (Anthropic, OpenAI, Google) |
+| LAKEBASE | Lakebase | - | - | DATABASE_SERVERLESS_COMPUTE |
 
-### Data Export
-- Export full configuration and cost estimates to CSV
-- Timestamp-based filenames for easy tracking
-- Includes all parameters, DBU calculations, and AI reasoning
+### Compute Configuration
+- **Driver/Worker Node Selection**: Choose from available instance types per cloud
+- **Pricing Tiers**: On-Demand, 1-Year Reserved, 3-Year Reserved
+- **Worker Pricing**: Spot Instances, On-Demand, Reserved options
+- **Payment Options**: No Upfront, Partial Upfront, All Upfront (AWS)
 
-### Additional Features
-- Dark mode support
-- Expandable details showing AI reasoning for each recommendation
-- Debug information for troubleshooting
-- Multi-LLM provider support (OpenAI, Anthropic, Databricks)
+### Serverless & Photon
+- **Serverless Toggle**: Switch between classic and serverless compute
+- **Photon Acceleration**: Enable/disable Photon for compatible workloads
+- **Performance Mode**: Standard or Performance modes for serverless
+
+### Foundation Models (Databricks)
+- **LLMs**: Llama 4 Maverick, Llama 3.3 70B, GPT OSS 120B, Gemma 3 12B, etc.
+- **Embedding Models**: GTE, BGE Large
+- **Rate Types**: Input Token, Output Token
+- **Quantity**: Tokens per million/month
+
+### Foundation Models (Proprietary)
+- **Providers**: Anthropic (Claude), OpenAI (GPT), Google (Gemini)
+- **Endpoint Types**: Global, In-Geo (Regional)
+- **Context Lengths**: All, Short, Long
+- **Rate Types**: Input Token, Output Token, Cache Read, Cache Write
+- **Quantity**: Tokens per million/month
+
+### Model Serving
+- **CPU Endpoints**: 1 DBU/hr per concurrent request
+- **GPU Options**: T4, A10G, A100 variants with different DBU rates
+- **Cloud-specific**: Different GPU options per cloud provider
+
+### Vector Search
+- **Standard**: 4 DBU/hr per 2M vectors
+- **Storage Optimized**: 18.29 DBU/hr per 64M vectors
+
+### Export & Management
+- **Export to Excel**: Download estimates with detailed worksheets
+- **Estimate Management**: Create, duplicate, and delete estimates
+- **Version Tracking**: Automatic versioning of estimates
+
+## Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  React + Vite   │────▶│    FastAPI      │────▶│   Lakebase      │
+│  Tailwind CSS   │     │    Python       │     │   PostgreSQL    │
+│  Zustand        │     │  OAuth/SSO      │     │                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+     Frontend               Backend                Database
+```
+
+## Quick Start
+
+### Prerequisites
+- Python 3.12+
+- Node.js 18+
+- Databricks CLI (authenticated)
+- Access to Lakebase database
+
+### Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Create .env file
+cat > .env << EOF
+DATABRICKS_HOST=https://your-workspace.cloud.databricks.com
+LAKEBASE_INSTANCE=lakemeter-db
+LAKEBASE_SECRETS_SCOPE=lakemeter-secrets
+LOCAL_DEV_EMAIL=your.email@databricks.com  # For local development
+EOF
+
+# Run server
+LOCAL_DEV_EMAIL="your.email@databricks.com" uvicorn app.main:app --reload --port 8000
+```
+
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Visit `http://localhost:5173`
+
+## Database Schema
+
+### Estimates Table: `lakemeter.estimates`
+
+```sql
+CREATE TABLE lakemeter.estimates (
+    estimate_id UUID PRIMARY KEY,
+    estimate_name VARCHAR(255) NOT NULL,
+    owner_user_id UUID,
+    customer_name VARCHAR(255),
+    cloud VARCHAR(50),
+    region VARCHAR(100),
+    tier VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'draft',
+    version INTEGER DEFAULT 1,
+    template_id UUID,
+    original_prompt TEXT,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    updated_by UUID
+);
+```
+
+### Line Items Table: `lakemeter.line_items`
+
+```sql
+CREATE TABLE lakemeter.line_items (
+    line_item_id UUID PRIMARY KEY,
+    estimate_id UUID REFERENCES lakemeter.estimates(estimate_id),
+    display_order INTEGER DEFAULT 0,
+    workload_name VARCHAR(255) NOT NULL,
+    workload_type VARCHAR(50),
+    cloud VARCHAR(50),
+    
+    -- Serverless Configuration
+    serverless_enabled BOOLEAN DEFAULT FALSE,
+    serverless_mode VARCHAR(20),
+    
+    -- Compute Configuration
+    photon_enabled BOOLEAN DEFAULT FALSE,
+    driver_node_type VARCHAR(100),
+    worker_node_type VARCHAR(100),
+    num_workers INTEGER DEFAULT 1,
+    
+    -- DLT Configuration
+    dlt_edition VARCHAR(20),
+    
+    -- DBSQL Configuration
+    dbsql_warehouse_type VARCHAR(20),
+    dbsql_warehouse_size VARCHAR(20),
+    dbsql_num_clusters INTEGER DEFAULT 1,
+    dbsql_vm_pricing_tier VARCHAR(20),
+    dbsql_vm_payment_option VARCHAR(20),
+    
+    -- Vector Search Configuration
+    vector_search_mode VARCHAR(20),
+    vector_capacity_millions INTEGER,
+    
+    -- Model Serving Configuration
+    model_serving_gpu_type VARCHAR(50),
+    
+    -- Foundation Model API Configuration
+    fmapi_provider VARCHAR(50),
+    fmapi_model VARCHAR(100),
+    fmapi_endpoint_type VARCHAR(20),
+    fmapi_context_length VARCHAR(20),
+    fmapi_rate_type VARCHAR(20),      -- input_token, output_token, cache_read, cache_write
+    fmapi_quantity NUMERIC(18,2),      -- quantity in millions
+    
+    -- Lakebase Configuration
+    lakebase_cu INTEGER,
+    lakebase_storage_gb INTEGER,
+    lakebase_ha_nodes INTEGER,
+    lakebase_backup_retention_days INTEGER,
+    
+    -- Usage Configuration
+    runs_per_day INTEGER,
+    avg_runtime_minutes INTEGER,
+    days_per_month INTEGER DEFAULT 22,
+    hours_per_month INTEGER,
+    
+    -- Pricing Configuration
+    driver_pricing_tier VARCHAR(20),
+    worker_pricing_tier VARCHAR(20),
+    driver_payment_option VARCHAR(20),
+    worker_payment_option VARCHAR(20),
+    
+    -- Additional
+    workload_config JSONB,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+## API Endpoints
+
+### Authentication
+- `GET /api/v1/estimates/me/info` - Get current user info
+
+### Workload Types
+- `GET /api/v1/workload-types/` - List all workload types from database
+
+### Estimates
+- `GET /api/v1/estimates/` - List estimates (filtered by user ownership/sharing)
+- `POST /api/v1/estimates/` - Create estimate
+- `GET /api/v1/estimates/{id}` - Get estimate
+- `PUT /api/v1/estimates/{id}` - Update estimate
+- `DELETE /api/v1/estimates/{id}` - Delete estimate
+- `POST /api/v1/estimates/{id}/duplicate` - Duplicate estimate
+
+### Line Items
+- `GET /api/v1/line-items/estimate/{id}` - List line items
+- `POST /api/v1/line-items/` - Create line item
+- `PUT /api/v1/line-items/{id}` - Update line item
+- `DELETE /api/v1/line-items/{id}` - Delete line item
+
+### Export
+- `GET /api/v1/export/estimate/{id}/excel` - Export to Excel
+
+### Reference Data
+- `GET /api/v1/reference/clouds` - Cloud providers and regions
+- `GET /api/v1/reference/instance-types/{cloud}` - Instance types per cloud
+- `GET /api/v1/reference/dbsql-sizes` - SQL Warehouse sizes
+- `GET /api/v1/reference/dlt-editions` - DLT editions
+- `GET /api/v1/reference/fmapi-databricks` - Databricks Foundation Models config
+- `GET /api/v1/reference/fmapi-proprietary` - Proprietary Foundation Models config
+- `GET /api/v1/reference/model-serving-gpu-types/{cloud}` - Model Serving GPU types
+
+### VM Pricing
+- `GET /api/v1/vm-pricing/` - Get VM pricing data
+- `GET /api/v1/vm-pricing/tiers` - Pricing tier options
+- `GET /api/v1/vm-pricing/payment-options` - Payment options
 
 ## Tech Stack
 
-- **Frontend**: Next.js 16 + React 19 + TypeScript + Tailwind CSS
-- **Backend**: Python service for LLM API calls
-- **AI**: OpenAI SDK (supports OpenAI, Anthropic, or Databricks-hosted models)
-- **UI Components**: Radix UI + Lucide React icons
+**Frontend**
+- React 18 + TypeScript
+- Tailwind CSS
+- Vite
+- Zustand (state management)
+- Framer Motion (animations)
+- React Hot Toast (notifications)
+- Axios (HTTP client)
 
-## Getting Started
+**Backend**
+- FastAPI
+- SQLAlchemy
+- PostgreSQL (Lakebase)
+- Databricks SDK (OAuth)
+- XlsxWriter (Excel export)
+- Pydantic (validation)
 
-### Prerequisites
+## Environment Variables
 
-1. **Install Node.js**
-   ```bash
-   brew install node
-   ```
+| Variable | Description |
+|----------|-------------|
+| `DATABRICKS_HOST` | Databricks workspace URL |
+| `LAKEBASE_INSTANCE` | Lakebase database instance name |
+| `LAKEBASE_SECRETS_SCOPE` | Databricks secrets scope for SP credentials |
+| `LOCAL_DEV_EMAIL` | Email for local development authentication |
 
-2. **Install Python 3** (if not already installed)
-   ```bash
-   brew install python3
-   ```
+## Deployment
 
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd promptsizer
-   ```
-
-2. **Install Node.js dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Install Python dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### Configuration
-
-Create a `.env.local` file at the root folder with your API credentials:
-
-```bash
-# Option 1: Using Databricks-hosted OpenAI model (recommended)
-NEXT_PUBLIC_OPENAI_API_KEY="<YOUR_DATABRICKS_TOKEN>"
-NEXT_PUBLIC_OPENAI_BASE_URL="https://<workspace>.cloud.databricks.com/serving-endpoints"
-
-# Option 2: Using OpenAI directly
-NEXT_PUBLIC_OPENAI_API_KEY="<YOUR_OPENAI_API_KEY>"
-
-# Option 3: Using Anthropic
-NEXT_PUBLIC_ANTHROPIC_API_KEY="<YOUR_ANTHROPIC_API_KEY>"
-
-# Python Path (for containerized deployments)
-# PYTHON_PATH="/databricks/python3/bin/python3"  # Databricks Apps standard container
-# PYTHON_PATH="/app/.venv/bin/python3"           # Custom Docker with virtual environment
-# PYTHON_PATH="python3"                          # Default for local development
-```
-
-**Notes:**
-- The tool supports multiple LLM providers via environment variables
-- For Databricks-hosted models, set both `OPENAI_API_KEY` (your token) and `OPENAI_BASE_URL`
-- The default model is `databricks-gpt-5-1` but can be configured in [lib/config.ts](lib/config.ts)
-- **For containerized deployments:** Set `PYTHON_PATH` to the full path of your Python executable (e.g., `/app/.venv/bin/python3`) if using a virtual environment
-
-### Running the Application
-
-#### Setting Environment Variables for Local Development
-
-For local development, you can set the required environment variables using export statements:
-
-```bash
-export PYTHON_PATH='.venv/bin/python3'
-export DATABRICKS_HOST='https://e2-demo-field-eng.cloud.databricks.com'
-export MLFLOW_TRACKING_URI='databricks'
-export MLFLOW_REGISTRY_URI='databricks-uc'
-export MLFLOW_EXPERIMENT_ID='567797472056564'
-export DATABRICKS_TOKEN='<your-databricks-token>'
-```
-
-**Note:** Replace `<your-databricks-token>` with your actual Databricks personal access token.
-
-Alternatively, you can add these to your shell configuration file (`.bashrc`, `.zshrc`, etc.) or use a `.env` file with a tool like `direnv`.
-
-#### Start the Development Server
-
-Start the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Project Structure
-
-```
-promptsizer/
-├── app/                          # Next.js app directory
-│   ├── page.tsx                  # Main UI component
-│   ├── layout.tsx                # Root layout and metadata
-│   └── api/                      # API routes
-│       ├── llm/route.ts          # Primary LLM endpoint (OpenAI)
-│       └── anthropic/route.ts    # Alternative Anthropic endpoint
-├── lib/                          # Shared utilities
-│   ├── config.ts                 # Configuration (API keys, prompts)
-│   ├── system-prompt.ts          # AI system prompt for workload analysis
-│   └── utils.ts                  # Utility functions
-├── api_backend/                  # Python backend services
-│   └── openai_service.py         # Python OpenAI API integration
-├── components/                   # Reusable UI components
-├── public/                       # Static assets
-└── requirements.txt              # Python dependencies
-```
-
-## How It Works
-
-1. **User Input** - Describe your data processing workload in plain English
-2. **AI Analysis** - Next.js API route spawns Python subprocess to call LLM API
-3. **LLM Response** - Returns JSON with recommended configuration (SKU, instances, etc.)
-4. **Frontend Rendering** - Populates interactive table with recommendations
-5. **DBU Calculation** - Automatically calculates costs using lookup tables and formulas
-6. **Export** - Save configuration to CSV for customer presentations
-
-## Usage Example
-
-**Input:**
-```
-We need to ingest data from Salesforce and S3 daily,
-run some ETL jobs to process 100GB of data, and provide
-a SQL interface for 50 business analysts to query the data.
-```
-
-**Output:**
-The tool will generate a configuration table with:
-- Lakeflow Connect for Salesforce/S3 ingestion
-- Jobs Compute for ETL processing
-- SQL Warehouse Pro for analyst queries
-- Recommended instance types and worker counts
-- Full DBU cost breakdown per workload
-
-## Development
-
-This project is built with Next.js. Key files:
-- [app/page.tsx](app/page.tsx) - Main application logic and UI
-- [lib/config.ts](lib/config.ts) - LLM provider configuration
-- [lib/system-prompt.ts](lib/system-prompt.ts) - AI instructions for workload analysis
-- [api_backend/openai_service.py](api_backend/openai_service.py) - Python LLM service
-
-## Troubleshooting
-
-### Containerized Deployment Issues
-
-If you encounter Python import errors in containerized environments (Docker, Kubernetes, etc.):
-
-1. **Problem**: `ModuleNotFoundError` or Python finding wrong packages
-
-2. **Solution**: Set the `PYTHON_PATH` environment variable to point to your virtual environment's Python:
-   ```bash
-   # For Databricks Apps (standard container)
-   PYTHON_PATH="/databricks/python3/bin/python3"
-
-   # For custom Docker with virtual environment
-   PYTHON_PATH="/app/.venv/bin/python3"
-   ```
-
-3. **Verify Python Path**:
-   ```bash
-   # Inside your container, check where Python packages are installed
-   python3 -c "import sys; print(sys.path)"
-
-   # Check which Python executable is being used
-   which python3
-   ```
-
-4. **Common Docker Setup**:
-   ```dockerfile
-   # In your Dockerfile
-   RUN python3 -m venv /app/.venv
-   RUN /app/.venv/bin/pip install -r requirements.txt
-
-   # Then set in .env or docker-compose.yml:
-   ENV PYTHON_PATH=/app/.venv/bin/python3
-   ```
-
-### Other Common Issues
-
-- **API Key Issues**: Ensure environment variables are properly loaded. Check `.env.local` exists and has correct keys.
-- **Python Dependencies**: Run `pip install -r requirements.txt` to ensure all Python packages are installed.
-- **Port Already in Use**: Change the port with `npm run dev -- -p 3001`
-
-## Contributing
-
-This is a Databricks field engineering tool. For questions or contributions, contact the project maintainers.
+The application is designed to be deployed on **Databricks Apps**:
+- Frontend and backend can be deployed as separate apps
+- SSO authentication is handled automatically via Databricks Apps headers
+- OAuth tokens are managed via Databricks SDK
 
 ## License
 
-Internal Databricks tool for field engineering use.
+MIT

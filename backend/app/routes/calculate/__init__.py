@@ -1,0 +1,21 @@
+"""Calculate endpoints package — aggregates all workload calculation sub-routers."""
+from fastapi import APIRouter
+
+from app.routes.calculate.jobs import router as jobs_router
+from app.routes.calculate.all_purpose import router as all_purpose_router
+from app.routes.calculate.dbsql_calc import router as dbsql_router
+from app.routes.calculate.dlt_calc import router as dlt_router
+from app.routes.calculate.model_serving_calc import router as model_serving_router
+from app.routes.calculate.fmapi_calc import router as fmapi_router
+from app.routes.calculate.vector_search_calc import router as vector_search_router
+from app.routes.calculate.lakebase_calc import router as lakebase_router
+
+router = APIRouter(tags=["Cost Calculation"])
+router.include_router(jobs_router)
+router.include_router(all_purpose_router)
+router.include_router(dbsql_router)
+router.include_router(dlt_router)
+router.include_router(model_serving_router)
+router.include_router(fmapi_router)
+router.include_router(vector_search_router)
+router.include_router(lakebase_router)

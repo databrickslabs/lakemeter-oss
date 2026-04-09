@@ -1,0 +1,72 @@
+{
+  "aws:cpu": {
+    "dbu_rate": 1.0,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "1 concurrent request/hr = 1 DBU/hr"
+  },
+  "aws:gpu_medium_a10g_1x": {
+    "dbu_rate": 20.0,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Medium - A10G x 1GPU"
+  },
+  "aws:gpu_medium_a10g_4x": {
+    "dbu_rate": 112.0,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Medium 4X - A10G x 4GPU"
+  },
+  "aws:gpu_medium_a10g_8x": {
+    "dbu_rate": 290.8,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Medium 8X - A10G x 8GPU"
+  },
+  "aws:gpu_small_t4": {
+    "dbu_rate": 10.48,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Small - T4 or equivalent"
+  },
+  "aws:gpu_xlarge_a100_40gb_8x": {
+    "dbu_rate": 538.4,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "XLarge - A100 40GB x 8GPU"
+  },
+  "aws:gpu_xlarge_a100_80gb_8x": {
+    "dbu_rate": 628.0,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "XLarge - A100 80GB x 8GPU"
+  },
+  "azure:cpu": {
+    "dbu_rate": 1.0,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "1 concurrent request/hr = 1 DBU/hr"
+  },
+  "azure:gpu_2xlarge_a100_80gb_2x": {
+    "dbu_rate": 157.2,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "2XLarge - A100 80GB x 2GPU"
+  },
+  "azure:gpu_4xlarge_a100_80gb_4x": {
+    "dbu_rate": 314.4,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "4XLarge - A100 80GB x 4GPU"
+  },
+  "azure:gpu_small_t4": {
+    "dbu_rate": 10.48,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Small - T4 or equivalent"
+  },
+  "azure:gpu_xlarge_a100_80gb_1x": {
+    "dbu_rate": 78.6,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "XLarge - A100 80GB x 1GPU"
+  },
+  "gcp:cpu": {
+    "dbu_rate": 1.0,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "1 concurrent request/hr = 1 DBU/hr"
+  },
+  "gcp:gpu_medium_g2_standard_8": {
+    "dbu_rate": 5.0,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "description": "Medium - G2 Standard 8 x 1GPU"
+  }
+}
