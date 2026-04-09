@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Installer Guide | Lakemeter</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://lakemeter-e2e-v2-335310294452632.aws.databricksapps.com/docs/admin-guide/installer"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Installer Guide | Lakemeter"><meta data-rh="true" name="description" content="Lakemeter includes a zero-click installer (scripts/install_lakemeter.py) that provisions a complete environment on Databricks — from Lakebase instance creation to app deployment."><meta data-rh="true" property="og:description" content="Lakemeter includes a zero-click installer (scripts/install_lakemeter.py) that provisions a complete environment on Databricks — from Lakebase instance creation to app deployment."><link data-rh="true" rel="icon" href="/docs/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://lakemeter-e2e-v2-335310294452632.aws.databricksapps.com/docs/admin-guide/installer"><link data-rh="true" rel="alternate" href="https://lakemeter-e2e-v2-335310294452632.aws.databricksapps.com/docs/admin-guide/installer" hreflang="en"><link data-rh="true" rel="alternate" href="https://lakemeter-e2e-v2-335310294452632.aws.databricksapps.com/docs/admin-guide/installer" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Installer Guide","item":"https://lakemeter-e2e-v2-335310294452632.aws.databricksapps.com/docs/admin-guide/installer"}]}</script><link rel="stylesheet" href="/docs/assets/css/styles.88383768.css">
-<script src="/docs/assets/js/runtime~main.d2c09de4.js" defer="defer"></script>
+<script src="/docs/assets/js/runtime~main.ac708c83.js" defer="defer"></script>
 <script src="/docs/assets/js/main.1bd537aa.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -54,7 +54,7 @@
 <li class="">Creates the database (e.g., <code>lakemeter_pricing</code>) if it doesn&#x27;t exist</li>
 <li class="">Creates the <code>lakemeter</code> schema</li>
 <li class="">Creates 9 application tables: <code>users</code>, <code>templates</code>, <code>ref_cloud_tiers</code>, <code>estimates</code>, <code>ref_workload_types</code>, <code>line_items</code>, <code>conversation_messages</code>, <code>decision_records</code>, <code>sharing</code></li>
-<li class="">Seeds reference data: 9 workload types and 8 cloud/tier combinations</li>
+<li class="">Seeds reference data: 12 workload types and 8 cloud/tier combinations</li>
 <li class="">Adds indexes on <code>line_items(estimate_id)</code> and <code>line_items(workload_type)</code></li>
 <li class="">Adds the <code>discount_config</code> JSONB column to estimates</li>
 <li class="">Updates the Lakebase CU size constraint (supports 0.5 and 1–112)</li>

@@ -7,7 +7,7 @@ slug: /
 
 **Build accurate Databricks cost estimates in minutes, not days.**
 
-Lakemeter is a web-based tool that calculates Databricks pricing across 9 workload types, 3 cloud providers, and all available regions. It turns vague "how much will this cost?" conversations into precise, exportable estimates backed by real pricing data.
+Lakemeter is a web-based tool that calculates Databricks pricing across 12 workload types, 3 cloud providers, and all available regions. It turns vague "how much will this cost?" conversations into precise, exportable estimates backed by real pricing data.
 
 ## Who should use this?
 
@@ -35,8 +35,8 @@ You are deploying Lakemeter for your team or integrating it with other systems.
 |----------|---------------|-------------------|
 | **Compute** | Jobs, All-Purpose, DLT | DBU costs + VM infrastructure for batch, interactive, and pipeline workloads |
 | **SQL Analytics** | DBSQL | Warehouse costs for Classic, Pro, and Serverless SQL |
-| **AI / ML** | Model Serving, Vector Search, FMAPI (Databricks), FMAPI (Proprietary) | Inference endpoints, vector databases, foundation model token costs |
-| **Data Services** | Lakebase | Managed PostgreSQL compute and storage |
+| **AI / ML** | Model Serving, Vector Search, FMAPI (Databricks), FMAPI (Proprietary), AI Parse, Shutterstock ImageAI | Inference endpoints, vector databases, foundation model token costs, document AI, image generation |
+| **Data Services** | Lakebase, Databricks Apps | Managed PostgreSQL compute and storage, hosted web applications |
 
 **Multi-cloud:** AWS, Azure, and GCP with region-specific pricing.
 

@@ -43,7 +43,7 @@ Stores cost estimates created by users.
 
 #### line_items
 
-Stores individual workloads within an estimate. This is a wide table with columns for all 9 workload types — only the relevant columns are populated for each type.
+Stores individual workloads within an estimate. This is a wide table with columns for all 12 workload types — only the relevant columns are populated for each type.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -190,7 +190,7 @@ Stores AI decision audit trail — records the reasoning behind AI-generated wor
 
 #### ref_workload_types
 
-Defines the 9 supported workload types and their UI configuration.
+Defines the 12 supported workload types and their UI configuration.
 
 | Column | Type | Description |
 |--------|------|-------------|

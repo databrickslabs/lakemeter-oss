@@ -7,7 +7,7 @@ sidebar_position: 9
 This page documents the exact cost calculation formulas Lakemeter uses for each workload type, along with fully worked examples using real pricing data.
 
 ![Calculation Reference documentation page](/img/guides/calculation-reference-guide.png)
-*The Calculation Reference — general cost pattern and formula structure for all 9 workload types.*
+*The Calculation Reference — general cost pattern and formula structure for all 12 workload types.*
 
 ![Worked cost example](/img/guides/calculation-worked-example.png)
 *Step-by-step worked example with real pricing data showing Jobs Classic with Photon.*
@@ -354,6 +354,49 @@ Storage Cost/Month = Storage GB × 15 DSU × $0.023/DSU
 - **SKU:** `DATABRICKS_STORAGE`
 
 Lakebase storage is a direct dollar cost (not DBU-based) and appears on a separate row in Excel exports.
+
+### Databricks Apps
+
+```
+DBU/Hour = App Size DBU Rate
+```
+
+| App Size | DBU/Hour |
+|----------|----------|
+| Medium | Uses `ALL_PURPOSE_SERVERLESS_COMPUTE` rate |
+| Large | Uses `ALL_PURPOSE_SERVERLESS_COMPUTE` rate (higher DBU) |
+
+**SKU:** `ALL_PURPOSE_SERVERLESS_COMPUTE`
+
+No VM costs — Databricks Apps are always serverless.
+
+### AI Parse (Document AI)
+
+**Pages-based mode:**
+```
+Monthly DBUs = Pages (thousands) × DBU per 1000 Pages
+```
+
+The DBU rate per 1000 pages depends on the document complexity:
+
+| Complexity | Description |
+|------------|-------------|
+| Low (Text) | Simple text documents |
+| Low (Images) | Documents with images but simple layout |
+| Medium | Mixed content documents |
+| High | Complex documents with tables, forms, multi-column layouts |
+
+**SKU:** `SERVERLESS_REAL_TIME_INFERENCE`
+
+### Shutterstock ImageAI
+
+```
+Monthly Cost = Images Per Month × Cost Per Image
+```
+
+Shutterstock ImageAI uses a fixed per-image cost rather than DBU-based pricing. The cost per image is retrieved from the pricing bundle.
+
+No DBU calculation — this is a direct dollar cost.
 
 ---
 

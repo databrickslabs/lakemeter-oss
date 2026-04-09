@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Quick Reference
 
-A concise reference for all 9 workload types in Lakemeter. Use this page to quickly identify which workload type to use and what configuration options are available.
+A concise reference for all 12 workload types in Lakemeter. Use this page to quickly identify which workload type to use and what configuration options are available.
 
 ## Workload types at a glance
 
@@ -19,6 +19,9 @@ A concise reference for all 9 workload types in Lakemeter. Use this page to quic
 | **FMAPI (Databricks)** | Foundation Model API for open-source models | Llama, DBRX, Mixtral via Databricks-hosted endpoints | Premium |
 | **FMAPI (Proprietary)** | Foundation Model API for third-party models | GPT-4, Claude, Gemini via Databricks gateway | Premium |
 | **Lakebase** | Managed PostgreSQL-compatible database | Transactional workloads, application backends | Premium |
+| **Databricks Apps** | Managed app hosting on Databricks | Hosting web applications, dashboards, internal tools | Premium |
+| **AI Parse (Document AI)** | AI-powered document parsing and extraction | Processing PDFs, invoices, contracts with AI | Premium |
+| **Shutterstock ImageAI** | AI image generation via Shutterstock | Generating images for marketing, content, prototyping | Premium |
 
 ## Key terms
 
@@ -136,6 +139,27 @@ These workloads share a common configuration pattern:
 | **Storage (GB)** | Database storage capacity (0-8192 GB) | 0 |
 | **Hours Per Month** | Instance uptime | Default: 730 (24/7) |
 
+### Databricks Apps
+
+| Field | Description | Default |
+|-------|-------------|---------|
+| **App Size** | Medium or Large | Medium |
+| **Hours Per Month** | App uptime | Default: 730 (24/7) |
+
+### AI Parse (Document AI)
+
+| Field | Description | Default |
+|-------|-------------|---------|
+| **Mode** | Pages-based or direct DBU | Pages |
+| **Complexity** | Low (text), Low (images), Medium, High — affects DBU rate per 1000 pages | Medium |
+| **Pages (thousands)** | Number of pages to process in thousands | -- |
+
+### Shutterstock ImageAI
+
+| Field | Description | Default |
+|-------|-------------|---------|
+| **Images Per Month** | Number of images to generate | -- |
+
 ## Cost formula summary
 
 | Workload type | Cost formula |
@@ -147,3 +171,6 @@ These workloads share a common configuration pattern:
 | **Vector Search** | Endpoint units x DBU/unit x hours/month x $/DBU |
 | **FMAPI** | Token quantity (M) x DBU per M tokens x $/DBU |
 | **Lakebase** | (CU x nodes x hours/month x $/DBU) + storage costs |
+| **Databricks Apps** | App DBU/hr x hours/month x $/DBU |
+| **AI Parse** | Pages (thousands) x DBU per 1000 pages x $/DBU |
+| **Shutterstock ImageAI** | Images x fixed cost per image |
