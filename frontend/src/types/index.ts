@@ -89,6 +89,8 @@ export interface LineItem {
   
   // Model Serving Configuration
   model_serving_gpu_type?: string | null
+  model_serving_concurrency?: number | null
+  model_serving_scale_out?: string | null
   
   // Lakebase Configuration
   lakebase_cu?: number | null

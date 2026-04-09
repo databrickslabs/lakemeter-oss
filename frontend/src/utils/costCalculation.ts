@@ -453,8 +453,13 @@ export function calculateWorkloadCost(
       const gpuType = item.model_serving_gpu_type || 'cpu'
       const gpuTypeData = modelServingGPUTypes.find(g => g.id === gpuType || g.name === gpuType)
       const gpuDBURate = gpuTypeData?.dbu_per_hour || 2
-      
-      dbuPerHour = gpuDBURate
+      const msScaleOut = item.model_serving_scale_out || 'small'
+      const msScaleOutPresets: Record<string, number> = { small: 4, medium: 12, large: 40 }
+      const msConcurrency = msScaleOut === 'custom'
+        ? (item.model_serving_concurrency || 4)
+        : (msScaleOutPresets[msScaleOut] || 4)
+
+      dbuPerHour = gpuDBURate * msConcurrency
       monthlyDBUs = dbuPerHour * hoursPerMonth
       break
     

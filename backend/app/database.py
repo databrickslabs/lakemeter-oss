@@ -109,9 +109,9 @@ def _create_engine_with_token_refresh():
         engine = create_engine(
             database_url,
             pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=10,
-            pool_timeout=10,
+            pool_size=15,
+            max_overflow=25,
+            pool_timeout=15,
             # Recycle connections every 15 minutes (before token expires at 1 hour)
             pool_recycle=900,
             connect_args={"sslmode": "require", "connect_timeout": 10}

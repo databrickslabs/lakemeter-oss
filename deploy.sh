@@ -25,6 +25,14 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Timing helper
+DEPLOY_START=$(date +%s)
+step_start() { STEP_T=$(date +%s); }
+step_end() {
+    local elapsed=$(( $(date +%s) - STEP_T ))
+    echo -e "${BLUE}  ⏱  ${1}: ${elapsed}s${NC}"
+}
+
 # Configuration
 APP_NAME="${LAKEMETER_APP_NAME:-lakemeter}"
 WORKSPACE_HOST="${DATABRICKS_HOST:-}"
@@ -49,6 +57,7 @@ cd "$SCRIPT_DIR"
 
 # Step 1: Build Frontend
 echo -e "\n${YELLOW}Step 1: Building frontend...${NC}"
+step_start
 cd frontend
 
 # Update API URL for production (same origin, no CORS needed)
@@ -66,6 +75,7 @@ if [ ! -f "backend/static/index.html" ]; then
     exit 1
 fi
 echo -e "${GREEN}OK Frontend built successfully${NC}"
+step_end "Frontend build"
 
 # Step 2: Verify the bundle
 echo -e "\n${YELLOW}Step 2: Verifying bundle...${NC}"
@@ -75,7 +85,6 @@ echo -e "${GREEN}OK Assets: ${JS_COUNT} JS, ${CSS_COUNT} CSS files${NC}"
 
 # Step 3: Deploy
 if [ "$WORKSPACE_DEPLOY" = true ]; then
-    # Workspace-based deployment: sync only necessary files, then deploy from workspace
     echo -e "\n${YELLOW}Step 3: Workspace deployment — syncing necessary files only...${NC}"
 
     if ! command -v databricks &> /dev/null; then
@@ -94,41 +103,75 @@ if [ "$WORKSPACE_DEPLOY" = true ]; then
     fi
     echo "Workspace path: $WS_PATH"
 
-    # Sync ONLY the directories needed for the app to run
-    # Excludes: tests/, etl/, docs-site/, harness/, .venv/, .git/, node_modules/
-    echo "Syncing backend/..."
-    databricks workspace import-dir ${PROFILE_FLAG} "backend" "${WS_PATH}/backend" --overwrite
-    echo "Syncing frontend/ (source only)..."
-    databricks workspace import-dir ${PROFILE_FLAG} "frontend/src" "${WS_PATH}/frontend/src" --overwrite
-    databricks workspace import-dir ${PROFILE_FLAG} "frontend/public" "${WS_PATH}/frontend/public" --overwrite
-    # Sync frontend config files individually
-    for f in frontend/package.json frontend/package-lock.json frontend/tsconfig.json frontend/tsconfig.app.json frontend/tsconfig.node.json frontend/vite.config.ts frontend/index.html frontend/.env.production; do
-        if [ -f "$f" ]; then
-            databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true
-        fi
-    done
-    echo "Syncing scripts/..."
-    databricks workspace import-dir ${PROFILE_FLAG} "scripts" "${WS_PATH}/scripts" --overwrite
-    # Sync top-level config files
-    for f in app.yaml requirements.txt; do
-        if [ -f "$f" ]; then
-            databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true
-        fi
-    done
+    # Stage clean copies (exclude __pycache__, .databricks, .claude)
+    STAGING_DIR=$(mktemp -d)
+    trap "rm -rf $STAGING_DIR" EXIT
+    rsync -a --exclude='__pycache__' --exclude='.databricks' --exclude='.claude' backend/app/ "$STAGING_DIR/app/"
+    rsync -a --exclude='__pycache__' scripts/ "$STAGING_DIR/scripts/"
+
+    # ── Parallel sync: all directories at once ──
+    echo -e "\n${YELLOW}  Syncing all files in parallel...${NC}"
+    step_start
+
+    # Backend app code (staged, no __pycache__)
+    databricks workspace import-dir ${PROFILE_FLAG} "$STAGING_DIR/app" "${WS_PATH}/backend/app" --overwrite &
+    PID_APP=$!
+
+    # Backend scripts
+    databricks workspace import-dir ${PROFILE_FLAG} "backend/scripts" "${WS_PATH}/backend/scripts" --overwrite &
+    PID_BSCRIPTS=$!
+
+    # Static: pricing + assets (NOT docs/ — saves 87MB)
+    (
+        databricks workspace import-dir ${PROFILE_FLAG} "backend/static/pricing" "${WS_PATH}/backend/static/pricing" --overwrite
+        databricks workspace import-dir ${PROFILE_FLAG} "backend/static/assets" "${WS_PATH}/backend/static/assets" --overwrite
+        for f in backend/static/index.html backend/static/databricks-icon.svg; do
+            [ -f "$f" ] && databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true
+        done
+    ) &
+    PID_STATIC=$!
+
+    # Frontend source
+    (
+        databricks workspace import-dir ${PROFILE_FLAG} "frontend/src" "${WS_PATH}/frontend/src" --overwrite
+        databricks workspace import-dir ${PROFILE_FLAG} "frontend/public" "${WS_PATH}/frontend/public" --overwrite
+        for f in frontend/package.json frontend/package-lock.json frontend/tsconfig.json frontend/tsconfig.app.json frontend/tsconfig.node.json frontend/vite.config.ts frontend/index.html frontend/.env.production; do
+            [ -f "$f" ] && databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true
+        done
+    ) &
+    PID_FE=$!
+
+    # Scripts + top-level config
+    (
+        databricks workspace import-dir ${PROFILE_FLAG} "$STAGING_DIR/scripts" "${WS_PATH}/scripts" --overwrite
+        for f in app.yaml requirements.txt; do
+            [ -f "$f" ] && databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true
+        done
+    ) &
+    PID_CFG=$!
+
+    # Backend top-level files
+    (
+        for f in backend/app.yaml backend/requirements.txt backend/README.md; do
+            [ -f "$f" ] && databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true
+        done
+    ) &
+    PID_BCFG=$!
+
+    # Wait for all parallel syncs
+    wait $PID_APP $PID_BSCRIPTS $PID_STATIC $PID_FE $PID_CFG $PID_BCFG
+    step_end "parallel sync"
+
     echo -e "${GREEN}OK Files synced to workspace${NC}"
 
-    # Clean up any stale artifacts that shouldn't be in the workspace
-    for dir in .venv .git .claude .pytest_cache .databricks node_modules docs-site/node_modules docs-site/build docs-site/.docusaurus harness tests etl; do
-        databricks workspace delete ${PROFILE_FLAG} "${WS_PATH}/${dir}" --recursive 2>/dev/null || true
-    done
-
-    # Deploy from workspace
-    echo "Deploying app '${APP_NAME}' from workspace..."
+    # ── Deploy from workspace ──
+    echo -e "\n${YELLOW}  Deploying app '${APP_NAME}'...${NC}"
+    step_start
     databricks apps deploy ${APP_NAME} ${PROFILE_FLAG} --source-code-path "${WS_PATH}"
+    step_end "databricks apps deploy"
     echo -e "${GREEN}OK Deployed from workspace${NC}"
 
 elif [ -n "$WORKSPACE_HOST" ]; then
-    # Local deployment: deploy directly from local backend/ directory
     echo -e "\n${YELLOW}Step 3: Local deployment to Databricks Apps...${NC}"
 
     if ! command -v databricks &> /dev/null; then
@@ -156,3 +199,10 @@ fi
 echo ""
 echo "Bundle contents:"
 du -sh backend/static/ 2>/dev/null || true
+
+# Total timing
+DEPLOY_END=$(date +%s)
+TOTAL_ELAPSED=$(( DEPLOY_END - DEPLOY_START ))
+MINS=$(( TOTAL_ELAPSED / 60 ))
+SECS=$(( TOTAL_ELAPSED % 60 ))
+echo -e "\n${GREEN}Total deployment time: ${MINS}m ${SECS}s${NC}"

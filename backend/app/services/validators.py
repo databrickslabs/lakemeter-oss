@@ -267,10 +267,12 @@ def validate_warehouse_size(cloud: str, warehouse_type: str, warehouse_size: str
             WHERE UPPER(cloud) = :cloud AND UPPER(warehouse_type) = 'SERVERLESS'
         """)
     else:
+        # Note: In the OSS DB, column names are swapped:
+        # warehouse_size = type ("classic"/"pro"), warehouse_type = size ("2X-Small" etc)
         query = text("""
-            SELECT DISTINCT warehouse_size
+            SELECT DISTINCT warehouse_type AS warehouse_size
             FROM lakemeter.sync_ref_dbsql_warehouse_config
-            WHERE cloud = :cloud AND UPPER(warehouse_type) = UPPER(:warehouse_type)
+            WHERE cloud = :cloud AND UPPER(warehouse_size) = UPPER(:warehouse_type)
         """)
 
     result = db.execute(query, {"cloud": cloud.upper(), "warehouse_type": warehouse_type})
