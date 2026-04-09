@@ -544,21 +544,10 @@ export function getAvailableWorkloadTypesForRegion(
     availableWorkloads.add('DATABRICKS_APPS')
   }
 
-  // Clean Room: uses CLEAN_ROOMS_COLLABORATOR SKU — available on all PREMIUM+ tiers
-  // Check if CLEAN_ROOMS_COLLABORATOR exists in dbuRates, else assume available
-  if (productTypes['CLEAN_ROOMS_COLLABORATOR'] || tier.toUpperCase() !== 'STANDARD') {
-    availableWorkloads.add('CLEAN_ROOM')
-  }
-
   // AI Parse: uses SERVERLESS_REAL_TIME_INFERENCE — available wherever Model Serving is
   if (availableWorkloads.has('MODEL_SERVING') || productTypes['SERVERLESS_REAL_TIME_INFERENCE']) {
     availableWorkloads.add('AI_PARSE')
     availableWorkloads.add('SHUTTERSTOCK_IMAGEAI')
-  }
-
-  // Lakeflow Connect: uses DLT Serverless — available wherever DLT is
-  if (availableWorkloads.has('DLT')) {
-    availableWorkloads.add('LAKEFLOW_CONNECT')
   }
 
   return Array.from(availableWorkloads).sort()

@@ -583,36 +583,21 @@ export function calculateWorkloadCost(
       monthlyDBUs = dbuPerHour * hoursPerMonth
       break
 
-    case 'CLEAN_ROOM':
-      const crCollaborators = item.clean_room_collaborators || 1
-      const crDaysPerMonth = item.days_per_month || 30
-      // 1 DBU per collaborator per day
-      monthlyDBUs = crCollaborators * crDaysPerMonth
-      break
-
-    case 'AI_PARSE':
-      const aiParseMode = (item.ai_parse_mode || 'pages').toLowerCase()
-      if (aiParseMode === 'dbu') {
-        monthlyDBUs = item.hours_per_month || 0
-      } else {
-        const complexityRates: Record<string, number> = {
-          low_text: 12.5, low_images: 22.5, medium: 62.5, high: 87.5
-        }
-        const aiComplexity = (item.ai_parse_complexity || 'medium').toLowerCase()
-        const pagesK = item.ai_parse_pages_thousands || 0
-        monthlyDBUs = pagesK * (complexityRates[aiComplexity] || 62.5)
+    case 'AI_PARSE': {
+      const complexityRates: Record<string, number> = {
+        low_text: 12.5, low_images: 22.5, medium: 62.5, high: 87.5
       }
+      const aiComplexity = (item.ai_parse_complexity || 'medium').toLowerCase()
+      const pagesK = item.ai_parse_pages_thousands || 0
+      monthlyDBUs = pagesK * (complexityRates[aiComplexity] || 62.5)
       break
+    }
 
-    case 'SHUTTERSTOCK_IMAGEAI':
+    case 'SHUTTERSTOCK_IMAGEAI': {
       const ssImages = item.shutterstock_images || 0
       monthlyDBUs = ssImages * 0.857
       break
-
-    case 'LAKEFLOW_CONNECT':
-      // Simplified: DLT Serverless pipeline only (gateway calc requires VM lookup)
-      monthlyDBUs = 0  // Requires API calc for accurate number
-      break
+    }
 
     default:
       monthlyDBUs = 0
