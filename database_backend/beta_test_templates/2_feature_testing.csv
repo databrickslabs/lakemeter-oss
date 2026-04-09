@@ -1,0 +1,11 @@
+Feature,Tried?,Worked?,Rating (1-5),Comments
+AI Understanding - Did AI understand your workload description?,,,,
+SKU Recommendations - Are recommended SKUs correct?,,,,
+Instance Types - Are instance recommendations reasonable?,,,,
+Cost Accuracy - Do costs match your experience/knowledge?,,,,
+Manual Edits - Can you edit configurations after AI suggests?,,,,
+Export to CSV - Does CSV export work?,,,,
+Dark Mode - Does it work?,,,,
+Multiple Workloads - Can you describe multiple workloads at once?,,,,
+Configuration Details - Are DBU calculations shown clearly?,,,,
+

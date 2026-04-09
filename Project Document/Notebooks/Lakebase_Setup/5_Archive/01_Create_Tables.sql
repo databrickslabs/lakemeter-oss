@@ -1,0 +1,1247 @@
+-- =============================================================================
+-- LAKEMETER DATABASE SCHEMA - PART 1: APPLICATION TABLES
+-- =============================================================================
+-- FILE: 01_Create_Tables.sql
+-- PURPOSE: Creates all application tables for the Lakemeter cost estimation app
+-- 
+-- IDEMPOTENT: Safe to run multiple times.
+-- - Tables: DROP TABLE IF EXISTS + CREATE TABLE
+-- - Indexes: DROP INDEX IF EXISTS + CREATE INDEX
+-- - Inserts: INSERT ... ON CONFLICT DO NOTHING
+--
+-- EXECUTION ORDER:
+--   1. Run this file FIRST: 01_Create_Tables.sql (creates tables)
+--   2. Run Pricing_Sync notebooks (syncs pricing data to sync_* tables)
+--   3. Run 02_Create_Views.sql LAST (creates cost calculation views)
+-- 
+-- TABLES CREATED:
+--   - users
+--   - templates
+--   - estimates
+--   - line_items
+--   - ref_workload_types (reference data with seed data)
+--   - conversation_messages
+--   - decision_records
+--   - sharing
+-- 
+-- NOTE: This script DOES NOT create views.
+-- For views, run 02_Create_Views.sql AFTER sync_* tables exist.
+-- =============================================================================
+
+-- =============================================================================
+-- DROP EXISTING OBJECTS (in dependency order - views first, then tables)
+-- =============================================================================
+
+-- Drop views first (they depend on tables)
+DROP VIEW IF EXISTS v_estimates_with_totals CASCADE;
+DROP VIEW IF EXISTS v_line_items_with_costs CASCADE;
+
+-- Drop application tables only (synced tables are managed separately)
+DROP TABLE IF EXISTS decision_records CASCADE;
+DROP TABLE IF EXISTS conversation_messages CASCADE;
+DROP TABLE IF EXISTS sharing CASCADE;
+DROP TABLE IF EXISTS line_items CASCADE;
+DROP TABLE IF EXISTS estimates CASCADE;
+DROP TABLE IF EXISTS templates CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS ref_cloud_tiers CASCADE;
+DROP TABLE IF EXISTS ref_workload_types CASCADE;
+
+-- =============================================================================
+-- APPLICATION TABLES (Blue: #E3F2FD)
+-- =============================================================================
+
+CREATE TABLE users (
+    user_id UUID PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    full_name VARCHAR(255),
+    role VARCHAR(50),
+    is_active BOOLEAN DEFAULT true,
+    last_login_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE templates (
+    template_id UUID PRIMARY KEY,
+    template_name VARCHAR(255) NOT NULL,
+    workload_type VARCHAR(100),
+    file_path VARCHAR(500),
+    file_format VARCHAR(10),
+    mandatory_fields JSON,
+    optional_fields JSON,
+    description TEXT,
+    version INT DEFAULT 1,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE estimates (
+    estimate_id UUID PRIMARY KEY,
+    estimate_name VARCHAR(500),
+    owner_user_id UUID REFERENCES users(user_id),
+    customer_sfdc_id VARCHAR(18),
+    customer_name VARCHAR(255),
+    uco_opportunity_id VARCHAR(18),
+    cloud VARCHAR(20),
+    region VARCHAR(50),
+    tier VARCHAR(20),
+    status VARCHAR(20) DEFAULT 'draft',
+    version INT DEFAULT 1,
+    template_id UUID REFERENCES templates(template_id),
+    original_prompt TEXT,
+    -- total_dbu_per_month: REMOVED - calculate from SUM(line_items.dbu_per_month)
+    -- total_cost_per_month: REMOVED - calculate from SUM(line_items.cost_per_month)
+    is_deleted BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- created_by: REMOVED - owner_user_id IS the creator
+    updated_by UUID REFERENCES users(user_id)  -- Tracks who last edited (for audit)
+);
+
+-- =============================================================================
+-- LINE_ITEMS: Redesigned for Dynamic Form UI (like Azure Calculator)
+-- =============================================================================
+-- Each workload type uses different columns. Unused columns are NULL.
+-- The UI shows/hides form fields based on workload_type selection.
+-- =============================================================================
+
+CREATE TABLE line_items (
+    line_item_id UUID PRIMARY KEY,
+    estimate_id UUID REFERENCES estimates(estimate_id),
+    display_order INT,
+    
+    -- =========================================================================
+    -- SECTION 1: WORKLOAD IDENTITY (Always shown)
+    -- =========================================================================
+    workload_name VARCHAR(255),               -- User-defined name
+    workload_type VARCHAR(50) NOT NULL,       -- Dropdown: JOBS, ALL_PURPOSE, DLT, DBSQL, etc.
+    
+    -- Cloud (denormalized from estimates for validation)
+    -- This enables instance type validation: ensure driver/worker types match cloud
+    cloud VARCHAR(20),                        -- Denormalized from estimates.cloud (set by trigger)
+    
+    -- =========================================================================
+    -- SECTION 2: COMPUTE CONFIG (Show for JOBS, ALL_PURPOSE, DLT)
+    -- VM config always shown for sizing estimation, even when serverless
+    -- =========================================================================
+    serverless_enabled BOOLEAN DEFAULT false, -- Toggle: Serverless (if true, photon must be true)
+    serverless_mode VARCHAR(20),              -- Dropdown: standard, performance (for JOBS/DLT serverless only)
+    photon_enabled BOOLEAN DEFAULT false,     -- Toggle: Photon (auto-true when serverless)
+    driver_node_type VARCHAR(100),            -- Dropdown: for sizing estimation (even for serverless)
+    worker_node_type VARCHAR(100),            -- Dropdown: for sizing estimation (even for serverless)
+    num_workers INT,                          -- Number input: 0-1000 (for sizing estimation)
+    autoscale_enabled BOOLEAN DEFAULT false,  -- Toggle
+    autoscale_min_workers INT,                -- Number input (if autoscale)
+    autoscale_max_workers INT,                -- Number input (if autoscale)
+    
+    -- =========================================================================
+    -- SECTION 3: DLT CONFIG (Show when workload_type = 'DLT')
+    -- =========================================================================
+    dlt_edition VARCHAR(20),                  -- Dropdown: CORE, PRO, ADVANCED
+    dlt_pipeline_mode VARCHAR(20),            -- Dropdown: TRIGGERED, CONTINUOUS
+    
+    -- =========================================================================
+    -- SECTION 4: DBSQL CONFIG (Show when workload_type = 'DBSQL')
+    -- =========================================================================
+    dbsql_warehouse_type VARCHAR(20),         -- Dropdown: CLASSIC, PRO, SERVERLESS
+    dbsql_warehouse_size VARCHAR(20),         -- Dropdown: 2X-Small to 4X-Large
+    dbsql_num_clusters INT DEFAULT 1,         -- Number of clusters (1-100, for scaling)
+    
+    -- =========================================================================
+    -- SECTION 5: SERVERLESS PRODUCTS (Show for Vector Search, Model Serving)
+    -- =========================================================================
+    serverless_product VARCHAR(50),           -- Dropdown: vector_search, model_serving
+    serverless_size VARCHAR(50),              -- Dropdown: cpu, gpu_small, gpu_medium, etc.
+    vector_search_mode VARCHAR(50),           -- Dropdown: standard, storage_optimized (for VECTOR_SEARCH only)
+    
+    -- =========================================================================
+    -- SECTION 6: FMAPI CONFIG (Show when workload_type = 'FMAPI')
+    -- =========================================================================
+    fmapi_provider VARCHAR(50),               -- Dropdown: databricks, openai, anthropic, google
+    fmapi_model VARCHAR(100),                 -- Dropdown: gpt-4o, claude-sonnet-4, llama-3.1-70b
+    fmapi_endpoint_type VARCHAR(20),          -- Dropdown: global, in_geo (for proprietary)
+    fmapi_context_length VARCHAR(20),         -- Dropdown: standard, long (for proprietary)
+    fmapi_input_tokens_per_month BIGINT,      -- Number input: estimated input tokens
+    fmapi_output_tokens_per_month BIGINT,     -- Number input: estimated output tokens
+    
+    -- =========================================================================
+    -- SECTION 6.5: LAKEBASE CONFIG (Show when workload_type = 'LAKEBASE')
+    -- =========================================================================
+    lakebase_cu INT,                          -- Dropdown: 1, 2, 4, 8 CU (1 CU = 1 DBU)
+    lakebase_storage_gb INT,                  -- Number input: Storage size in GB (100-10000)
+    lakebase_ha_enabled BOOLEAN DEFAULT false,-- Toggle: High availability (multi-AZ)
+    lakebase_backup_retention_days INT DEFAULT 7, -- Number input: Backup retention (1-35 days)
+    
+    -- =========================================================================
+    -- SECTION 7: USAGE / FREQUENCY (Consistent for all hourly workloads)
+    -- =========================================================================
+    -- hours_per_month = runs_per_day * (avg_runtime_minutes / 60) * days_per_month
+    runs_per_day INT,                         -- Number of runs per day
+    avg_runtime_minutes INT,                  -- Average runtime per run (in minutes)
+    days_per_month INT DEFAULT 30,            -- Days per month (default 30)
+    
+    -- =========================================================================
+    -- SECTION 8: PRICING OPTIONS (Show for classic compute with VMs)
+    -- =========================================================================
+    -- NEW: Separate pricing tiers for driver vs worker nodes
+    driver_pricing_tier VARCHAR(20),          -- Driver: on_demand, reserved_1y, reserved_3y (NEVER spot)
+    worker_pricing_tier VARCHAR(20),          -- Worker: on_demand, spot, reserved_1y, reserved_3y
+    
+    -- DEPRECATED: Legacy single tier (kept for backward compatibility)
+    vm_pricing_tier VARCHAR(20) DEFAULT 'on_demand',  -- Fallback if driver/worker tiers not set
+    vm_payment_option VARCHAR(20),            -- Dropdown (if reserved): no_upfront, partial_upfront, all_upfront
+    spot_percentage INT,                      -- DEPRECATED: Not used in new pricing model
+    
+    -- =========================================================================
+    -- SECTION 9: EXTENSIBLE CONFIG (For future workload types)
+    -- =========================================================================
+    -- Use this JSON column for NEW workload types without schema changes
+    -- Example: {"pages_per_month": 100000, "model": "docai-v2", "output_format": "json"}
+    workload_config JSON,
+    
+    -- =========================================================================
+    -- SECTION 10: METADATA
+    -- =========================================================================
+    -- NOTE: No created_by/updated_by here - derive from estimates table
+    -- Get via: SELECT e.owner_user_id FROM estimates e WHERE e.estimate_id = line_items.estimate_id
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for fast lookups (idempotent)
+DROP INDEX IF EXISTS idx_line_items_estimate;
+DROP INDEX IF EXISTS idx_line_items_workload_type;
+CREATE INDEX idx_line_items_estimate ON line_items(estimate_id);
+CREATE INDEX idx_line_items_workload_type ON line_items(workload_type);
+
+-- =============================================================================
+-- WORKLOAD_TYPES: Reference table for UI form configuration
+-- =============================================================================
+-- This table tells the UI which form sections/fields to show for each workload type
+-- MUST be created BEFORE views (views reference this table)
+
+CREATE TABLE ref_workload_types (
+    workload_type VARCHAR(50) PRIMARY KEY,
+    display_name VARCHAR(100),
+    description TEXT,
+    
+    -- Which form sections to show (TRUE = show, FALSE = hide)
+    show_compute_config BOOLEAN DEFAULT false,     -- Driver/worker nodes (always for sizing)
+    show_serverless_toggle BOOLEAN DEFAULT false,  -- Serverless ON/OFF toggle
+    show_serverless_performance_mode BOOLEAN DEFAULT false, -- Serverless mode dropdown (standard/performance) - JOBS/DLT only
+    show_photon_toggle BOOLEAN DEFAULT false,      -- Photon toggle (disabled when serverless=ON)
+    show_dlt_config BOOLEAN DEFAULT false,         -- DLT edition (Core/Pro/Advanced)
+    show_dbsql_config BOOLEAN DEFAULT false,       -- Warehouse type/size
+    show_serverless_product BOOLEAN DEFAULT false, -- Serverless product config (Vector Search, Model Serving)
+    show_fmapi_config BOOLEAN DEFAULT false,       -- FMAPI model selection
+    show_lakebase_config BOOLEAN DEFAULT false,    -- Lakebase config (CU, storage, HA, backup)
+    show_vector_search_mode BOOLEAN DEFAULT false, -- Vector Search mode (standard/storage_optimized)
+    show_vm_pricing BOOLEAN DEFAULT false,         -- VM pricing tier (hidden when serverless=ON)
+    show_usage_hours BOOLEAN DEFAULT false,        -- Hours per day/month
+    show_usage_runs BOOLEAN DEFAULT false,         -- Runs per day, runtime
+    show_usage_tokens BOOLEAN DEFAULT false,       -- Input/output tokens
+    
+    -- Which product_type to use for DBU pricing lookup
+    sku_product_type_standard VARCHAR(100),        -- Classic without Photon
+    sku_product_type_photon VARCHAR(100),          -- Classic with Photon
+    sku_product_type_serverless VARCHAR(100),      -- Serverless (always Photon)
+    
+    display_order INT
+);
+
+-- Populate workload types (idempotent - skips if exists)
+-- JOBS: Batch jobs (Classic or Serverless)
+INSERT INTO ref_workload_types VALUES
+('JOBS', 'Jobs Compute', 'Scheduled batch jobs (Classic or Serverless)', 
+ true, true, true, true, false, false, false, false, false, false, true, false, true, false,
+ 'JOBS_COMPUTE', 'JOBS_COMPUTE_(PHOTON)', 'JOBS_SERVERLESS_COMPUTE', 1)
+ON CONFLICT (workload_type) DO NOTHING;
+
+-- ALL_PURPOSE: Interactive notebooks (Classic or Serverless)
+INSERT INTO ref_workload_types VALUES
+('ALL_PURPOSE', 'All-Purpose Compute', 'Interactive clusters for notebooks (Classic or Serverless)', 
+ true, true, false, true, false, false, false, false, false, false, true, true, false, false,
+ 'ALL_PURPOSE_COMPUTE', 'ALL_PURPOSE_COMPUTE_(PHOTON)', 'ALL_PURPOSE_SERVERLESS_COMPUTE', 2)
+ON CONFLICT (workload_type) DO NOTHING;
+
+-- DLT: Delta Live Tables (Classic or Serverless)
+INSERT INTO ref_workload_types VALUES
+('DLT', 'Delta Live Tables', 'Declarative ETL pipelines (Classic or Serverless)',
+ true, true, true, true, true, false, false, false, false, false, true, true, false, false,
+ 'DLT_CORE_COMPUTE', 'DLT_CORE_COMPUTE_(PHOTON)', 'DELTA_LIVE_TABLES_SERVERLESS', 3)
+ON CONFLICT (workload_type) DO NOTHING;
+
+-- DBSQL: SQL Analytics (has its own warehouse_type for serverless)
+INSERT INTO ref_workload_types VALUES
+('DBSQL', 'Databricks SQL', 'SQL analytics warehouse (Classic/Pro/Serverless)',
+ false, false, false, false, false, true, false, false, false, false, false, true, false, false,
+ 'SQL_COMPUTE', 'SQL_PRO_COMPUTE', 'SERVERLESS_SQL_COMPUTE', 4)
+ON CONFLICT (workload_type) DO NOTHING;
+
+-- VECTOR_SEARCH: Serverless only (with mode selection)
+INSERT INTO ref_workload_types VALUES
+('VECTOR_SEARCH', 'Vector Search', 'Vector search endpoints for RAG',
+ false, false, false, false, false, false, true, false, false, true, false, true, false, false,
+ NULL, NULL, 'VECTOR_SEARCH_ENDPOINT', 5)
+ON CONFLICT (workload_type) DO NOTHING;
+
+-- MODEL_SERVING: Serverless only
+INSERT INTO ref_workload_types VALUES
+('MODEL_SERVING', 'Model Serving', 'Real-time model inference endpoints',
+ false, false, false, false, false, false, true, false, false, false, false, true, false, false,
+ NULL, NULL, 'SERVERLESS_REAL_TIME_INFERENCE', 6)
+ON CONFLICT (workload_type) DO NOTHING;
+
+-- FMAPI_DATABRICKS: Databricks-hosted LLMs (Serverless only)
+INSERT INTO ref_workload_types VALUES
+('FMAPI_DATABRICKS', 'Foundation Models (Databricks)', 'Databricks-hosted LLMs (Llama, DBRX)',
+ false, false, false, false, false, false, false, true, false, false, false, false, false, true,
+ NULL, NULL, 'SERVERLESS_REAL_TIME_INFERENCE', 7)
+ON CONFLICT (workload_type) DO NOTHING;
+
+-- FMAPI_PROPRIETARY: Proprietary LLMs served by Databricks (OpenAI, Anthropic, Google)
+INSERT INTO ref_workload_types VALUES
+('FMAPI_PROPRIETARY', 'Foundation Models (Proprietary)', 'OpenAI, Anthropic, Google models served by Databricks',
+ false, false, false, false, false, false, false, true, false, false, false, false, false, true,
+ NULL, NULL, NULL, 8)  -- sku_product_type determined by provider dynamically
+ON CONFLICT (workload_type) DO NOTHING;
+
+-- LAKEBASE: Managed PostgreSQL database service
+INSERT INTO ref_workload_types VALUES
+('LAKEBASE', 'Lakebase', 'Managed PostgreSQL database for operational workloads',
+ false, false, false, false, false, false, false, false, true, false, false, true, true, false,
+ NULL, NULL, 'DATABASE_SERVERLESS_COMPUTE', 9)  -- show_lakebase_config=TRUE, show_usage_hours=TRUE, show_usage_runs=TRUE
+ON CONFLICT (workload_type) DO NOTHING;
+
+-- =============================================================================
+-- REFERENCE TABLE: ref_cloud_tiers
+-- =============================================================================
+-- PURPOSE: Defines which estimate tiers are valid for each cloud provider
+-- USAGE: Frontend queries this table to populate tier dropdown based on selected cloud
+-- CONSTRAINT: Prevents invalid cloud/tier combinations (e.g., Azure Enterprise)
+-- =============================================================================
+
+CREATE TABLE ref_cloud_tiers (
+    cloud VARCHAR(20) NOT NULL,
+    tier VARCHAR(50) NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    display_order INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    
+    PRIMARY KEY (cloud, tier),
+    CHECK (cloud IN ('AWS', 'AZURE', 'GCP')),
+    CHECK (tier IN ('STANDARD', 'PREMIUM', 'ENTERPRISE', 'FREE_TRIAL', 'DEV_TEST'))
+);
+
+-- Populate valid cloud/tier combinations
+-- AWS: Supports all tiers
+INSERT INTO ref_cloud_tiers VALUES
+('AWS', 'STANDARD', 'Standard', 'Standard production workloads', 1, true),
+('AWS', 'PREMIUM', 'Premium', 'High-performance production workloads', 2, true),
+('AWS', 'ENTERPRISE', 'Enterprise', 'Enterprise-grade workloads with dedicated support', 3, true)
+ON CONFLICT (cloud, tier) DO NOTHING;
+
+-- Azure: Only STANDARD and PREMIUM (NO Enterprise tier)
+INSERT INTO ref_cloud_tiers VALUES
+('AZURE', 'STANDARD', 'Standard', 'Standard production workloads', 1, true),
+('AZURE', 'PREMIUM', 'Premium', 'High-performance production workloads', 2, true)
+ON CONFLICT (cloud, tier) DO NOTHING;
+
+-- GCP: Supports all tiers (including Enterprise)
+INSERT INTO ref_cloud_tiers VALUES
+('GCP', 'STANDARD', 'Standard', 'Standard production workloads', 1, true),
+('GCP', 'PREMIUM', 'Premium', 'High-performance production workloads', 2, true),
+('GCP', 'ENTERPRISE', 'Enterprise', 'Enterprise-grade workloads with dedicated support', 3, true)
+ON CONFLICT (cloud, tier) DO NOTHING;
+
+-- Add FK constraint: estimates.tier → ref_cloud_tiers.tier
+-- Note: This is a composite FK that checks BOTH cloud AND tier
+ALTER TABLE estimates 
+ADD CONSTRAINT fk_estimates_cloud_tier 
+FOREIGN KEY (cloud, tier) REFERENCES ref_cloud_tiers(cloud, tier);
+
+-- Add FK constraint: line_items.workload_type → ref_workload_types.workload_type
+ALTER TABLE line_items 
+ADD CONSTRAINT fk_line_items_workload_type 
+FOREIGN KEY (workload_type) REFERENCES ref_workload_types(workload_type);
+
+-- =============================================================================
+-- TRIGGER: Auto-populate line_items.cloud from estimates.cloud
+-- =============================================================================
+-- This enables instance type validation by denormalizing cloud to line_items
+
+CREATE OR REPLACE FUNCTION sync_line_item_cloud()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- On INSERT: Copy cloud from parent estimate
+    IF (TG_OP = 'INSERT') THEN
+        SELECT cloud INTO NEW.cloud
+        FROM estimates
+        WHERE estimate_id = NEW.estimate_id;
+    END IF;
+    
+    -- On UPDATE of estimate_id: Resync cloud
+    IF (TG_OP = 'UPDATE' AND OLD.estimate_id IS DISTINCT FROM NEW.estimate_id) THEN
+        SELECT cloud INTO NEW.cloud
+        FROM estimates
+        WHERE estimate_id = NEW.estimate_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_sync_line_item_cloud
+BEFORE INSERT OR UPDATE ON line_items
+FOR EACH ROW
+EXECUTE FUNCTION sync_line_item_cloud();
+
+-- Also need trigger on estimates to update line_items when estimate.cloud changes
+CREATE OR REPLACE FUNCTION sync_estimate_cloud_to_line_items()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- On UPDATE of cloud: Update all child line_items
+    IF (TG_OP = 'UPDATE' AND OLD.cloud IS DISTINCT FROM NEW.cloud) THEN
+        UPDATE line_items
+        SET cloud = NEW.cloud
+        WHERE estimate_id = NEW.estimate_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_sync_estimate_cloud
+AFTER UPDATE ON estimates
+FOR EACH ROW
+EXECUTE FUNCTION sync_estimate_cloud_to_line_items();
+
+-- =============================================================================
+-- BUSINESS LOGIC CONSTRAINTS
+-- =============================================================================
+
+-- Constraint 1: Serverless requires Photon
+-- When serverless_enabled = TRUE, photon_enabled MUST also be TRUE
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_serverless_requires_photon 
+CHECK (serverless_enabled = FALSE OR photon_enabled = TRUE);
+
+-- Constraint 2: Valid worker count range (0-1000)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_num_workers_range 
+CHECK (num_workers IS NULL OR (num_workers >= 0 AND num_workers <= 1000));
+
+-- Constraint 3: Autoscale min/max validation
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_autoscale_min_max 
+CHECK (
+    autoscale_enabled = FALSE 
+    OR (autoscale_min_workers IS NOT NULL 
+        AND autoscale_max_workers IS NOT NULL 
+        AND autoscale_min_workers <= autoscale_max_workers)
+);
+
+-- Constraint 4: DBSQL cluster count range (1-100)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_dbsql_num_clusters_range 
+CHECK (dbsql_num_clusters IS NULL OR (dbsql_num_clusters >= 1 AND dbsql_num_clusters <= 100));
+
+-- Constraint 5: Days per month range (1-31)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_days_per_month_range 
+CHECK (days_per_month IS NULL OR (days_per_month >= 1 AND days_per_month <= 31));
+
+-- Constraint 6: Positive usage values
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_positive_usage 
+CHECK (
+    (runs_per_day IS NULL OR runs_per_day > 0)
+    AND (avg_runtime_minutes IS NULL OR avg_runtime_minutes > 0)
+);
+
+-- Constraint 7: Lakebase storage range (100-10000 GB)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_lakebase_storage_range 
+CHECK (lakebase_storage_gb IS NULL OR (lakebase_storage_gb >= 100 AND lakebase_storage_gb <= 10000));
+
+-- Constraint 8: Lakebase backup retention range (0-35 days, 0 = no backup)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_lakebase_backup_range 
+CHECK (lakebase_backup_retention_days >= 0 AND lakebase_backup_retention_days <= 35);
+
+-- =============================================================================
+-- ENUM VALUE CONSTRAINTS
+-- =============================================================================
+
+-- Estimates table enum constraints
+ALTER TABLE estimates 
+ADD CONSTRAINT chk_estimates_cloud 
+CHECK (cloud IN ('AWS', 'AZURE', 'GCP'));
+
+ALTER TABLE estimates 
+ADD CONSTRAINT chk_estimates_status 
+CHECK (status IN ('draft', 'submitted', 'approved', 'rejected', 'archived'));
+
+-- Line items table enum constraints
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_serverless_mode 
+CHECK (serverless_mode IS NULL OR serverless_mode IN ('standard', 'performance'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_dlt_edition 
+CHECK (dlt_edition IS NULL OR dlt_edition IN ('CORE', 'PRO', 'ADVANCED'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_dlt_pipeline_mode 
+CHECK (dlt_pipeline_mode IS NULL OR dlt_pipeline_mode IN ('TRIGGERED', 'CONTINUOUS'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_dbsql_warehouse_type 
+CHECK (dbsql_warehouse_type IS NULL OR dbsql_warehouse_type IN ('CLASSIC', 'PRO', 'SERVERLESS'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_dbsql_warehouse_size 
+CHECK (dbsql_warehouse_size IS NULL OR dbsql_warehouse_size IN 
+    ('2X-Small', 'X-Small', 'Small', 'Medium', 'Large', 'X-Large', '2X-Large', '3X-Large', '4X-Large'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_vector_search_mode 
+CHECK (vector_search_mode IS NULL OR vector_search_mode IN ('standard', 'storage_optimized'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_driver_pricing_tier 
+CHECK (driver_pricing_tier IS NULL OR driver_pricing_tier IN ('on_demand', 'reserved_1y', 'reserved_3y'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_worker_pricing_tier 
+CHECK (worker_pricing_tier IS NULL OR worker_pricing_tier IN ('on_demand', 'spot', 'reserved_1y', 'reserved_3y'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_vm_pricing_tier 
+CHECK (vm_pricing_tier IS NULL OR vm_pricing_tier IN ('on_demand', 'spot', 'reserved_1y', 'reserved_3y'));
+
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_vm_payment_option 
+CHECK (vm_payment_option IS NULL OR vm_payment_option IN ('on_demand', 'spot', 'no_upfront', 'partial_upfront', 'all_upfront', 'NA'));
+
+-- Lakebase CU constraint (1, 2, 4, 8 CU only)
+ALTER TABLE line_items 
+ADD CONSTRAINT chk_lakebase_cu 
+CHECK (lakebase_cu IS NULL OR lakebase_cu IN (1, 2, 4, 8));
+
+-- =============================================================================
+-- PART 1 COMPLETE - Application Tables & Basic Constraints Created!
+-- =============================================================================
+-- At this point, all application tables and basic constraints are in place.
+-- 
+-- ⚠️  STOP HERE if sync_* tables (from Pricing_Sync) don't exist yet.
+-- 
+-- NEXT STEPS:
+--   1. Run Pricing_Sync notebooks to create sync_* tables
+--   2. Continue below to PART 1.5 to add sync-dependent constraints
+--   3. Run 02_Create_Views.sql to create cost calculation views
+-- =============================================================================
+
+
+-- =============================================================================
+-- PART 1.5: CONSTRAINTS THAT DEPEND ON SYNC TABLES (Run AFTER Pricing_Sync)
+-- =============================================================================
+-- These constraints reference sync_* tables created by Pricing_Sync notebooks.
+-- Uncomment and run the sections below AFTER sync_* tables exist.
+-- 
+-- OR use the convenience script: 04_Add_Sync_Constraints.sql
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- REGION VALIDATION: Prevents invalid cloud/region combinations
+-- -----------------------------------------------------------------------------
+-- Example violations this prevents:
+--   ❌ AWS + eastus (Azure region)
+--   ❌ AZURE + us-east-1 (AWS region)
+--   ❌ GCP + westeurope (Azure region)
+-- -----------------------------------------------------------------------------
+
+-- Step 1: Add UNIQUE constraint on sync_ref_sku_region_map
+/*
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_cloud_region_code'
+    ) THEN
+        ALTER TABLE sync_ref_sku_region_map 
+        ADD CONSTRAINT uq_cloud_region_code 
+        UNIQUE (cloud, region_code);
+        RAISE NOTICE '✅ Added UNIQUE constraint: uq_cloud_region_code';
+    END IF;
+END $$;
+*/
+
+-- Step 2: Add FK constraint from estimates to sync_ref_sku_region_map
+/*
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_estimates_cloud_region'
+    ) THEN
+        ALTER TABLE estimates 
+        ADD CONSTRAINT fk_estimates_cloud_region 
+        FOREIGN KEY (cloud, region) 
+        REFERENCES sync_ref_sku_region_map(cloud, region_code);
+        RAISE NOTICE '✅ Added FK constraint: fk_estimates_cloud_region';
+    END IF;
+END $$;
+*/
+
+-- -----------------------------------------------------------------------------
+-- INSTANCE TYPE VALIDATION: Prevents using AWS instances on Azure, etc.
+-- -----------------------------------------------------------------------------
+-- Example violations this prevents:
+--   ❌ AWS estimate with driver_node_type='Standard_D4s_v3' (Azure instance)
+--   ❌ Azure estimate with worker_node_type='i3.xlarge' (AWS instance)
+--   ❌ GCP estimate with driver_node_type='m5.large' (AWS instance)
+-- 
+-- How it works:
+--   - line_items.cloud is auto-synced from estimates.cloud (via trigger)
+--   - FK validates (cloud, driver_node_type) exists in sync_ref_instance_dbu_rates
+--   - FK validates (cloud, worker_node_type) exists in sync_ref_instance_dbu_rates
+-- -----------------------------------------------------------------------------
+
+-- Step 1: Add UNIQUE constraint on sync_ref_instance_dbu_rates (if not already PK)
+/*
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_cloud_instance_type'
+    ) THEN
+        ALTER TABLE sync_ref_instance_dbu_rates 
+        ADD CONSTRAINT uq_cloud_instance_type 
+        UNIQUE (cloud, instance_type);
+        RAISE NOTICE '✅ Added UNIQUE constraint: uq_cloud_instance_type';
+    END IF;
+END $$;
+*/
+
+-- Step 2: Add FK constraint from line_items to sync_ref_instance_dbu_rates (driver)
+/*
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_line_items_driver_instance'
+    ) THEN
+        ALTER TABLE line_items 
+        ADD CONSTRAINT fk_line_items_driver_instance 
+        FOREIGN KEY (cloud, driver_node_type) 
+        REFERENCES sync_ref_instance_dbu_rates(cloud, instance_type);
+        RAISE NOTICE '✅ Added FK constraint: fk_line_items_driver_instance';
+    END IF;
+END $$;
+*/
+
+-- Step 3: Add FK constraint from line_items to sync_ref_instance_dbu_rates (worker)
+/*
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_line_items_worker_instance'
+    ) THEN
+        ALTER TABLE line_items 
+        ADD CONSTRAINT fk_line_items_worker_instance 
+        FOREIGN KEY (cloud, worker_node_type) 
+        REFERENCES sync_ref_instance_dbu_rates(cloud, instance_type);
+        RAISE NOTICE '✅ Added FK constraint: fk_line_items_worker_instance';
+    END IF;
+END $$;
+*/
+
+-- =============================================================================
+-- VERIFICATION QUERIES (Optional - run after adding constraints)
+-- =============================================================================
+
+-- Check which constraints exist:
+/*
+SELECT 
+    conname as constraint_name,
+    contype as type,
+    CASE contype
+        WHEN 'f' THEN 'FOREIGN KEY'
+        WHEN 'u' THEN 'UNIQUE'
+        WHEN 'c' THEN 'CHECK'
+        WHEN 'p' THEN 'PRIMARY KEY'
+    END as type_name
+FROM pg_constraint
+WHERE conname IN (
+    'uq_cloud_region_code',
+    'fk_estimates_cloud_region',
+    'uq_cloud_instance_type',
+    'fk_line_items_driver_instance',
+    'fk_line_items_worker_instance'
+)
+ORDER BY conname;
+*/
+
+-- =============================================================================
+-- END OF PART 1.5
+-- =============================================================================
+
+
+-- =============================================================================
+-- PART 2: VIEWS
+-- =============================================================================
+-- ⚠️  VIEWS HAVE BEEN MOVED TO A SEPARATE FILE: 02_Create_Views.sql
+-- 
+-- To create views, run: psql -f 02_Create_Views.sql
+-- 
+-- Views included:
+--   - v_line_items_with_costs: Calculates DBU and VM costs for each line item
+--   - v_estimates_with_totals: Aggregates costs per estimate
+-- 
+-- PREREQUISITE: sync_* tables must exist (created by Pricing_Sync notebooks)
+-- =============================================================================
+
+-- The views are defined in: 02_Create_Views.sql
+-- Run that file AFTER running this file (01_Create_Tables.sql)
+
+-- PLACEHOLDER: Views removed from this file for better modularity
+-- Original view definition starts below (COMMENTED OUT - use 02_Create_Views.sql instead)
+
+/*
+CREATE OR REPLACE VIEW v_line_items_with_costs AS
+WITH 
+-- Calculate hours per month for each line item
+hours_calc AS (
+    SELECT 
+        li.*,
+        e.cloud,
+        e.region,
+        e.tier,
+        -- Hours calculation: runs_per_day * (avg_runtime_minutes / 60) * days_per_month
+        -- Consistent formula for all hourly workloads
+        CASE 
+            WHEN li.workload_type NOT IN ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY') THEN
+                COALESCE(li.runs_per_day, 0) * (COALESCE(li.avg_runtime_minutes, 0) / 60.0) * COALESCE(li.days_per_month, 30)
+            ELSE 0
+        END as hours_per_month
+    FROM line_items li
+    JOIN estimates e ON li.estimate_id = e.estimate_id
+),
+
+-- Get DBU rates for classic compute (driver + workers) - used for sizing estimation
+classic_compute AS (
+    SELECT 
+        h.*,
+        -- Instance DBU rates (used for sizing estimation even when serverless)
+        COALESCE(d.dbu_rate, 0) as driver_dbu_rate,
+        COALESCE(w.dbu_rate, 0) as worker_dbu_rate,
+        -- Photon multiplier (only applies to classic, serverless always uses Photon)
+        CASE 
+            WHEN h.serverless_enabled THEN 1.0  -- Serverless: no multiplier (Photon included)
+            ELSE COALESCE(m.multiplier, 1.0)    -- Classic: apply multiplier
+        END as photon_multiplier
+    FROM hours_calc h
+    LEFT JOIN sync_ref_instance_dbu_rates d 
+        ON d.cloud = h.cloud AND d.instance_type = h.driver_node_type
+    LEFT JOIN sync_ref_instance_dbu_rates w 
+        ON w.cloud = h.cloud AND w.instance_type = h.worker_node_type
+    LEFT JOIN sync_ref_dbu_multipliers m 
+        ON h.serverless_enabled = FALSE  -- Only join multiplier for classic
+        AND m.cloud = h.cloud  -- ✅ CRITICAL: Match by cloud (multipliers vary by cloud!)
+        AND m.feature = CASE WHEN h.photon_enabled THEN 'photon' ELSE 'standard' END
+        AND m.sku_type = CASE 
+            WHEN h.workload_type = 'DLT' THEN 'DLT_' || COALESCE(h.dlt_edition, 'CORE') || '_COMPUTE'
+            WHEN h.workload_type = 'JOBS' THEN 'JOBS_COMPUTE'
+            WHEN h.workload_type = 'ALL_PURPOSE' THEN 'ALL_PURPOSE_COMPUTE'
+            ELSE 'JOBS_COMPUTE'
+        END
+),
+
+-- Calculate DBU per hour based on workload type
+dbu_calc AS (
+    SELECT 
+        c.*,
+        CASE 
+            -- Classic compute (serverless_enabled = false): (driver + workers) × multiplier
+            WHEN c.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') AND c.serverless_enabled = FALSE THEN
+                (c.driver_dbu_rate + (c.worker_dbu_rate * COALESCE(c.num_workers, 0))) * c.photon_multiplier
+            
+            -- Serverless compute: Calculate DBU from nodes, then apply serverless mode multiplier
+            -- Standard mode: 1x multiplier, Performance mode: 2x multiplier
+            WHEN c.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') AND c.serverless_enabled = TRUE THEN
+                (c.driver_dbu_rate + (c.worker_dbu_rate * COALESCE(c.num_workers, 0))) * c.photon_multiplier *
+                CASE WHEN COALESCE(c.serverless_mode, 'standard') = 'performance' THEN 2 ELSE 1 END
+            
+            -- DBSQL: lookup from product_dbsql_rates * num_clusters
+            WHEN c.workload_type = 'DBSQL' THEN
+                COALESCE((SELECT dbu_per_hour FROM sync_product_dbsql_rates 
+                          WHERE cloud = c.cloud 
+                          AND warehouse_type = LOWER(c.dbsql_warehouse_type)
+                          AND warehouse_size = c.dbsql_warehouse_size), 0)
+                * COALESCE(c.dbsql_num_clusters, 1)
+            
+            -- Serverless products: lookup from product_serverless_rates
+            WHEN c.workload_type IN ('VECTOR_SEARCH', 'MODEL_SERVING') THEN
+                COALESCE((SELECT dbu_rate FROM sync_product_serverless_rates 
+                          WHERE cloud = c.cloud 
+                          AND product = LOWER(c.serverless_product)
+                          AND size_or_model = c.serverless_size), 0)
+            
+            -- LAKEBASE: Direct CU to DBU conversion (1 CU = 1 DBU per hour)
+            WHEN c.workload_type = 'LAKEBASE' THEN
+                COALESCE(c.lakebase_cu, 0)  -- Simple: CU value IS the DBU per hour
+            
+            -- FMAPI: calculated from tokens, not hourly (handled separately)
+            ELSE 0
+        END as dbu_per_hour
+    FROM classic_compute c
+),
+
+-- Calculate FMAPI token-based DBU
+fmapi_calc AS (
+    SELECT 
+        d.*,
+        CASE 
+            WHEN d.workload_type = 'FMAPI_DATABRICKS' THEN
+                COALESCE((
+                    SELECT (d.fmapi_input_tokens_per_month / COALESCE(f.input_divisor, 1000000) * f.dbu_rate)
+                    FROM sync_product_fmapi_databricks f 
+                    WHERE f.model = d.fmapi_model AND f.rate_type = 'input_token'
+                ), 0) +
+                COALESCE((
+                    SELECT (d.fmapi_output_tokens_per_month / COALESCE(f.input_divisor, 1000000) * f.dbu_rate)
+                    FROM sync_product_fmapi_databricks f 
+                    WHERE f.model = d.fmapi_model AND f.rate_type = 'output_token'
+                ), 0)
+            
+            WHEN d.workload_type = 'FMAPI_PROPRIETARY' THEN
+                COALESCE((
+                    SELECT (d.fmapi_input_tokens_per_month / COALESCE(f.input_divisor, 1000000) * f.dbu_rate)
+                    FROM sync_product_fmapi_proprietary f 
+                    WHERE f.cloud = d.cloud 
+                    AND f.provider = d.fmapi_provider 
+                    AND f.model = d.fmapi_model 
+                    AND f.rate_type = 'input_token'
+                    AND f.endpoint_type = COALESCE(d.fmapi_endpoint_type, 'global')
+                    AND f.context_length = COALESCE(d.fmapi_context_length, 'standard')
+                ), 0) +
+                COALESCE((
+                    SELECT (d.fmapi_output_tokens_per_month / COALESCE(f.input_divisor, 1000000) * f.dbu_rate)
+                    FROM sync_product_fmapi_proprietary f 
+                    WHERE f.cloud = d.cloud 
+                    AND f.provider = d.fmapi_provider 
+                    AND f.model = d.fmapi_model 
+                    AND f.rate_type = 'output_token'
+                    AND f.endpoint_type = COALESCE(d.fmapi_endpoint_type, 'global')
+                    AND f.context_length = COALESCE(d.fmapi_context_length, 'standard')
+                ), 0)
+            ELSE 0
+        END as fmapi_dbu_per_month
+    FROM dbu_calc d
+),
+
+-- Get product_type for DBU price lookup
+product_type_calc AS (
+    SELECT 
+        f.*,
+        CASE 
+            -- JOBS: Classic vs Serverless
+            WHEN f.workload_type = 'JOBS' THEN
+                CASE 
+                    WHEN f.serverless_enabled THEN 'JOBS_SERVERLESS_COMPUTE'
+                    WHEN f.photon_enabled THEN 'JOBS_COMPUTE_(PHOTON)'
+                    ELSE 'JOBS_COMPUTE'
+                END
+            
+            -- ALL_PURPOSE: Classic vs Serverless
+            WHEN f.workload_type = 'ALL_PURPOSE' THEN
+                CASE 
+                    WHEN f.serverless_enabled THEN 'ALL_PURPOSE_SERVERLESS_COMPUTE'
+                    WHEN f.photon_enabled THEN 'ALL_PURPOSE_COMPUTE_(PHOTON)'
+                    ELSE 'ALL_PURPOSE_COMPUTE'
+                END
+            
+            -- DLT: Classic vs Serverless (with edition)
+            WHEN f.workload_type = 'DLT' THEN
+                CASE 
+                    WHEN f.serverless_enabled THEN 'DELTA_LIVE_TABLES_SERVERLESS'
+                    ELSE 'DLT_' || COALESCE(f.dlt_edition, 'CORE') || '_COMPUTE' || 
+                         CASE WHEN f.photon_enabled THEN '_(PHOTON)' ELSE '' END
+                END
+            
+            -- DBSQL: Uses warehouse_type for serverless
+            WHEN f.workload_type = 'DBSQL' THEN
+                CASE f.dbsql_warehouse_type
+                    WHEN 'SERVERLESS' THEN 'SERVERLESS_SQL_COMPUTE'
+                    WHEN 'PRO' THEN 'SQL_PRO_COMPUTE'
+                    ELSE 'SQL_COMPUTE'
+                END
+            
+            -- Serverless-only products
+            WHEN f.workload_type = 'VECTOR_SEARCH' THEN 'VECTOR_SEARCH_ENDPOINT'
+            WHEN f.workload_type = 'MODEL_SERVING' THEN 'SERVERLESS_REAL_TIME_INFERENCE'
+            WHEN f.workload_type = 'FMAPI_DATABRICKS' THEN 'SERVERLESS_REAL_TIME_INFERENCE'
+            WHEN f.workload_type = 'FMAPI_PROPRIETARY' THEN 
+                UPPER(f.fmapi_provider) || '_MODEL_SERVING'  -- e.g., ANTHROPIC_MODEL_SERVING
+            
+            ELSE 'JOBS_COMPUTE'
+        END as product_type_for_pricing
+    FROM fmapi_calc f
+),
+
+-- Get DBU price and VM costs
+final_calc AS (
+    SELECT 
+        p.*,
+        COALESCE((
+            SELECT price_per_dbu FROM sync_pricing_dbu_rates 
+            WHERE cloud = p.cloud AND region = p.region AND tier = p.tier
+            AND product_type = p.product_type_for_pricing
+            LIMIT 1
+        ), 0) as price_per_dbu,
+        
+        -- VM costs (ONLY for classic compute - NOT serverless)
+        -- When serverless_enabled = true, VM cost is $0 (no VMs charged)
+        CASE WHEN p.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') 
+              AND p.serverless_enabled = FALSE THEN
+            COALESCE((
+                SELECT cost_per_hour FROM sync_pricing_vm_costs 
+                WHERE cloud = p.cloud AND region = p.region 
+                AND instance_type = p.driver_node_type
+                AND pricing_tier = COALESCE(p.vm_pricing_tier, 'on_demand')
+                LIMIT 1
+            ), 0)
+        ELSE 0 END as driver_vm_cost_per_hour,
+        
+        CASE WHEN p.workload_type IN ('ALL_PURPOSE', 'JOBS', 'DLT') 
+              AND p.serverless_enabled = FALSE THEN
+            COALESCE((
+                SELECT cost_per_hour FROM sync_pricing_vm_costs 
+                WHERE cloud = p.cloud AND region = p.region 
+                AND instance_type = p.worker_node_type
+                AND pricing_tier = COALESCE(p.vm_pricing_tier, 'on_demand')
+                LIMIT 1
+            ), 0)
+        ELSE 0 END as worker_vm_cost_per_hour
+    FROM product_type_calc p
+)
+
+-- Final SELECT with all calculated costs
+SELECT 
+    -- Original line item fields
+    line_item_id,
+    estimate_id,
+    display_order,
+    workload_name,
+    workload_type,
+    serverless_enabled,
+    serverless_mode,
+    driver_node_type,
+    worker_node_type,
+    num_workers,
+    autoscale_enabled,
+    autoscale_min_workers,
+    autoscale_max_workers,
+    photon_enabled,
+    dlt_edition,
+    dlt_pipeline_mode,
+    dbsql_warehouse_type,
+    dbsql_warehouse_size,
+    dbsql_num_clusters,
+    serverless_product,
+    serverless_size,
+    vector_search_mode,
+    fmapi_provider,
+    fmapi_model,
+    fmapi_endpoint_type,
+    fmapi_context_length,
+    fmapi_input_tokens_per_month,
+    fmapi_output_tokens_per_month,
+    lakebase_cu,
+    lakebase_storage_gb,
+    lakebase_ha_enabled,
+    lakebase_backup_retention_days,
+    runs_per_day,
+    avg_runtime_minutes,
+    days_per_month,
+    vm_pricing_tier,
+    vm_payment_option,
+    spot_percentage,
+    notes,
+    created_at,
+    updated_at,
+    -- created_by/updated_by removed - derive from estimates.owner_user_id
+    
+    -- Estimate context
+    cloud,
+    region,
+    tier,
+    
+    -- CALCULATED FIELDS - Usage
+    hours_per_month,
+    
+    -- CALCULATED FIELDS - DBU Rates (for auditability)
+    driver_dbu_rate,
+    worker_dbu_rate,
+    photon_multiplier,
+    
+    -- CALCULATED FIELDS - DBU Calculation
+    dbu_per_hour,
+    
+    -- DBU per month (hourly workloads vs token-based)
+    CASE 
+        WHEN workload_type IN ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY') THEN fmapi_dbu_per_month
+        ELSE dbu_per_hour * hours_per_month
+    END as dbu_per_month,
+    
+    -- CALCULATED FIELDS - Pricing
+    price_per_dbu,
+    product_type_for_pricing,
+    
+    -- DBU cost per month
+    CASE 
+        WHEN workload_type IN ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY') THEN fmapi_dbu_per_month * price_per_dbu
+        ELSE dbu_per_hour * hours_per_month * price_per_dbu
+    END as dbu_cost_per_month,
+    
+    -- CALCULATED FIELDS - VM Costs (for auditability)
+    driver_vm_cost_per_hour,
+    worker_vm_cost_per_hour,
+    
+    -- VM cost breakdown - per hour
+    worker_vm_cost_per_hour * COALESCE(num_workers, 0) as total_worker_vm_cost_per_hour,
+    driver_vm_cost_per_hour + (worker_vm_cost_per_hour * COALESCE(num_workers, 0)) as total_vm_cost_per_hour,
+    
+    -- VM cost breakdown - per month
+    driver_vm_cost_per_hour * hours_per_month as driver_vm_cost_per_month,
+    (worker_vm_cost_per_hour * COALESCE(num_workers, 0)) * hours_per_month as total_worker_vm_cost_per_month,
+    (driver_vm_cost_per_hour + (worker_vm_cost_per_hour * COALESCE(num_workers, 0))) * hours_per_month as vm_cost_per_month,
+    
+    -- CALCULATED FIELDS - Total Cost
+    CASE 
+        WHEN workload_type IN ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY') THEN 
+            fmapi_dbu_per_month * price_per_dbu
+        ELSE 
+            (dbu_per_hour * hours_per_month * price_per_dbu) +
+            ((driver_vm_cost_per_hour + (worker_vm_cost_per_hour * COALESCE(num_workers, 0))) * hours_per_month)
+    END as cost_per_month,
+    
+    -- CALCULATED FIELDS - FMAPI Token-based (for auditability)
+    fmapi_dbu_per_month
+
+FROM final_calc;
+*/
+
+-- =============================================================================
+-- END OF COMMENTED OUT VIEWS
+-- =============================================================================
+-- The actual views are in: 02_Create_Views.sql
+-- =============================================================================
+
+/*
+-- VIEW: v_estimates_with_totals
+-- =============================================================================
+-- Aggregates costs from line items. MUST be created AFTER v_line_items_with_costs.
+-- Usage: SELECT * FROM v_estimates_with_totals WHERE owner_user_id = :user_id
+-- =============================================================================
+
+CREATE OR REPLACE VIEW v_estimates_with_totals AS
+SELECT 
+    e.*,
+    COALESCE(t.total_dbu_per_month, 0) as total_dbu_per_month,
+    COALESCE(t.total_cost_per_month, 0) as total_cost_per_month,
+    COALESCE(t.line_item_count, 0) as line_item_count
+FROM estimates e
+LEFT JOIN (
+    SELECT 
+        estimate_id,
+        SUM(cost_per_month) as total_cost_per_month,
+        SUM(dbu_per_month) as total_dbu_per_month,
+        COUNT(*) as line_item_count
+    FROM v_line_items_with_costs
+    GROUP BY estimate_id
+) t ON e.estimate_id = t.estimate_id;
+*/
+
+-- =============================================================================
+-- END OF COMMENTED OUT VIEWS
+-- =============================================================================
+-- The actual views are in: 02_Create_Views.sql
+-- Use that file to create/update views
+-- =============================================================================
+
+-- =============================================================================
+-- HOW TO ADD A NEW WORKLOAD TYPE (e.g., AI_PARSE_DOCUMENT)
+-- =============================================================================
+-- 
+-- The design is EXTENSIBLE. Adding new workloads does NOT break existing estimates.
+-- 
+-- OPTION A: Use workload_config JSON (NO SCHEMA CHANGE)
+-- ─────────────────────────────────────────────────────
+-- 1. Add row to ref_workload_types:
+--    INSERT INTO ref_workload_types VALUES (
+--        'AI_PARSE_DOCUMENT', 'AI Document Parsing', 'Extract data from docs',
+--        false, false, false, false, false, false, false, false, true,
+--        'DOCUMENT_AI_PARSE', NULL, 11
+--    );
+-- 
+-- 2. Store workload-specific fields in workload_config JSON:
+--    INSERT INTO line_items (workload_type, workload_config, ...) VALUES (
+--        'AI_PARSE_DOCUMENT',
+--        '{"pages_per_month": 100000, "model": "docai-v2", "output_format": "json"}',
+--        ...
+--    );
+-- 
+-- 3. Update v_line_items_with_costs view to handle new type:
+--    WHEN workload_type = 'AI_PARSE_DOCUMENT' THEN
+--        (workload_config->>'pages_per_month')::bigint / 1000 * rate
+-- 
+-- OPTION B: Add dedicated columns (SCHEMA CHANGE)
+-- ─────────────────────────────────────────────────────
+-- 1. ALTER TABLE line_items ADD COLUMN ai_parse_pages_per_month BIGINT;
+-- 2. Existing rows get NULL (no impact)
+-- 3. Update ref_workload_types
+-- 4. Update v_line_items_with_costs view
+-- 
+-- WHY EXISTING ESTIMATES ARE SAFE:
+-- ─────────────────────────────────────────────────────
+-- - New columns default to NULL for existing rows
+-- - workload_type determines which fields are used
+-- - Cost calculation only looks at relevant fields per type
+-- - Old estimates with old workload_types work unchanged
+-- 
+-- =============================================================================
+
+-- =============================================================================
+-- WORKLOAD COVERAGE SUMMARY
+-- =============================================================================
+-- All 8 workload types are covered by line_items columns:
+--
+-- Usage Pattern:
+--   - Hourly workloads: runs_per_day, avg_runtime_minutes, days_per_month
+--   - Token workloads:  fmapi_input_tokens_per_month, fmapi_output_tokens_per_month
+--
+-- | Workload Type     | Config Fields                                            |
+-- |-------------------|----------------------------------------------------------|
+-- | JOBS              | serverless_enabled, photon_enabled,                      |
+-- |                   | driver_node_type, worker_node_type, num_workers,         |
+-- |                   | runs_per_day, avg_runtime_minutes, days_per_month,       |
+-- |                   | vm_pricing_tier, vm_payment_option, spot_percentage      |
+-- |-------------------|----------------------------------------------------------|
+-- | ALL_PURPOSE       | serverless_enabled, photon_enabled,                      |
+-- |                   | driver_node_type, worker_node_type, num_workers,         |
+-- |                   | runs_per_day, avg_runtime_minutes, days_per_month,       |
+-- |                   | vm_pricing_tier                                          |
+-- |-------------------|----------------------------------------------------------|
+-- | DLT               | serverless_enabled, photon_enabled,                      |
+-- |                   | dlt_edition, dlt_pipeline_mode,                          |
+-- |                   | driver_node_type, worker_node_type, num_workers,         |
+-- |                   | runs_per_day, avg_runtime_minutes, days_per_month,       |
+-- |                   | vm_pricing_tier                                          |
+-- |-------------------|----------------------------------------------------------|
+-- | DBSQL             | dbsql_warehouse_type, dbsql_warehouse_size,              |
+-- |                   | dbsql_num_clusters,                                      |
+-- |                   | runs_per_day, avg_runtime_minutes, days_per_month        |
+-- |-------------------|----------------------------------------------------------|
+-- | VECTOR_SEARCH     | serverless_product, serverless_size,                     |
+-- |                   | runs_per_day, avg_runtime_minutes, days_per_month        |
+-- |-------------------|----------------------------------------------------------|
+-- | MODEL_SERVING     | serverless_product, serverless_size,                     |
+-- |                   | runs_per_day, avg_runtime_minutes, days_per_month        |
+-- |-------------------|----------------------------------------------------------|
+-- | FMAPI_DATABRICKS  | fmapi_model,                                             |
+-- |                   | fmapi_input_tokens_per_month, fmapi_output_tokens_per_month |
+-- |-------------------|----------------------------------------------------------|
+-- | FMAPI_PROPRIETARY | fmapi_provider, fmapi_model, fmapi_endpoint_type,        |
+-- |                   | fmapi_context_length,                                    |
+-- |                   | fmapi_input_tokens_per_month, fmapi_output_tokens_per_month |
+-- =============================================================================
+--
+-- Hours Calculation (for all hourly workloads):
+--   hours_per_month = runs_per_day * (avg_runtime_minutes / 60) * days_per_month
+--
+-- Notes:
+--   - JOBS/ALL_PURPOSE/DLT: VM fields used for sizing; ignored if serverless_enabled
+--   - DBSQL: serverless via dbsql_warehouse_type = 'SERVERLESS'
+-- =============================================================================
+
+CREATE TABLE conversation_messages (
+    message_id UUID PRIMARY KEY,
+    estimate_id UUID REFERENCES estimates(estimate_id),
+    message_role VARCHAR(20),              -- 'user' or 'assistant'
+    message_content TEXT,
+    message_sequence INT,
+    message_type VARCHAR(50),
+    tokens_used INT,
+    model_used VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -- created_by: REMOVED - derive from estimates.owner_user_id
+    -- For 'user' role messages, the sender is always the estimate owner
+);
+
+CREATE TABLE decision_records (
+    record_id UUID PRIMARY KEY,
+    line_item_id UUID REFERENCES line_items(line_item_id),  -- Get estimate via: line_items.estimate_id
+    record_type VARCHAR(50),
+    user_input TEXT,
+    agent_response TEXT,
+    assumptions JSON,
+    calculations JSON,
+    reasoning TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -- estimate_id: REMOVED - derive from line_items.estimate_id
+    -- created_by: REMOVED - derive from estimates.owner_user_id
+);
+
+CREATE TABLE sharing (
+    share_id UUID PRIMARY KEY,
+    estimate_id UUID REFERENCES estimates(estimate_id),
+    share_type VARCHAR(20),
+    shared_with_user_id UUID REFERENCES users(user_id),
+    share_link VARCHAR(255) UNIQUE,
+    permission VARCHAR(20),
+    expires_at TIMESTAMP,
+    access_count INT DEFAULT 0,
+    last_accessed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -- created_by: REMOVED - derive from estimates.owner_user_id
+    -- The estimate owner is always the one who creates shares
+);
+
+-- =============================================================================
+-- SCRIPT COMPLETE
+-- =============================================================================
+-- This script creates APPLICATION TABLES and VIEWS.
+-- 
+-- SYNCED TABLES (created by Lakebase sync, NOT in this script):
+--   - sync_pricing_dbu_rates
+--   - sync_pricing_vm_costs
+--   - sync_product_dbsql_rates
+--   - sync_product_serverless_rates
+--   - sync_product_fmapi_databricks
+--   - sync_product_fmapi_proprietary
+--   - sync_ref_instance_dbu_rates
+--   - sync_ref_dbu_multipliers
+--   - sync_ref_sku_region_map
+--   - sync_ref_dbsql_warehouse_config
+-- 
+-- IDEMPOTENT: Safe to run multiple times.
+-- 
+-- Execution order:
+--   1. DROP application tables
+--   2. CREATE application tables (users, templates, estimates, line_items)
+--   3. CREATE views (v_line_items_with_costs, v_estimates_with_totals)
+--   4. CREATE ref_workload_types with seed data
+--   5. ADD FK constraint (line_items → ref_workload_types)
+--   6. CREATE remaining tables (conversation_messages, decision_records, sharing)
+--
+-- PREREQUISITE: Synced tables (sync_*) must exist before views will work!
+-- 
+-- To run: psql -h <host> -d <database> -U <user> -f lakemeter_erd.sql
+-- =============================================================================

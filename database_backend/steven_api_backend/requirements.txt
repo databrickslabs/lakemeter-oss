@@ -1,0 +1,7 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+databricks-sdk>=0.60.0
+sqlalchemy>=2.0.0
+asyncpg
+python-dotenv
+

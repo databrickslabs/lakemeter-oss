@@ -1,0 +1,13 @@
+Scenario,Tried?,Worked?,Cost Accurate?,Comments
+Data Ingestion - Ingest from Salesforce/S3 daily,,,,
+ETL Jobs - Process 100GB of data nightly,,,,
+SQL Analytics - 50 analysts querying dashboards,,,,
+ML Training - Train model on 1TB dataset weekly,,,,
+Real-time Streaming - Process Kafka streams 24/7,,,,
+Interactive Notebooks - 10 data scientists exploring data,,,,
+DLT Pipeline - Continuous data transformation,,,,
+Model Serving - Deploy ML model with GPU,,,,
+Vector Search - Semantic search on documents,,,,
+Your Own Scenario 1,,,,
+Your Own Scenario 2,,,,
+
