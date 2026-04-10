@@ -34,7 +34,8 @@ w = WorkspaceClient()
 # Get Lakebase connection via owner credentials (OAuth)
 instance = w.database.get_database_instance(instance_name)
 instance_host = instance.read_write_dns
-cred = w.database.generate_database_credential(instance_name=instance_name)
+import uuid
+cred = w.database.generate_database_credential(request_id=str(uuid.uuid4()), instance_names=[instance_name])
 owner_user = w.current_user.me().user_name
 
 conn = psycopg2.connect(
@@ -126,9 +127,16 @@ print("Sync tables ready")
 # COMMAND ----------
 
 # Resolve the DABs bundle files path for pricing_data/
-# DABs syncs files to: /Workspace/Users/{user}/.bundle/{bundle}/default/files/
-bundle_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-pricing_dir = os.path.join(bundle_root, "pricing_data")
+# DABs syncs to: /Workspace/Users/{user}/.bundle/{bundle}/{target}/files/
+# This notebook runs from .../files/notebooks/03_load_pricing_data
+nb_context = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
+nb_path = nb_context.notebookPath().get()
+# notebookPath returns /Users/... but filesystem needs /Workspace/Users/...
+if not nb_path.startswith("/Workspace"):
+    nb_path = "/Workspace" + nb_path
+# Go up from notebooks/ to files/, then into pricing_data/
+bundle_files_dir = os.path.dirname(os.path.dirname(nb_path))
+pricing_dir = os.path.join(bundle_files_dir, "pricing_data")
 
 # Verify CSVs exist
 csv_count = len([f for f in os.listdir(pricing_dir) if f.endswith(".csv")]) if os.path.isdir(pricing_dir) else 0

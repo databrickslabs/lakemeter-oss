@@ -112,25 +112,14 @@ def debug_database():
         if token_manager._workspace_client:
             result["workspace_client_status"] = "INITIALIZED"
         
-        if token_manager._sp_client_id and token_manager._sp_client_secret:
-            result["sp_credentials_status"] = "FETCHED"
-            result["sp_client_id_preview"] = token_manager._sp_client_id[:8] + "..." if token_manager._sp_client_id else None
-        
-        # Try to generate token and capture error
+        # Try to generate token using the workspace client
         try:
-            from databricks.sdk import WorkspaceClient
-            sp_client = WorkspaceClient(
-                host=token_manager.databricks_host,
-                client_id=token_manager._sp_client_id,
-                client_secret=token_manager._sp_client_secret
-            )
-            credential = sp_client.database.generate_database_credential(
-                request_id=str(uuid.uuid4()),
-                instance_names=[token_manager.lakebase_instance_name]
-            )
-            if credential and credential.token:
-                result["token_status"] = f"GENERATED (length: {len(credential.token)})"
-                token_manager._token = credential.token
+            token = token_manager.get_token()
+            if token:
+                result["token_status"] = f"GENERATED (length: {len(token)})"
+                result["db_user"] = token_manager.db_user
+            else:
+                result["token_status"] = "NO TOKEN"
         except Exception as e:
             result["token_status"] = "GENERATION FAILED"
             result["token_error"] = str(e)

@@ -146,7 +146,44 @@ PRICING_SRC="$REPO_ROOT/backend/static/pricing"
 PRICING_DST="$SCRIPT_DIR/pricing_data"
 rm -rf "$PRICING_DST"
 mkdir -p "$PRICING_DST"
-cp "$PRICING_SRC"/*.csv "$PRICING_DST/" 2>/dev/null || true
+MAX_FILE_SIZE=$((9 * 1024 * 1024))  # 9MB (workspace import limit is ~10MB)
+for csv_file in "$PRICING_SRC"/*.csv; do
+    [ -f "$csv_file" ] || continue
+    file_size=$(wc -c < "$csv_file" | xargs)
+    if [ "$file_size" -le "$MAX_FILE_SIZE" ]; then
+        cp "$csv_file" "$PRICING_DST/"
+    else
+        # Split large CSV into parts using Python (handles header correctly)
+        base_name=$(basename "$csv_file" .csv)
+        echo -e "  ${YELLOW}Splitting ${base_name}.csv ($(( file_size / 1024 / 1024 ))MB)...${NC}"
+        python3 -c "
+import csv, os, sys
+max_size = $MAX_FILE_SIZE
+src = '$csv_file'
+dst_dir = '$PRICING_DST'
+stem = '$base_name'
+with open(src, 'r') as f:
+    reader = csv.reader(f)
+    header = next(reader)
+    header_line = ','.join(header) + '\n'
+    part_num = 0
+    current_size = max_size + 1  # force new file on first row
+    out = None
+    for row in reader:
+        line = ','.join(row) + '\n'
+        if current_size + len(line.encode()) > max_size:
+            if out: out.close()
+            part_num += 1
+            out = open(os.path.join(dst_dir, f'{stem}_part{part_num}.csv'), 'w')
+            out.write(header_line)
+            current_size = len(header_line.encode())
+        out.write(line)
+        current_size += len(line.encode())
+    if out: out.close()
+    print(f'  Split into {part_num} parts')
+"
+    fi
+done
 CSV_COUNT=$(ls -1 "$PRICING_DST"/*.csv 2>/dev/null | wc -l | xargs)
 echo -e "  ${GREEN}Pricing data: ${CSV_COUNT} CSV files${NC}"
 

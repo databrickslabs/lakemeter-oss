@@ -34,8 +34,12 @@ print(f"App workspace source path: {ws_path}")
 # COMMAND ----------
 
 # Resolve bundle files path
-bundle_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-app_source_dir = os.path.join(bundle_root, "app_source")
+nb_context = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
+nb_path = nb_context.notebookPath().get()
+if not nb_path.startswith("/Workspace"):
+    nb_path = "/Workspace" + nb_path
+bundle_files_dir = os.path.dirname(os.path.dirname(nb_path))
+app_source_dir = os.path.join(bundle_files_dir, "app_source")
 
 print(f"Bundle app source: {app_source_dir}")
 assert os.path.isdir(app_source_dir), f"app_source directory not found at {app_source_dir}"
@@ -117,12 +121,25 @@ print(f"Uploaded {uploaded} files to {ws_path} (skipped {skipped})")
 
 # COMMAND ----------
 
-# Deploy the app
+# Deploy the app via REST API (SDK deploy signature varies across versions)
+import requests as req
+
 print(f"Deploying app '{app_name}'...")
+host = w.config.host.rstrip("/")
+headers = w.config.authenticate()
 try:
-    deployment = w.apps.deploy(app_name, source_code_path=ws_path)
-    deploy_id = deployment.deployment_id
-    print(f"Deployment started: {deploy_id}")
+    resp = req.post(
+        f"{host}/api/2.0/apps/{app_name}/deployments",
+        headers=headers,
+        json={"source_code_path": ws_path},
+    )
+    if resp.status_code < 300:
+        deploy_data = resp.json()
+        deploy_id = deploy_data.get("deployment_id", "unknown")
+        print(f"Deployment started: {deploy_id}")
+    else:
+        print(f"Deploy API error: {resp.status_code} {resp.text[:200]}")
+        dbutils.notebook.exit(f"Deploy failed: {resp.status_code} {resp.text[:200]}")
 except Exception as e:
     print(f"Error starting deployment: {e}")
     dbutils.notebook.exit(f"Deploy failed: {e}")
