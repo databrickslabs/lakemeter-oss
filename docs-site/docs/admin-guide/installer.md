@@ -15,9 +15,9 @@ Before running the installer, ensure you have:
   - `psycopg2-binary`
   - `requests`
 - **Databricks CLI** installed and configured with a workspace profile
-- **Service Principal** credentials stored in a Databricks secrets scope
-- **Lakebase** enabled on your workspace
-- **Node.js and npm** (optional — needed for frontend build during deploy step)
+- **Service Principal** registered in your workspace (the installer creates the secrets scope and prompts for credentials if needed)
+- **Lakebase** feature enabled on your workspace (the installer provisions the instance automatically)
+- **Node.js 22+ and npm** (optional — the Databricks Apps runtime includes Node.js 22.16, so this is only needed for local frontend builds)
 
 ## Usage
 
@@ -48,19 +48,19 @@ python scripts/install_lakemeter.py --profile <cli-profile> --non-interactive
 | `--dry-run` | Validate prerequisites and show config plan without executing |
 | `--non-interactive` | Use all defaults with no prompts (for CI/CD pipelines) |
 
-## The 9-Step Flow
+## The 10-Step Flow
 
-The installer executes 9 sequential steps. Each step prints a progress indicator and a green checkmark on success.
+The installer executes 10 sequential steps. Each step prints a progress indicator and a green checkmark on success.
 
 ### Step 1: Validate Prerequisites
 
 Checks Python version (3.10+), required Python packages (`databricks-sdk`, `psycopg2-binary`, `requests`), Node.js/npm availability, Databricks CLI installation, pricing data files in `backend/static/pricing/`, and workspace connectivity.
 
 ```
-[1/9] Validating prerequisites
+[1/10] Validating prerequisites
   ✓ Python 3.11
   ✓ Required Python packages installed
-  ✓ Node.js v20.11.0
+  ✓ Node.js v22.16.0
   ✓ Databricks CLI found
   ✓ Pricing data: 9 JSON files
   ✓ Authenticated as user@company.com
@@ -79,6 +79,7 @@ Interactive prompts collect deployment parameters. All parameters have sensible 
 | Secrets scope | `lakemeter-secrets` | Databricks secret scope name |
 | SP client ID key | `sp_clientid` | Secret scope key for SP client ID |
 | SP secret key | `sp_secret` | Secret scope key for SP client secret |
+| Claude endpoint | `databricks-claude-opus-4-6` | Claude model serving endpoint name (for AI Assistant) |
 
 ### Step 3: Provision Lakebase Instance
 
@@ -86,6 +87,8 @@ Creates a new Lakebase (managed PostgreSQL) instance via the Databricks SDK (`da
 
 - Instance creation takes 2–5 minutes
 - The installer polls every 5 seconds until the instance reaches `AVAILABLE` state (timeout: 10 minutes)
+- Enables auto-scaling (serverless compute) on the instance
+- Enables `pg_native_login` for password-based authentication fallback
 - Returns the instance DNS hostname, UID, and name
 - Skipped with `--skip-provision`
 
@@ -96,7 +99,10 @@ Connects to the Lakebase instance using owner credentials (via `generate_databas
 - Creates the database (e.g., `lakemeter_pricing`) if it doesn't exist
 - Creates the `lakemeter` schema
 - Creates 9 application tables: `users`, `templates`, `ref_cloud_tiers`, `estimates`, `ref_workload_types`, `line_items`, `conversation_messages`, `decision_records`, `sharing`
-- Seeds reference data: 12 workload types and 8 cloud/tier combinations
+- Seeds reference data: 14 workload types and 8 cloud/tier combinations
+- Creates case normalization triggers on `estimates` and `line_items` tables (auto-normalizes cloud, tier, workload_type, etc.)
+- Creates a `lakemeter_sync_role` PostgreSQL role with a generated password as a fallback authentication method
+- Stores the role credentials (`lakebase-user`, `lakebase-password`, `lakebase-host`, `lakebase-database`) in the secrets scope
 - Adds indexes on `line_items(estimate_id)` and `line_items(workload_type)`
 - Adds the `discount_config` JSONB column to estimates
 - Updates the Lakebase CU size constraint (supports 0.5 and 1–112)
@@ -129,10 +135,12 @@ The most critical step — configures OAuth M2M access so the Databricks App can
 
 Sub-steps:
 
-1. **Grant `CAN_MANAGE`** workspace-level permission on the Lakebase instance
-2. **Create SP role** via the Lakebase Roles API with `identity_type=SERVICE_PRINCIPAL`
-3. **Grant schema permissions** — `USAGE`, `SELECT`, `INSERT`, `UPDATE`, `DELETE` on all tables in the `lakemeter` schema
-4. **Verify connectivity** — generate an OAuth token and execute a test query
+1. **Ensure secrets scope exists** — creates the scope if it doesn't exist
+2. **Collect SP credentials** — reads SP client ID and secret from the secrets scope, or prompts the user to enter them (and stores them)
+3. **Grant `CAN_MANAGE`** workspace-level permission on the Lakebase instance
+4. **Create SP role** via the Lakebase Roles API with `identity_type=SERVICE_PRINCIPAL`
+5. **Grant schema permissions** — `ALL PRIVILEGES` on tables, sequences, and functions in the `lakemeter` schema, plus `ALTER DEFAULT PRIVILEGES`
+6. **Verify connectivity** — generate an OAuth token and execute a test query
 
 :::caution
 If a role already exists with `identity_type=PG_ONLY`, the installer deletes it and recreates it with `identity_type=SERVICE_PRINCIPAL`. The `PG_ONLY` type cannot exchange OAuth tokens — see the [Permissions Guide](./permissions).
@@ -160,7 +168,14 @@ env:
     valueFrom: "lakemeter-db-name"
 ```
 
-If `--skip-deploy` is not set, an optional Step 10 deploys the application to Databricks Apps.
+The installer also configures Databricks App resources so that `valueFrom` references resolve at runtime. It creates workspace secrets for each configuration value and maps them to app-level resources via the Apps API. It also:
+
+- Configures a Claude model serving endpoint resource for the AI Assistant
+- Grants the Databricks App's own service principal access to the Lakebase instance (role creation + SQL permissions)
+
+### Step 10: Deploy Application
+
+Runs `deploy.sh --workspace-deploy` to sync the application files to the Databricks workspace and deploy the app. Only essential files are synced (backend, frontend source, scripts, app.yaml). Skipped with `--skip-deploy`.
 
 ## After Installation
 
@@ -185,7 +200,8 @@ Once all steps complete:
 
 ### Installer fails at Step 7 (SP access)
 
-- Verify the secrets scope contains the `sp_clientid` and `sp_secret` keys
+- The installer creates the secrets scope automatically, but the SP must exist in the workspace
+- If prompted for SP credentials, ensure you enter the correct client ID and secret
 - The SP must use `identity_type=SERVICE_PRINCIPAL` — see the [Permissions Guide](./permissions)
 - Check that the SP has workspace-level access
 

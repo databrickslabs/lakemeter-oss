@@ -106,13 +106,18 @@ POST /api/2.0/database/instances/{instance-name}/roles
 Fine-grained table access within the `lakemeter` schema:
 
 ```sql
+GRANT CONNECT ON DATABASE lakemeter_pricing TO "<client-id>";
 GRANT USAGE ON SCHEMA lakemeter TO "<client-id>";
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA lakemeter TO "<client-id>";
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA lakemeter TO "<client-id>";
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA lakemeter TO "<client-id>";
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA lakemeter TO "<client-id>";
 ALTER DEFAULT PRIVILEGES IN SCHEMA lakemeter
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "<client-id>";
+  GRANT ALL PRIVILEGES ON TABLES TO "<client-id>";
+ALTER DEFAULT PRIVILEGES IN SCHEMA lakemeter
+  GRANT EXECUTE ON FUNCTIONS TO "<client-id>";
 ```
 
-The `ALTER DEFAULT PRIVILEGES` ensures the SP can access tables created in the future.
+The `ALTER DEFAULT PRIVILEGES` ensures the SP can access tables and functions created in the future. The installer applies these grants automatically in Step 7.
 
 ## Token Lifecycle
 
@@ -135,7 +140,7 @@ The test suite includes dedicated permission tests in `tests/test_lakebase_permi
 | Token expiry validation | Token has a future expiry timestamp |
 | DB connectivity | SP can connect to Lakebase with the generated token |
 | PG16 version check | Connected instance runs PostgreSQL 16+ |
-| Workload type read | SP can read all 12 workload types from pricing tables |
+| Workload type read | SP can read all 14 workload types from pricing tables |
 | DBU rate read | SP can read DBU rates with values > 0 |
 | VM cost read | SP can read VM cost data |
 | CRUD on users table | SP can INSERT, SELECT, UPDATE, DELETE on the users table |

@@ -32,12 +32,14 @@ Lakemeter is deployed as a **Databricks App** — a managed web application runn
 
 ## Prerequisites
 
-- **Databricks Workspace** with Apps enabled
+- **Databricks Workspace** with Apps and Lakebase enabled
 - **Databricks CLI** installed and configured with a workspace profile
-- **Node.js 18+** and **npm** (for frontend and docs builds)
-- **Lakebase instance** provisioned (see [Database](./database))
-- **Secret scope** with SP credentials (see [Configuration](./configuration))
-- **Service principal** for Lakebase OAuth M2M access (see [Permissions](./permissions))
+- **Node.js 22+** and **npm** (for local frontend builds — the Databricks Apps runtime includes Node.js 22.16)
+- **Service Principal** registered in your workspace (client ID and secret)
+
+:::tip Automated provisioning
+The [Installer](./installer) automatically provisions the Lakebase instance, creates the secret scope, stores SP credentials, sets up database schema, and configures all permissions. The only manual prerequisite is having a Service Principal created in your workspace.
+:::
 
 ## Automated Installation
 

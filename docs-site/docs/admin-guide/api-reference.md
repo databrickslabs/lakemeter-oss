@@ -486,7 +486,7 @@ PUT /api/v1/users/{user_id}
 GET /api/v1/workload-types
 ```
 
-Returns all 12 workload types with their UI configuration flags.
+Returns all 14 workload types with their UI configuration flags.
 
 ### Get Workload Type
 

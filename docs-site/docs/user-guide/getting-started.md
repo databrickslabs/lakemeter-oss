@@ -114,7 +114,7 @@ This file is ready to attach to an RFP response, share in a planning meeting, or
 
 ## What to try next
 
-- **Add more workloads** -- try Model Serving or FMAPI to estimate AI/ML costs. See the [Quick Reference](/user-guide/quick-reference) for a summary of all 12 workload types.
+- **Add more workloads** -- try Model Serving or FMAPI to estimate AI/ML costs. See the [Quick Reference](/user-guide/quick-reference) for a summary of all 14 workload types.
 - **Use the AI Assistant** -- click the chat icon on the right side and describe what you need. For example: "Add a DLT pipeline for real-time streaming with Pro edition." The assistant proposes workload configurations you can accept or modify. See the [AI Assistant guide](/user-guide/ai-assistant).
 - **Duplicate and compare** -- duplicate your estimate, change the region or tier, and compare costs side by side.
 - **Follow the full workflow** -- see the [End-to-End Workflow](/user-guide/end-to-end-workflow) guide for a complete walkthrough from creation through export interpretation.
