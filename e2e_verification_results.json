@@ -1,0 +1,203 @@
+{
+  "timestamp": "2026-04-11 00:36:18",
+  "app_url": "https://lm-e2e-final-335310294452632.aws.databricksapps.com",
+  "results": [
+    {
+      "num": 1,
+      "name": "Create estimate (AWS us-east-1)",
+      "status": "PASS",
+      "duration_ms": 1784,
+      "detail": "id=6002001e...",
+      "http": 201
+    },
+    {
+      "num": 2,
+      "name": "List estimates",
+      "status": "PASS",
+      "duration_ms": 839,
+      "detail": "1 estimates",
+      "http": 200
+    },
+    {
+      "num": 3,
+      "name": "Get estimate by ID",
+      "status": "PASS",
+      "duration_ms": 846,
+      "detail": "name=E2E Final Test",
+      "http": 200
+    },
+    {
+      "num": 4,
+      "name": "Create: Jobs Classic (i3.xlarge x4)",
+      "status": "PASS",
+      "duration_ms": 893,
+      "detail": "id=9753fea6...",
+      "http": 201
+    },
+    {
+      "num": 5,
+      "name": "Create: DBSQL Pro (MEDIUM)",
+      "status": "PASS",
+      "duration_ms": 956,
+      "detail": "id=0ff8fb0b...",
+      "http": 201
+    },
+    {
+      "num": 6,
+      "name": "Create: DLT Pro (i3.xlarge x2)",
+      "status": "PASS",
+      "duration_ms": 877,
+      "detail": "id=9c282e4a...",
+      "http": 201
+    },
+    {
+      "num": 7,
+      "name": "Create: All-Purpose Classic (m5.xlarge x2)",
+      "status": "PASS",
+      "duration_ms": 890,
+      "detail": "id=9a0acd2d...",
+      "http": 201
+    },
+    {
+      "num": 8,
+      "name": "Create: Lakebase (4 CU, 2 HA nodes)",
+      "status": "PASS",
+      "duration_ms": 868,
+      "detail": "id=14349682...",
+      "http": 201
+    },
+    {
+      "num": 9,
+      "name": "List line items for estimate",
+      "status": "FAIL",
+      "duration_ms": 798,
+      "detail": "2 line items",
+      "http": 200
+    },
+    {
+      "num": 10,
+      "name": "Calculate: Jobs Classic",
+      "status": "PASS",
+      "duration_ms": 920,
+      "detail": "$450.56/mo",
+      "http": 200
+    },
+    {
+      "num": 11,
+      "name": "Calculate: DBSQL Pro",
+      "status": "PASS",
+      "duration_ms": 928,
+      "detail": "$2323.20/mo",
+      "http": 200
+    },
+    {
+      "num": 12,
+      "name": "Calculate: DLT Pro Classic",
+      "status": "PASS",
+      "duration_ms": 900,
+      "detail": "$111.28/mo",
+      "http": 200
+    },
+    {
+      "num": 13,
+      "name": "Calculate: All-Purpose Classic",
+      "status": "PASS",
+      "duration_ms": 903,
+      "detail": "$307.44/mo",
+      "http": 200
+    },
+    {
+      "num": 14,
+      "name": "Calculate: Lakebase",
+      "status": "FAIL",
+      "duration_ms": 804,
+      "detail": "HTTP 422: {'detail': [{'type': 'missing', 'loc': ['body', 'cu_size'], 'msg': 'Field requir",
+      "http": 422
+    },
+    {
+      "num": 15,
+      "name": "Excel export (5 workloads)",
+      "status": "ERROR",
+      "duration_ms": 3772,
+      "detail": "Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "num": 16,
+      "name": "Instance types (AWS us-east-1)",
+      "status": "FAIL",
+      "duration_ms": 1378,
+      "detail": "{'success': True, 'data': {'cloud': 'AWS', 'region': 'us-east-1', 'filters': None, 'total': 563, 'co",
+      "http": 200
+    },
+    {
+      "num": 17,
+      "name": "DBU rates (AWS ENTERPRISE)",
+      "status": "PASS",
+      "duration_ms": 840,
+      "detail": "25 SKUs",
+      "http": 200
+    },
+    {
+      "num": 18,
+      "name": "FMAPI Databricks models",
+      "status": "PASS",
+      "duration_ms": 797,
+      "detail": "2 models",
+      "http": 200
+    },
+    {
+      "num": 19,
+      "name": "FMAPI Proprietary models",
+      "status": "PASS",
+      "duration_ms": 805,
+      "detail": "2 providers",
+      "http": 200
+    },
+    {
+      "num": 20,
+      "name": "DBSQL warehouse sizes (AWS)",
+      "status": "FAIL",
+      "duration_ms": 825,
+      "detail": "{'success': False, 'error': {'message': \"(psycopg2.errors.UndefinedColumn) column config.driver_coun",
+      "http": 200
+    },
+    {
+      "num": 21,
+      "name": "Model Serving GPU types (AWS)",
+      "status": "FAIL",
+      "duration_ms": 825,
+      "detail": "{'success': True, 'data': {'cloud': 'AWS', 'count': 7, 'gpu_types': [{'gpu_type': 'cpu', 'name': 'CP",
+      "http": 200
+    },
+    {
+      "num": 22,
+      "name": "Clouds & Regions",
+      "status": "FAIL",
+      "duration_ms": 799,
+      "detail": "2 clouds",
+      "http": 200
+    },
+    {
+      "num": 23,
+      "name": "VM pricing (i3.xlarge)",
+      "status": "PASS",
+      "duration_ms": 853,
+      "detail": "8 pricing rows",
+      "http": 200
+    },
+    {
+      "num": 24,
+      "name": "Current user info",
+      "status": "PASS",
+      "duration_ms": 819,
+      "detail": "email=steven.tan@databricks.com",
+      "http": 200
+    }
+  ],
+  "summary": {
+    "passed": 17,
+    "failed": 7,
+    "total_tests": 24,
+    "total_api_ms": 24919
+  }
+}
