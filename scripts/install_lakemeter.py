@@ -43,8 +43,6 @@ SETUP_DIR = APP_DIR / "etl" / "lakebase_setup" / "setup"
 DEFAULT_DB_NAME = "lakemeter_pricing"
 DEFAULT_SCHEMA = "lakemeter"
 DEFAULT_CU_SIZE = "CU_0_5"  # Start at 0.5 CU, autoscale to 16 CU
-DEFAULT_SP_CLIENT_ID_KEY = "sp_clientid"
-DEFAULT_SP_SECRET_KEY = "sp_secret"
 DEFAULT_CLAUDE_ENDPOINT = "databricks-claude-opus-4-6"
 DEFAULT_NODE_COUNT = 1
 DEFAULT_UC_CATALOG = "lakemeter_catalog"
@@ -247,8 +245,6 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
             "app_name": "lakemeter",
             "cu_size": DEFAULT_CU_SIZE,
             "secrets_scope": "lakemeter-secrets",
-            "sp_client_id_key": DEFAULT_SP_CLIENT_ID_KEY,
-            "sp_secret_key": DEFAULT_SP_SECRET_KEY,
             "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
             "uc_catalog": DEFAULT_UC_CATALOG,
             "pricing_source": "static",
@@ -320,8 +316,6 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
         "app_name": app_name,
         "cu_size": DEFAULT_CU_SIZE,
         "secrets_scope": secrets_scope,
-        "sp_client_id_key": DEFAULT_SP_CLIENT_ID_KEY,
-        "sp_secret_key": DEFAULT_SP_SECRET_KEY,
         "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
         "uc_catalog": uc_catalog,
         "pricing_source": pricing_source,
@@ -514,6 +508,18 @@ def create_password_auth_role(ctx: dict, instance_info: dict, cfg: dict):
     w = ctx["client"]
     scope = cfg["secrets_scope"]
     role_name = "lakemeter_sync_role"
+
+    # Ensure secrets scope exists (needed for storing DB credentials)
+    try:
+        w.secrets.list_secrets(scope=scope)
+    except Exception:
+        try:
+            w.secrets.create_scope(scope=scope)
+            log_ok(f"Secrets scope '{scope}' created")
+        except Exception as e:
+            if "already exists" not in str(e).lower():
+                log_err(f"Cannot create secrets scope: {e}")
+                sys.exit(1)
 
     conn = get_owner_connection(ctx, instance_info, cfg)
     conn.autocommit = True
@@ -1863,16 +1869,9 @@ env:
   - name: "CORS_ORIGINS"
     value: ""
 
-  # Note: DATABRICKS_HOST is auto-populated by Databricks Apps platform.
-  # Do NOT set it manually — the platform injects the correct workspace URL.
-
-  # Secrets scope containing SP credentials
-  - name: "DATABRICKS_SECRETS_SCOPE"
-    valueFrom: "{cfg['secrets_scope']}-scope"
-  - name: "SP_CLIENT_ID_KEY"
-    value: "{cfg['sp_client_id_key']}"
-  - name: "SP_SECRET_KEY"
-    value: "{cfg['sp_secret_key']}"
+  # Note: DATABRICKS_HOST, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET are
+  # auto-injected by the Databricks Apps platform. The app's built-in SP
+  # handles all authentication (Lakebase OAuth, model serving, etc.).
 
   # Lakebase database configuration
   - name: "LAKEBASE_INSTANCE_NAME"
@@ -1913,7 +1912,6 @@ def configure_app_resources(ctx: dict, instance_info: dict, cfg: dict):
 
     # 1. Create workspace secrets for config values (idempotent — overwrites if exists)
     config_secrets = {
-        "secrets-scope-name": scope,
         "lakebase-instance-name": instance_info["name"],
     }
     # lakebase-host, lakebase-user, lakebase-database should already exist from earlier steps
@@ -1926,7 +1924,6 @@ def configure_app_resources(ctx: dict, instance_info: dict, cfg: dict):
 
     # 2. Define resource mappings: valueFrom name -> scope:key
     resource_map = {
-        f"{scope}-scope": ("secrets-scope-name", "Secrets scope name"),
         f"{app_name}-lakebase-instance": ("lakebase-instance-name", "Lakebase instance name"),
         f"{app_name}-db-host": ("lakebase-host", "Database host"),
         f"{app_name}-db-user": ("lakebase-user", "Database user"),
@@ -1966,7 +1963,69 @@ def configure_app_resources(ctx: dict, instance_info: dict, cfg: dict):
 
 
 # ===================================================================
-# Step 10: Deploy App
+# Step 11b: Grant App SP Lakebase Access
+# ===================================================================
+def grant_app_sp_lakebase_access(ctx: dict, instance_info: dict, cfg: dict):
+    """Grant the Databricks App's built-in Service Principal access to Lakebase.
+
+    Databricks Apps auto-creates an SP for each app. This SP needs:
+    1. A Lakebase role with identity_type=SERVICE_PRINCIPAL
+    2. SQL-level permissions on the lakemeter schema
+    """
+    import requests
+
+    w = ctx["client"]
+    log_info("Granting app service principal Lakebase access...")
+    try:
+        app_info = w.apps.get(cfg["app_name"])
+        app_sp_id = app_info.service_principal_client_id
+        if not app_sp_id:
+            log_warn("App has no service principal — Lakebase OAuth will not work")
+            return
+
+        host = ctx["host"].rstrip("/")
+        headers = w.config.authenticate()
+        roles_url = f"{host}/api/2.0/database/instances/{instance_info['name']}/roles"
+
+        # Check if role exists with correct identity_type
+        resp = requests.get(roles_url, headers=headers)
+        existing_roles = resp.json().get("database_instance_roles", []) if resp.status_code == 200 else []
+        sp_role = next((r for r in existing_roles if r["name"] == app_sp_id), None)
+
+        if not sp_role or sp_role.get("identity_type") != "SERVICE_PRINCIPAL":
+            if sp_role:
+                requests.delete(f"{roles_url}/{app_sp_id}", headers=headers)
+            resp = requests.post(roles_url, headers=headers, json={
+                "name": app_sp_id,
+                "identity_type": "SERVICE_PRINCIPAL",
+                "membership_role": "DATABRICKS_SUPERUSER",
+            })
+            if resp.status_code == 200:
+                log_ok(f"App SP Lakebase role created ({app_sp_id[:12]}...)")
+            else:
+                log_warn(f"Could not create app SP role: {resp.status_code}")
+        else:
+            log_ok("App SP already has Lakebase role")
+
+        # Grant SQL-level permissions
+        conn = get_owner_connection(ctx, instance_info, cfg)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(f'GRANT CONNECT ON DATABASE {cfg["db_name"]} TO "{app_sp_id}"')
+        cur.execute(f'GRANT USAGE ON SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
+        cur.execute(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
+        cur.execute(f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
+        cur.execute(f'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
+        cur.close()
+        conn.close()
+        log_ok("App SP SQL permissions granted")
+    except Exception as e:
+        log_warn(f"Could not configure app SP Lakebase access: {e}")
+        log_info("App will use password-auth fallback (lakemeter_sync_role)")
+
+
+# ===================================================================
+# Step 12: Deploy App
 # ===================================================================
 def deploy_app(ctx: dict, cfg: dict):
     """Build frontend and deploy to Databricks Apps via workspace sync.
@@ -2046,7 +2105,7 @@ def main():
     )
     args = parser.parse_args()
 
-    TOTAL_STEPS = 13
+    TOTAL_STEPS = 12
 
     print(f"\n{BOLD}{'='*60}{NC}")
     print(f"{BOLD}  Lakemeter Installer — Zero-Click Deployment{NC}")
@@ -2110,90 +2169,37 @@ def main():
     log_step(7, TOTAL_STEPS, "Creating SKU discount mapping")
     create_sku_discount_mapping(ctx, instance_info, cfg)
 
-    # Step 8: Configure SP access
-    log_step(8, TOTAL_STEPS, "Configuring Service Principal access")
-    configure_sp_access(ctx, instance_info, cfg)
-
-    # Step 9: Create views
-    log_step(9, TOTAL_STEPS, "Creating cost calculation views")
+    # Step 8: Create views
+    log_step(8, TOTAL_STEPS, "Creating cost calculation views")
     create_views(ctx, instance_info, cfg)
 
-    # Step 10: Store API credentials + upload ETL notebooks (API mode only)
-    log_step(10, TOTAL_STEPS, "Setting up ETL pricing sync")
+    # Step 9: Store API credentials + upload ETL notebooks (API mode only)
+    log_step(9, TOTAL_STEPS, "Setting up ETL pricing sync")
     if use_api:
         store_api_credentials(ctx, cfg)
         upload_etl_notebooks(ctx, cfg)
     else:
         log_info("Skipping — using static pricing files (no ETL notebooks needed)")
 
-    # Step 11: Create pricing sync workflow (API mode only)
-    log_step(11, TOTAL_STEPS, "Creating pricing sync workflow")
+    # Step 10: Create pricing sync workflow (API mode only)
+    log_step(10, TOTAL_STEPS, "Creating pricing sync workflow")
     if use_api:
         create_pricing_sync_workflow(ctx, cfg)
     else:
         log_info("Skipping — using static pricing files (no scheduled sync needed)")
 
-    # Step 12: Generate app.yaml + configure app resources
-    log_step(12, TOTAL_STEPS, "Generating app configuration & resources")
+    # Step 11: Generate app.yaml + configure app resources + grant app SP Lakebase access
+    log_step(11, TOTAL_STEPS, "Configuring application")
     generate_app_config(ctx, instance_info, cfg)
-
-    log_info("Configuring Databricks App resources (so valueFrom references resolve)...")
     configure_app_resources(ctx, instance_info, cfg)
+    grant_app_sp_lakebase_access(ctx, instance_info, cfg)
 
-    # Grant app SP access to Lakebase (so OAuth auth works)
-    log_info("Granting app service principal Lakebase access...")
-    w = ctx["client"]
-    try:
-        app_info = w.apps.get(cfg["app_name"])
-        app_sp_id = app_info.service_principal_client_id
-        if app_sp_id:
-            import requests
-            host = ctx["host"].rstrip("/")
-            headers = w.config.authenticate()
-            roles_url = f"{host}/api/2.0/database/instances/{instance_info['name']}/roles"
-
-            # Check if role exists
-            resp = requests.get(roles_url, headers=headers)
-            existing_roles = resp.json().get("database_instance_roles", []) if resp.status_code == 200 else []
-            sp_role = next((r for r in existing_roles if r["name"] == app_sp_id), None)
-
-            if not sp_role or sp_role.get("identity_type") != "SERVICE_PRINCIPAL":
-                if sp_role:
-                    requests.delete(f"{roles_url}/{app_sp_id}", headers=headers)
-                resp = requests.post(roles_url, headers=headers, json={
-                    "name": app_sp_id,
-                    "identity_type": "SERVICE_PRINCIPAL",
-                    "membership_role": "DATABRICKS_SUPERUSER",
-                })
-                if resp.status_code == 200:
-                    log_ok(f"App SP Lakebase role created ({app_sp_id[:12]}...)")
-                else:
-                    log_warn(f"Could not create app SP role: {resp.status_code}")
-            else:
-                log_ok("App SP already has Lakebase role")
-
-            # Grant SQL-level permissions
-            conn = get_owner_connection(ctx, instance_info, cfg)
-            conn.autocommit = True
-            cur = conn.cursor()
-            cur.execute(f'GRANT CONNECT ON DATABASE {cfg["db_name"]} TO "{app_sp_id}"')
-            cur.execute(f'GRANT USAGE ON SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
-            cur.execute(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
-            cur.execute(f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
-            cur.execute(f'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
-            cur.close()
-            conn.close()
-            log_ok("App SP SQL permissions granted (tables, sequences, functions)")
-    except Exception as e:
-        log_warn(f"Could not configure app SP Lakebase access: {e}")
-        log_info("App will use password-auth fallback (lakemeter_sync_role)")
-
-    # Step 13: Deploy
+    # Step 12: Deploy
     if not args.skip_deploy:
-        log_step(13, TOTAL_STEPS, "Deploying application")
+        log_step(12, TOTAL_STEPS, "Deploying application")
         deploy_app(ctx, cfg)
     else:
-        log_step(13, TOTAL_STEPS, "Deploying application")
+        log_step(12, TOTAL_STEPS, "Deploying application")
         log_info("Skipping deployment (--skip-deploy)")
 
     # Summary
@@ -2213,8 +2219,6 @@ def main():
     if use_api:
         print(f"  2. Run the pricing sync workflow manually (first time):")
         print(f"     databricks jobs run-now lakemeter-pricing-sync --profile {args.profile}")
-    print(f"  {'3' if use_api else '2'}. Run permission tests:")
-    print(f"     pytest tests/test_lakebase_permissions.py -v")
     print()
 
 
