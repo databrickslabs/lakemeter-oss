@@ -1636,9 +1636,9 @@ def deploy_app(ctx: dict, cfg: dict):
 
     # Backend app code
     upload_dir(APP_DIR / "backend" / "app", f"{ws_path}/backend/app")
-    # Backend static (exclude vm-costs.csv — too large for workspace snapshot)
+    # Backend static (exclude ALL CSVs — pricing data is in Lakebase, CSVs not needed at runtime)
     upload_dir(APP_DIR / "backend" / "static", f"{ws_path}/backend/static",
-               exclude_patterns=["vm-costs.csv"])
+               exclude_patterns=[".csv", "manifest.json"])
     # Backend scripts
     upload_dir(APP_DIR / "backend" / "scripts", f"{ws_path}/backend/scripts")
     # Frontend source (built at startup)
