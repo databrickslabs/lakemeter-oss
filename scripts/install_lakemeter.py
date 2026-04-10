@@ -6,9 +6,12 @@ Provisions a complete Lakemeter environment on Databricks:
   1. Validates prerequisites (CLI, profile, secrets)
   2. Provisions a new Lakebase (PostgreSQL) instance
   3. Creates database, schema, tables, views, constraints
-  4. Loads pricing reference data from static JSON files
-  5. Configures Service Principal access (OAuth M2M)
-  6. Creates Databricks App resources and deploys
+  4. Creates Unity Catalog and schema for ETL tables
+  5. Loads pricing reference data from static JSON files
+  6. Configures Service Principal access (OAuth M2M)
+  7. Uploads ETL pricing sync notebooks to workspace
+  8. Creates a Databricks Workflow for scheduled pricing sync
+  9. Creates Databricks App resources and deploys
 
 Usage:
     python scripts/install_lakemeter.py --profile <cli-profile>
@@ -44,6 +47,24 @@ DEFAULT_SP_CLIENT_ID_KEY = "sp_clientid"
 DEFAULT_SP_SECRET_KEY = "sp_secret"
 DEFAULT_CLAUDE_ENDPOINT = "databricks-claude-opus-4-6"
 DEFAULT_NODE_COUNT = 1
+DEFAULT_UC_CATALOG = "lakemeter_catalog"
+DEFAULT_UC_SCHEMA = "lakemeter"
+
+ETL_DIR = APP_DIR / "etl" / "pricing_sync"
+ETL_NOTEBOOKS = [
+    "01_Fetch_DBU_Prices.ipynb",
+    "02_Load_DBU_Rates.ipynb",
+    "03_Fetch_AWS_VM.ipynb",
+    "04_Fetch_Azure_VM.ipynb",
+    "05_Fetch_GCP_VM.ipynb",
+    "06_Validate_Pricing.ipynb",
+    "07_Load_DBSQL_Rates.ipynb",
+    "08_Fetch_DBU_Prices.ipynb",
+    "09_Load_DBU_Multipliers.ipynb",
+    "10_Load_Serverless_Product_Rates.ipynb",
+    "11_Load_FMAPI_Databricks_Rates.ipynb",
+    "12_Load_FMAPI_Proprietary_Rates.ipynb",
+]
 
 # Colors
 RED = "\033[0;31m"
@@ -188,12 +209,14 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
             "sp_client_id_key": DEFAULT_SP_CLIENT_ID_KEY,
             "sp_secret_key": DEFAULT_SP_SECRET_KEY,
             "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
+            "uc_catalog": DEFAULT_UC_CATALOG,
         }
 
     instance_name = prompt_input("Lakebase instance name", "lakemeter-customer")
     db_name = prompt_input("Database name", DEFAULT_DB_NAME)
     app_name = prompt_input("Databricks App name", "lakemeter")
     secrets_scope = prompt_input("Secrets scope name", "lakemeter-secrets")
+    uc_catalog = prompt_input("Unity Catalog name (for ETL tables)", DEFAULT_UC_CATALOG)
 
     # Fixed values — not user-configurable
     # CU: autoscaling 0.5–16 CU with scale-to-zero (always)
@@ -211,6 +234,7 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
         "sp_client_id_key": DEFAULT_SP_CLIENT_ID_KEY,
         "sp_secret_key": DEFAULT_SP_SECRET_KEY,
         "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
+        "uc_catalog": uc_catalog,
     }
 
 
@@ -842,7 +866,161 @@ def _create_tables_inline(cur):
 
 
 # ===================================================================
-# Step 5: Load Pricing Data
+# Step 5: Create Unity Catalog & Schema (for ETL tables)
+# ===================================================================
+def create_uc_catalog_and_schema(ctx: dict, cfg: dict):
+    """Create or reuse UC catalog and schema for ETL pricing tables."""
+    w = ctx["client"]
+    catalog_name = cfg["uc_catalog"]
+    schema_name = DEFAULT_UC_SCHEMA
+
+    # Create or reuse catalog
+    try:
+        w.catalogs.get(catalog_name)
+        log_ok(f"Catalog '{catalog_name}' already exists — reusing")
+    except Exception:
+        try:
+            w.catalogs.create(name=catalog_name, comment="Lakemeter pricing data catalog")
+            log_ok(f"Created catalog '{catalog_name}'")
+        except Exception as e:
+            log_err(f"Failed to create catalog '{catalog_name}': {e}")
+            log_info("Ensure you have CREATE CATALOG permission or use an existing catalog")
+            sys.exit(1)
+
+    # Create or reuse schema
+    full_schema = f"{catalog_name}.{schema_name}"
+    try:
+        w.schemas.get(full_schema)
+        log_ok(f"Schema '{full_schema}' already exists — reusing")
+    except Exception:
+        try:
+            w.schemas.create(
+                name=schema_name,
+                catalog_name=catalog_name,
+                comment="Lakemeter pricing sync tables",
+            )
+            log_ok(f"Created schema '{full_schema}'")
+        except Exception as e:
+            log_err(f"Failed to create schema '{full_schema}': {e}")
+            sys.exit(1)
+
+
+# ===================================================================
+# Step 10: Upload ETL Notebooks
+# ===================================================================
+def upload_etl_notebooks(ctx: dict, cfg: dict):
+    """Upload ETL pricing sync notebooks to workspace, patching CATALOG variable."""
+    w = ctx["client"]
+    user = ctx["user"]
+    catalog_name = cfg["uc_catalog"]
+
+    workspace_dir = f"/Workspace/Users/{user}/lakemeter/etl/pricing_sync"
+
+    # Create workspace directory
+    try:
+        w.workspace.mkdirs(workspace_dir)
+        log_ok(f"Workspace directory: {workspace_dir}")
+    except Exception as e:
+        log_warn(f"Could not create directory (may already exist): {e}")
+
+    uploaded = 0
+    for nb_name in ETL_NOTEBOOKS:
+        nb_path = ETL_DIR / nb_name
+        if not nb_path.exists():
+            log_warn(f"Notebook not found: {nb_path}")
+            continue
+
+        # Read notebook JSON
+        nb_content = nb_path.read_text(encoding="utf-8")
+
+        # Patch CATALOG variable if user chose a different catalog
+        if catalog_name != "lakemeter_catalog":
+            nb_content = nb_content.replace(
+                'CATALOG = "lakemeter_catalog"',
+                f'CATALOG = "{catalog_name}"',
+            )
+
+        # Upload via workspace API
+        import base64
+        workspace_path = f"{workspace_dir}/{nb_name.replace('.ipynb', '')}"
+        try:
+            from databricks.sdk.service.workspace import ImportFormat
+            w.workspace.import_(
+                path=workspace_path,
+                content=base64.b64encode(nb_content.encode("utf-8")).decode("ascii"),
+                format=ImportFormat.JUPYTER,
+                overwrite=True,
+            )
+            uploaded += 1
+        except Exception as e:
+            log_warn(f"Failed to upload {nb_name}: {e}")
+
+    log_ok(f"Uploaded {uploaded}/{len(ETL_NOTEBOOKS)} notebooks")
+
+
+# ===================================================================
+# Step 11: Create Pricing Sync Workflow
+# ===================================================================
+def create_pricing_sync_workflow(ctx: dict, cfg: dict):
+    """Create a Databricks Workflow that runs the pricing sync notebooks weekly."""
+    w = ctx["client"]
+    user = ctx["user"]
+    job_name = "lakemeter-pricing-sync"
+    workspace_dir = f"/Workspace/Users/{user}/lakemeter/etl/pricing_sync"
+
+    from databricks.sdk.service.jobs import (
+        CronSchedule,
+        JobSettings,
+        NotebookTask,
+        PauseStatus,
+        Task,
+        TaskDependency,
+    )
+
+    # Build sequential task chain
+    tasks = []
+    for i, nb_name in enumerate(ETL_NOTEBOOKS):
+        task_key = nb_name.replace(".ipynb", "").replace(" ", "_")
+        nb_path = f"{workspace_dir}/{nb_name.replace('.ipynb', '')}"
+        task = Task(
+            task_key=task_key,
+            notebook_task=NotebookTask(notebook_path=nb_path),
+            depends_on=[TaskDependency(task_key=tasks[i - 1].task_key)] if i > 0 else None,
+        )
+        tasks.append(task)
+
+    schedule = CronSchedule(
+        quartz_cron_expression="0 0 2 ? * SUN",  # Sunday 2:00 AM
+        timezone_id="UTC",
+        pause_status=PauseStatus.UNPAUSED,
+    )
+
+    # Check if job already exists
+    existing_jobs = list(w.jobs.list(name=job_name))
+    if existing_jobs:
+        job_id = existing_jobs[0].job_id
+        w.jobs.reset(
+            job_id=job_id,
+            new_settings=JobSettings(
+                name=job_name,
+                tasks=tasks,
+                schedule=schedule,
+            ),
+        )
+        log_ok(f"Updated existing workflow '{job_name}' (job_id={job_id})")
+    else:
+        job = w.jobs.create(
+            name=job_name,
+            tasks=tasks,
+            schedule=schedule,
+        )
+        log_ok(f"Created workflow '{job_name}' (job_id={job.job_id})")
+
+    log_info("Schedule: weekly on Sundays at 2:00 AM UTC")
+
+
+# ===================================================================
+# Step 6: Load Pricing Data
 # ===================================================================
 def load_pricing_data(ctx: dict, instance_info: dict, cfg: dict):
     """Load pricing reference data from static JSON files into sync tables."""
@@ -1706,6 +1884,10 @@ def main():
         help="Skip Lakebase provisioning (use existing instance)",
     )
     parser.add_argument(
+        "--skip-etl", action="store_true",
+        help="Skip UC catalog creation, ETL notebook upload, and workflow creation",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true",
         help="Validate config and show plan without making changes",
     )
@@ -1715,7 +1897,7 @@ def main():
     )
     args = parser.parse_args()
 
-    TOTAL_STEPS = 10
+    TOTAL_STEPS = 13
 
     print(f"\n{BOLD}{'='*60}{NC}")
     print(f"{BOLD}  Lakemeter Installer — Zero-Click Deployment{NC}")
@@ -1736,6 +1918,7 @@ def main():
         print(f"  App:       {CYAN}{cfg['app_name']}{NC}")
         print(f"  Lakebase:  {CYAN}Autoscaling 0.5–16 CU, scale-to-zero{NC}")
         print(f"  Scope:     {CYAN}{cfg['secrets_scope']}{NC}")
+        print(f"  UC Catalog:{CYAN} {cfg['uc_catalog']}.{DEFAULT_UC_SCHEMA}{NC}")
         print(f"\n{GREEN}Dry run complete. Remove --dry-run to execute.{NC}")
         return
 
@@ -1755,24 +1938,45 @@ def main():
     create_password_auth_role(ctx, instance_info, cfg)
     run_setup_sql(ctx, instance_info, cfg)
 
-    # Step 5: Load pricing data
-    log_step(5, TOTAL_STEPS, "Loading pricing reference data")
+    # Step 5: Create UC catalog & schema (for ETL tables)
+    log_step(5, TOTAL_STEPS, "Creating Unity Catalog and schema")
+    if args.skip_etl:
+        log_info("Skipping UC catalog creation (--skip-etl)")
+    else:
+        create_uc_catalog_and_schema(ctx, cfg)
+
+    # Step 6: Load pricing data
+    log_step(6, TOTAL_STEPS, "Loading pricing reference data")
     load_pricing_data(ctx, instance_info, cfg)
 
-    # Step 6: SKU discount mapping
-    log_step(6, TOTAL_STEPS, "Creating SKU discount mapping")
+    # Step 7: SKU discount mapping
+    log_step(7, TOTAL_STEPS, "Creating SKU discount mapping")
     create_sku_discount_mapping(ctx, instance_info, cfg)
 
-    # Step 7: Configure SP access
-    log_step(7, TOTAL_STEPS, "Configuring Service Principal access")
+    # Step 8: Configure SP access
+    log_step(8, TOTAL_STEPS, "Configuring Service Principal access")
     configure_sp_access(ctx, instance_info, cfg)
 
-    # Step 8: Create views
-    log_step(8, TOTAL_STEPS, "Creating cost calculation views")
+    # Step 9: Create views
+    log_step(9, TOTAL_STEPS, "Creating cost calculation views")
     create_views(ctx, instance_info, cfg)
 
-    # Step 9: Generate app.yaml + configure app resources
-    log_step(9, TOTAL_STEPS, "Generating app configuration & resources")
+    # Step 10: Upload ETL notebooks
+    log_step(10, TOTAL_STEPS, "Uploading ETL pricing sync notebooks")
+    if args.skip_etl:
+        log_info("Skipping ETL notebook upload (--skip-etl)")
+    else:
+        upload_etl_notebooks(ctx, cfg)
+
+    # Step 11: Create pricing sync workflow
+    log_step(11, TOTAL_STEPS, "Creating pricing sync workflow")
+    if args.skip_etl:
+        log_info("Skipping workflow creation (--skip-etl)")
+    else:
+        create_pricing_sync_workflow(ctx, cfg)
+
+    # Step 12: Generate app.yaml + configure app resources
+    log_step(12, TOTAL_STEPS, "Generating app configuration & resources")
     generate_app_config(ctx, instance_info, cfg)
 
     log_info("Configuring Databricks App resources (so valueFrom references resolve)...")
@@ -1826,12 +2030,12 @@ def main():
         log_warn(f"Could not configure app SP Lakebase access: {e}")
         log_info("App will use password-auth fallback (lakemeter_sync_role)")
 
-    # Step 10: Deploy
+    # Step 13: Deploy
     if not args.skip_deploy:
-        log_step(10, TOTAL_STEPS, "Deploying application")
+        log_step(13, TOTAL_STEPS, "Deploying application")
         deploy_app(ctx, cfg)
     else:
-        log_step(10, TOTAL_STEPS, "Deploying application")
+        log_step(13, TOTAL_STEPS, "Deploying application")
         log_info("Skipping deployment (--skip-deploy)")
 
     # Summary
@@ -1842,10 +2046,13 @@ def main():
     print(f"  Database:  {CYAN}{cfg['db_name']}{NC}")
     print(f"  DB Host:   {CYAN}{instance_info['host']}{NC}")
     print(f"  App Name:  {CYAN}{cfg['app_name']}{NC}")
+    print(f"  UC Catalog:{CYAN} {cfg['uc_catalog']}.{DEFAULT_UC_SCHEMA}{NC}")
     print(f"\n  Next steps:")
     print(f"  1. Verify the app is running:")
     print(f"     databricks apps get {cfg['app_name']} --profile {args.profile}")
-    print(f"  2. Run permission tests:")
+    print(f"  2. Run the pricing sync workflow manually (first time):")
+    print(f"     databricks jobs run-now lakemeter-pricing-sync --profile {args.profile}")
+    print(f"  3. Run permission tests:")
     print(f"     pytest tests/test_lakebase_permissions.py -v")
     print()
 
