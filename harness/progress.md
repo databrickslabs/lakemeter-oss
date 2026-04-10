@@ -1,28 +1,22 @@
-# Lakemeter Documentation Overhaul — Progress
+# Harness Progress
 
-## Quality Target: 9.0/10
+## Status: IN_PROGRESS
+## Quality Target: 9.5/10
+## Mode: existing
 
-## Sprint Status
+## Sprint Summary
 
-| Sprint | Feature | Status | Score | Screenshots | GIFs | Video | Iterations |
-|--------|---------|--------|-------|-------------|------|-------|------------|
-| 1 | Screenshot Audit & Test Data Setup + Core Screenshots | PENDING | — | 0/8 | — | — | 0 |
-| 2 | User Guide Screenshots (Part 1) — Workload Types | PENDING | — | 0/15 | — | — | 0 |
-| 3 | User Guide Screenshots (Part 2) + Admin Screenshots | PENDING | — | 0/16 | — | — | 0 |
-| 4 | Workflow GIFs | PENDING | — | — | 0/6 | — | 0 |
-| 5 | Tutorial Video + Doc Page Updates | PENDING | — | — | — | 0/1 | 0 |
-| 6 | Docs Site Build Verification & Final Polish | PENDING | — | — | — | — | 0 |
+| Sprint | Feature | Score | Iters | Status |
+|--------|---------|-------|-------|--------|
+| 1 | Fix AI Assistant Problems (Bug A, B, C) | — | 0 | IN_PROGRESS |
+| 2 | Installation Test (Fresh Clone) | — | 0 | PENDING |
+| 3 | Full Documentation Update + Deploy | — | 0 | PENDING |
 
-## Media Totals
+## Current Activity
+- **Phase**: BUILD_AGENT (Sprint 1, iteration 1)
+- **Working on**: Fix Bug A (ALL_WORKLOAD_TYPES missing AI_PARSE/SHUTTERSTOCK_IMAGEAI in pricingBundle.ts), verify Bugs B+C already fixed
+- **Blockers**: None
 
-- **Screenshots re-captured**: 0 / 46
-- **GIFs created**: 0 / 6
-- **Videos created**: 0 / 1
-- **Doc pages updated with GIF/video embeds**: 0 / 7
-
-## Data Sanitization Checklist
-
-- [ ] Test data created in live app with sanitized names
-- [ ] All estimates use sanitized names only (no real customer names)
-- [ ] Cost Summary panel verified (no number overflow)
-- [ ] All 46 existing screenshots audited for customer name violations
+## Remaining
+- Sprint 2: Installation test from fresh GitHub clone
+- Sprint 3: Full documentation update and deploy to GitHub Pages
