@@ -1,15 +1,15 @@
 """
 Databricks Claude AI Client
 
-Integrates with Databricks-hosted Claude Opus 4.6 model for the AI assistant.
-Endpoint: https://fe-vm-lakemeter.cloud.databricks.com/serving-endpoints/databricks-claude-opus-4-6/invocations
+Integrates with Databricks-hosted Claude model for the AI assistant.
+Endpoint: {DATABRICKS_HOST}/serving-endpoints/{CLAUDE_MODEL_ENDPOINT}/invocations
 
 Uses OpenAI-compatible chat completions format as per Databricks documentation:
 https://docs.databricks.com/aws/en/machine-learning/model-serving/query-chat-models
 
 Rate Limits (Pay-per-token):
 - Input tokens per minute (ITPM): Controls input throughput
-- Output tokens per minute (OTPM): Controls output throughput  
+- Output tokens per minute (OTPM): Controls output throughput
 - Queries per hour: Maximum requests in 60-minute window
 """
 import os
@@ -25,11 +25,12 @@ from app.config import log_info, log_warning, log_error
 
 
 # Claude endpoint configuration
-_raw_host = os.getenv("DATABRICKS_HOST", "https://fe-vm-lakemeter.cloud.databricks.com")
+# DATABRICKS_HOST is auto-set by Databricks Apps runtime; CLAUDE_MODEL_ENDPOINT is set via app.yaml valueFrom
+_raw_host = os.getenv("DATABRICKS_HOST", "")
 # Ensure DATABRICKS_HOST always has https:// protocol (Databricks Apps runtime may omit it)
-DATABRICKS_HOST = _raw_host if _raw_host.startswith("http") else f"https://{_raw_host}"
-MODEL_ENDPOINT = "databricks-claude-opus-4-6"
-CLAUDE_ENDPOINT = f"{DATABRICKS_HOST}/serving-endpoints/{MODEL_ENDPOINT}/invocations"
+DATABRICKS_HOST = (_raw_host if _raw_host.startswith("http") else f"https://{_raw_host}") if _raw_host else ""
+MODEL_ENDPOINT = os.getenv("CLAUDE_MODEL_ENDPOINT", "databricks-claude-opus-4-6")
+CLAUDE_ENDPOINT = f"{DATABRICKS_HOST}/serving-endpoints/{MODEL_ENDPOINT}/invocations" if DATABRICKS_HOST else ""
 
 # Rate limiting configuration
 MAX_QUERIES_PER_HOUR = 500

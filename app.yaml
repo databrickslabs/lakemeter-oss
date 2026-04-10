@@ -38,3 +38,7 @@ env:
     value: "5432"
   - name: "DB_SSLMODE"
     value: "require"
+
+  # AI Assistant (Claude) model serving endpoint
+  - name: "CLAUDE_MODEL_ENDPOINT"
+    valueFrom: "lakemeter-claude-endpoint"
