@@ -27,7 +27,6 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -36,7 +35,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 APP_DIR = SCRIPT_DIR.parent
 BACKEND_DIR = APP_DIR / "backend"
 PRICING_DIR = BACKEND_DIR / "static" / "pricing"
-SETUP_DIR = APP_DIR / "etl" / "lakebase_setup" / "setup"
 
 DEFAULT_DB_NAME = "lakemeter_pricing"
 DEFAULT_SCHEMA = "lakemeter"
@@ -433,29 +431,14 @@ def create_password_auth_role(ctx: dict, instance_info: dict, cfg: dict):
 
 
 def run_setup_sql(ctx: dict, instance_info: dict, cfg: dict):
-    """Execute the table creation, views, constraints, and seed data SQL.
-
-    Extracts SQL from the Databricks notebook .py files and runs them.
-    """
+    """Execute the table creation, views, constraints, and seed data SQL."""
     conn = get_owner_connection(ctx, instance_info, cfg)
     conn.autocommit = True
     cur = conn.cursor()
 
-    # --- Application Tables ---
-    tables_sql = _extract_sql_from_notebook(SETUP_DIR / "01_Create_Tables.py")
-    if tables_sql:
-        for stmt in tables_sql:
-            try:
-                cur.execute(stmt)
-            except Exception as e:
-                if "already exists" not in str(e):
-                    log_warn(f"SQL warning: {str(e)[:100]}")
-                conn.rollback() if not conn.autocommit else None
-        log_ok("Application tables created (9 tables + seed data)")
-    else:
-        # Fallback: run inline SQL for core tables
-        _create_tables_inline(cur)
-        log_ok("Application tables created (inline fallback)")
+    # --- Application Tables (inline SQL — self-contained, no notebook parsing) ---
+    _create_tables_inline(cur)
+    log_ok("Application tables created (9 tables + seed data)")
 
     # --- Discount config column ---
     cur.execute("""
@@ -594,241 +577,278 @@ def run_setup_sql(ctx: dict, instance_info: dict, cfg: dict):
     conn.close()
 
 
-def _extract_sql_from_notebook(notebook_path: Path) -> Optional[list]:
-    """Extract executable SQL statements from a Databricks notebook .py file.
-
-    Returns None if the file doesn't exist or can't be parsed.
-    """
-    if not notebook_path.exists():
-        return None
-
-    content = notebook_path.read_text()
-    sql_stmts = []
-    in_sql_block = False
-    current_sql = []
-
-    for line in content.split("\n"):
-        # Skip Databricks magic commands, comments, Python code
-        stripped = line.strip()
-        if stripped.startswith("# MAGIC") or stripped.startswith("# COMMAND"):
-            continue
-        if stripped.startswith("%run") or stripped.startswith("import "):
-            continue
-
-        # Look for SQL in triple-quoted strings or execute() calls
-        if 'execute("""' in line or "execute('''" in line:
-            in_sql_block = True
-            # Extract the part after execute(
-            start = line.find('"""') or line.find("'''")
-            if start >= 0:
-                current_sql.append(line[start + 3 :])
-            continue
-
-        if in_sql_block:
-            if '""")' in line or "''')" in line:
-                end = line.find('"""') or line.find("'''")
-                current_sql.append(line[:end])
-                sql_stmts.append("\n".join(current_sql))
-                current_sql = []
-                in_sql_block = False
-            else:
-                current_sql.append(line)
-
-    return sql_stmts if sql_stmts else None
-
 
 def _create_tables_inline(cur):
-    """Create core tables with inline SQL (fallback when notebooks aren't available)."""
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS lakemeter.users (
-            user_id TEXT PRIMARY KEY,
-            email TEXT NOT NULL UNIQUE,
-            full_name TEXT,
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW()
-        );
-        CREATE TABLE IF NOT EXISTS lakemeter.templates (
-            template_id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-            name TEXT NOT NULL,
+    """Create all application tables with correct UUID types matching production schema."""
+    # Execute each statement individually so one failure doesn't cascade
+    table_stmts = [
+        # Schema
+        "CREATE SCHEMA IF NOT EXISTS lakemeter",
+
+        # Users
+        """CREATE TABLE IF NOT EXISTS lakemeter.users (
+            user_id UUID PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            full_name VARCHAR(255),
+            role VARCHAR(50),
+            is_active BOOLEAN DEFAULT true,
+            last_login_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""",
+
+        # Templates
+        """CREATE TABLE IF NOT EXISTS lakemeter.templates (
+            template_id UUID PRIMARY KEY,
+            template_name VARCHAR(255) NOT NULL,
+            workload_type VARCHAR(100),
+            file_path VARCHAR(500),
+            file_format VARCHAR(10),
+            mandatory_fields JSON,
+            optional_fields JSON,
             description TEXT,
-            cloud TEXT NOT NULL DEFAULT 'AWS',
-            region TEXT NOT NULL DEFAULT 'us-east-1',
-            tier TEXT NOT NULL DEFAULT 'PREMIUM',
-            owner_id TEXT REFERENCES lakemeter.users(user_id),
-            is_public BOOLEAN DEFAULT FALSE,
-            config JSONB,
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW()
-        );
-        CREATE TABLE IF NOT EXISTS lakemeter.ref_cloud_tiers (
-            cloud TEXT NOT NULL,
-            tier TEXT NOT NULL,
+            version INT DEFAULT 1,
+            is_active BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""",
+
+        # Reference: cloud tiers
+        """CREATE TABLE IF NOT EXISTS lakemeter.ref_cloud_tiers (
+            cloud VARCHAR(20) NOT NULL,
+            tier VARCHAR(50) NOT NULL,
+            display_name VARCHAR(100),
+            description TEXT,
+            display_order INT DEFAULT 0,
+            is_active BOOLEAN DEFAULT true,
             PRIMARY KEY (cloud, tier)
-        );
-        CREATE TABLE IF NOT EXISTS lakemeter.estimates (
-            estimate_id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-            estimate_name TEXT NOT NULL,
-            cloud TEXT NOT NULL DEFAULT 'AWS',
-            region TEXT NOT NULL DEFAULT 'us-east-1',
-            tier TEXT NOT NULL DEFAULT 'PREMIUM',
-            owner_id TEXT REFERENCES lakemeter.users(user_id),
-            template_id TEXT REFERENCES lakemeter.templates(template_id),
-            notes TEXT,
+        )""",
+
+        # Reference: workload types
+        """CREATE TABLE IF NOT EXISTS lakemeter.ref_workload_types (
+            workload_type VARCHAR(50) PRIMARY KEY,
+            display_name VARCHAR(100),
+            description TEXT,
+            show_compute_config BOOLEAN DEFAULT false,
+            show_serverless_toggle BOOLEAN DEFAULT false,
+            show_serverless_performance_mode BOOLEAN DEFAULT false,
+            show_photon_toggle BOOLEAN DEFAULT false,
+            show_dlt_config BOOLEAN DEFAULT false,
+            show_dbsql_config BOOLEAN DEFAULT false,
+            show_serverless_product BOOLEAN DEFAULT false,
+            show_fmapi_config BOOLEAN DEFAULT false,
+            show_lakebase_config BOOLEAN DEFAULT false,
+            show_vector_search_mode BOOLEAN DEFAULT false,
+            show_vm_pricing BOOLEAN DEFAULT false,
+            show_usage_hours BOOLEAN DEFAULT false,
+            show_usage_runs BOOLEAN DEFAULT false,
+            show_usage_tokens BOOLEAN DEFAULT false,
+            sku_product_type_standard VARCHAR(100),
+            sku_product_type_photon VARCHAR(100),
+            sku_product_type_serverless VARCHAR(100),
+            display_order INT
+        )""",
+
+        # Estimates
+        """CREATE TABLE IF NOT EXISTS lakemeter.estimates (
+            estimate_id UUID PRIMARY KEY,
+            estimate_name VARCHAR(500),
+            owner_user_id UUID REFERENCES lakemeter.users(user_id),
+            sfdc_account_id VARCHAR(255),
+            customer_name VARCHAR(255),
+            uco_id VARCHAR(255),
+            opportunity_id VARCHAR(255),
+            cloud VARCHAR(20),
+            region VARCHAR(50),
+            tier VARCHAR(20),
+            status VARCHAR(20) DEFAULT 'draft',
+            version INT DEFAULT 1,
+            template_id UUID REFERENCES lakemeter.templates(template_id),
+            original_prompt TEXT,
+            is_deleted BOOLEAN DEFAULT false,
             discount_config JSONB,
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW(),
-            FOREIGN KEY (cloud, tier) REFERENCES lakemeter.ref_cloud_tiers(cloud, tier)
-        );
-        CREATE TABLE IF NOT EXISTS lakemeter.ref_workload_types (
-            workload_type TEXT PRIMARY KEY,
-            display_name TEXT NOT NULL,
-            category TEXT NOT NULL,
-            description TEXT
-        );
-        CREATE TABLE IF NOT EXISTS lakemeter.line_items (
-            line_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            estimate_id UUID NOT NULL REFERENCES lakemeter.estimates(estimate_id) ON DELETE CASCADE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_by UUID REFERENCES lakemeter.users(user_id)
+        )""",
+
+        # Line items
+        """CREATE TABLE IF NOT EXISTS lakemeter.line_items (
+            line_item_id UUID PRIMARY KEY,
+            estimate_id UUID REFERENCES lakemeter.estimates(estimate_id),
             display_order INT,
-            workload_name VARCHAR(255) NOT NULL,
+            workload_name VARCHAR(255),
             workload_type VARCHAR(50) NOT NULL,
             cloud VARCHAR(20),
-            -- Compute config
             serverless_enabled BOOLEAN DEFAULT false,
             serverless_mode VARCHAR(20),
             photon_enabled BOOLEAN DEFAULT false,
             driver_node_type VARCHAR(100),
             worker_node_type VARCHAR(100),
             num_workers INT,
-            -- DLT config
             dlt_edition VARCHAR(20),
-            -- DBSQL config
             dbsql_warehouse_type VARCHAR(20),
             dbsql_warehouse_size VARCHAR(20),
             dbsql_num_clusters INT DEFAULT 1,
-            dbsql_vm_pricing_tier VARCHAR(20),
-            dbsql_vm_payment_option VARCHAR(20),
-            -- Vector Search config
+            dbsql_vm_pricing_tier VARCHAR(20) DEFAULT 'on_demand',
+            dbsql_vm_payment_option VARCHAR(20) DEFAULT 'NA',
             vector_search_mode VARCHAR(50),
             vector_capacity_millions DECIMAL(10,2),
-            vector_search_storage_gb DECIMAL(10,2) CHECK (vector_search_storage_gb >= 0),
-            -- Model Serving config
+            vector_search_storage_gb DECIMAL(10,2),
             model_serving_gpu_type VARCHAR(50),
-            -- FMAPI config
+            model_serving_concurrency INT DEFAULT 4,
+            model_serving_scale_out VARCHAR(20),
             fmapi_provider VARCHAR(50),
             fmapi_model VARCHAR(100),
             fmapi_endpoint_type VARCHAR(20),
             fmapi_context_length VARCHAR(20),
             fmapi_rate_type VARCHAR(20),
             fmapi_quantity BIGINT,
-            -- Databricks Apps config
-            databricks_apps_size VARCHAR(20),
-            -- Clean Room config
-            clean_room_collaborators INTEGER,
-            -- AI Parse config
-            ai_parse_mode VARCHAR(20),
-            ai_parse_complexity VARCHAR(20),
-            ai_parse_pages_thousands NUMERIC(12,2),
-            -- Shutterstock ImageAI config
-            shutterstock_images INTEGER,
-            -- Lakeflow Connect config
-            lakeflow_connect_pipeline_mode VARCHAR(20),
-            lakeflow_connect_gateway_enabled BOOLEAN,
-            lakeflow_connect_gateway_instance VARCHAR(100),
-            -- Lakebase config
             lakebase_cu NUMERIC(5,1),
             lakebase_storage_gb INT,
             lakebase_ha_nodes INT DEFAULT 1,
             lakebase_backup_retention_days INT DEFAULT 7,
             lakebase_pitr_gb INT,
             lakebase_snapshot_gb INT,
-            -- Usage/frequency
+            databricks_apps_size VARCHAR(20),
+            clean_room_collaborators INTEGER,
+            ai_parse_mode VARCHAR(20),
+            ai_parse_complexity VARCHAR(20),
+            ai_parse_pages_thousands NUMERIC(12,2),
+            shutterstock_images INTEGER,
+            lakeflow_connect_pipeline_mode VARCHAR(20),
+            lakeflow_connect_gateway_enabled BOOLEAN,
+            lakeflow_connect_gateway_instance VARCHAR(100),
             runs_per_day INT,
             avg_runtime_minutes INT,
             days_per_month INT DEFAULT 30,
             hours_per_month DECIMAL(10,2),
-            -- VM pricing
             driver_pricing_tier VARCHAR(20),
             worker_pricing_tier VARCHAR(20),
-            driver_payment_option VARCHAR(20),
-            worker_payment_option VARCHAR(20),
-            -- Extensible config
+            driver_payment_option VARCHAR(20) DEFAULT 'NA',
+            worker_payment_option VARCHAR(20) DEFAULT 'NA',
             workload_config JSON,
             notes TEXT,
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW()
-        );
-        CREATE TABLE IF NOT EXISTS lakemeter.conversation_messages (
-            message_id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-            estimate_id TEXT NOT NULL REFERENCES lakemeter.estimates(estimate_id) ON DELETE CASCADE,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            metadata JSONB,
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-        CREATE TABLE IF NOT EXISTS lakemeter.decision_records (
-            decision_id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-            estimate_id TEXT NOT NULL REFERENCES lakemeter.estimates(estimate_id) ON DELETE CASCADE,
-            message_id TEXT REFERENCES lakemeter.conversation_messages(message_id),
-            decision_type TEXT NOT NULL,
-            summary TEXT,
-            details JSONB,
-            status TEXT DEFAULT 'proposed',
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-        CREATE TABLE IF NOT EXISTS lakemeter.sharing (
-            sharing_id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-            estimate_id TEXT NOT NULL REFERENCES lakemeter.estimates(estimate_id) ON DELETE CASCADE,
-            shared_with_email TEXT NOT NULL,
-            permission TEXT NOT NULL DEFAULT 'view',
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-    """)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""",
 
-    # Seed data
-    seed_workload_types = [
-        ("ALL_PURPOSE", "All-Purpose Compute", "Interactive notebooks and development"),
-        ("JOBS", "Jobs Compute", "Automated workflows and pipelines"),
-        ("DLT", "Delta Live Tables", "Declarative ETL pipelines"),
-        ("SQL_WAREHOUSE", "SQL Warehouse", "SQL analytics and BI queries"),
-        ("MODEL_SERVING", "Model Serving", "Real-time model inference"),
-        ("VECTOR_SEARCH", "Vector Search", "Vector similarity search"),
-        ("FMAPI", "Foundation Model APIs", "Foundation model inference"),
-        ("LAKEBASE", "Lakebase", "Managed PostgreSQL database"),
-        ("SERVERLESS_COMPUTE", "Serverless Compute", "Serverless notebooks and jobs"),
-        ("DATABRICKS_APPS", "Databricks Apps", "Managed application hosting"),
-        ("CLEAN_ROOM", "Clean Room", "Secure multi-party data collaboration"),
-        ("AI_PARSE", "AI Parse (Document AI)", "Intelligent document parsing"),
-        ("SHUTTERSTOCK_IMAGEAI", "Shutterstock ImageAI", "AI-powered image generation"),
-        ("LAKEFLOW_CONNECT", "Lakeflow Connect", "Managed data ingestion connectors"),
+        # Conversation messages
+        """CREATE TABLE IF NOT EXISTS lakemeter.conversation_messages (
+            message_id UUID PRIMARY KEY,
+            estimate_id UUID REFERENCES lakemeter.estimates(estimate_id),
+            message_role VARCHAR(20),
+            message_content TEXT,
+            message_sequence INT,
+            message_type VARCHAR(50),
+            tokens_used INT,
+            model_used VARCHAR(50),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""",
+
+        # Decision records
+        """CREATE TABLE IF NOT EXISTS lakemeter.decision_records (
+            record_id UUID PRIMARY KEY,
+            line_item_id UUID REFERENCES lakemeter.line_items(line_item_id),
+            record_type VARCHAR(50),
+            user_input TEXT,
+            agent_response TEXT,
+            assumptions JSON,
+            calculations JSON,
+            reasoning TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""",
+
+        # Sharing
+        """CREATE TABLE IF NOT EXISTS lakemeter.sharing (
+            share_id UUID PRIMARY KEY,
+            estimate_id UUID REFERENCES lakemeter.estimates(estimate_id),
+            share_type VARCHAR(20),
+            shared_with_user_id UUID REFERENCES lakemeter.users(user_id),
+            share_link VARCHAR(255) UNIQUE,
+            permission VARCHAR(20),
+            expires_at TIMESTAMP,
+            access_count INT DEFAULT 0,
+            last_accessed_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""",
+
+        # Indexes
+        "CREATE INDEX IF NOT EXISTS idx_line_items_estimate ON lakemeter.line_items(estimate_id)",
+        "CREATE INDEX IF NOT EXISTS idx_line_items_workload_type ON lakemeter.line_items(workload_type)",
     ]
-    for wt in seed_workload_types:
+
+    for stmt in table_stmts:
+        try:
+            cur.execute(stmt)
+        except Exception as e:
+            if "already exists" not in str(e):
+                log_warn(f"Table DDL: {str(e)[:120]}")
+
+    # Seed workload types (matching production notebook)
+    workload_seeds = [
+        ("JOBS", "Jobs Compute", "Scheduled batch jobs (Classic or Serverless)",
+         True, True, True, True, False, False, False, False, False, False, True, False, True, False,
+         "JOBS_COMPUTE", "JOBS_COMPUTE_(PHOTON)", "JOBS_SERVERLESS_COMPUTE", 1),
+        ("ALL_PURPOSE", "All-Purpose Compute", "Interactive clusters for notebooks (Classic or Serverless)",
+         True, True, False, True, False, False, False, False, False, False, True, True, False, False,
+         "ALL_PURPOSE_COMPUTE", "ALL_PURPOSE_COMPUTE_(PHOTON)", "ALL_PURPOSE_SERVERLESS_COMPUTE", 2),
+        ("DLT", "Delta Live Tables", "Declarative ETL pipelines (Classic or Serverless)",
+         True, True, True, True, True, False, False, False, False, False, True, True, False, False,
+         "DLT_CORE_COMPUTE", "DLT_CORE_COMPUTE_(PHOTON)", "JOBS_SERVERLESS_COMPUTE", 3),
+        ("DBSQL", "Databricks SQL", "SQL analytics warehouse (Classic/Pro/Serverless)",
+         False, False, False, False, False, True, False, False, False, False, False, True, False, False,
+         "SQL_COMPUTE", "SQL_PRO_COMPUTE", "SERVERLESS_SQL_COMPUTE", 4),
+        ("VECTOR_SEARCH", "Vector Search", "Vector search endpoints for RAG",
+         False, False, False, False, False, False, True, False, False, True, False, True, False, False,
+         None, None, "VECTOR_SEARCH_ENDPOINT", 5),
+        ("MODEL_SERVING", "Model Serving", "Real-time model inference endpoints",
+         False, False, False, False, False, False, True, False, False, False, False, True, False, False,
+         None, None, "SERVERLESS_REAL_TIME_INFERENCE", 6),
+        ("FMAPI_DATABRICKS", "Foundation Models (Databricks)", "Databricks-hosted LLMs (Llama, DBRX)",
+         False, False, False, False, False, False, False, True, False, False, False, False, False, True,
+         None, None, "SERVERLESS_REAL_TIME_INFERENCE", 7),
+        ("FMAPI_PROPRIETARY", "Foundation Models (Proprietary)", "OpenAI, Anthropic, Google models served by Databricks",
+         False, False, False, False, False, False, False, True, False, False, False, False, False, True,
+         None, None, None, 8),
+        ("LAKEBASE", "Lakebase", "Managed PostgreSQL database for operational workloads",
+         False, False, False, False, False, False, False, False, True, False, False, True, True, False,
+         None, None, "DATABASE_SERVERLESS_COMPUTE", 9),
+    ]
+    for wt in workload_seeds:
         cur.execute(
             """INSERT INTO lakemeter.ref_workload_types
-               (workload_type, display_name, description)
-               VALUES (%s, %s, %s) ON CONFLICT DO NOTHING""",
+               (workload_type, display_name, description,
+                show_compute_config, show_serverless_toggle, show_serverless_performance_mode,
+                show_photon_toggle, show_dlt_config, show_dbsql_config,
+                show_serverless_product, show_fmapi_config, show_lakebase_config,
+                show_vector_search_mode, show_vm_pricing, show_usage_hours,
+                show_usage_runs, show_usage_tokens,
+                sku_product_type_standard, sku_product_type_photon, sku_product_type_serverless,
+                display_order)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               ON CONFLICT (workload_type) DO NOTHING""",
             wt,
         )
 
-    seed_cloud_tiers = [
-        ("AWS", "ENTERPRISE"), ("AWS", "PREMIUM"),
-        ("AZURE", "ENTERPRISE"), ("AZURE", "PREMIUM"),
-        ("GCP", "ENTERPRISE"), ("GCP", "PREMIUM"),
-        ("AWS", "STANDARD"), ("AZURE", "STANDARD"),
+    # Seed cloud tiers (matching production notebook)
+    cloud_tier_seeds = [
+        ("AWS", "STANDARD", "Standard", "Standard production workloads", 1, True),
+        ("AWS", "PREMIUM", "Premium", "High-performance production workloads", 2, True),
+        ("AWS", "ENTERPRISE", "Enterprise", "Enterprise-grade workloads", 3, True),
+        ("AZURE", "STANDARD", "Standard", "Standard production workloads", 1, True),
+        ("AZURE", "PREMIUM", "Premium", "High-performance production workloads", 2, True),
+        ("GCP", "STANDARD", "Standard", "Standard production workloads", 1, True),
+        ("GCP", "PREMIUM", "Premium", "High-performance production workloads", 2, True),
+        ("GCP", "ENTERPRISE", "Enterprise", "Enterprise-grade workloads", 3, True),
     ]
-    for ct in seed_cloud_tiers:
+    for ct in cloud_tier_seeds:
         cur.execute(
-            """INSERT INTO lakemeter.ref_cloud_tiers (cloud, tier)
-               VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+            """INSERT INTO lakemeter.ref_cloud_tiers
+               (cloud, tier, display_name, description, display_order, is_active)
+               VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (cloud, tier) DO NOTHING""",
             ct,
         )
-
-    # Indexes
-    cur.execute("""
-        CREATE INDEX IF NOT EXISTS idx_line_items_estimate
-        ON lakemeter.line_items(estimate_id);
-        CREATE INDEX IF NOT EXISTS idx_line_items_workload_type
-        ON lakemeter.line_items(workload_type);
-    """)
 
 
 # ===================================================================
@@ -865,15 +885,57 @@ def load_pricing_data(ctx: dict, instance_info: dict, cfg: dict):
             "Run 'python scripts/convert_pricing_to_csv.py' first."
         )
 
+    MAX_IMPORT_SIZE = 9 * 1024 * 1024  # 9MB (workspace limit is 10MB)
     for csv_file in csv_files:
         file_bytes = csv_file.read_bytes()
-        w.workspace.import_(
-            path=f"{pricing_workspace_dir}/{csv_file.name}",
-            content=base64.b64encode(file_bytes).decode("ascii"),
-            format=ImportFormat.AUTO,
-            overwrite=True,
-        )
-        log_info(f"  Uploaded {csv_file.name}")
+        if len(file_bytes) <= MAX_IMPORT_SIZE:
+            w.workspace.import_(
+                path=f"{pricing_workspace_dir}/{csv_file.name}",
+                content=base64.b64encode(file_bytes).decode("ascii"),
+                format=ImportFormat.AUTO,
+                overwrite=True,
+            )
+            log_info(f"  Uploaded {csv_file.name}")
+        else:
+            # Split large CSV into parts that fit under the import limit
+            text = file_bytes.decode("utf-8")
+            lines = text.split("\n")
+            header = lines[0]
+            data_lines = [l for l in lines[1:] if l.strip()]
+            part_num = 0
+            chunk = [header]
+            chunk_size = len(header.encode("utf-8"))
+            for line in data_lines:
+                line_size = len(line.encode("utf-8")) + 1  # +1 for newline
+                if chunk_size + line_size > MAX_IMPORT_SIZE and len(chunk) > 1:
+                    part_num += 1
+                    part_content = "\n".join(chunk) + "\n"
+                    stem = csv_file.stem
+                    part_name = f"{stem}_part{part_num}.csv"
+                    w.workspace.import_(
+                        path=f"{pricing_workspace_dir}/{part_name}",
+                        content=base64.b64encode(part_content.encode("utf-8")).decode("ascii"),
+                        format=ImportFormat.AUTO,
+                        overwrite=True,
+                    )
+                    log_info(f"  Uploaded {part_name} ({len(chunk)-1} rows)")
+                    chunk = [header]
+                    chunk_size = len(header.encode("utf-8"))
+                chunk.append(line)
+                chunk_size += line_size
+            if len(chunk) > 1:
+                part_num += 1
+                part_content = "\n".join(chunk) + "\n"
+                stem = csv_file.stem
+                part_name = f"{stem}_part{part_num}.csv"
+                w.workspace.import_(
+                    path=f"{pricing_workspace_dir}/{part_name}",
+                    content=base64.b64encode(part_content.encode("utf-8")).decode("ascii"),
+                    format=ImportFormat.AUTO,
+                    overwrite=True,
+                )
+                log_info(f"  Uploaded {part_name} ({len(chunk)-1} rows)")
+            log_info(f"  Uploaded {csv_file.name} in {part_num} parts")
 
     log_ok(f"Uploaded {len(csv_files)} CSV files to {pricing_workspace_dir}")
 
@@ -1243,16 +1305,10 @@ def create_views(ctx: dict, instance_info: dict, cfg: dict):
     conn.autocommit = True
     cur = conn.cursor()
 
-    views_sql = _extract_sql_from_notebook(SETUP_DIR / "02_Create_Views.py")
-    if views_sql:
-        for stmt in views_sql:
-            try:
-                cur.execute(stmt)
-            except Exception as e:
-                log_warn(f"View creation warning: {str(e)[:100]}")
-        log_ok("Cost calculation views created")
-    else:
-        log_warn("Could not extract views SQL — run 02_Create_Views.py manually")
+    # Views are optional — the API layer calculates costs on the fly.
+    # If you need the summary views (v_line_items_with_costs, v_estimates_with_totals),
+    # run etl/lakebase_setup/setup/02_Create_Views.py in the Databricks workspace.
+    log_ok("Views step skipped (API calculates costs directly)")
 
     cur.close()
     conn.close()
@@ -1345,8 +1401,27 @@ def configure_app_resources(ctx: dict, instance_info: dict, cfg: dict):
         f"{app_name}-db-name": ("lakebase-database", "Database name"),
     }
 
-    # 3. Configure app resources via REST API
+    # 3. Create app if it doesn't exist
     import requests
+    user = ctx["user"]
+    try:
+        w.apps.get(app_name)
+    except Exception:
+        log_info(f"Creating Databricks App '{app_name}'...")
+        try:
+            from databricks.sdk.service.apps import App
+            app_obj = App(
+                name=app_name,
+                description="Lakemeter — Databricks cost estimation tool",
+                default_source_code_path=f"/Workspace/Users/{user}/apps/{app_name}",
+            )
+            w.apps.create_and_wait(app_obj)
+            log_ok(f"App '{app_name}' created")
+        except Exception as e:
+            log_warn(f"Could not create app: {str(e)[:200]}")
+            log_info("Create the app manually via Databricks UI, then re-run the installer")
+
+    # 4. Configure app resources via REST API
     resources = []
     for name, (secret_key, desc) in resource_map.items():
         resources.append({
@@ -1443,49 +1518,177 @@ def grant_app_sp_lakebase_access(ctx: dict, instance_info: dict, cfg: dict):
 # Step 12: Deploy App
 # ===================================================================
 def deploy_app(ctx: dict, cfg: dict):
-    """Build frontend and deploy to Databricks Apps via workspace sync.
+    """Sync essential files to workspace and deploy via SDK.
 
-    Only syncs the files needed for the app to run:
-    - backend/ (FastAPI app, routes, services, static assets)
-    - frontend/ (React source — built at startup via app.yaml command)
-    - scripts/ (installer)
+    Only uploads what the app needs at runtime:
+    - backend/app/ (FastAPI)
+    - backend/static/ (built frontend assets — excludes vm-costs.csv)
+    - backend/scripts/ (startup helpers)
+    - frontend/ (source — built at startup via app.yaml command)
     - app.yaml, requirements.txt
-
-    Excludes tests/, etl/, docs-site/, harness/, .venv/, .git/, node_modules/.
     """
+    import base64
     import subprocess
+    from databricks.sdk.service.workspace import ImportFormat, Language
 
-    deploy_script = APP_DIR / "deploy.sh"
-    if deploy_script.exists():
-        log_info("Running deploy.sh --workspace-deploy ...")
-        profile = ctx.get("profile", "")
+    w = ctx["client"]
+    user = ctx["user"]
+    app_name = cfg["app_name"]
+    ws_path = f"/Workspace/Users/{user}/apps/{app_name}"
+
+    # 1. Build frontend if source exists
+    frontend_dir = APP_DIR / "frontend"
+    if frontend_dir.exists() and (frontend_dir / "package.json").exists():
+        log_info("Building frontend...")
         result = subprocess.run(
-            ["bash", str(deploy_script), "--workspace-deploy"],
-            cwd=str(APP_DIR),
-            env={
-                **os.environ,
-                "DATABRICKS_HOST": ctx["host"].replace("https://", ""),
-                "LAKEMETER_APP_NAME": cfg["app_name"],
-                "DATABRICKS_PROFILE": profile,
-            },
-            capture_output=True,
-            text=True,
+            ["npm", "ci", "--silent"],
+            cwd=str(frontend_dir),
+            capture_output=True, text=True, timeout=120,
         )
-        if result.returncode == 0:
-            log_ok("App deployed successfully")
-            if result.stdout:
-                # Show last few lines of deploy output
-                for line in result.stdout.strip().split('\n')[-5:]:
-                    log_info(line)
+        if result.returncode != 0:
+            log_warn(f"npm ci failed: {result.stderr[:200]}")
         else:
-            log_warn(f"Deploy script exited with code {result.returncode}")
-            if result.stderr:
-                log_info(result.stderr[:500])
-            if result.stdout:
-                log_info(result.stdout[-500:])
+            result = subprocess.run(
+                ["npm", "run", "build"],
+                cwd=str(frontend_dir),
+                capture_output=True, text=True, timeout=120,
+            )
+            if result.returncode == 0:
+                log_ok("Frontend built")
+            else:
+                log_warn(f"npm build failed: {result.stderr[:200]}")
+
+    # 2. Sync essential files to workspace
+    MAX_FILE_SIZE = 9 * 1024 * 1024  # workspace import limit ~10MB
+    uploaded = 0
+
+    created_dirs = set()
+
+    def ensure_ws_dir(ws_dir_path: str):
+        """Create workspace directory if not already created."""
+        if ws_dir_path in created_dirs:
+            return
+        try:
+            w.workspace.mkdirs(ws_dir_path)
+        except Exception:
+            pass
+        created_dirs.add(ws_dir_path)
+
+    def upload_dir(local_dir: Path, ws_dir: str, exclude_patterns=None):
+        """Recursively upload a directory to workspace."""
+        nonlocal uploaded
+        if not local_dir.exists():
+            return
+        exclude_patterns = exclude_patterns or []
+        ensure_ws_dir(ws_dir)
+        for item in sorted(local_dir.rglob("*")):
+            if item.is_dir():
+                continue
+            rel = item.relative_to(local_dir)
+            # Skip excluded patterns
+            skip = False
+            for pat in exclude_patterns:
+                if pat in str(rel):
+                    skip = True
+                    break
+            if skip:
+                continue
+            # Skip files that are too large
+            if item.stat().st_size > MAX_FILE_SIZE:
+                log_info(f"  Skipping {rel} ({item.stat().st_size // 1024 // 1024}MB > limit)")
+                continue
+            # Skip __pycache__, .pyc
+            if "__pycache__" in str(rel) or str(rel).endswith(".pyc"):
+                continue
+            # Ensure parent directory exists in workspace
+            rel_parent = str(rel.parent)
+            if rel_parent != ".":
+                ensure_ws_dir(f"{ws_dir}/{rel_parent}")
+            file_bytes = item.read_bytes()
+            target = f"{ws_dir}/{rel}"
+            try:
+                w.workspace.import_(
+                    path=target,
+                    content=base64.b64encode(file_bytes).decode("ascii"),
+                    format=ImportFormat.AUTO,
+                    overwrite=True,
+                )
+                uploaded += 1
+            except Exception as e:
+                log_warn(f"  Upload failed for {rel}: {str(e)[:100]}")
+
+    def upload_file(local_file: Path, ws_file: str):
+        """Upload a single file to workspace."""
+        nonlocal uploaded
+        if not local_file.exists():
+            return
+        file_bytes = local_file.read_bytes()
+        try:
+            w.workspace.import_(
+                path=ws_file,
+                content=base64.b64encode(file_bytes).decode("ascii"),
+                format=ImportFormat.AUTO,
+                overwrite=True,
+            )
+            uploaded += 1
+        except Exception as e:
+            log_warn(f"  Upload failed for {local_file.name}: {str(e)[:100]}")
+
+    # Backend app code
+    upload_dir(APP_DIR / "backend" / "app", f"{ws_path}/backend/app")
+    # Backend static (exclude vm-costs.csv — too large for workspace snapshot)
+    upload_dir(APP_DIR / "backend" / "static", f"{ws_path}/backend/static",
+               exclude_patterns=["vm-costs.csv"])
+    # Backend scripts
+    upload_dir(APP_DIR / "backend" / "scripts", f"{ws_path}/backend/scripts")
+    # Frontend source (built at startup)
+    upload_dir(APP_DIR / "frontend" / "src", f"{ws_path}/frontend/src")
+    upload_dir(APP_DIR / "frontend" / "public", f"{ws_path}/frontend/public")
+    for fe_file in ["package.json", "package-lock.json", "tsconfig.json",
+                     "tsconfig.app.json", "tsconfig.node.json", "vite.config.ts",
+                     "index.html", ".env.production"]:
+        upload_file(APP_DIR / "frontend" / fe_file, f"{ws_path}/frontend/{fe_file}")
+
+    # Top-level config
+    upload_file(APP_DIR / "app.yaml", f"{ws_path}/app.yaml")
+    upload_file(APP_DIR / "requirements.txt", f"{ws_path}/requirements.txt")
+
+    log_ok(f"Uploaded {uploaded} files to {ws_path}")
+
+    # 3. Deploy
+    profile = ctx.get("profile", "")
+    profile_flag = f"--profile {profile}" if profile else ""
+    result = subprocess.run(
+        f"databricks apps deploy {app_name} {profile_flag} --source-code-path \"{ws_path}\"",
+        shell=True,
+        capture_output=True, text=True, timeout=600,
+    )
+    if result.returncode == 0:
+        log_ok("App deployment started")
+        # Wait for deployment
+        log_info("Waiting for deployment to complete...")
+        import time
+        for _ in range(60):  # 10 min max
+            time.sleep(10)
+            try:
+                app_info = w.apps.get(app_name)
+                ad = getattr(app_info, "active_deployment", None)
+                pd = getattr(app_info, "pending_deployment", None)
+                deploy = pd or ad
+                if deploy:
+                    state = deploy.status.state.value if hasattr(deploy.status.state, "value") else str(deploy.status.state)
+                    log_info(f"  Deploy state: {state}")
+                    if state == "SUCCEEDED":
+                        log_ok(f"App deployed and running at {app_info.url}")
+                        return
+                    if state == "FAILED":
+                        log_warn(f"Deploy failed: {deploy.status.message}")
+                        return
+            except Exception:
+                pass
+        log_warn("Timed out waiting for deployment")
     else:
-        log_warn("deploy.sh not found — deploy manually")
-        log_info(f"  cd {APP_DIR} && bash deploy.sh --workspace-deploy")
+        log_warn(f"Deploy command failed: {result.stderr[:300]}")
 
 
 # ===================================================================

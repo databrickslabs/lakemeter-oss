@@ -122,8 +122,12 @@ if [ "$WORKSPACE_DEPLOY" = true ]; then
     PID_BSCRIPTS=$!
 
     # Static: pricing + assets (NOT docs/ — saves 87MB)
+    # Exclude vm-costs.csv (12MB) — exceeds workspace export limit; pricing data is in Lakebase
     (
-        databricks workspace import-dir ${PROFILE_FLAG} "backend/static/pricing" "${WS_PATH}/backend/static/pricing" --overwrite
+        PRICING_STAGING=$(mktemp -d)
+        rsync -a --exclude='vm-costs.csv' backend/static/pricing/ "$PRICING_STAGING/"
+        databricks workspace import-dir ${PROFILE_FLAG} "$PRICING_STAGING" "${WS_PATH}/backend/static/pricing" --overwrite
+        rm -rf "$PRICING_STAGING"
         databricks workspace import-dir ${PROFILE_FLAG} "backend/static/assets" "${WS_PATH}/backend/static/assets" --overwrite
         for f in backend/static/index.html backend/static/databricks-icon.svg; do
             [ -f "$f" ] && databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true

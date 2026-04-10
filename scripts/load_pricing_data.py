@@ -103,19 +103,38 @@ def cast_value(col, val):
     return val
 
 
-def load_csv(csv_filename, table, columns):
-    """Load a single CSV file into a Lakebase table."""
+def find_csv_files(csv_filename):
+    """Find the CSV file(s) — handles split files (e.g., vm-costs_part1.csv, vm-costs_part2.csv)."""
     filepath = os.path.join(PRICING_DIR, csv_filename)
-    if not os.path.exists(filepath):
+    if os.path.exists(filepath):
+        return [filepath]
+    # Check for split parts: stem_part1.csv, stem_part2.csv, ...
+    stem = csv_filename.rsplit(".", 1)[0]
+    parts = []
+    for i in range(1, 100):
+        part_path = os.path.join(PRICING_DIR, f"{stem}_part{i}.csv")
+        if os.path.exists(part_path):
+            parts.append(part_path)
+        else:
+            break
+    return parts
+
+
+def load_csv(csv_filename, table, columns):
+    """Load a single CSV file (or its split parts) into a Lakebase table."""
+    filepaths = find_csv_files(csv_filename)
+    if not filepaths:
         print(f"  SKIP {csv_filename} (not found)")
         return 0
 
-    with open(filepath, "r") as f:
-        reader = csv.DictReader(f)
-        rows = [
-            tuple(cast_value(col, row.get(col, "")) for col in columns)
-            for row in reader
-        ]
+    rows = []
+    for fp in filepaths:
+        with open(fp, "r") as f:
+            reader = csv.DictReader(f)
+            rows.extend(
+                tuple(cast_value(col, row.get(col, "")) for col in columns)
+                for row in reader
+            )
 
     if not rows:
         print(f"  SKIP {csv_filename} (empty)")
@@ -127,7 +146,8 @@ def load_csv(csv_filename, table, columns):
     tmpl = "(" + ", ".join(["%s"] * len(columns)) + ")"
     sql = f"INSERT INTO lakemeter.{table} ({cols_str}) VALUES %s"
     psycopg2.extras.execute_values(cur, sql, rows, template=tmpl, page_size=2000)
-    print(f"  {csv_filename} -> {table}: {len(rows)} rows")
+    parts_note = f" ({len(filepaths)} parts)" if len(filepaths) > 1 else ""
+    print(f"  {csv_filename} -> {table}: {len(rows)} rows{parts_note}")
     return len(rows)
 
 # COMMAND ----------
