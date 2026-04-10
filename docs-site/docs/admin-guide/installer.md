@@ -75,11 +75,15 @@ Interactive prompts collect deployment parameters. All parameters have sensible 
 | Instance name | `lakemeter-customer` | Lakebase instance identifier |
 | Database name | `lakemeter_pricing` | PostgreSQL database name |
 | App name | `lakemeter` | Databricks App name |
-| CU size | `CU_1` | Lakebase compute unit size (CU_1, CU_2, CU_4, CU_8) |
 | Secrets scope | `lakemeter-secrets` | Databricks secret scope name |
-| SP client ID key | `sp_clientid` | Secret scope key for SP client ID |
-| SP secret key | `sp_secret` | Secret scope key for SP client secret |
-| Claude endpoint | `databricks-claude-opus-4-6` | Claude model serving endpoint name (for AI Assistant) |
+
+The following are fixed (not user-configurable):
+
+| Setting | Value | Reason |
+|---------|-------|--------|
+| Lakebase scaling | 0.5–16 CU, scale-to-zero | Optimal for cost and performance — starts minimal, scales up under load |
+| SP key names | `sp_clientid` / `sp_secret` | Standard convention |
+| Claude endpoint | `databricks-claude-opus-4-6` | Same endpoint on every Databricks workspace |
 
 ### Step 3: Provision Lakebase Instance
 
@@ -87,7 +91,7 @@ Creates a new Lakebase (managed PostgreSQL) instance via the Databricks SDK (`da
 
 - Instance creation takes 2–5 minutes
 - The installer polls every 5 seconds until the instance reaches `AVAILABLE` state (timeout: 10 minutes)
-- Enables auto-scaling (serverless compute) on the instance
+- Configures autoscaling from 0.5 CU to 16 CU with scale-to-zero enabled
 - Enables `pg_native_login` for password-based authentication fallback
 - Returns the instance DNS hostname, UID, and name
 - Skipped with `--skip-provision`

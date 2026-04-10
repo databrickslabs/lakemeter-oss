@@ -39,7 +39,10 @@ SETUP_DIR = APP_DIR / "etl" / "lakebase_setup" / "setup"
 
 DEFAULT_DB_NAME = "lakemeter_pricing"
 DEFAULT_SCHEMA = "lakemeter"
-DEFAULT_CU_SIZE = "CU_1"
+DEFAULT_CU_SIZE = "CU_0_5"  # Start at 0.5 CU, autoscale to 16 CU
+DEFAULT_SP_CLIENT_ID_KEY = "sp_clientid"
+DEFAULT_SP_SECRET_KEY = "sp_secret"
+DEFAULT_CLAUDE_ENDPOINT = "databricks-claude-opus-4-6"
 DEFAULT_NODE_COUNT = 1
 
 # Colors
@@ -182,33 +185,32 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
             "app_name": "lakemeter",
             "cu_size": DEFAULT_CU_SIZE,
             "secrets_scope": "lakemeter-secrets",
-            "sp_client_id_key": "sp_clientid",
-            "sp_secret_key": "sp_secret",
-            "claude_endpoint": "databricks-claude-opus-4-6",
+            "sp_client_id_key": DEFAULT_SP_CLIENT_ID_KEY,
+            "sp_secret_key": DEFAULT_SP_SECRET_KEY,
+            "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
         }
 
     instance_name = prompt_input("Lakebase instance name", "lakemeter-customer")
     db_name = prompt_input("Database name", DEFAULT_DB_NAME)
     app_name = prompt_input("Databricks App name", "lakemeter")
-
-    cu_options = ["CU_1 (smallest, dev/demo)", "CU_2", "CU_4", "CU_8 (production)"]
-    cu_choice = prompt_choice("Compute unit size", cu_options, default=0)
-    cu_size = cu_choice.split(" ")[0]
-
     secrets_scope = prompt_input("Secrets scope name", "lakemeter-secrets")
-    sp_client_id_key = prompt_input("SP client ID secret key", "sp_clientid")
-    sp_secret_key = prompt_input("SP secret key name", "sp_secret")
-    claude_endpoint = prompt_input("Claude serving endpoint name (for AI Assistant)", "databricks-claude-opus-4-6")
+
+    # Fixed values — not user-configurable
+    # CU: autoscaling 0.5–16 CU with scale-to-zero (always)
+    # SP keys: standard names in the secrets scope
+    # Claude: same endpoint on every Databricks workspace
+    log_info("Lakebase: autoscaling 0.5–16 CU with scale-to-zero enabled")
+    log_info(f"Claude AI endpoint: {DEFAULT_CLAUDE_ENDPOINT}")
 
     return {
         "instance_name": instance_name,
         "db_name": db_name,
         "app_name": app_name,
-        "cu_size": cu_size,
+        "cu_size": DEFAULT_CU_SIZE,
         "secrets_scope": secrets_scope,
-        "sp_client_id_key": sp_client_id_key,
-        "sp_secret_key": sp_secret_key,
-        "claude_endpoint": claude_endpoint,
+        "sp_client_id_key": DEFAULT_SP_CLIENT_ID_KEY,
+        "sp_secret_key": DEFAULT_SP_SECRET_KEY,
+        "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
     }
 
 
@@ -246,7 +248,7 @@ def provision_lakebase(ctx: dict, cfg: dict) -> dict:
     except Exception:
         pass
 
-    log_info(f"Creating Lakebase instance '{name}' ({cfg['cu_size']}, auto-scaling enabled)...")
+    log_info(f"Creating Lakebase instance '{name}' (autoscaling 0.5–16 CU, scale-to-zero)...")
     from databricks.sdk.service.database import CreateDatabaseInstanceRequest
 
     instance = w.database.create_database_instance(
@@ -256,7 +258,7 @@ def provision_lakebase(ctx: dict, cfg: dict) -> dict:
     )
     log_ok(f"Instance created: {instance.name} (uid={instance.uid})")
 
-    # Enable auto-scaling via REST API (not yet in SDK)
+    # Enable auto-scaling with scale-to-zero via REST API
     try:
         import requests
         headers = w.config.authenticate()
@@ -267,10 +269,13 @@ def provision_lakebase(ctx: dict, cfg: dict) -> dict:
             json={
                 "name": name,
                 "enable_serverless_compute": True,
+                "min_capacity": "CU_0_5",
+                "max_capacity": "CU_16",
+                "scale_to_zero": True,
             },
         )
         if resp.status_code < 300:
-            log_ok("Auto-scaling (serverless compute) enabled")
+            log_ok("Auto-scaling enabled (0.5–16 CU, scale-to-zero)")
         else:
             log_warn(f"Could not enable auto-scaling: {resp.status_code} {resp.text[:200]}")
     except Exception as e:
@@ -1729,7 +1734,7 @@ def main():
         print(f"  Instance:  {CYAN}{cfg['instance_name']}{NC}")
         print(f"  Database:  {CYAN}{cfg['db_name']}{NC}")
         print(f"  App:       {CYAN}{cfg['app_name']}{NC}")
-        print(f"  CU Size:   {CYAN}{cfg['cu_size']}{NC}")
+        print(f"  Lakebase:  {CYAN}Autoscaling 0.5–16 CU, scale-to-zero{NC}")
         print(f"  Scope:     {CYAN}{cfg['secrets_scope']}{NC}")
         print(f"\n{GREEN}Dry run complete. Remove --dry-run to execute.{NC}")
         return
