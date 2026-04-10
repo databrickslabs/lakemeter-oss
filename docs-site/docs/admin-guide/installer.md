@@ -16,7 +16,7 @@ Before running the installer, ensure you have:
 That's it. The installer handles everything else automatically:
 - Lakebase is available on all Databricks workspaces — the installer provisions the instance
 - The Databricks App gets its own Service Principal automatically — no need to register one
-- Node.js 22 and npm are included in the Databricks Apps runtime — the frontend builds from source at app startup
+- The frontend is pre-built locally and deployed as static assets — no Node.js needed at runtime
 - Pricing data files ship with the repository as pre-flattened CSV files
 
 ## Usage
