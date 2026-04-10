@@ -73,20 +73,13 @@ def get_cli_token() -> Optional[str]:
 
 def get_sp_token() -> Optional[str]:
     """
-    Get Service Principal token for external API authentication.
-    Uses the same SP credentials that authenticate to Lakebase.
+    Get the app's built-in Service Principal token.
+    In Databricks Apps, DATABRICKS_CLIENT_ID/DATABRICKS_CLIENT_SECRET are auto-injected.
     """
     try:
         from app.auth.token_manager import token_manager
-        if token_manager and token_manager._sp_client_id and token_manager._sp_client_secret:
-            from databricks.sdk import WorkspaceClient
-            sp_client = WorkspaceClient(
-                host=token_manager.databricks_host,
-                client_id=token_manager._sp_client_id,
-                client_secret=token_manager._sp_client_secret
-            )
-            # Get OAuth token for API calls
-            auth_headers = sp_client.config.authenticate()
+        if token_manager and token_manager._workspace_client:
+            auth_headers = token_manager._workspace_client.config.authenticate()
             if auth_headers:
                 auth_header = auth_headers.get('Authorization', '')
                 if auth_header.startswith('Bearer '):

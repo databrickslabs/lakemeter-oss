@@ -14,16 +14,9 @@ env:
   - name: "CORS_ORIGINS"
     value: ""
 
-  # Note: DATABRICKS_HOST is auto-populated by Databricks Apps platform.
-  # Do NOT set it manually — the platform injects the correct workspace URL.
-
-  # Secrets scope containing SP credentials
-  - name: "DATABRICKS_SECRETS_SCOPE"
-    valueFrom: "lakemeter-secrets-scope"
-  - name: "SP_CLIENT_ID_KEY"
-    value: "sp_clientid"
-  - name: "SP_SECRET_KEY"
-    value: "sp_secret"
+  # Note: DATABRICKS_HOST, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET are
+  # auto-injected by the Databricks Apps platform. The app's built-in SP
+  # handles all authentication (Lakebase OAuth, model serving, etc.).
 
   # Lakebase database configuration
   - name: "LAKEBASE_INSTANCE_NAME"

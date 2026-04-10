@@ -10,14 +10,14 @@ Lakemeter includes a zero-click installer (`scripts/install_lakemeter.py`) that 
 
 Before running the installer, ensure you have:
 
-- **Python 3.10+** with the following packages installed:
-  - `databricks-sdk`
-  - `psycopg2-binary`
-  - `requests`
+- **Python 3.10+** with `databricks-sdk`, `psycopg2-binary`, and `requests` (these are used by the installer script itself to provision Lakebase and create tables)
 - **Databricks CLI** installed and configured with a workspace profile
-- **Service Principal** registered in your workspace (the installer creates the secrets scope and prompts for credentials if needed)
-- **Lakebase** feature enabled on your workspace (the installer provisions the instance automatically)
-- **Node.js 22+ and npm** (optional — the Databricks Apps runtime includes Node.js 22.16, so this is only needed for local frontend builds)
+
+That's it. The installer handles everything else automatically:
+- Lakebase is available on all Databricks workspaces — the installer provisions the instance
+- The Databricks App gets its own Service Principal automatically — no need to register one
+- Node.js 22 and npm are included in the Databricks Apps runtime — the frontend builds from source at app startup
+- Pricing data files ship with the repository
 
 ## Usage
 
@@ -52,19 +52,18 @@ python scripts/install_lakemeter.py --profile <cli-profile> --non-interactive
 | `--dry-run` | Validate prerequisites and show config plan without executing |
 | `--non-interactive` | Use all defaults with no prompts (for CI/CD pipelines) |
 
-## The 13-Step Flow
+## The 12-Step Flow
 
-The installer executes 13 sequential steps. Each step prints a progress indicator and a green checkmark on success.
+The installer executes 12 sequential steps. Each step prints a progress indicator and a green checkmark on success.
 
 ### Step 1: Validate Prerequisites
 
-Checks Python version (3.10+), required Python packages (`databricks-sdk`, `psycopg2-binary`, `requests`), Node.js/npm availability, Databricks CLI installation, pricing data files in `backend/static/pricing/`, and workspace connectivity.
+Checks Python version (3.10+), required Python packages (`databricks-sdk`, `psycopg2-binary`, `requests`), Databricks CLI installation, pricing data files, and workspace connectivity.
 
 ```
-[1/13] Validating prerequisites
+[1/12] Validating prerequisites
   ✓ Python 3.11
   ✓ Required Python packages installed
-  ✓ Node.js v22.16.0
   ✓ Databricks CLI found
   ✓ Pricing data: 9 JSON files
   ✓ Authenticated as user@company.com
@@ -78,7 +77,7 @@ Interactive prompts collect deployment parameters. All parameters have sensible 
 
 The installer asks whether to use **static** (bundled JSON files) or **live API** pricing:
 
-- **Static (default):** Uses pre-bundled pricing data in `backend/static/pricing/`. No cloud credentials needed. Steps 5, 10, and 11 are skipped.
+- **Static (default):** Uses pre-bundled pricing data in `backend/static/pricing/`. No cloud credentials needed. Steps 5, 9, and 10 are skipped.
 - **Live API:** Fetches pricing from cloud APIs (AWS Pricing API, Azure Retail Prices API, GCP Cloud Billing API) and Databricks `system.billing.list_prices`. Creates a UC catalog, uploads ETL notebooks, and schedules a weekly sync workflow.
 
 When **Live API** is selected, the installer prompts for cloud credentials:
@@ -108,7 +107,6 @@ The following are fixed (not user-configurable):
 | Setting | Value | Reason |
 |---------|-------|--------|
 | Lakebase scaling | 0.5–16 CU, scale-to-zero | Optimal for cost and performance — starts minimal, scales up under load |
-| SP key names | `sp_clientid` / `sp_secret` | Standard convention |
 | Claude endpoint | `databricks-claude-opus-4-6` | Same endpoint on every Databricks workspace |
 
 ### Step 3: Provision Lakebase Instance
@@ -170,28 +168,11 @@ Also creates reference tables: `ref_fmapi_databricks_models`, `ref_fmapi_proprie
 
 Populates the SKU discount mapping table that maps workload configurations to Databricks SKU names and discount tiers. This enables accurate pricing lookups for Excel export.
 
-### Step 8: Configure Service Principal Access
-
-The most critical step — configures OAuth M2M access so the Databricks App can connect to Lakebase. See the [Permissions Guide](./permissions) for full details.
-
-Sub-steps:
-
-1. **Ensure secrets scope exists** — creates the scope if it doesn't exist
-2. **Collect SP credentials** — reads SP client ID and secret from the secrets scope, or prompts the user to enter them (and stores them)
-3. **Grant `CAN_MANAGE`** workspace-level permission on the Lakebase instance
-4. **Create SP role** via the Lakebase Roles API with `identity_type=SERVICE_PRINCIPAL`
-5. **Grant schema permissions** — `ALL PRIVILEGES` on tables, sequences, and functions in the `lakemeter` schema, plus `ALTER DEFAULT PRIVILEGES`
-6. **Verify connectivity** — generate an OAuth token and execute a test query
-
-:::caution
-If a role already exists with `identity_type=PG_ONLY`, the installer deletes it and recreates it with `identity_type=SERVICE_PRINCIPAL`. The `PG_ONLY` type cannot exchange OAuth tokens — see the [Permissions Guide](./permissions).
-:::
-
-### Step 9: Create Cost Calculation Views
+### Step 8: Create Cost Calculation Views
 
 Creates PostgreSQL views that aggregate pricing data for common query patterns used by the API layer.
 
-### Step 10: Upload ETL Notebooks
+### Step 9: Upload ETL Notebooks
 
 :::note
 Only runs when pricing source is `api`. Skipped for `static` (default).
@@ -207,7 +188,7 @@ Stores cloud API credentials in the secrets scope and uploads 12 ETL pricing syn
 Notebooks uploaded:
 - `01_Fetch_DBU_Prices` through `12_Load_FMAPI_Proprietary_Rates`
 
-### Step 11: Create Pricing Sync Workflow
+### Step 10: Create Pricing Sync Workflow
 
 :::note
 Only runs when pricing source is `api`. Skipped for `static` (default).
@@ -219,14 +200,12 @@ Creates a Databricks Workflow (`lakemeter-pricing-sync`) that runs all 12 ETL no
 - Schedule: Weekly on Sundays at 2:00 AM UTC
 - Uses serverless compute (no cluster management)
 
-### Step 12: Generate App Configuration
+### Step 11: Configure Application
 
-Generates the `app.yaml` file with `valueFrom` resource references and then configures the corresponding Databricks App resources so those references resolve at runtime.
+Generates the `app.yaml` file with `valueFrom` resource references and configures the corresponding Databricks App resources so those references resolve at runtime.
 
 ```yaml
 env:
-  - name: "DATABRICKS_SECRETS_SCOPE"
-    valueFrom: "lakemeter-secrets-scope"
   - name: "LAKEBASE_INSTANCE_NAME"
     valueFrom: "lakemeter-lakebase-instance"
   - name: "DB_HOST"
@@ -235,14 +214,19 @@ env:
     valueFrom: "lakemeter-db-user"
   - name: "DB_NAME"
     valueFrom: "lakemeter-db-name"
+  - name: "CLAUDE_MODEL_ENDPOINT"
+    valueFrom: "lakemeter-claude-endpoint"
 ```
 
-The installer also configures Databricks App resources so that `valueFrom` references resolve at runtime. It creates workspace secrets for each configuration value and maps them to app-level resources via the Apps API. It also:
+`DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, and `DATABRICKS_CLIENT_SECRET` are auto-injected by the Databricks Apps platform — no manual configuration needed.
 
-- Configures a Claude model serving endpoint resource for the AI Assistant
-- Grants the Databricks App's own service principal access to the Lakebase instance (role creation + SQL permissions)
+The installer also:
 
-### Step 13: Deploy Application
+- Creates workspace secrets for each configuration value and maps them to app-level resources via the Apps API
+- Configures a Claude model serving endpoint resource (`CAN_QUERY`) for the AI Assistant
+- Grants the Databricks App's own built-in service principal access to the Lakebase instance (role creation with `identity_type=SERVICE_PRINCIPAL` + SQL permissions)
+
+### Step 12: Deploy Application
 
 Runs `deploy.sh --workspace-deploy` to sync the application files to the Databricks workspace and deploy the app. Only essential files are synced (backend, frontend source, scripts, app.yaml). Skipped with `--skip-deploy`.
 
@@ -268,16 +252,14 @@ Once all steps complete:
 
 ### Installer fails at Step 3 (provisioning)
 
-- Ensure Lakebase is enabled on your workspace
 - Check your profile has sufficient permissions to create database instances
 - Use `--skip-provision` if an instance already exists
 
-### Installer fails at Step 8 (SP access)
+### App can't connect to Lakebase after deploy
 
-- The installer creates the secrets scope automatically, but the SP must exist in the workspace
-- If prompted for SP credentials, ensure you enter the correct client ID and secret
-- The SP must use `identity_type=SERVICE_PRINCIPAL` — see the [Permissions Guide](./permissions)
-- Check that the SP has workspace-level access
+- The app's built-in SP needs a Lakebase role with `identity_type=SERVICE_PRINCIPAL` — Step 11 creates this automatically
+- If the app was created before running the installer, re-run the installer with `--skip-provision` to re-grant permissions
+- As a fallback, the app uses `lakemeter_sync_role` (password auth) created in Step 4
 
 ### Pricing data counts don't match
 

@@ -23,14 +23,11 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_sslmode: str = "require"
     
-    # Databricks Service Principal OAuth (M2M) Configuration
+    # Databricks configuration
+    # In Databricks Apps: DATABRICKS_HOST, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET
+    # are auto-injected. The app's built-in SP handles all authentication.
     databricks_host: Optional[str] = None
     databricks_config_profile: Optional[str] = None
-    
-    # Databricks secrets configuration for Service Principal credentials
-    databricks_secrets_scope: Optional[str] = None
-    sp_client_id_key: str = "sp_clientid"
-    sp_secret_key: str = "sp_secret"
     
     # Lakebase instance name (from Compute > Lakebase Postgres)
     lakebase_instance_name: Optional[str] = None
@@ -55,8 +52,8 @@ class Settings(BaseSettings):
     
     @property
     def use_oauth(self) -> bool:
-        """Check if OAuth authentication is configured."""
-        return bool(self.databricks_host and self.databricks_secrets_scope)
+        """Check if OAuth authentication is configured (Databricks Apps auto-injects host)."""
+        return bool(self.databricks_host)
     
     @property
     def is_production(self) -> bool:
