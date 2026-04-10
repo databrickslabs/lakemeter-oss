@@ -40,7 +40,7 @@ SETUP_DIR = APP_DIR / "etl" / "lakebase_setup" / "setup"
 
 DEFAULT_DB_NAME = "lakemeter_pricing"
 DEFAULT_SCHEMA = "lakemeter"
-DEFAULT_CU_SIZE = "CU_0_5"  # Start at 0.5 CU, autoscale to 16 CU
+DEFAULT_CU_SIZE = "CU_1"  # Start at 1 CU, autoscale to 16 CU
 DEFAULT_CLAUDE_ENDPOINT = "databricks-claude-opus-4-6"
 DEFAULT_NODE_COUNT = 1
 
@@ -177,7 +177,7 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
     secrets_scope = prompt_input("Secrets scope name", "lakemeter-secrets")
 
     # Fixed values — not user-configurable
-    log_info("Lakebase: autoscaling 0.5–16 CU with scale-to-zero enabled")
+    log_info("Lakebase: autoscaling 1–16 CU with scale-to-zero enabled")
     log_info(f"Claude AI endpoint: {DEFAULT_CLAUDE_ENDPOINT}")
 
     return {
@@ -224,7 +224,7 @@ def provision_lakebase(ctx: dict, cfg: dict) -> dict:
     except Exception:
         pass
 
-    log_info(f"Creating Lakebase instance '{name}' (autoscaling 0.5–16 CU, scale-to-zero)...")
+    log_info(f"Creating Lakebase instance '{name}' (autoscaling 1–16 CU, scale-to-zero)...")
     from databricks.sdk.service.database import DatabaseInstance
     waiter = w.database.create_database_instance(
         database_instance=DatabaseInstance(
@@ -247,7 +247,7 @@ def provision_lakebase(ctx: dict, cfg: dict) -> dict:
             json={
                 "name": name,
                 "enable_serverless_compute": True,
-                "min_capacity": "CU_0_5",
+                "min_capacity": "CU_1",
                 "max_capacity": "CU_16",
                 "scale_to_zero": True,
             },
