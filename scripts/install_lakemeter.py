@@ -225,11 +225,15 @@ def provision_lakebase(ctx: dict, cfg: dict) -> dict:
         pass
 
     log_info(f"Creating Lakebase instance '{name}' (autoscaling 0.5–16 CU, scale-to-zero)...")
-    instance = w.database.create_database_instance(
-        name=name,
-        capacity=cfg["cu_size"],
-        stopped=False,
+    from databricks.sdk.service.database import DatabaseInstance
+    waiter = w.database.create_database_instance(
+        database_instance=DatabaseInstance(
+            name=name,
+            capacity=cfg["cu_size"],
+            stopped=False,
+        ),
     )
+    instance = waiter.response
     log_ok(f"Instance created: {instance.name} (uid={instance.uid})")
 
     # Enable auto-scaling with scale-to-zero via REST API
