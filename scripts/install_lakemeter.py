@@ -1634,20 +1634,15 @@ def deploy_app(ctx: dict, cfg: dict):
         except Exception as e:
             log_warn(f"  Upload failed for {local_file.name}: {str(e)[:100]}")
 
-    # Backend app code
+    # Backend app code (FastAPI source)
     upload_dir(APP_DIR / "backend" / "app", f"{ws_path}/backend/app")
-    # Backend static (exclude ALL CSVs — pricing data is in Lakebase, CSVs not needed at runtime)
+    # Backend static: pre-built frontend (JS/CSS/HTML) + JSON pricing bundle
+    # Exclude CSVs (pricing data is in Lakebase) and build-time-only files
     upload_dir(APP_DIR / "backend" / "static", f"{ws_path}/backend/static",
                exclude_patterns=[".csv", "manifest.json"])
-    # Backend scripts
-    upload_dir(APP_DIR / "backend" / "scripts", f"{ws_path}/backend/scripts")
-    # Frontend source (built at startup)
-    upload_dir(APP_DIR / "frontend" / "src", f"{ws_path}/frontend/src")
-    upload_dir(APP_DIR / "frontend" / "public", f"{ws_path}/frontend/public")
-    for fe_file in ["package.json", "package-lock.json", "tsconfig.json",
-                     "tsconfig.app.json", "tsconfig.node.json", "vite.config.ts",
-                     "index.html", ".env.production"]:
-        upload_file(APP_DIR / "frontend" / fe_file, f"{ws_path}/frontend/{fe_file}")
+    # NOTE: backend/scripts/ excluded — only contains build-time tools, not needed at runtime
+    # NOTE: frontend/ excluded — app.yaml runs pre-built static assets from backend/static/,
+    #        does NOT build frontend from source at startup
 
     # Top-level config
     upload_file(APP_DIR / "app.yaml", f"{ws_path}/app.yaml")

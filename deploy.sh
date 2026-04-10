@@ -103,25 +103,23 @@ if [ "$WORKSPACE_DEPLOY" = true ]; then
     fi
     echo "Workspace path: $WS_PATH"
 
-    # Stage clean copies (exclude __pycache__, .databricks, .claude)
+    # Stage clean backend/app (exclude __pycache__, .databricks, .claude)
     STAGING_DIR=$(mktemp -d)
     trap "rm -rf $STAGING_DIR" EXIT
     rsync -a --exclude='__pycache__' --exclude='.databricks' --exclude='.claude' backend/app/ "$STAGING_DIR/app/"
-    rsync -a --exclude='__pycache__' scripts/ "$STAGING_DIR/scripts/"
 
-    # ── Parallel sync: all directories at once ──
-    echo -e "\n${YELLOW}  Syncing all files in parallel...${NC}"
+    # ── Parallel sync: runtime-essential files only ──
+    # Only backend/ + app.yaml + requirements.txt go to workspace.
+    # frontend/ excluded — pre-built assets are in backend/static/, app doesn't build from source.
+    # backend/scripts/ excluded — build-time tools only, not needed at runtime.
+    echo -e "\n${YELLOW}  Syncing runtime files in parallel...${NC}"
     step_start
 
     # Backend app code (staged, no __pycache__)
     databricks workspace import-dir ${PROFILE_FLAG} "$STAGING_DIR/app" "${WS_PATH}/backend/app" --overwrite &
     PID_APP=$!
 
-    # Backend scripts
-    databricks workspace import-dir ${PROFILE_FLAG} "backend/scripts" "${WS_PATH}/backend/scripts" --overwrite &
-    PID_BSCRIPTS=$!
-
-    # Static: JSON pricing files + assets (exclude ALL CSVs — pricing data is in Lakebase)
+    # Static: pre-built frontend + JSON pricing (exclude ALL CSVs — pricing data is in Lakebase)
     (
         PRICING_STAGING=$(mktemp -d)
         rsync -a --exclude='*.csv' --exclude='manifest.json' backend/static/pricing/ "$PRICING_STAGING/"
@@ -134,35 +132,16 @@ if [ "$WORKSPACE_DEPLOY" = true ]; then
     ) &
     PID_STATIC=$!
 
-    # Frontend source
+    # Top-level config
     (
-        databricks workspace import-dir ${PROFILE_FLAG} "frontend/src" "${WS_PATH}/frontend/src" --overwrite
-        databricks workspace import-dir ${PROFILE_FLAG} "frontend/public" "${WS_PATH}/frontend/public" --overwrite
-        for f in frontend/package.json frontend/package-lock.json frontend/tsconfig.json frontend/tsconfig.app.json frontend/tsconfig.node.json frontend/vite.config.ts frontend/index.html frontend/.env.production; do
-            [ -f "$f" ] && databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true
-        done
-    ) &
-    PID_FE=$!
-
-    # Scripts + top-level config
-    (
-        databricks workspace import-dir ${PROFILE_FLAG} "$STAGING_DIR/scripts" "${WS_PATH}/scripts" --overwrite
         for f in app.yaml requirements.txt; do
             [ -f "$f" ] && databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true
         done
     ) &
     PID_CFG=$!
 
-    # Backend top-level files
-    (
-        for f in backend/app.yaml backend/requirements.txt backend/README.md; do
-            [ -f "$f" ] && databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true
-        done
-    ) &
-    PID_BCFG=$!
-
     # Wait for all parallel syncs
-    wait $PID_APP $PID_BSCRIPTS $PID_STATIC $PID_FE $PID_CFG $PID_BCFG
+    wait $PID_APP $PID_STATIC $PID_CFG
     step_end "parallel sync"
 
     echo -e "${GREEN}OK Files synced to workspace${NC}"
