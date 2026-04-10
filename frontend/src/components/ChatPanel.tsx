@@ -267,7 +267,7 @@ Click **"+ New Estimate"** above to create one, then I can help you add workload
 ---
 
 📖 **Help & Resources**
-- [Documentation](https://cheeyutan.github.io/lakemeter-opensource/) - User guides & reference
+- [Documentation](https://steven-tan-data.github.io/lakemeter-opensource/) - User guides & reference
 - [Official Pricing](https://www.databricks.com/product/pricing) - Databricks pricing page
 
 *Ask me anything using the quick actions below* 👇`
@@ -287,7 +287,7 @@ I can assist you with:
 ---
 
 📖 **Help & Resources**
-- [Documentation](https://cheeyutan.github.io/lakemeter-opensource/) - User guides & reference
+- [Documentation](https://steven-tan-data.github.io/lakemeter-opensource/) - User guides & reference
 - [Official Pricing](https://www.databricks.com/product/pricing) - Databricks pricing page
 
 *Try the quick actions below or ask me anything!*`
