@@ -31,6 +31,9 @@ python scripts/install_lakemeter.py --profile <cli-profile> --skip-provision
 # Skip app deployment (database setup only)
 python scripts/install_lakemeter.py --profile <cli-profile> --skip-deploy
 
+# Skip ETL pipeline setup (no UC catalog, notebooks, or workflow)
+python scripts/install_lakemeter.py --profile <cli-profile> --skip-etl
+
 # Preview mode (validate config without making changes)
 python scripts/install_lakemeter.py --profile <cli-profile> --dry-run
 
@@ -45,19 +48,20 @@ python scripts/install_lakemeter.py --profile <cli-profile> --non-interactive
 | `--profile` | **(Required)** Databricks CLI profile name |
 | `--skip-provision` | Skip Lakebase instance creation — use an existing instance |
 | `--skip-deploy` | Skip frontend build and app deployment |
+| `--skip-etl` | Skip UC catalog creation, ETL notebook upload, and workflow creation |
 | `--dry-run` | Validate prerequisites and show config plan without executing |
 | `--non-interactive` | Use all defaults with no prompts (for CI/CD pipelines) |
 
-## The 10-Step Flow
+## The 13-Step Flow
 
-The installer executes 10 sequential steps. Each step prints a progress indicator and a green checkmark on success.
+The installer executes 13 sequential steps. Each step prints a progress indicator and a green checkmark on success.
 
 ### Step 1: Validate Prerequisites
 
 Checks Python version (3.10+), required Python packages (`databricks-sdk`, `psycopg2-binary`, `requests`), Node.js/npm availability, Databricks CLI installation, pricing data files in `backend/static/pricing/`, and workspace connectivity.
 
 ```
-[1/10] Validating prerequisites
+[1/13] Validating prerequisites
   ✓ Python 3.11
   ✓ Required Python packages installed
   ✓ Node.js v22.16.0
@@ -76,6 +80,7 @@ Interactive prompts collect deployment parameters. All parameters have sensible 
 | Database name | `lakemeter_pricing` | PostgreSQL database name |
 | App name | `lakemeter` | Databricks App name |
 | Secrets scope | `lakemeter-secrets` | Databricks secret scope name |
+| UC catalog name | `lakemeter_catalog` | Unity Catalog for ETL pricing tables |
 
 The following are fixed (not user-configurable):
 
@@ -111,7 +116,15 @@ Connects to the Lakebase instance using owner credentials (via `generate_databas
 - Adds the `discount_config` JSONB column to estimates
 - Updates the Lakebase CU size constraint (supports 0.5 and 1–112)
 
-### Step 5: Load Pricing Reference Data
+### Step 5: Create Unity Catalog and Schema
+
+Creates a Unity Catalog and schema for ETL pricing tables. If the catalog or schema already exists, the installer reuses it.
+
+- Creates the catalog (e.g., `lakemeter_catalog`) via `w.catalogs.create()` if it doesn't exist
+- Creates the `lakemeter` schema within the catalog via `w.schemas.create()` if it doesn't exist
+- Skipped with `--skip-etl`
+
+### Step 6: Load Pricing Reference Data
 
 Loads 9 pricing data files from `backend/static/pricing/` into sync tables. Tables are truncated before each load for idempotent refreshes.
 
@@ -129,11 +142,11 @@ Loads 9 pricing data files from `backend/static/pricing/` into sync tables. Tabl
 
 Also creates reference tables: `ref_fmapi_databricks_models`, `ref_fmapi_proprietary_models`, `ref_model_serving_gpu_types`, and `sync_ref_sku_region_map`.
 
-### Step 6: Create SKU Discount Mapping
+### Step 7: Create SKU Discount Mapping
 
 Populates the SKU discount mapping table that maps workload configurations to Databricks SKU names and discount tiers. This enables accurate pricing lookups for Excel export.
 
-### Step 7: Configure Service Principal Access
+### Step 8: Configure Service Principal Access
 
 The most critical step — configures OAuth M2M access so the Databricks App can connect to Lakebase. See the [Permissions Guide](./permissions) for full details.
 
@@ -150,11 +163,30 @@ Sub-steps:
 If a role already exists with `identity_type=PG_ONLY`, the installer deletes it and recreates it with `identity_type=SERVICE_PRINCIPAL`. The `PG_ONLY` type cannot exchange OAuth tokens — see the [Permissions Guide](./permissions).
 :::
 
-### Step 8: Create Cost Calculation Views
+### Step 9: Create Cost Calculation Views
 
 Creates PostgreSQL views that aggregate pricing data for common query patterns used by the API layer.
 
-### Step 9: Generate App Configuration
+### Step 10: Upload ETL Notebooks
+
+Uploads 12 ETL pricing sync notebooks from `etl/pricing_sync/` to the workspace at `/Workspace/Users/{user}/lakemeter/etl/pricing_sync/`. If the user chose a different UC catalog name, the installer patches the `CATALOG` variable in each notebook before uploading.
+
+Notebooks uploaded:
+- `01_Fetch_DBU_Prices` through `12_Load_FMAPI_Proprietary_Rates`
+- Debug/utility notebooks (98/99 prefix) are excluded
+
+Skipped with `--skip-etl`.
+
+### Step 11: Create Pricing Sync Workflow
+
+Creates a Databricks Workflow (`lakemeter-pricing-sync`) that runs all 12 ETL notebooks as a sequential task chain. If a workflow with the same name already exists, the installer updates it.
+
+- Tasks run sequentially (each depends on the previous)
+- Schedule: Weekly on Sundays at 2:00 AM UTC
+- Uses serverless compute (no cluster management)
+- Skipped with `--skip-etl`
+
+### Step 12: Generate App Configuration
 
 Generates the `app.yaml` file with `valueFrom` resource references and then configures the corresponding Databricks App resources so those references resolve at runtime.
 
@@ -177,7 +209,7 @@ The installer also configures Databricks App resources so that `valueFrom` refer
 - Configures a Claude model serving endpoint resource for the AI Assistant
 - Grants the Databricks App's own service principal access to the Lakebase instance (role creation + SQL permissions)
 
-### Step 10: Deploy Application
+### Step 13: Deploy Application
 
 Runs `deploy.sh --workspace-deploy` to sync the application files to the Databricks workspace and deploy the app. Only essential files are synced (backend, frontend source, scripts, app.yaml). Skipped with `--skip-deploy`.
 
@@ -185,11 +217,15 @@ Runs `deploy.sh --workspace-deploy` to sync the application files to the Databri
 
 Once all steps complete:
 
-1. If you used `--skip-deploy`, deploy manually:
+1. Run the pricing sync workflow manually for the first time (the weekly schedule starts automatically, but you need initial data):
+   ```bash
+   databricks jobs run-now lakemeter-pricing-sync -p your-profile
+   ```
+2. If you used `--skip-deploy`, deploy manually:
    ```bash
    cd backend && databricks apps deploy lakemeter --source-code-path . -p your-profile
    ```
-2. Verify the app is running:
+3. Verify the app is running:
    ```bash
    databricks apps get lakemeter -p your-profile
    ```
@@ -202,7 +238,7 @@ Once all steps complete:
 - Check your profile has sufficient permissions to create database instances
 - Use `--skip-provision` if an instance already exists
 
-### Installer fails at Step 7 (SP access)
+### Installer fails at Step 8 (SP access)
 
 - The installer creates the secrets scope automatically, but the SP must exist in the workspace
 - If prompted for SP credentials, ensure you enter the correct client ID and secret
