@@ -37,6 +37,9 @@ const sidebars: SidebarsConfig = {
         'user-guide/fmapi-databricks',
         'user-guide/fmapi-proprietary',
         'user-guide/lakebase',
+        'user-guide/databricks-apps',
+        'user-guide/ai-parse',
+        'user-guide/shutterstock-imageai',
       ],
     },
     {
