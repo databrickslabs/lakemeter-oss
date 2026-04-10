@@ -23,7 +23,7 @@ Build cost estimates that include multiple workloads. Each estimate is scoped to
 
 ### Configure Workloads
 
-Add workloads to your estimate and configure compute resources, usage patterns, and pricing options. Lakemeter supports 12 workload types covering the full Databricks platform.
+Add workloads to your estimate and configure compute resources, usage patterns, and pricing options. Lakemeter supports 14 workload types covering the full Databricks platform.
 
 ### Get AI Assistance
 
@@ -53,7 +53,7 @@ Download professional Excel reports with full cost breakdowns, ready for RFP res
 Each workload type has a dedicated guide with real-world scenarios, worked cost examples, and configuration references. See [Which Workload Type Do I Need?](/user-guide/workloads) for a decision guide.
 
 ![Workloads overview page](/img/guides/workloads-overview-page.png)
-*The Workloads overview — decision guide for choosing between the 12 workload types.*
+*The Workloads overview — decision guide for choosing between the 14 workload types.*
 
 ## Supported Clouds and Regions
 

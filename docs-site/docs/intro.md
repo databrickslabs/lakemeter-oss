@@ -7,7 +7,7 @@ slug: /
 
 **Build accurate Databricks cost estimates in minutes, not days.**
 
-Lakemeter is a web-based tool that calculates Databricks pricing across 12 workload types, 3 cloud providers, and all available regions. It turns vague "how much will this cost?" conversations into precise, exportable estimates backed by real pricing data.
+Lakemeter is a web-based tool that calculates Databricks pricing across 14 workload types, 3 cloud providers, and all available regions. It turns vague "how much will this cost?" conversations into precise, exportable estimates backed by real pricing data.
 
 ## Who should use this?
 

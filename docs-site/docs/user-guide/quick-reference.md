@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Quick Reference
 
-A concise reference for all 12 workload types in Lakemeter. Use this page to quickly identify which workload type to use and what configuration options are available.
+A concise reference for all 14 workload types in Lakemeter. Use this page to quickly identify which workload type to use and what configuration options are available.
 
 ## Workload types at a glance
 
