@@ -65,6 +65,47 @@ ETL_NOTEBOOKS = [
     "11_Load_FMAPI_Databricks_Rates.ipynb",
     "12_Load_FMAPI_Proprietary_Rates.ipynb",
 ]
+# Additional files to upload alongside notebooks
+ETL_EXTRA_FILES = [
+    "Instance Type Pricing.xlsx",
+]
+
+# Secrets required for API pricing mode
+# Notebook 01 (DBU prices) needs workspace configs for 3 clouds
+# Notebook 03 (AWS VM) needs AWS credentials
+# Notebook 05 (GCP VM) needs GCP service account JSON
+# Notebook 04 (Azure VM) uses public API — no credentials needed
+API_CREDENTIALS = {
+    "aws-access-key-id": {
+        "prompt": "AWS Access Key ID (for VM pricing API)",
+        "notebook": "03_Fetch_AWS_VM",
+    },
+    "aws-secret-access-key": {
+        "prompt": "AWS Secret Access Key",
+        "notebook": "03_Fetch_AWS_VM",
+        "secret": True,
+    },
+    "gcp-service-account-json": {
+        "prompt": "GCP Service Account JSON file path (for VM pricing API)",
+        "notebook": "05_Fetch_GCP_VM",
+        "is_file": True,
+    },
+    "workspace-aws": {
+        "prompt": "AWS workspace config JSON ({host, token, warehouse_id}) for DBU price fetch",
+        "notebook": "01_Fetch_DBU_Prices",
+        "is_json": True,
+    },
+    "workspace-azure": {
+        "prompt": "Azure workspace config JSON ({host, token, warehouse_id}) for DBU price fetch",
+        "notebook": "01_Fetch_DBU_Prices",
+        "is_json": True,
+    },
+    "workspace-gcp": {
+        "prompt": "GCP workspace config JSON ({host, token, warehouse_id}) for DBU price fetch",
+        "notebook": "01_Fetch_DBU_Prices",
+        "is_json": True,
+    },
+}
 
 # Colors
 RED = "\033[0;31m"
@@ -210,20 +251,68 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
             "sp_secret_key": DEFAULT_SP_SECRET_KEY,
             "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
             "uc_catalog": DEFAULT_UC_CATALOG,
+            "pricing_source": "static",
+            "api_credentials": {},
         }
 
     instance_name = prompt_input("Lakebase instance name", "lakemeter-customer")
     db_name = prompt_input("Database name", DEFAULT_DB_NAME)
     app_name = prompt_input("Databricks App name", "lakemeter")
     secrets_scope = prompt_input("Secrets scope name", "lakemeter-secrets")
-    uc_catalog = prompt_input("Unity Catalog name (for ETL tables)", DEFAULT_UC_CATALOG)
+
+    # Pricing source: static files (bundled JSON) or live API (cloud APIs + scheduled sync)
+    pricing_source = prompt_choice(
+        "Pricing data source",
+        ["Static files (bundled — no cloud credentials needed)",
+         "Live API (fetches from cloud APIs — requires credentials, enables scheduled sync)"],
+        default=0,
+    )
+    pricing_source = "api" if "Live API" in pricing_source else "static"
+
+    api_credentials = {}
+    uc_catalog = DEFAULT_UC_CATALOG
+    if pricing_source == "api":
+        uc_catalog = prompt_input("Unity Catalog name (for ETL tables)", DEFAULT_UC_CATALOG)
+        print(f"\n  {BOLD}Cloud credentials for live pricing sync:{NC}")
+        print(f"  {BLUE}→{NC} Azure VM pricing uses a public API (no credentials needed)")
+        print(f"  {BLUE}→{NC} DBU prices require workspace tokens for AWS, Azure, and GCP workspaces")
+        print()
+        for key, meta in API_CREDENTIALS.items():
+            if meta.get("is_file"):
+                file_path = prompt_input(meta["prompt"])
+                if file_path:
+                    path = Path(file_path).expanduser()
+                    if path.exists():
+                        api_credentials[key] = path.read_text(encoding="utf-8").strip()
+                        log_ok(f"Loaded {path.name}")
+                    else:
+                        log_warn(f"File not found: {file_path} — skipping {key}")
+            elif meta.get("is_json"):
+                print(f"  {CYAN}?{NC} {meta['prompt']}")
+                print(f"    Enter JSON or file path (leave blank to skip):")
+                value = input(f"    > ").strip()
+                if value:
+                    if Path(value).expanduser().exists():
+                        api_credentials[key] = Path(value).expanduser().read_text(encoding="utf-8").strip()
+                        log_ok(f"Loaded from file")
+                    else:
+                        api_credentials[key] = value
+                        log_ok(f"Set {key}")
+            elif meta.get("secret"):
+                import getpass
+                value = getpass.getpass(f"  {CYAN}?{NC} {meta['prompt']}: ")
+                if value:
+                    api_credentials[key] = value
+                    log_ok(f"Set {key}")
+            else:
+                value = prompt_input(meta["prompt"])
+                if value:
+                    api_credentials[key] = value
 
     # Fixed values — not user-configurable
-    # CU: autoscaling 0.5–16 CU with scale-to-zero (always)
-    # SP keys: standard names in the secrets scope
-    # Claude: same endpoint on every Databricks workspace
     log_info("Lakebase: autoscaling 0.5–16 CU with scale-to-zero enabled")
     log_info(f"Claude AI endpoint: {DEFAULT_CLAUDE_ENDPOINT}")
+    log_info(f"Pricing source: {pricing_source}")
 
     return {
         "instance_name": instance_name,
@@ -235,6 +324,8 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
         "sp_secret_key": DEFAULT_SP_SECRET_KEY,
         "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
         "uc_catalog": uc_catalog,
+        "pricing_source": pricing_source,
+        "api_credentials": api_credentials,
     }
 
 
@@ -906,13 +997,44 @@ def create_uc_catalog_and_schema(ctx: dict, cfg: dict):
 
 
 # ===================================================================
-# Step 10: Upload ETL Notebooks
+# Step 10a: Store API Credentials as Secrets
+# ===================================================================
+def store_api_credentials(ctx: dict, cfg: dict):
+    """Store cloud API credentials in the Databricks secrets scope."""
+    w = ctx["client"]
+    scope = cfg["secrets_scope"]
+    creds = cfg.get("api_credentials", {})
+
+    if not creds:
+        log_info("No API credentials to store")
+        return
+
+    stored = 0
+    for key, value in creds.items():
+        try:
+            w.secrets.put_secret(scope=scope, key=key, string_value=value)
+            stored += 1
+            # Mask display for sensitive values
+            display = f"{value[:8]}..." if len(value) > 12 else "***"
+            log_ok(f"Stored secret: {key} ({display})")
+        except Exception as e:
+            log_warn(f"Failed to store {key}: {e}")
+
+    log_ok(f"Stored {stored}/{len(creds)} API credentials in scope '{scope}'")
+
+
+# ===================================================================
+# Step 10b: Upload ETL Notebooks
 # ===================================================================
 def upload_etl_notebooks(ctx: dict, cfg: dict):
-    """Upload ETL pricing sync notebooks to workspace, patching CATALOG variable."""
+    """Upload ETL pricing sync notebooks to workspace, patching CATALOG and SECRET_SCOPE."""
+    import base64
+    from databricks.sdk.service.workspace import ImportFormat
+
     w = ctx["client"]
     user = ctx["user"]
     catalog_name = cfg["uc_catalog"]
+    secrets_scope = cfg["secrets_scope"]
 
     workspace_dir = f"/Workspace/Users/{user}/lakemeter/etl/pricing_sync"
 
@@ -923,6 +1045,7 @@ def upload_etl_notebooks(ctx: dict, cfg: dict):
     except Exception as e:
         log_warn(f"Could not create directory (may already exist): {e}")
 
+    # Upload notebooks
     uploaded = 0
     for nb_name in ETL_NOTEBOOKS:
         nb_path = ETL_DIR / nb_name
@@ -930,7 +1053,6 @@ def upload_etl_notebooks(ctx: dict, cfg: dict):
             log_warn(f"Notebook not found: {nb_path}")
             continue
 
-        # Read notebook JSON
         nb_content = nb_path.read_text(encoding="utf-8")
 
         # Patch CATALOG variable if user chose a different catalog
@@ -940,11 +1062,15 @@ def upload_etl_notebooks(ctx: dict, cfg: dict):
                 f'CATALOG = "{catalog_name}"',
             )
 
-        # Upload via workspace API
-        import base64
+        # Patch SECRET_SCOPE if user chose a different scope
+        if secrets_scope != "lakemeter-credentials":
+            nb_content = nb_content.replace(
+                'SECRET_SCOPE = "lakemeter-credentials"',
+                f'SECRET_SCOPE = "{secrets_scope}"',
+            )
+
         workspace_path = f"{workspace_dir}/{nb_name.replace('.ipynb', '')}"
         try:
-            from databricks.sdk.service.workspace import ImportFormat
             w.workspace.import_(
                 path=workspace_path,
                 content=base64.b64encode(nb_content.encode("utf-8")).decode("ascii"),
@@ -956,6 +1082,25 @@ def upload_etl_notebooks(ctx: dict, cfg: dict):
             log_warn(f"Failed to upload {nb_name}: {e}")
 
     log_ok(f"Uploaded {uploaded}/{len(ETL_NOTEBOOKS)} notebooks")
+
+    # Upload extra files (e.g., Instance Type Pricing.xlsx)
+    for extra_file in ETL_EXTRA_FILES:
+        extra_path = ETL_DIR / extra_file
+        if not extra_path.exists():
+            log_warn(f"Extra file not found: {extra_path}")
+            continue
+        workspace_path = f"{workspace_dir}/{extra_file}"
+        try:
+            file_bytes = extra_path.read_bytes()
+            w.workspace.import_(
+                path=workspace_path,
+                content=base64.b64encode(file_bytes).decode("ascii"),
+                format=ImportFormat.AUTO,
+                overwrite=True,
+            )
+            log_ok(f"Uploaded {extra_file}")
+        except Exception as e:
+            log_warn(f"Failed to upload {extra_file}: {e}")
 
 
 # ===================================================================
@@ -1884,8 +2029,8 @@ def main():
         help="Skip Lakebase provisioning (use existing instance)",
     )
     parser.add_argument(
-        "--skip-etl", action="store_true",
-        help="Skip UC catalog creation, ETL notebook upload, and workflow creation",
+        "--pricing-source", choices=["static", "api"], default=None,
+        help="Pricing data source: 'static' (bundled JSON, default) or 'api' (live cloud APIs + scheduled sync)",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -1911,6 +2056,12 @@ def main():
     log_step(2, TOTAL_STEPS, "Gathering configuration")
     cfg = gather_config(ctx, non_interactive=args.non_interactive)
 
+    # CLI flag overrides interactive choice
+    if args.pricing_source:
+        cfg["pricing_source"] = args.pricing_source
+
+    use_api = cfg["pricing_source"] == "api"
+
     if args.dry_run:
         print(f"\n{BOLD}=== DRY RUN — No changes will be made ==={NC}")
         print(f"  Instance:  {CYAN}{cfg['instance_name']}{NC}")
@@ -1918,7 +2069,9 @@ def main():
         print(f"  App:       {CYAN}{cfg['app_name']}{NC}")
         print(f"  Lakebase:  {CYAN}Autoscaling 0.5–16 CU, scale-to-zero{NC}")
         print(f"  Scope:     {CYAN}{cfg['secrets_scope']}{NC}")
-        print(f"  UC Catalog:{CYAN} {cfg['uc_catalog']}.{DEFAULT_UC_SCHEMA}{NC}")
+        print(f"  Pricing:   {CYAN}{cfg['pricing_source']}{NC}")
+        if use_api:
+            print(f"  UC Catalog:{CYAN} {cfg['uc_catalog']}.{DEFAULT_UC_SCHEMA}{NC}")
         print(f"\n{GREEN}Dry run complete. Remove --dry-run to execute.{NC}")
         return
 
@@ -1938,14 +2091,14 @@ def main():
     create_password_auth_role(ctx, instance_info, cfg)
     run_setup_sql(ctx, instance_info, cfg)
 
-    # Step 5: Create UC catalog & schema (for ETL tables)
+    # Step 5: Create UC catalog & schema (API mode only)
     log_step(5, TOTAL_STEPS, "Creating Unity Catalog and schema")
-    if args.skip_etl:
-        log_info("Skipping UC catalog creation (--skip-etl)")
-    else:
+    if use_api:
         create_uc_catalog_and_schema(ctx, cfg)
+    else:
+        log_info("Skipping — using static pricing files (no UC tables needed)")
 
-    # Step 6: Load pricing data
+    # Step 6: Load pricing data (always — static JSON into Lakebase sync tables)
     log_step(6, TOTAL_STEPS, "Loading pricing reference data")
     load_pricing_data(ctx, instance_info, cfg)
 
@@ -1961,19 +2114,20 @@ def main():
     log_step(9, TOTAL_STEPS, "Creating cost calculation views")
     create_views(ctx, instance_info, cfg)
 
-    # Step 10: Upload ETL notebooks
-    log_step(10, TOTAL_STEPS, "Uploading ETL pricing sync notebooks")
-    if args.skip_etl:
-        log_info("Skipping ETL notebook upload (--skip-etl)")
-    else:
+    # Step 10: Store API credentials + upload ETL notebooks (API mode only)
+    log_step(10, TOTAL_STEPS, "Setting up ETL pricing sync")
+    if use_api:
+        store_api_credentials(ctx, cfg)
         upload_etl_notebooks(ctx, cfg)
-
-    # Step 11: Create pricing sync workflow
-    log_step(11, TOTAL_STEPS, "Creating pricing sync workflow")
-    if args.skip_etl:
-        log_info("Skipping workflow creation (--skip-etl)")
     else:
+        log_info("Skipping — using static pricing files (no ETL notebooks needed)")
+
+    # Step 11: Create pricing sync workflow (API mode only)
+    log_step(11, TOTAL_STEPS, "Creating pricing sync workflow")
+    if use_api:
         create_pricing_sync_workflow(ctx, cfg)
+    else:
+        log_info("Skipping — using static pricing files (no scheduled sync needed)")
 
     # Step 12: Generate app.yaml + configure app resources
     log_step(12, TOTAL_STEPS, "Generating app configuration & resources")
@@ -2046,13 +2200,16 @@ def main():
     print(f"  Database:  {CYAN}{cfg['db_name']}{NC}")
     print(f"  DB Host:   {CYAN}{instance_info['host']}{NC}")
     print(f"  App Name:  {CYAN}{cfg['app_name']}{NC}")
-    print(f"  UC Catalog:{CYAN} {cfg['uc_catalog']}.{DEFAULT_UC_SCHEMA}{NC}")
+    print(f"  Pricing:   {CYAN}{cfg['pricing_source']}{NC}")
+    if use_api:
+        print(f"  UC Catalog:{CYAN} {cfg['uc_catalog']}.{DEFAULT_UC_SCHEMA}{NC}")
     print(f"\n  Next steps:")
     print(f"  1. Verify the app is running:")
     print(f"     databricks apps get {cfg['app_name']} --profile {args.profile}")
-    print(f"  2. Run the pricing sync workflow manually (first time):")
-    print(f"     databricks jobs run-now lakemeter-pricing-sync --profile {args.profile}")
-    print(f"  3. Run permission tests:")
+    if use_api:
+        print(f"  2. Run the pricing sync workflow manually (first time):")
+        print(f"     databricks jobs run-now lakemeter-pricing-sync --profile {args.profile}")
+    print(f"  {'3' if use_api else '2'}. Run permission tests:")
     print(f"     pytest tests/test_lakebase_permissions.py -v")
     print()
 
