@@ -1887,6 +1887,10 @@ env:
     value: "5432"
   - name: "DB_SSLMODE"
     value: "require"
+
+  # AI Assistant (Claude) model serving endpoint
+  - name: "CLAUDE_MODEL_ENDPOINT"
+    valueFrom: "{cfg['app_name']}-claude-endpoint"
 """
     app_yaml.write_text(content)
     log_ok(f"app.yaml written to {app_yaml}")
