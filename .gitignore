@@ -42,3 +42,5 @@ env/
 *.bak
 *.tmp
 
+scripts/app_source/backend/
+scripts/pricing_data/
