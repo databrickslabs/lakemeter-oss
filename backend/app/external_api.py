@@ -99,7 +99,7 @@ def get_sp_token() -> Optional[str]:
 def get_user_token(request: Request) -> Optional[str]:
     """
     Get user's OAuth token for external API authentication.
-    
+
     Priority:
     1. X-Forwarded-Access-Token header (Databricks Apps production - if available)
     2. Service Principal token (Databricks Apps - using same SP as Lakebase auth)
@@ -110,20 +110,55 @@ def get_user_token(request: Request) -> Optional[str]:
     if token:
         log_info("Using X-Forwarded-Access-Token for external API")
         return token
-    
+
     # Try Service Principal token (for Databricks Apps without user token)
     sp_token = get_sp_token()
     if sp_token:
         log_info("Using Service Principal token for external API")
         return sp_token
-    
+
     # Fall back to CLI token for local development
     cli_token = get_cli_token()
     if cli_token:
         log_info("Using CLI token for external API")
         return cli_token
-    
+
     log_warning("No token available for external API calls")
+    return None
+
+
+def get_model_serving_token(request: Request) -> Optional[str]:
+    """
+    Get token for model serving (Claude AI) calls.
+
+    Uses the app's own credentials (SP or CLI) instead of the user's forwarded token,
+    because the Databricks Apps proxy may strip the model-serving scope from user tokens.
+    The serving endpoint resource (CAN_QUERY) is granted to the app's service principal.
+
+    Priority:
+    1. Service Principal token (Databricks Apps production)
+    2. Databricks CLI token (local development)
+    3. X-Forwarded-Access-Token (fallback)
+    """
+    # Prefer SP token — it has model-serving scope via app resource config
+    sp_token = get_sp_token()
+    if sp_token:
+        log_info("Using Service Principal token for model serving")
+        return sp_token
+
+    # Fall back to CLI token for local development
+    cli_token = get_cli_token()
+    if cli_token:
+        log_info("Using CLI token for model serving")
+        return cli_token
+
+    # Last resort: user's forwarded token
+    token = request.headers.get(ACCESS_TOKEN_HEADER)
+    if token:
+        log_info("Using X-Forwarded-Access-Token for model serving (may lack scope)")
+        return token
+
+    log_warning("No token available for model serving calls")
     return None
 
 

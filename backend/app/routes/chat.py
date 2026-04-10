@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.auth.databricks_auth import get_current_user
-from app.external_api import get_user_token
+from app.external_api import get_user_token, get_model_serving_token
 from app.services.ai_agent import create_agent, EstimateAgent
 from app.config import log_info, log_warning, log_error
 
@@ -91,14 +91,14 @@ async def chat(
     
     For non-streaming responses. Use /chat/stream for streaming.
     """
-    # Get user token for Claude API
-    token = get_user_token(request)
+    # Get app token for Claude API (SP token has model-serving scope)
+    token = get_model_serving_token(request)
     if not token:
         raise HTTPException(
             status_code=401,
             detail="Authentication required for AI assistant"
         )
-    
+
     # Get or create conversation agent
     import uuid
     conversation_id = chat_request.conversation_id or str(uuid.uuid4())
@@ -151,8 +151,8 @@ async def chat_stream(
     - done: Stream complete with final state
     - error: Error occurred
     """
-    # Get user token
-    token = get_user_token(request)
+    # Get app token for Claude API (SP token has model-serving scope)
+    token = get_model_serving_token(request)
     if not token:
         async def error_generator():
             yield f"data: {json.dumps({'type': 'error', 'content': 'Authentication required'})}\n\n"
