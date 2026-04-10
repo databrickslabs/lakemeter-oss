@@ -11,8 +11,11 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://lakemeter-e2e-v2-335310294452632.aws.databricksapps.com',
-  baseUrl: '/docs/',
+  url: 'https://cheeyutan.github.io',
+  baseUrl: '/lakemeter/',
+
+  organizationName: 'CheeYuTan',
+  projectName: 'lakemeter',
 
   onBrokenLinks: 'throw',
 
