@@ -409,7 +409,7 @@ export default function Layout() {
                       </div>
                       
                       <a
-                        href="https://cheeyutan.github.io/lakemeter/"
+                        href="https://cheeyutan.github.io/lakemeter-opensource/"
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => setIsHelpOpen(false)}

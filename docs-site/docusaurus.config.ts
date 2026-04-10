@@ -12,10 +12,10 @@ const config: Config = {
   },
 
   url: 'https://cheeyutan.github.io',
-  baseUrl: '/lakemeter/',
+  baseUrl: '/lakemeter-opensource/',
 
   organizationName: 'CheeYuTan',
-  projectName: 'lakemeter',
+  projectName: 'lakemeter-opensource',
 
   onBrokenLinks: 'throw',
 
