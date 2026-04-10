@@ -11,10 +11,10 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://steven-tan-data.github.io',
+  url: 'https://cheeyutan.github.io',
   baseUrl: '/lakemeter-opensource/',
 
-  organizationName: 'steven-tan_data',
+  organizationName: 'CheeYuTan',
   projectName: 'lakemeter-opensource',
 
   onBrokenLinks: 'throw',
