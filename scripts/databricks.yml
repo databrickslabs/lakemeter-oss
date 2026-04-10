@@ -1,0 +1,93 @@
+bundle:
+  name: lakemeter-installer
+
+sync:
+  include:
+    - "notebooks/**"
+    - "pricing_data/**"
+    - "app_source/**"
+  exclude:
+    - "**/__pycache__/**"
+    - "**/*.pyc"
+
+resources:
+  jobs:
+    lakemeter_installer:
+      name: "Lakemeter Installer"
+      parameters:
+        - name: instance_name
+          default: "lakemeter-customer"
+        - name: db_name
+          default: "lakemeter_pricing"
+        - name: app_name
+          default: "lakemeter"
+        - name: secrets_scope
+          default: "lakemeter-secrets"
+        - name: claude_endpoint
+          default: "databricks-claude-opus-4-6"
+      tasks:
+        - task_key: provision_lakebase
+          notebook_task:
+            notebook_path: ../notebooks/01_provision_lakebase.py
+            base_parameters:
+              instance_name: "{{job.parameters.instance_name}}"
+          environment_key: serverless_env
+
+        - task_key: create_database
+          depends_on:
+            - task_key: provision_lakebase
+          notebook_task:
+            notebook_path: ../notebooks/02_create_database.py
+            base_parameters:
+              instance_name: "{{job.parameters.instance_name}}"
+              db_name: "{{job.parameters.db_name}}"
+              secrets_scope: "{{job.parameters.secrets_scope}}"
+          environment_key: serverless_env
+
+        - task_key: load_pricing_data
+          depends_on:
+            - task_key: create_database
+          notebook_task:
+            notebook_path: ../notebooks/03_load_pricing_data.py
+            base_parameters:
+              instance_name: "{{job.parameters.instance_name}}"
+              db_name: "{{job.parameters.db_name}}"
+              secrets_scope: "{{job.parameters.secrets_scope}}"
+          environment_key: serverless_env
+
+        - task_key: create_sku_mapping
+          depends_on:
+            - task_key: load_pricing_data
+          notebook_task:
+            notebook_path: ../notebooks/04_create_sku_mapping.py
+            base_parameters:
+              instance_name: "{{job.parameters.instance_name}}"
+              db_name: "{{job.parameters.db_name}}"
+          environment_key: serverless_env
+
+        - task_key: configure_app
+          depends_on:
+            - task_key: create_sku_mapping
+          notebook_task:
+            notebook_path: ../notebooks/05_configure_app.py
+            base_parameters:
+              instance_name: "{{job.parameters.instance_name}}"
+              db_name: "{{job.parameters.db_name}}"
+              app_name: "{{job.parameters.app_name}}"
+              secrets_scope: "{{job.parameters.secrets_scope}}"
+              claude_endpoint: "{{job.parameters.claude_endpoint}}"
+          environment_key: serverless_env
+
+        - task_key: deploy_app
+          depends_on:
+            - task_key: configure_app
+          notebook_task:
+            notebook_path: ../notebooks/06_deploy_app.py
+            base_parameters:
+              app_name: "{{job.parameters.app_name}}"
+          environment_key: serverless_env
+
+      environments:
+        - environment_key: serverless_env
+          spec:
+            environment_version: "5"
