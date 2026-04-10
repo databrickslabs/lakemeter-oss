@@ -1,0 +1,21 @@
+cloud,product,size_or_model,rate_type,dbu_rate,input_divisor,is_hourly,sku_product_type,description
+AWS,model_serving,cpu,,1.0,,False,SERVERLESS_REAL_TIME_INFERENCE,1 concurrent request/hr = 1 DBU/hr
+AWS,model_serving,gpu_medium_a10g_1x,,20.0,,False,SERVERLESS_REAL_TIME_INFERENCE,Medium - A10G x 1GPU
+AWS,model_serving,gpu_medium_a10g_4x,,112.0,,False,SERVERLESS_REAL_TIME_INFERENCE,Medium 4X - A10G x 4GPU
+AWS,model_serving,gpu_medium_a10g_8x,,290.8,,False,SERVERLESS_REAL_TIME_INFERENCE,Medium 8X - A10G x 8GPU
+AWS,model_serving,gpu_small_t4,,10.48,,False,SERVERLESS_REAL_TIME_INFERENCE,Small - T4 or equivalent
+AWS,model_serving,gpu_xlarge_a100_40gb_8x,,538.4,,False,SERVERLESS_REAL_TIME_INFERENCE,XLarge - A100 40GB x 8GPU
+AWS,model_serving,gpu_xlarge_a100_80gb_8x,,628.0,,False,SERVERLESS_REAL_TIME_INFERENCE,XLarge - A100 80GB x 8GPU
+AZURE,model_serving,cpu,,1.0,,False,SERVERLESS_REAL_TIME_INFERENCE,1 concurrent request/hr = 1 DBU/hr
+AZURE,model_serving,gpu_2xlarge_a100_80gb_2x,,157.2,,False,SERVERLESS_REAL_TIME_INFERENCE,2XLarge - A100 80GB x 2GPU
+AZURE,model_serving,gpu_4xlarge_a100_80gb_4x,,314.4,,False,SERVERLESS_REAL_TIME_INFERENCE,4XLarge - A100 80GB x 4GPU
+AZURE,model_serving,gpu_small_t4,,10.48,,False,SERVERLESS_REAL_TIME_INFERENCE,Small - T4 or equivalent
+AZURE,model_serving,gpu_xlarge_a100_80gb_1x,,78.6,,False,SERVERLESS_REAL_TIME_INFERENCE,XLarge - A100 80GB x 1GPU
+GCP,model_serving,cpu,,1.0,,False,SERVERLESS_REAL_TIME_INFERENCE,1 concurrent request/hr = 1 DBU/hr
+GCP,model_serving,gpu_medium_g2_standard_8,,5.0,,False,SERVERLESS_REAL_TIME_INFERENCE,Medium - G2 Standard 8 x 1GPU
+AWS,vector_search,standard,,4.0,2000000,True,SERVERLESS_REAL_TIME_INFERENCE,Standard endpoint - 2M vectors per unit
+AWS,vector_search,storage_optimized,,18.29,64000000,True,SERVERLESS_REAL_TIME_INFERENCE,Storage optimized - 64M vectors per unit
+AZURE,vector_search,standard,,4.0,2000000,True,SERVERLESS_REAL_TIME_INFERENCE,Standard endpoint - 2M vectors per unit
+AZURE,vector_search,storage_optimized,,18.29,64000000,True,SERVERLESS_REAL_TIME_INFERENCE,Storage optimized - 64M vectors per unit
+GCP,vector_search,standard,,4.0,2000000,True,SERVERLESS_REAL_TIME_INFERENCE,Standard endpoint - 2M vectors per unit
+GCP,vector_search,storage_optimized,,18.29,64000000,True,SERVERLESS_REAL_TIME_INFERENCE,Storage optimized - 64M vectors per unit

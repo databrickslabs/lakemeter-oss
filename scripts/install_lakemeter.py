@@ -3,23 +3,21 @@
 Lakemeter Zero-Click Installer
 
 Provisions a complete Lakemeter environment on Databricks:
-  1. Validates prerequisites (CLI, profile, secrets)
-  2. Provisions a new Lakebase (PostgreSQL) instance
-  3. Creates database, schema, tables, views, constraints
-  4. Creates Unity Catalog and schema for ETL tables
-  5. Loads pricing reference data from static JSON files
-  6. Configures Service Principal access (OAuth M2M)
-  7. Uploads ETL pricing sync notebooks to workspace
-  8. Creates a Databricks Workflow for scheduled pricing sync
-  9. Creates Databricks App resources and deploys
+  1. Validates prerequisites (CLI, Python packages, CSV pricing data)
+  2. Gathers configuration (instance name, database, app name, secrets scope)
+  3. Provisions Lakebase instance (reuses if already exists)
+  4. Creates database, schema, tables, and auth role
+  5. Loads pricing data via serverless notebook
+  6. Creates SKU discount mapping and cost calculation views
+  7. Configures application (app.yaml, resources, SP access)
+  8. Deploys application
 
 Usage:
     python scripts/install_lakemeter.py --profile <cli-profile>
 
 Requirements:
     - Databricks CLI configured with a workspace profile
-    - Python 3.10+ with psycopg2, databricks-sdk
-    - Service Principal credentials in a Databricks secrets scope
+    - Python 3.10+ with databricks-sdk, psycopg2-binary, requests
 """
 import argparse
 import json
@@ -45,66 +43,10 @@ DEFAULT_SCHEMA = "lakemeter"
 DEFAULT_CU_SIZE = "CU_0_5"  # Start at 0.5 CU, autoscale to 16 CU
 DEFAULT_CLAUDE_ENDPOINT = "databricks-claude-opus-4-6"
 DEFAULT_NODE_COUNT = 1
-DEFAULT_UC_CATALOG = "lakemeter_catalog"
-DEFAULT_UC_SCHEMA = "lakemeter"
-
-ETL_DIR = APP_DIR / "etl" / "pricing_sync"
-ETL_NOTEBOOKS = [
-    "01_Fetch_DBU_Prices.ipynb",
-    "02_Load_DBU_Rates.ipynb",
-    "03_Fetch_AWS_VM.ipynb",
-    "04_Fetch_Azure_VM.ipynb",
-    "05_Fetch_GCP_VM.ipynb",
-    "06_Validate_Pricing.ipynb",
-    "07_Load_DBSQL_Rates.ipynb",
-    "08_Fetch_DBU_Prices.ipynb",
-    "09_Load_DBU_Multipliers.ipynb",
-    "10_Load_Serverless_Product_Rates.ipynb",
-    "11_Load_FMAPI_Databricks_Rates.ipynb",
-    "12_Load_FMAPI_Proprietary_Rates.ipynb",
-]
-# Additional files to upload alongside notebooks
-ETL_EXTRA_FILES = [
-    "Instance Type Pricing.xlsx",
-]
 
 # Secrets required for API pricing mode
 # Notebook 01 (DBU prices) needs workspace configs for 3 clouds
 # Notebook 03 (AWS VM) needs AWS credentials
-# Notebook 05 (GCP VM) needs GCP service account JSON
-# Notebook 04 (Azure VM) uses public API — no credentials needed
-API_CREDENTIALS = {
-    "aws-access-key-id": {
-        "prompt": "AWS Access Key ID (for VM pricing API)",
-        "notebook": "03_Fetch_AWS_VM",
-    },
-    "aws-secret-access-key": {
-        "prompt": "AWS Secret Access Key",
-        "notebook": "03_Fetch_AWS_VM",
-        "secret": True,
-    },
-    "gcp-service-account-json": {
-        "prompt": "GCP Service Account JSON file path (for VM pricing API)",
-        "notebook": "05_Fetch_GCP_VM",
-        "is_file": True,
-    },
-    "workspace-aws": {
-        "prompt": "AWS workspace config JSON ({host, token, warehouse_id}) for DBU price fetch",
-        "notebook": "01_Fetch_DBU_Prices",
-        "is_json": True,
-    },
-    "workspace-azure": {
-        "prompt": "Azure workspace config JSON ({host, token, warehouse_id}) for DBU price fetch",
-        "notebook": "01_Fetch_DBU_Prices",
-        "is_json": True,
-    },
-    "workspace-gcp": {
-        "prompt": "GCP workspace config JSON ({host, token, warehouse_id}) for DBU price fetch",
-        "notebook": "01_Fetch_DBU_Prices",
-        "is_json": True,
-    },
-}
-
 # Colors
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"
@@ -140,25 +82,6 @@ def prompt_input(label: str, default: str = "") -> str:
     suffix = f" [{default}]" if default else ""
     value = input(f"  {CYAN}?{NC} {label}{suffix}: ").strip()
     return value if value else default
-
-
-def prompt_choice(label: str, options: list[str], default: int = 0) -> str:
-    """Prompt user to select from a list of options."""
-    print(f"  {CYAN}?{NC} {label}")
-    for i, opt in enumerate(options):
-        marker = ">" if i == default else " "
-        print(f"    {marker} [{i+1}] {opt}")
-    while True:
-        raw = input(f"    Select [1-{len(options)}] (default {default+1}): ").strip()
-        if not raw:
-            return options[default]
-        try:
-            idx = int(raw) - 1
-            if 0 <= idx < len(options):
-                return options[idx]
-        except ValueError:
-            pass
-        print(f"    {RED}Invalid choice{NC}")
 
 
 # ===================================================================
@@ -205,13 +128,13 @@ def validate_prerequisites(profile: str) -> dict:
         sys.exit(1)
     log_ok("Databricks CLI found")
 
-    # Check pricing data directory
-    if not PRICING_DIR.exists() or not any(PRICING_DIR.glob("*.json")):
-        log_err(f"Pricing data not found at {PRICING_DIR}")
+    # Check pricing data directory (CSV files)
+    if not PRICING_DIR.exists() or not any(PRICING_DIR.glob("*.csv")):
+        log_err(f"Pricing CSV files not found at {PRICING_DIR}")
         log_info("Ensure you cloned the full repository including backend/static/pricing/")
         sys.exit(1)
-    pricing_count = len(list(PRICING_DIR.glob("*.json")))
-    log_ok(f"Pricing data: {pricing_count} JSON files")
+    pricing_count = len(list(PRICING_DIR.glob("*.csv")))
+    log_ok(f"Pricing data: {pricing_count} CSV files")
 
     # Connect to workspace
     from databricks.sdk import WorkspaceClient
@@ -246,9 +169,6 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
             "cu_size": DEFAULT_CU_SIZE,
             "secrets_scope": "lakemeter-secrets",
             "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
-            "uc_catalog": DEFAULT_UC_CATALOG,
-            "pricing_source": "static",
-            "api_credentials": {},
         }
 
     instance_name = prompt_input("Lakebase instance name", "lakemeter-customer")
@@ -256,59 +176,9 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
     app_name = prompt_input("Databricks App name", "lakemeter")
     secrets_scope = prompt_input("Secrets scope name", "lakemeter-secrets")
 
-    # Pricing source: static files (bundled JSON) or live API (cloud APIs + scheduled sync)
-    pricing_source = prompt_choice(
-        "Pricing data source",
-        ["Static files (bundled — no cloud credentials needed)",
-         "Live API (fetches from cloud APIs — requires credentials, enables scheduled sync)"],
-        default=0,
-    )
-    pricing_source = "api" if "Live API" in pricing_source else "static"
-
-    api_credentials = {}
-    uc_catalog = DEFAULT_UC_CATALOG
-    if pricing_source == "api":
-        uc_catalog = prompt_input("Unity Catalog name (for ETL tables)", DEFAULT_UC_CATALOG)
-        print(f"\n  {BOLD}Cloud credentials for live pricing sync:{NC}")
-        print(f"  {BLUE}→{NC} Azure VM pricing uses a public API (no credentials needed)")
-        print(f"  {BLUE}→{NC} DBU prices require workspace tokens for AWS, Azure, and GCP workspaces")
-        print()
-        for key, meta in API_CREDENTIALS.items():
-            if meta.get("is_file"):
-                file_path = prompt_input(meta["prompt"])
-                if file_path:
-                    path = Path(file_path).expanduser()
-                    if path.exists():
-                        api_credentials[key] = path.read_text(encoding="utf-8").strip()
-                        log_ok(f"Loaded {path.name}")
-                    else:
-                        log_warn(f"File not found: {file_path} — skipping {key}")
-            elif meta.get("is_json"):
-                print(f"  {CYAN}?{NC} {meta['prompt']}")
-                print(f"    Enter JSON or file path (leave blank to skip):")
-                value = input(f"    > ").strip()
-                if value:
-                    if Path(value).expanduser().exists():
-                        api_credentials[key] = Path(value).expanduser().read_text(encoding="utf-8").strip()
-                        log_ok(f"Loaded from file")
-                    else:
-                        api_credentials[key] = value
-                        log_ok(f"Set {key}")
-            elif meta.get("secret"):
-                import getpass
-                value = getpass.getpass(f"  {CYAN}?{NC} {meta['prompt']}: ")
-                if value:
-                    api_credentials[key] = value
-                    log_ok(f"Set {key}")
-            else:
-                value = prompt_input(meta["prompt"])
-                if value:
-                    api_credentials[key] = value
-
     # Fixed values — not user-configurable
     log_info("Lakebase: autoscaling 0.5–16 CU with scale-to-zero enabled")
     log_info(f"Claude AI endpoint: {DEFAULT_CLAUDE_ENDPOINT}")
-    log_info(f"Pricing source: {pricing_source}")
 
     return {
         "instance_name": instance_name,
@@ -317,9 +187,6 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
         "cu_size": DEFAULT_CU_SIZE,
         "secrets_scope": secrets_scope,
         "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
-        "uc_catalog": uc_catalog,
-        "pricing_source": pricing_source,
-        "api_credentials": api_credentials,
     }
 
 
@@ -963,258 +830,108 @@ def _create_tables_inline(cur):
 
 
 # ===================================================================
-# Step 5: Create Unity Catalog & Schema (for ETL tables)
-# ===================================================================
-def create_uc_catalog_and_schema(ctx: dict, cfg: dict):
-    """Create or reuse UC catalog and schema for ETL pricing tables."""
-    w = ctx["client"]
-    catalog_name = cfg["uc_catalog"]
-    schema_name = DEFAULT_UC_SCHEMA
-
-    # Create or reuse catalog
-    try:
-        w.catalogs.get(catalog_name)
-        log_ok(f"Catalog '{catalog_name}' already exists — reusing")
-    except Exception:
-        try:
-            w.catalogs.create(name=catalog_name, comment="Lakemeter pricing data catalog")
-            log_ok(f"Created catalog '{catalog_name}'")
-        except Exception as e:
-            log_err(f"Failed to create catalog '{catalog_name}': {e}")
-            log_info("Ensure you have CREATE CATALOG permission or use an existing catalog")
-            sys.exit(1)
-
-    # Create or reuse schema
-    full_schema = f"{catalog_name}.{schema_name}"
-    try:
-        w.schemas.get(full_schema)
-        log_ok(f"Schema '{full_schema}' already exists — reusing")
-    except Exception:
-        try:
-            w.schemas.create(
-                name=schema_name,
-                catalog_name=catalog_name,
-                comment="Lakemeter pricing sync tables",
-            )
-            log_ok(f"Created schema '{full_schema}'")
-        except Exception as e:
-            log_err(f"Failed to create schema '{full_schema}': {e}")
-            sys.exit(1)
-
-
-# ===================================================================
-# Step 10a: Store API Credentials as Secrets
-# ===================================================================
-def store_api_credentials(ctx: dict, cfg: dict):
-    """Store cloud API credentials in the Databricks secrets scope."""
-    w = ctx["client"]
-    scope = cfg["secrets_scope"]
-    creds = cfg.get("api_credentials", {})
-
-    if not creds:
-        log_info("No API credentials to store")
-        return
-
-    stored = 0
-    for key, value in creds.items():
-        try:
-            w.secrets.put_secret(scope=scope, key=key, string_value=value)
-            stored += 1
-            # Mask display for sensitive values
-            display = f"{value[:8]}..." if len(value) > 12 else "***"
-            log_ok(f"Stored secret: {key} ({display})")
-        except Exception as e:
-            log_warn(f"Failed to store {key}: {e}")
-
-    log_ok(f"Stored {stored}/{len(creds)} API credentials in scope '{scope}'")
-
-
-# ===================================================================
-# Step 10b: Upload ETL Notebooks
-# ===================================================================
-def upload_etl_notebooks(ctx: dict, cfg: dict):
-    """Upload ETL pricing sync notebooks to workspace, patching CATALOG and SECRET_SCOPE."""
-    import base64
-    from databricks.sdk.service.workspace import ImportFormat
-
-    w = ctx["client"]
-    user = ctx["user"]
-    catalog_name = cfg["uc_catalog"]
-    secrets_scope = cfg["secrets_scope"]
-
-    workspace_dir = f"/Workspace/Users/{user}/lakemeter/etl/pricing_sync"
-
-    # Create workspace directory
-    try:
-        w.workspace.mkdirs(workspace_dir)
-        log_ok(f"Workspace directory: {workspace_dir}")
-    except Exception as e:
-        log_warn(f"Could not create directory (may already exist): {e}")
-
-    # Upload notebooks
-    uploaded = 0
-    for nb_name in ETL_NOTEBOOKS:
-        nb_path = ETL_DIR / nb_name
-        if not nb_path.exists():
-            log_warn(f"Notebook not found: {nb_path}")
-            continue
-
-        nb_content = nb_path.read_text(encoding="utf-8")
-
-        # Patch CATALOG variable if user chose a different catalog
-        if catalog_name != "lakemeter_catalog":
-            nb_content = nb_content.replace(
-                'CATALOG = "lakemeter_catalog"',
-                f'CATALOG = "{catalog_name}"',
-            )
-
-        # Patch SECRET_SCOPE if user chose a different scope
-        if secrets_scope != "lakemeter-credentials":
-            nb_content = nb_content.replace(
-                'SECRET_SCOPE = "lakemeter-credentials"',
-                f'SECRET_SCOPE = "{secrets_scope}"',
-            )
-
-        workspace_path = f"{workspace_dir}/{nb_name.replace('.ipynb', '')}"
-        try:
-            w.workspace.import_(
-                path=workspace_path,
-                content=base64.b64encode(nb_content.encode("utf-8")).decode("ascii"),
-                format=ImportFormat.JUPYTER,
-                overwrite=True,
-            )
-            uploaded += 1
-        except Exception as e:
-            log_warn(f"Failed to upload {nb_name}: {e}")
-
-    log_ok(f"Uploaded {uploaded}/{len(ETL_NOTEBOOKS)} notebooks")
-
-    # Upload extra files (e.g., Instance Type Pricing.xlsx)
-    for extra_file in ETL_EXTRA_FILES:
-        extra_path = ETL_DIR / extra_file
-        if not extra_path.exists():
-            log_warn(f"Extra file not found: {extra_path}")
-            continue
-        workspace_path = f"{workspace_dir}/{extra_file}"
-        try:
-            file_bytes = extra_path.read_bytes()
-            w.workspace.import_(
-                path=workspace_path,
-                content=base64.b64encode(file_bytes).decode("ascii"),
-                format=ImportFormat.AUTO,
-                overwrite=True,
-            )
-            log_ok(f"Uploaded {extra_file}")
-        except Exception as e:
-            log_warn(f"Failed to upload {extra_file}: {e}")
-
-
-# ===================================================================
-# Step 11: Create Pricing Sync Workflow
-# ===================================================================
-def create_pricing_sync_workflow(ctx: dict, cfg: dict):
-    """Create a Databricks Workflow that runs the pricing sync notebooks weekly."""
-    w = ctx["client"]
-    user = ctx["user"]
-    job_name = "lakemeter-pricing-sync"
-    workspace_dir = f"/Workspace/Users/{user}/lakemeter/etl/pricing_sync"
-
-    from databricks.sdk.service.jobs import (
-        CronSchedule,
-        JobSettings,
-        NotebookTask,
-        PauseStatus,
-        Task,
-        TaskDependency,
-    )
-
-    # Build sequential task chain
-    tasks = []
-    for i, nb_name in enumerate(ETL_NOTEBOOKS):
-        task_key = nb_name.replace(".ipynb", "").replace(" ", "_")
-        nb_path = f"{workspace_dir}/{nb_name.replace('.ipynb', '')}"
-        task = Task(
-            task_key=task_key,
-            notebook_task=NotebookTask(notebook_path=nb_path),
-            depends_on=[TaskDependency(task_key=tasks[i - 1].task_key)] if i > 0 else None,
-        )
-        tasks.append(task)
-
-    schedule = CronSchedule(
-        quartz_cron_expression="0 0 2 ? * SUN",  # Sunday 2:00 AM
-        timezone_id="UTC",
-        pause_status=PauseStatus.UNPAUSED,
-    )
-
-    # Check if job already exists
-    existing_jobs = list(w.jobs.list(name=job_name))
-    if existing_jobs:
-        job_id = existing_jobs[0].job_id
-        w.jobs.reset(
-            job_id=job_id,
-            new_settings=JobSettings(
-                name=job_name,
-                tasks=tasks,
-                schedule=schedule,
-            ),
-        )
-        log_ok(f"Updated existing workflow '{job_name}' (job_id={job_id})")
-    else:
-        job = w.jobs.create(
-            name=job_name,
-            tasks=tasks,
-            schedule=schedule,
-        )
-        log_ok(f"Created workflow '{job_name}' (job_id={job.job_id})")
-
-    log_info("Schedule: weekly on Sundays at 2:00 AM UTC")
-
-
-# ===================================================================
-# Step 6: Load Pricing Data
+# Step 5: Load Pricing Data
 # ===================================================================
 def load_pricing_data(ctx: dict, instance_info: dict, cfg: dict):
-    """Load pricing reference data from static JSON files into sync tables."""
-    import psycopg2.extras
+    """Upload CSV pricing data + loader notebook to workspace, run on serverless."""
+    import base64
+    from databricks.sdk.service.workspace import ImportFormat, Language
 
+    w = ctx["client"]
+    user = ctx["user"]
+    secrets_scope = cfg["secrets_scope"]
+
+    # Ensure sync tables exist (DDL still runs locally — small operation)
     conn = get_owner_connection(ctx, instance_info, cfg)
     conn.autocommit = True
     cur = conn.cursor()
-
-    now = datetime.utcnow().isoformat()
-
-    # Create sync tables if they don't exist
     _create_sync_tables(cur)
-
-    # Load each pricing file
-    loaders = [
-        ("dbu-rates.json", _load_dbu_rates),
-        ("instance-dbu-rates.json", _load_instance_dbu_rates),
-        ("dbu-multipliers.json", _load_dbu_multipliers),
-        ("dbsql-rates.json", _load_dbsql_rates),
-        ("dbsql-warehouse-config.json", _load_dbsql_warehouse_config),
-        ("model-serving-rates.json", _load_model_serving_rates),
-        ("vector-search-rates.json", _load_vector_search_rates),
-        ("fmapi-databricks-rates.json", _load_fmapi_databricks_rates),
-        ("fmapi-proprietary-rates.json", _load_fmapi_proprietary_rates),
-    ]
-
-    total_rows = 0
-    for filename, loader_fn in loaders:
-        filepath = PRICING_DIR / filename
-        if not filepath.exists():
-            log_warn(f"Pricing file not found: {filename}")
-            continue
-        with open(filepath) as f:
-            data = json.load(f)
-        count = loader_fn(cur, data, now)
-        total_rows += count
-        log_info(f"  {filename}: {count} rows")
-
-    log_ok(f"Loaded {total_rows} pricing rows total")
-
     cur.close()
     conn.close()
+
+    # 1. Upload CSV files to workspace
+    pricing_workspace_dir = f"/Workspace/Users/{user}/lakemeter/pricing_data"
+    try:
+        w.workspace.mkdirs(pricing_workspace_dir)
+    except Exception:
+        pass  # directory may already exist
+
+    csv_files = sorted(PRICING_DIR.glob("*.csv"))
+    if not csv_files:
+        raise RuntimeError(
+            f"No CSV pricing files found in {PRICING_DIR}. "
+            "Run 'python scripts/convert_pricing_to_csv.py' first."
+        )
+
+    for csv_file in csv_files:
+        file_bytes = csv_file.read_bytes()
+        w.workspace.import_(
+            path=f"{pricing_workspace_dir}/{csv_file.name}",
+            content=base64.b64encode(file_bytes).decode("ascii"),
+            format=ImportFormat.AUTO,
+            overwrite=True,
+        )
+        log_info(f"  Uploaded {csv_file.name}")
+
+    log_ok(f"Uploaded {len(csv_files)} CSV files to {pricing_workspace_dir}")
+
+    # 2. Upload loader notebook (patch SECRET_SCOPE and PRICING_DIR)
+    nb_path = SCRIPT_DIR / "load_pricing_data.py"
+    nb_content = nb_path.read_text(encoding="utf-8")
+
+    if secrets_scope != "lakemeter-secrets":
+        nb_content = nb_content.replace(
+            'SECRET_SCOPE = "lakemeter-secrets"',
+            f'SECRET_SCOPE = "{secrets_scope}"',
+        )
+    nb_content = nb_content.replace(
+        'PRICING_DIR = "/Workspace/Users/placeholder/lakemeter/pricing_data"',
+        f'PRICING_DIR = "{pricing_workspace_dir}"',
+    )
+
+    notebook_workspace_path = f"{pricing_workspace_dir}/load_pricing_data"
+    w.workspace.import_(
+        path=notebook_workspace_path,
+        content=base64.b64encode(nb_content.encode("utf-8")).decode("ascii"),
+        format=ImportFormat.SOURCE,
+        language=Language.PYTHON,
+        overwrite=True,
+    )
+    log_ok(f"Uploaded loader notebook to {notebook_workspace_path}")
+
+    # 3. Run as one-shot serverless job
+    from databricks.sdk.service.jobs import NotebookTask, SubmitTask
+
+    log_info("Running pricing data load on serverless...")
+    run = w.jobs.submit(
+        run_name="lakemeter-load-pricing-data",
+        tasks=[SubmitTask(
+            task_key="load_pricing",
+            notebook_task=NotebookTask(
+                notebook_path=notebook_workspace_path,
+            ),
+        )],
+    )
+
+    # 4. Poll until complete
+    run_id = run.response.run_id if hasattr(run, 'response') else run.run_id
+    while True:
+        status = w.jobs.get_run(run_id)
+        state = status.state.life_cycle_state.value
+        if state in ("TERMINATED", "SKIPPED", "INTERNAL_ERROR"):
+            break
+        log_info(f"  Job state: {state}...")
+        time.sleep(5)
+
+    result_state = status.state.result_state
+    if result_state is None or result_state.value != "SUCCESS":
+        error_msg = getattr(status.state, 'state_message', 'Unknown error')
+        raise RuntimeError(
+            f"Pricing data load failed: {result_state} — {error_msg}\n"
+            f"Check run at: {w.config.host}/#job/{run_id}"
+        )
+
+    log_ok("Pricing data loaded via serverless notebook")
 
 
 def _create_sync_tables(cur):
@@ -1288,310 +1005,6 @@ def _create_sync_tables(cur):
             PRIMARY KEY (cloud, gpu_type)
         );
     """)
-
-
-def _batch_insert(cur, table: str, columns: list, rows: list):
-    """Batch insert rows using execute_values for performance."""
-    if not rows:
-        return 0
-    import psycopg2.extras
-
-    cols = ", ".join(columns)
-    tmpl = "(" + ", ".join(["%s"] * len(columns)) + ")"
-    sql = f"INSERT INTO lakemeter.{table} ({cols}) VALUES %s"
-
-    # Truncate first (full refresh)
-    cur.execute(f"TRUNCATE TABLE lakemeter.{table}")
-    psycopg2.extras.execute_values(cur, sql, rows, template=tmpl, page_size=500)
-    return len(rows)
-
-
-def _load_dbu_rates(cur, data: dict, now: str) -> int:
-    rows = []
-    for key, rate in data.items():
-        parts = key.split(":")
-        if len(parts) >= 3:
-            cloud, region, tier = parts[0], parts[1], parts[2]
-        else:
-            continue
-        if isinstance(rate, dict):
-            for sku_name, val in rate.items():
-                # val can be a float (rate) or a dict with metadata
-                if isinstance(val, dict):
-                    price = val.get("price_per_dbu", 0)
-                    product_type = val.get("product_type", "")
-                    sku_region = val.get("sku_region", "")
-                    usage_unit = val.get("usage_unit", "DBU")
-                    currency = val.get("currency_code", "USD")
-                    pricing_type = val.get("pricing_type", "")
-                else:
-                    price = float(val) if val else 0
-                    product_type = ""
-                    sku_region = ""
-                    usage_unit = "DBU"
-                    currency = "USD"
-                    pricing_type = ""
-                rows.append((
-                    sku_name, cloud.upper(), tier, product_type,
-                    sku_region, region, usage_unit,
-                    price, currency, pricing_type, now,
-                ))
-    return _batch_insert(cur, "sync_pricing_dbu_rates",
-        ["sku_name", "cloud", "tier", "product_type", "sku_region", "region",
-         "usage_unit", "price_per_dbu", "currency_code", "pricing_type", "fetched_at"],
-        rows)
-
-
-def _load_instance_dbu_rates(cur, data: dict, now: str) -> int:
-    rows = []
-    for key, val in data.items():
-        if isinstance(val, dict) and "dbu_rate" not in val:
-            # Nested format: {cloud: {instance_type: {dbu_rate, vcpus, ...}}}
-            cloud = key
-            for instance_type, info in val.items():
-                if isinstance(info, dict):
-                    rows.append((
-                        cloud.upper(), instance_type,
-                        info.get("vcpus", 0), info.get("memory_gb", 0),
-                        info.get("dbu_rate", 0), info.get("family", info.get("instance_family", "")),
-                        True, "pricing_bundle",
-                    ))
-        else:
-            # Flat format: {cloud:instance_type: {dbu_rate, vcpus, ...}}
-            parts = key.split(":")
-            if len(parts) >= 2:
-                cloud, instance_type = parts[0], parts[1]
-            else:
-                continue
-            info = val if isinstance(val, dict) else {}
-            rows.append((
-                cloud.upper(), instance_type,
-                info.get("vcpus", 0), info.get("memory_gb", 0),
-                info.get("dbu_rate", 0), info.get("family", info.get("instance_family", "")),
-                True, "pricing_bundle",
-            ))
-    return _batch_insert(cur, "sync_ref_instance_dbu_rates",
-        ["cloud", "instance_type", "vcpus", "memory_gb", "dbu_rate", "instance_family",
-         "is_active", "source"],
-        rows)
-
-
-def _load_dbu_multipliers(cur, data: dict, now: str) -> int:
-    rows = []
-    for key, info in data.items():
-        parts = key.split(":")
-        if len(parts) >= 3:
-            cloud, sku_type, feature = parts[0], parts[1], parts[2]
-        else:
-            continue
-        rows.append((
-            cloud.upper(), sku_type, feature,
-            info.get("multiplier", 1.0), info.get("category", ""),
-        ))
-    return _batch_insert(cur, "sync_ref_dbu_multipliers",
-        ["cloud", "sku_type", "feature", "multiplier", "category"],
-        rows)
-
-
-def _load_dbsql_rates(cur, data: dict, now: str) -> int:
-    rows = []
-    for key, info in data.items():
-        parts = key.split(":")
-        if len(parts) >= 3:
-            cloud, wh_type, wh_size = parts[0], parts[1], parts[2]
-        else:
-            continue
-        rows.append((
-            cloud.upper(), wh_type, wh_size,
-            info.get("sku_product_type", ""),
-            info.get("dbu_per_hour", 0),
-            info.get("includes_compute", False),
-        ))
-    return _batch_insert(cur, "sync_product_dbsql_rates",
-        ["cloud", "warehouse_type", "warehouse_size", "sku_product_type",
-         "dbu_per_hour", "includes_compute"],
-        rows)
-
-
-def _load_dbsql_warehouse_config(cur, data: dict, now: str) -> int:
-    rows = []
-    for key, info in data.items():
-        parts = key.split(":")
-        if len(parts) >= 3:
-            cloud, wh_size, wh_type = parts[0], parts[1], parts[2] if len(parts) > 2 else ""
-        else:
-            continue
-        rows.append((
-            cloud.upper(), wh_size, str(info.get("worker_count", "")),
-            info.get("driver_instance_type", ""),
-            info.get("worker_instance_type", ""),
-            wh_type,
-        ))
-    return _batch_insert(cur, "sync_ref_dbsql_warehouse_config",
-        ["cloud", "warehouse_size", "worker_count", "driver_instance_type",
-         "worker_instance_type", "warehouse_type"],
-        rows)
-
-
-def _load_model_serving_rates(cur, data: dict, now: str) -> int:
-    # Model serving data populates both serverless rates and ref tables
-    rows_serverless = []
-    rows_gpu = []
-    seen_gpu = set()
-
-    for key, info in data.items():
-        parts = key.split(":")
-        if len(parts) >= 2:
-            cloud = parts[0].upper()
-            model_or_type = parts[1]
-        else:
-            continue
-
-        if isinstance(info, dict):
-            rows_serverless.append((
-                cloud, "model_serving", model_or_type,
-                info.get("rate_type", ""), info.get("dbu_rate", 0),
-                info.get("input_divisor", ""), info.get("is_hourly", False),
-                info.get("sku_product_type", ""), info.get("description", ""),
-            ))
-            gpu_key = (cloud, model_or_type)
-            if gpu_key not in seen_gpu and "gpu" in model_or_type.lower():
-                rows_gpu.append((cloud, model_or_type, "", True))
-                seen_gpu.add(gpu_key)
-
-    count = _batch_insert(cur, "sync_product_serverless_rates",
-        ["cloud", "product", "size_or_model", "rate_type", "dbu_rate",
-         "input_divisor", "is_hourly", "sku_product_type", "description"],
-        rows_serverless)
-
-    if rows_gpu:
-        import psycopg2.extras
-        cur.execute("TRUNCATE TABLE lakemeter.ref_model_serving_gpu_types")
-        psycopg2.extras.execute_values(
-            cur,
-            "INSERT INTO lakemeter.ref_model_serving_gpu_types (cloud, gpu_type, description, is_active) VALUES %s",
-            rows_gpu, page_size=100,
-        )
-        count += len(rows_gpu)
-
-    return count
-
-
-def _load_vector_search_rates(cur, data: dict, now: str) -> int:
-    rows = []
-    for key, info in data.items():
-        parts = key.split(":")
-        if len(parts) >= 2:
-            cloud, ep_type = parts[0].upper(), parts[1]
-        else:
-            continue
-        if isinstance(info, dict):
-            rows.append((
-                cloud, "vector_search", ep_type,
-                info.get("rate_type", ""), info.get("dbu_rate", 0),
-                info.get("input_divisor", ""), info.get("is_hourly", True),
-                info.get("sku_product_type", ""), info.get("description", ""),
-            ))
-    # Append to serverless_rates (don't truncate — model serving already loaded)
-    if rows:
-        import psycopg2.extras
-        psycopg2.extras.execute_values(
-            cur,
-            """INSERT INTO lakemeter.sync_product_serverless_rates
-               (cloud, product, size_or_model, rate_type, dbu_rate,
-                input_divisor, is_hourly, sku_product_type, description) VALUES %s""",
-            rows, page_size=100,
-        )
-    return len(rows)
-
-
-def _load_fmapi_databricks_rates(cur, data: dict, now: str) -> int:
-    rows = []
-    seen_models = set()
-    for key, rate in data.items():
-        parts = key.split(":")
-        if len(parts) >= 3:
-            cloud, model, rate_type = parts[0].upper(), parts[1], parts[2]
-        else:
-            continue
-        if isinstance(rate, (int, float)):
-            rows.append((cloud, model, rate_type, rate, "", False, ""))
-        elif isinstance(rate, dict):
-            rows.append((
-                cloud, model, rate_type, rate.get("dbu_rate", 0),
-                rate.get("input_divisor", ""), rate.get("is_hourly", False),
-                rate.get("sku_product_type", ""),
-            ))
-        seen_models.add(model)
-
-    count = _batch_insert(cur, "sync_product_fmapi_databricks",
-        ["cloud", "model", "rate_type", "dbu_rate", "input_divisor",
-         "is_hourly", "sku_product_type"],
-        rows)
-
-    # Populate ref table
-    if seen_models:
-        import psycopg2.extras
-        cur.execute("TRUNCATE TABLE lakemeter.ref_fmapi_databricks_models")
-        model_rows = [(m, "", True) for m in seen_models]
-        psycopg2.extras.execute_values(
-            cur,
-            "INSERT INTO lakemeter.ref_fmapi_databricks_models (model_name, description, is_active) VALUES %s",
-            model_rows, page_size=100,
-        )
-        count += len(model_rows)
-
-    return count
-
-
-def _load_fmapi_proprietary_rates(cur, data: dict, now: str) -> int:
-    rows = []
-    seen_models = set()
-
-    for key, rate in data.items():
-        parts = key.split(":")
-        if len(parts) >= 3:
-            cloud_or_provider = parts[0]
-            model = parts[1]
-            rate_type = parts[2]
-        else:
-            continue
-
-        if isinstance(rate, dict):
-            rows.append((
-                rate.get("provider", cloud_or_provider), model,
-                rate.get("endpoint_type", ""), rate.get("context_length", ""),
-                rate_type, rate.get("dbu_rate", 0),
-                rate.get("input_divisor", ""), rate.get("is_hourly", False),
-                rate.get("sku_product_type", ""),
-                rate.get("cloud", cloud_or_provider.upper()),
-            ))
-            seen_models.add((rate.get("provider", cloud_or_provider), model))
-        elif isinstance(rate, (int, float)):
-            rows.append((
-                cloud_or_provider, model, "", "", rate_type, rate,
-                "", False, "", cloud_or_provider.upper(),
-            ))
-            seen_models.add((cloud_or_provider, model))
-
-    count = _batch_insert(cur, "sync_product_fmapi_proprietary",
-        ["provider", "model", "endpoint_type", "context_length", "rate_type",
-         "dbu_rate", "input_divisor", "is_hourly", "sku_product_type", "cloud"],
-        rows)
-
-    if seen_models:
-        import psycopg2.extras
-        cur.execute("TRUNCATE TABLE lakemeter.ref_fmapi_proprietary_models")
-        model_rows = [(p, m, "", True) for p, m in seen_models]
-        psycopg2.extras.execute_values(
-            cur,
-            """INSERT INTO lakemeter.ref_fmapi_proprietary_models
-               (provider, model_name, description, is_active) VALUES %s""",
-            model_rows, page_size=100,
-        )
-        count += len(model_rows)
-
-    return count
 
 
 # ===================================================================
@@ -2085,122 +1498,53 @@ def main():
         "--profile", required=True, help="Databricks CLI profile name"
     )
     parser.add_argument(
-        "--skip-deploy", action="store_true", help="Skip frontend build and app deployment"
-    )
-    parser.add_argument(
-        "--skip-provision", action="store_true",
-        help="Skip Lakebase provisioning (use existing instance)",
-    )
-    parser.add_argument(
-        "--pricing-source", choices=["static", "api"], default=None,
-        help="Pricing data source: 'static' (bundled JSON, default) or 'api' (live cloud APIs + scheduled sync)",
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true",
-        help="Validate config and show plan without making changes",
-    )
-    parser.add_argument(
         "--non-interactive", action="store_true",
         help="Use all defaults, no prompts (for CI/CD pipelines)",
     )
     args = parser.parse_args()
 
-    TOTAL_STEPS = 12
+    TOTAL_STEPS = 8
 
     print(f"\n{BOLD}{'='*60}{NC}")
     print(f"{BOLD}  Lakemeter Installer — Zero-Click Deployment{NC}")
     print(f"{BOLD}{'='*60}{NC}")
 
-    # Step 1: Validate
+    # Step 1: Validate prerequisites
     log_step(1, TOTAL_STEPS, "Validating prerequisites")
     ctx = validate_prerequisites(args.profile)
 
-    # Step 2: Gather config
+    # Step 2: Gather configuration
     log_step(2, TOTAL_STEPS, "Gathering configuration")
     cfg = gather_config(ctx, non_interactive=args.non_interactive)
 
-    # CLI flag overrides interactive choice
-    if args.pricing_source:
-        cfg["pricing_source"] = args.pricing_source
-
-    use_api = cfg["pricing_source"] == "api"
-
-    if args.dry_run:
-        print(f"\n{BOLD}=== DRY RUN — No changes will be made ==={NC}")
-        print(f"  Instance:  {CYAN}{cfg['instance_name']}{NC}")
-        print(f"  Database:  {CYAN}{cfg['db_name']}{NC}")
-        print(f"  App:       {CYAN}{cfg['app_name']}{NC}")
-        print(f"  Lakebase:  {CYAN}Autoscaling 0.5–16 CU, scale-to-zero{NC}")
-        print(f"  Scope:     {CYAN}{cfg['secrets_scope']}{NC}")
-        print(f"  Pricing:   {CYAN}{cfg['pricing_source']}{NC}")
-        if use_api:
-            print(f"  UC Catalog:{CYAN} {cfg['uc_catalog']}.{DEFAULT_UC_SCHEMA}{NC}")
-        print(f"\n{GREEN}Dry run complete. Remove --dry-run to execute.{NC}")
-        return
-
-    # Step 3: Provision Lakebase
+    # Step 3: Provision Lakebase (reuses if already exists)
     log_step(3, TOTAL_STEPS, "Provisioning Lakebase instance")
-    if args.skip_provision:
-        log_info("Skipping provisioning (--skip-provision)")
-        w = ctx["client"]
-        inst = w.database.get_database_instance(cfg["instance_name"])
-        instance_info = {"host": inst.read_write_dns, "uid": inst.uid, "name": inst.name}
-    else:
-        instance_info = provision_lakebase(ctx, cfg)
+    instance_info = provision_lakebase(ctx, cfg)
 
-    # Step 4: Create database & schema & tables
+    # Step 4: Create database, schema, tables, and auth role
     log_step(4, TOTAL_STEPS, "Creating database, schema, and tables")
     create_database_and_schema(ctx, instance_info, cfg)
     create_password_auth_role(ctx, instance_info, cfg)
     run_setup_sql(ctx, instance_info, cfg)
 
-    # Step 5: Create UC catalog & schema (API mode only)
-    log_step(5, TOTAL_STEPS, "Creating Unity Catalog and schema")
-    if use_api:
-        create_uc_catalog_and_schema(ctx, cfg)
-    else:
-        log_info("Skipping — using static pricing files (no UC tables needed)")
-
-    # Step 6: Load pricing data (always — static JSON into Lakebase sync tables)
-    log_step(6, TOTAL_STEPS, "Loading pricing reference data")
+    # Step 5: Load pricing data (serverless notebook)
+    log_step(5, TOTAL_STEPS, "Loading pricing reference data")
     load_pricing_data(ctx, instance_info, cfg)
 
-    # Step 7: SKU discount mapping
-    log_step(7, TOTAL_STEPS, "Creating SKU discount mapping")
+    # Step 6: Create SKU discount mapping and cost calculation views
+    log_step(6, TOTAL_STEPS, "Creating SKU mapping and views")
     create_sku_discount_mapping(ctx, instance_info, cfg)
-
-    # Step 8: Create views
-    log_step(8, TOTAL_STEPS, "Creating cost calculation views")
     create_views(ctx, instance_info, cfg)
 
-    # Step 9: Store API credentials + upload ETL notebooks (API mode only)
-    log_step(9, TOTAL_STEPS, "Setting up ETL pricing sync")
-    if use_api:
-        store_api_credentials(ctx, cfg)
-        upload_etl_notebooks(ctx, cfg)
-    else:
-        log_info("Skipping — using static pricing files (no ETL notebooks needed)")
-
-    # Step 10: Create pricing sync workflow (API mode only)
-    log_step(10, TOTAL_STEPS, "Creating pricing sync workflow")
-    if use_api:
-        create_pricing_sync_workflow(ctx, cfg)
-    else:
-        log_info("Skipping — using static pricing files (no scheduled sync needed)")
-
-    # Step 11: Generate app.yaml + configure app resources + grant app SP Lakebase access
-    log_step(11, TOTAL_STEPS, "Configuring application")
+    # Step 7: Configure application (app.yaml, resources, SP access)
+    log_step(7, TOTAL_STEPS, "Configuring application")
     generate_app_config(ctx, instance_info, cfg)
     configure_app_resources(ctx, instance_info, cfg)
     grant_app_sp_lakebase_access(ctx, instance_info, cfg)
 
-    # Step 12: Deploy
-    if not args.skip_deploy:
-        log_step(12, TOTAL_STEPS, "Deploying application")
-        deploy_app(ctx, cfg)
-    else:
-        log_step(12, TOTAL_STEPS, "Deploying application")
-        log_info("Skipping deployment (--skip-deploy)")
+    # Step 8: Deploy application
+    log_step(8, TOTAL_STEPS, "Deploying application")
+    deploy_app(ctx, cfg)
 
     # Summary
     print(f"\n{BOLD}{'='*60}{NC}")
@@ -2210,15 +1554,8 @@ def main():
     print(f"  Database:  {CYAN}{cfg['db_name']}{NC}")
     print(f"  DB Host:   {CYAN}{instance_info['host']}{NC}")
     print(f"  App Name:  {CYAN}{cfg['app_name']}{NC}")
-    print(f"  Pricing:   {CYAN}{cfg['pricing_source']}{NC}")
-    if use_api:
-        print(f"  UC Catalog:{CYAN} {cfg['uc_catalog']}.{DEFAULT_UC_SCHEMA}{NC}")
-    print(f"\n  Next steps:")
-    print(f"  1. Verify the app is running:")
-    print(f"     databricks apps get {cfg['app_name']} --profile {args.profile}")
-    if use_api:
-        print(f"  2. Run the pricing sync workflow manually (first time):")
-        print(f"     databricks jobs run-now lakemeter-pricing-sync --profile {args.profile}")
+    print(f"\n  Verify the app is running:")
+    print(f"  databricks apps get {cfg['app_name']} --profile {args.profile}")
     print()
 
 

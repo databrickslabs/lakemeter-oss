@@ -1,0 +1,1070 @@
+cloud,instance_type,vcpus,memory_gb,dbu_rate,instance_family,is_active,source
+AWS,c5.12xlarge,48.0,96.0,7.28,Compute Optimized,True,pricing_bundle
+AWS,c5.18xlarge,72.0,144.0,10.92,Compute Optimized,True,pricing_bundle
+AWS,c5.24xlarge,96.0,192.0,14.56,Compute Optimized,True,pricing_bundle
+AWS,c5.4xlarge,16.0,32.0,2.43,Compute Optimized,True,pricing_bundle
+AWS,c5.9xlarge,36.0,72.0,5.46,Compute Optimized,True,pricing_bundle
+AWS,c5a.12xlarge,48.0,96.0,7.28,Compute Optimized,True,pricing_bundle
+AWS,c5a.16xlarge,64.0,128.0,9.72,Compute Optimized,True,pricing_bundle
+AWS,c5a.24xlarge,96.0,192.0,14.56,Compute Optimized,True,pricing_bundle
+AWS,c5a.2xlarge,8.0,16.0,1.21,Compute Optimized,True,pricing_bundle
+AWS,c5a.4xlarge,16.0,32.0,2.43,Compute Optimized,True,pricing_bundle
+AWS,c5a.8xlarge,32.0,64.0,4.86,Compute Optimized,True,pricing_bundle
+AWS,c5a.xlarge,4.0,8.0,0.61,Compute Optimized,True,pricing_bundle
+AWS,c5ad.12xlarge,48.0,96.0,8.22,Compute Optimized,True,pricing_bundle
+AWS,c5ad.16xlarge,64.0,128.0,10.96,Compute Optimized,True,pricing_bundle
+AWS,c5ad.24xlarge,96.0,192.0,16.44,Compute Optimized,True,pricing_bundle
+AWS,c5ad.2xlarge,8.0,16.0,1.37,Compute Optimized,True,pricing_bundle
+AWS,c5ad.4xlarge,16.0,32.0,2.74,Compute Optimized,True,pricing_bundle
+AWS,c5ad.8xlarge,32.0,64.0,5.48,Compute Optimized,True,pricing_bundle
+AWS,c5ad.xlarge,4.0,8.0,0.69,Compute Optimized,True,pricing_bundle
+AWS,c5d.12xlarge,48.0,96.0,7.28,Compute Optimized,True,pricing_bundle
+AWS,c5d.18xlarge,72.0,144.0,10.92,Compute Optimized,True,pricing_bundle
+AWS,c5d.24xlarge,96.0,192.0,14.56,Compute Optimized,True,pricing_bundle
+AWS,c5d.2xlarge,8.0,16.0,1.21,Compute Optimized,True,pricing_bundle
+AWS,c5d.4xlarge,16.0,32.0,2.43,Compute Optimized,True,pricing_bundle
+AWS,c5d.9xlarge,36.0,72.0,5.46,Compute Optimized,True,pricing_bundle
+AWS,c5d.xlarge,4.0,8.0,0.61,Compute Optimized,True,pricing_bundle
+AWS,c5n.18xlarge,72.0,192.0,13.97,Compute Optimized,True,pricing_bundle
+AWS,c5n.2xlarge,8.0,21.0,1.55,Compute Optimized,True,pricing_bundle
+AWS,c5n.4xlarge,16.0,42.0,3.11,Compute Optimized,True,pricing_bundle
+AWS,c5n.9xlarge,36.0,96.0,6.99,Compute Optimized,True,pricing_bundle
+AWS,c5n.metal,72.0,192.0,13.97,Compute Optimized,True,pricing_bundle
+AWS,c5n.xlarge,4.0,10.5,0.78,Compute Optimized,True,pricing_bundle
+AWS,c6g.12xlarge,48.0,96.0,9.24,Compute Optimized,True,pricing_bundle
+AWS,c6g.16xlarge,64.0,128.0,12.32,Compute Optimized,True,pricing_bundle
+AWS,c6g.2xlarge,8.0,16.0,1.54,Compute Optimized,True,pricing_bundle
+AWS,c6g.4xlarge,16.0,32.0,3.08,Compute Optimized,True,pricing_bundle
+AWS,c6g.8xlarge,32.0,64.0,6.16,Compute Optimized,True,pricing_bundle
+AWS,c6g.xlarge,4.0,8.0,0.77,Compute Optimized,True,pricing_bundle
+AWS,c6gd.12xlarge,48.0,96.0,9.24,Compute Optimized,True,pricing_bundle
+AWS,c6gd.16xlarge,64.0,128.0,12.32,Compute Optimized,True,pricing_bundle
+AWS,c6gd.2xlarge,8.0,16.0,1.54,Compute Optimized,True,pricing_bundle
+AWS,c6gd.4xlarge,16.0,32.0,3.08,Compute Optimized,True,pricing_bundle
+AWS,c6gd.8xlarge,32.0,64.0,6.16,Compute Optimized,True,pricing_bundle
+AWS,c6gd.xlarge,4.0,8.0,0.77,Compute Optimized,True,pricing_bundle
+AWS,c6i.12xlarge,48.0,96.0,8.34,Compute Optimized,True,pricing_bundle
+AWS,c6i.16xlarge,64.0,128.0,11.13,Compute Optimized,True,pricing_bundle
+AWS,c6i.24xlarge,96.0,192.0,16.69,Compute Optimized,True,pricing_bundle
+AWS,c6i.2xlarge,8.0,16.0,1.39,Compute Optimized,True,pricing_bundle
+AWS,c6i.32xlarge,128.0,256.0,22.25,Compute Optimized,True,pricing_bundle
+AWS,c6i.4xlarge,16.0,32.0,2.78,Compute Optimized,True,pricing_bundle
+AWS,c6i.8xlarge,32.0,64.0,5.56,Compute Optimized,True,pricing_bundle
+AWS,c6i.xlarge,4.0,8.0,0.7,Compute Optimized,True,pricing_bundle
+AWS,c6id.12xlarge,48.0,96.0,8.34,Compute Optimized,True,pricing_bundle
+AWS,c6id.16xlarge,64.0,128.0,11.13,Compute Optimized,True,pricing_bundle
+AWS,c6id.24xlarge,96.0,192.0,16.69,Compute Optimized,True,pricing_bundle
+AWS,c6id.2xlarge,8.0,16.0,1.39,Compute Optimized,True,pricing_bundle
+AWS,c6id.32xlarge,128.0,256.0,22.25,Compute Optimized,True,pricing_bundle
+AWS,c6id.4xlarge,16.0,32.0,2.78,Compute Optimized,True,pricing_bundle
+AWS,c6id.8xlarge,32.0,64.0,5.56,Compute Optimized,True,pricing_bundle
+AWS,c6id.xlarge,4.0,8.0,0.7,Compute Optimized,True,pricing_bundle
+AWS,c6in.12xlarge,48.0,96.0,8.34,Compute Optimized,True,pricing_bundle
+AWS,c6in.16xlarge,64.0,128.0,11.13,Compute Optimized,True,pricing_bundle
+AWS,c6in.24xlarge,96.0,192.0,16.69,Compute Optimized,True,pricing_bundle
+AWS,c6in.2xlarge,8.0,16.0,1.39,Compute Optimized,True,pricing_bundle
+AWS,c6in.32xlarge,128.0,256.0,22.25,Compute Optimized,True,pricing_bundle
+AWS,c6in.4xlarge,16.0,32.0,2.78,Compute Optimized,True,pricing_bundle
+AWS,c6in.8xlarge,32.0,64.0,5.56,Compute Optimized,True,pricing_bundle
+AWS,c6in.xlarge,4.0,8.0,0.7,Compute Optimized,True,pricing_bundle
+AWS,c7a.12xlarge,48.0,96.0,9.9,Compute Optimized,True,pricing_bundle
+AWS,c7a.16xlarge,64.0,128.0,13.2,Compute Optimized,True,pricing_bundle
+AWS,c7a.24xlarge,96.0,192.0,19.8,Compute Optimized,True,pricing_bundle
+AWS,c7a.2xlarge,8.0,16.0,1.65,Compute Optimized,True,pricing_bundle
+AWS,c7a.32xlarge,128.0,256.0,26.4,Compute Optimized,True,pricing_bundle
+AWS,c7a.48xlarge,192.0,384.0,39.6,Compute Optimized,True,pricing_bundle
+AWS,c7a.4xlarge,16.0,32.0,3.3,Compute Optimized,True,pricing_bundle
+AWS,c7a.8xlarge,32.0,64.0,6.6,Compute Optimized,True,pricing_bundle
+AWS,c7a.xlarge,4.0,8.0,0.83,Compute Optimized,True,pricing_bundle
+AWS,c7g.12xlarge,48.0,96.0,10.86,Compute Optimized,True,pricing_bundle
+AWS,c7g.16xlarge,64.0,128.0,14.48,Compute Optimized,True,pricing_bundle
+AWS,c7g.2xlarge,8.0,16.0,1.81,Compute Optimized,True,pricing_bundle
+AWS,c7g.4xlarge,16.0,32.0,3.62,Compute Optimized,True,pricing_bundle
+AWS,c7g.8xlarge,32.0,64.0,7.24,Compute Optimized,True,pricing_bundle
+AWS,c7g.xlarge,4.0,8.0,0.9,Compute Optimized,True,pricing_bundle
+AWS,c7gd.12xlarge,48.0,96.0,10.86,Compute Optimized,True,pricing_bundle
+AWS,c7gd.16xlarge,64.0,128.0,14.48,Compute Optimized,True,pricing_bundle
+AWS,c7gd.2xlarge,8.0,16.0,1.81,Compute Optimized,True,pricing_bundle
+AWS,c7gd.4xlarge,16.0,32.0,3.62,Compute Optimized,True,pricing_bundle
+AWS,c7gd.8xlarge,32.0,64.0,7.24,Compute Optimized,True,pricing_bundle
+AWS,c7gd.xlarge,4.0,8.0,0.9,Compute Optimized,True,pricing_bundle
+AWS,c7i.12xlarge,48.0,96.0,9.18,Compute Optimized,True,pricing_bundle
+AWS,c7i.16xlarge,64.0,128.0,12.24,Compute Optimized,True,pricing_bundle
+AWS,c7i.24xlarge,96.0,192.0,18.36,Compute Optimized,True,pricing_bundle
+AWS,c7i.2xlarge,8.0,16.0,1.53,Compute Optimized,True,pricing_bundle
+AWS,c7i.48xlarge,192.0,384.0,36.72,Compute Optimized,True,pricing_bundle
+AWS,c7i.4xlarge,16.0,32.0,3.06,Compute Optimized,True,pricing_bundle
+AWS,c7i.8xlarge,32.0,64.0,6.12,Compute Optimized,True,pricing_bundle
+AWS,c7i.large,2.0,4.0,0.38,Compute Optimized,True,pricing_bundle
+AWS,c7i.metal-24xl,96.0,192.0,18.36,Compute Optimized,True,pricing_bundle
+AWS,c7i.metal-48xl,192.0,384.0,36.72,Compute Optimized,True,pricing_bundle
+AWS,c7i.xlarge,4.0,8.0,0.77,Compute Optimized,True,pricing_bundle
+AWS,c8g.12xlarge,48.0,96.0,12.9,General Purpose,True,pricing_bundle
+AWS,c8g.16xlarge,64.0,128.0,17.2,General Purpose,True,pricing_bundle
+AWS,c8g.24xlarge,96.0,192.0,25.8,General Purpose,True,pricing_bundle
+AWS,c8g.2xlarge,8.0,16.0,2.15,General Purpose,True,pricing_bundle
+AWS,c8g.48xlarge,192.0,384.0,51.6,General Purpose,True,pricing_bundle
+AWS,c8g.4xlarge,16.0,32.0,4.3,General Purpose,True,pricing_bundle
+AWS,c8g.8xlarge,32.0,64.0,8.6,General Purpose,True,pricing_bundle
+AWS,c8g.large,2.0,4.0,0.54,General Purpose,True,pricing_bundle
+AWS,c8g.medium,1.0,2.0,0.27,General Purpose,True,pricing_bundle
+AWS,c8g.xlarge,4.0,8.0,1.08,General Purpose,True,pricing_bundle
+AWS,c8gd.12xlarge,48.0,96.0,12.9,General Purpose,True,pricing_bundle
+AWS,c8gd.16xlarge,64.0,128.0,17.2,General Purpose,True,pricing_bundle
+AWS,c8gd.24xlarge,96.0,192.0,25.8,General Purpose,True,pricing_bundle
+AWS,c8gd.2xlarge,8.0,16.0,2.15,General Purpose,True,pricing_bundle
+AWS,c8gd.48xlarge,192.0,384.0,51.6,General Purpose,True,pricing_bundle
+AWS,c8gd.4xlarge,16.0,32.0,4.3,General Purpose,True,pricing_bundle
+AWS,c8gd.8xlarge,32.0,64.0,8.6,General Purpose,True,pricing_bundle
+AWS,c8gd.large,2.0,4.0,0.54,General Purpose,True,pricing_bundle
+AWS,c8gd.xlarge,4.0,8.0,1.08,General Purpose,True,pricing_bundle
+AWS,d3.2xlarge,8.0,64.0,3.2,Storage Optimized,True,pricing_bundle
+AWS,d3.4xlarge,16.0,128.0,6.4,Storage Optimized,True,pricing_bundle
+AWS,d3.8xlarge,32.0,256.0,12.8,Storage Optimized,True,pricing_bundle
+AWS,d3.xlarge,4.0,32.0,1.6,Storage Optimized,True,pricing_bundle
+AWS,d3en.12xlarge,48.0,192.0,20.16,Storage Optimized,True,pricing_bundle
+AWS,d3en.2xlarge,8.0,32.0,3.36,Storage Optimized,True,pricing_bundle
+AWS,d3en.4xlarge,16.0,64.0,6.72,Storage Optimized,True,pricing_bundle
+AWS,d3en.6xlarge,24.0,96.0,10.08,Storage Optimized,True,pricing_bundle
+AWS,d3en.8xlarge,32.0,128.0,13.44,Storage Optimized,True,pricing_bundle
+AWS,d3en.xlarge,4.0,16.0,1.68,Storage Optimized,True,pricing_bundle
+AWS,g4dn.12xlarge,48.0,192.0,8.56,GPU,True,pricing_bundle
+AWS,g4dn.16xlarge,64.0,256.0,11.41,GPU,True,pricing_bundle
+AWS,g4dn.2xlarge,8.0,32.0,1.43,GPU,True,pricing_bundle
+AWS,g4dn.4xlarge,16.0,64.0,2.85,GPU,True,pricing_bundle
+AWS,g4dn.8xlarge,32.0,128.0,5.7,GPU,True,pricing_bundle
+AWS,g4dn.xlarge,4.0,16.0,0.71,GPU,True,pricing_bundle
+AWS,g5.12xlarge,48.0,192.0,7.688711111111111,GPU,True,pricing_bundle
+AWS,g5.16xlarge,64.0,256.0,5.552355555555556,GPU,True,pricing_bundle
+AWS,g5.24xlarge,96.0,384.0,11.039644444444445,GPU,True,pricing_bundle
+AWS,g5.2xlarge,8.0,32.0,1.6429333333333331,GPU,True,pricing_bundle
+AWS,g5.48xlarge,192.0,768.0,22.07928888888889,GPU,True,pricing_bundle
+AWS,g5.4xlarge,16.0,64.0,2.201422222222222,GPU,True,pricing_bundle
+AWS,g5.8xlarge,32.0,128.0,3.3183999999999996,GPU,True,pricing_bundle
+AWS,g5.xlarge,4.0,16.0,1.363688888888889,GPU,True,pricing_bundle
+AWS,g6.12xlarge,96.0,192.0,6.088360248,GPU,True,pricing_bundle
+AWS,g6.16xlarge,64.0,256.0,4.494167702,GPU,True,pricing_bundle
+AWS,g6.24xlarge,96.0,384.0,8.830900621,GPU,True,pricing_bundle
+AWS,g6.2xlarge,8.0,32.0,1.293875776,GPU,True,pricing_bundle
+AWS,g6.48xlarge,192.0,768.0,17.66180124,GPU,True,pricing_bundle
+AWS,g6.4xlarge,16.0,64.0,1.750304348,GPU,True,pricing_bundle
+AWS,g6.8xlarge,32.0,128.0,2.664484472,GPU,True,pricing_bundle
+AWS,g6.xlarge,4.0,16.0,1.065,GPU,True,pricing_bundle
+AWS,g6e.12xlarge,96.0,384.0,14.00322857,GPU,True,pricing_bundle
+AWS,g6e.16xlarge,64.0,512.0,10.33658571,GPU,True,pricing_bundle
+AWS,g6e.24xlarge,96.0,768.0,20.31107143,GPU,True,pricing_bundle
+AWS,g6e.2xlarge,8.0,64.0,2.975914285,GPU,True,pricing_bundle
+AWS,g6e.48xlarge,192.0,1536.0,40.62214285,GPU,True,pricing_bundle
+AWS,g6e.4xlarge,16.0,128.0,4.0257,GPU,True,pricing_bundle
+AWS,g6e.8xlarge,32.0,256.0,6.128314286,GPU,True,pricing_bundle
+AWS,g6e.xlarge,4.0,32.0,2.4495,GPU,True,pricing_bundle
+AWS,gr6.4xlarge,16.0,128.0,2.036068323,General Purpose,True,pricing_bundle
+AWS,gr6.8xlarge,32.0,256.0,3.236012422,General Purpose,True,pricing_bundle
+AWS,i2.2xlarge,8.0,61.0,3.0,General Purpose,True,pricing_bundle
+AWS,i2.4xlarge,16.0,122.0,6.0,General Purpose,True,pricing_bundle
+AWS,i2.8xlarge,32.0,244.0,12.0,General Purpose,True,pricing_bundle
+AWS,i2.xlarge,4.0,30.5,1.5,General Purpose,True,pricing_bundle
+AWS,i3.16xlarge,64.0,488.0,16.0,Storage Optimized,True,pricing_bundle
+AWS,i3.2xlarge,8.0,61.0,2.0,Storage Optimized,True,pricing_bundle
+AWS,i3.4xlarge,16.0,122.0,4.0,Storage Optimized,True,pricing_bundle
+AWS,i3.8xlarge,32.0,244.0,8.0,Storage Optimized,True,pricing_bundle
+AWS,i3.large,2.0,15.3,0.75,Storage Optimized,True,pricing_bundle
+AWS,i3.xlarge,4.0,30.5,1.0,Storage Optimized,True,pricing_bundle
+AWS,i3en.12xlarge,48.0,384.0,17.4,Storage Optimized,True,pricing_bundle
+AWS,i3en.24xlarge,96.0,768.0,34.8,Storage Optimized,True,pricing_bundle
+AWS,i3en.2xlarge,8.0,64.0,2.9,Storage Optimized,True,pricing_bundle
+AWS,i3en.3xlarge,12.0,96.0,4.35,Storage Optimized,True,pricing_bundle
+AWS,i3en.6xlarge,24.0,192.0,8.7,Storage Optimized,True,pricing_bundle
+AWS,i3en.large,2.0,16.0,0.75,Storage Optimized,True,pricing_bundle
+AWS,i3en.xlarge,4.0,32.0,1.45,Storage Optimized,True,pricing_bundle
+AWS,i4g.16xlarge,64.0,512.0,19.8,Storage Optimized,True,pricing_bundle
+AWS,i4g.2xlarge,8.0,64.0,2.48,Storage Optimized,True,pricing_bundle
+AWS,i4g.4xlarge,16.0,128.0,4.95,Storage Optimized,True,pricing_bundle
+AWS,i4g.8xlarge,32.0,256.0,9.9,Storage Optimized,True,pricing_bundle
+AWS,i4g.large,2.0,16.0,0.62,Storage Optimized,True,pricing_bundle
+AWS,i4g.xlarge,4.0,32.0,1.24,Storage Optimized,True,pricing_bundle
+AWS,i4i.16xlarge,64.0,512.0,22.0,Storage Optimized,True,pricing_bundle
+AWS,i4i.2xlarge,8.0,64.0,2.75,Storage Optimized,True,pricing_bundle
+AWS,i4i.32xlarge,128.0,1024.0,44.0,Storage Optimized,True,pricing_bundle
+AWS,i4i.4xlarge,16.0,128.0,5.5,Storage Optimized,True,pricing_bundle
+AWS,i4i.8xlarge,32.0,256.0,11.0,Storage Optimized,True,pricing_bundle
+AWS,i4i.large,2.0,16.0,0.69,Storage Optimized,True,pricing_bundle
+AWS,i4i.xlarge,4.0,32.0,1.38,Storage Optimized,True,pricing_bundle
+AWS,i7i.12xlarge,48.0,384.0,23.4,General Purpose,True,pricing_bundle
+AWS,i7i.16xlarge,64.0,512.0,31.2,General Purpose,True,pricing_bundle
+AWS,i7i.24xlarge,96.0,768.0,46.8,General Purpose,True,pricing_bundle
+AWS,i7i.2xlarge,8.0,64.0,3.9,General Purpose,True,pricing_bundle
+AWS,i7i.48xlarge,192.0,1536.0,93.6,General Purpose,True,pricing_bundle
+AWS,i7i.4xlarge,16.0,128.0,7.8,General Purpose,True,pricing_bundle
+AWS,i7i.8xlarge,32.0,256.0,15.6,General Purpose,True,pricing_bundle
+AWS,i7i.large,2.0,16.0,0.98,General Purpose,True,pricing_bundle
+AWS,i7i.xlarge,4.0,32.0,1.95,General Purpose,True,pricing_bundle
+AWS,i8g.12xlarge,48.0,384.0,24.78,General Purpose,True,pricing_bundle
+AWS,i8g.16xlarge,64.0,512.0,33.04,General Purpose,True,pricing_bundle
+AWS,i8g.24xlarge,96.0,768.0,49.56,General Purpose,True,pricing_bundle
+AWS,i8g.2xlarge,8.0,64.0,4.13,General Purpose,True,pricing_bundle
+AWS,i8g.48xlarge,192.0,1536.0,99.12,General Purpose,True,pricing_bundle
+AWS,i8g.4xlarge,16.0,128.0,8.26,General Purpose,True,pricing_bundle
+AWS,i8g.8xlarge,32.0,256.0,16.52,General Purpose,True,pricing_bundle
+AWS,i8g.large,2.0,16.0,1.03,General Purpose,True,pricing_bundle
+AWS,i8g.xlarge,4.0,32.0,2.07,General Purpose,True,pricing_bundle
+AWS,im4gn.16xlarge,64.0,256.0,19.31628318584071,General Purpose,True,pricing_bundle
+AWS,im4gn.2xlarge,8.0,32.0,2.414535398230089,General Purpose,True,pricing_bundle
+AWS,im4gn.4xlarge,16.0,64.0,4.829070796460178,General Purpose,True,pricing_bundle
+AWS,im4gn.8xlarge,32.0,128.0,9.658141592920355,General Purpose,True,pricing_bundle
+AWS,im4gn.large,2.0,8.0,0.6036338495575222,General Purpose,True,pricing_bundle
+AWS,im4gn.xlarge,4.0,16.0,1.2072676991150444,General Purpose,True,pricing_bundle
+AWS,is4gen.2xlarge,8.0,48.0,3.825,General Purpose,True,pricing_bundle
+AWS,is4gen.4xlarge,16.0,96.0,7.65,General Purpose,True,pricing_bundle
+AWS,is4gen.8xlarge,32.0,192.0,15.3,General Purpose,True,pricing_bundle
+AWS,is4gen.large,2.0,12.0,0.95625,General Purpose,True,pricing_bundle
+AWS,is4gen.xlarge,4.0,24.0,1.9125,General Purpose,True,pricing_bundle
+AWS,m4.10xlarge,40.0,160.0,8.0,General Purpose,True,pricing_bundle
+AWS,m4.16xlarge,64.0,256.0,12.0,General Purpose,True,pricing_bundle
+AWS,m4.2xlarge,8.0,32.0,1.5,General Purpose,True,pricing_bundle
+AWS,m4.4xlarge,16.0,64.0,3.0,General Purpose,True,pricing_bundle
+AWS,m4.large,2.0,8.0,0.4,General Purpose,True,pricing_bundle
+AWS,m4.xlarge,4.0,16.0,0.75,General Purpose,True,pricing_bundle
+AWS,m5.12xlarge,48.0,192.0,8.23,General Purpose,True,pricing_bundle
+AWS,m5.16xlarge,64.0,256.0,10.96,General Purpose,True,pricing_bundle
+AWS,m5.24xlarge,96.0,384.0,16.46,General Purpose,True,pricing_bundle
+AWS,m5.2xlarge,8.0,32.0,1.37,General Purpose,True,pricing_bundle
+AWS,m5.4xlarge,16.0,64.0,2.74,General Purpose,True,pricing_bundle
+AWS,m5.8xlarge,32.0,128.0,5.48,General Purpose,True,pricing_bundle
+AWS,m5.large,2.0,8.0,0.34,General Purpose,True,pricing_bundle
+AWS,m5.xlarge,4.0,16.0,0.69,General Purpose,True,pricing_bundle
+AWS,m5a.12xlarge,48.0,192.0,7.371428571,General Purpose,True,pricing_bundle
+AWS,m5a.16xlarge,64.0,256.0,9.828571429,General Purpose,True,pricing_bundle
+AWS,m5a.24xlarge,96.0,384.0,14.74285714,General Purpose,True,pricing_bundle
+AWS,m5a.2xlarge,8.0,32.0,1.228571429,General Purpose,True,pricing_bundle
+AWS,m5a.4xlarge,16.0,64.0,2.457142857,General Purpose,True,pricing_bundle
+AWS,m5a.8xlarge,32.0,128.0,4.914285714,General Purpose,True,pricing_bundle
+AWS,m5a.large,2.0,8.0,0.3071428571,General Purpose,True,pricing_bundle
+AWS,m5a.xlarge,4.0,16.0,0.6142857143,General Purpose,True,pricing_bundle
+AWS,m5d.12xlarge,48.0,192.0,8.23,General Purpose,True,pricing_bundle
+AWS,m5d.16xlarge,64.0,256.0,10.96,General Purpose,True,pricing_bundle
+AWS,m5d.24xlarge,96.0,384.0,16.46,General Purpose,True,pricing_bundle
+AWS,m5d.2xlarge,8.0,32.0,1.37,General Purpose,True,pricing_bundle
+AWS,m5d.4xlarge,16.0,64.0,2.74,General Purpose,True,pricing_bundle
+AWS,m5d.8xlarge,32.0,128.0,5.48,General Purpose,True,pricing_bundle
+AWS,m5d.large,2.0,8.0,0.34,General Purpose,True,pricing_bundle
+AWS,m5d.xlarge,4.0,16.0,0.69,General Purpose,True,pricing_bundle
+AWS,m5dn.12xlarge,48.0,192.0,9.792,General Purpose,True,pricing_bundle
+AWS,m5dn.16xlarge,64.0,256.0,13.056,General Purpose,True,pricing_bundle
+AWS,m5dn.24xlarge,96.0,384.0,19.584,General Purpose,True,pricing_bundle
+AWS,m5dn.2xlarge,8.0,32.0,1.632,General Purpose,True,pricing_bundle
+AWS,m5dn.4xlarge,16.0,64.0,3.264,General Purpose,True,pricing_bundle
+AWS,m5dn.8xlarge,32.0,128.0,6.528,General Purpose,True,pricing_bundle
+AWS,m5dn.large,2.0,8.0,0.408,General Purpose,True,pricing_bundle
+AWS,m5dn.metal,96.0,384.0,19.584,General Purpose,True,pricing_bundle
+AWS,m5dn.xlarge,4.0,16.0,0.816,General Purpose,True,pricing_bundle
+AWS,m5n.12xlarge,48.0,192.0,8.568,General Purpose,True,pricing_bundle
+AWS,m5n.16xlarge,64.0,256.0,11.424,General Purpose,True,pricing_bundle
+AWS,m5n.24xlarge,96.0,384.0,17.136,General Purpose,True,pricing_bundle
+AWS,m5n.2xlarge,8.0,32.0,1.428,General Purpose,True,pricing_bundle
+AWS,m5n.4xlarge,16.0,64.0,2.856,General Purpose,True,pricing_bundle
+AWS,m5n.8xlarge,32.0,128.0,5.712,General Purpose,True,pricing_bundle
+AWS,m5n.large,2.0,8.0,0.357,General Purpose,True,pricing_bundle
+AWS,m5n.metal,96.0,384.0,17.136,General Purpose,True,pricing_bundle
+AWS,m5n.xlarge,4.0,16.0,0.714,General Purpose,True,pricing_bundle
+AWS,m5zn.12xlarge,48.0,192.0,12.0,General Purpose,True,pricing_bundle
+AWS,m5zn.2xlarge,8.0,32.0,2.0,General Purpose,True,pricing_bundle
+AWS,m5zn.3xlarge,12.0,48.0,3.0,General Purpose,True,pricing_bundle
+AWS,m5zn.6xlarge,24.0,96.0,6.0,General Purpose,True,pricing_bundle
+AWS,m5zn.large,2.0,8.0,0.4964,General Purpose,True,pricing_bundle
+AWS,m5zn.metal,48.0,192.0,12.0,General Purpose,True,pricing_bundle
+AWS,m5zn.xlarge,4.0,16.0,1.0,General Purpose,True,pricing_bundle
+AWS,m6g.12xlarge,48.0,192.0,9.21,General Purpose,True,pricing_bundle
+AWS,m6g.16xlarge,64.0,256.0,12.28,General Purpose,True,pricing_bundle
+AWS,m6g.2xlarge,8.0,32.0,1.54,General Purpose,True,pricing_bundle
+AWS,m6g.4xlarge,16.0,64.0,3.07,General Purpose,True,pricing_bundle
+AWS,m6g.8xlarge,32.0,128.0,6.13,General Purpose,True,pricing_bundle
+AWS,m6g.large,2.0,8.0,0.39,General Purpose,True,pricing_bundle
+AWS,m6g.xlarge,4.0,16.0,0.77,General Purpose,True,pricing_bundle
+AWS,m6gd.12xlarge,48.0,192.0,9.21,General Purpose,True,pricing_bundle
+AWS,m6gd.16xlarge,64.0,256.0,12.28,General Purpose,True,pricing_bundle
+AWS,m6gd.2xlarge,8.0,32.0,1.54,General Purpose,True,pricing_bundle
+AWS,m6gd.4xlarge,16.0,64.0,3.07,General Purpose,True,pricing_bundle
+AWS,m6gd.8xlarge,32.0,128.0,6.13,General Purpose,True,pricing_bundle
+AWS,m6gd.large,2.0,8.0,0.39,General Purpose,True,pricing_bundle
+AWS,m6gd.xlarge,4.0,16.0,0.77,General Purpose,True,pricing_bundle
+AWS,m6i.12xlarge,48.0,192.0,9.120000000000001,General Purpose,True,pricing_bundle
+AWS,m6i.16xlarge,64.0,256.0,12.16,General Purpose,True,pricing_bundle
+AWS,m6i.24xlarge,96.0,384.0,18.240000000000002,General Purpose,True,pricing_bundle
+AWS,m6i.2xlarge,8.0,32.0,1.52,General Purpose,True,pricing_bundle
+AWS,m6i.32xlarge,128.0,512.0,24.32,General Purpose,True,pricing_bundle
+AWS,m6i.4xlarge,16.0,64.0,3.04,General Purpose,True,pricing_bundle
+AWS,m6i.8xlarge,32.0,128.0,6.08,General Purpose,True,pricing_bundle
+AWS,m6i.large,2.0,8.0,0.38,General Purpose,True,pricing_bundle
+AWS,m6i.xlarge,4.0,16.0,0.76,General Purpose,True,pricing_bundle
+AWS,m6id.12xlarge,48.0,192.0,9.120000000000001,General Purpose,True,pricing_bundle
+AWS,m6id.16xlarge,64.0,256.0,12.16,General Purpose,True,pricing_bundle
+AWS,m6id.24xlarge,96.0,384.0,18.240000000000002,General Purpose,True,pricing_bundle
+AWS,m6id.2xlarge,8.0,32.0,1.52,General Purpose,True,pricing_bundle
+AWS,m6id.32xlarge,128.0,512.0,24.32,General Purpose,True,pricing_bundle
+AWS,m6id.4xlarge,16.0,64.0,3.04,General Purpose,True,pricing_bundle
+AWS,m6id.8xlarge,32.0,128.0,6.08,General Purpose,True,pricing_bundle
+AWS,m6id.large,2.0,8.0,0.38,General Purpose,True,pricing_bundle
+AWS,m6id.xlarge,4.0,16.0,0.76,General Purpose,True,pricing_bundle
+AWS,m6idn.12xlarge,48.0,192.0,9.120000000000001,General Purpose,True,pricing_bundle
+AWS,m6idn.16xlarge,64.0,256.0,12.16,General Purpose,True,pricing_bundle
+AWS,m6idn.24xlarge,96.0,384.0,18.240000000000002,General Purpose,True,pricing_bundle
+AWS,m6idn.2xlarge,8.0,32.0,1.52,General Purpose,True,pricing_bundle
+AWS,m6idn.32xlarge,128.0,512.0,24.32,General Purpose,True,pricing_bundle
+AWS,m6idn.4xlarge,16.0,64.0,3.04,General Purpose,True,pricing_bundle
+AWS,m6idn.8xlarge,32.0,128.0,6.08,General Purpose,True,pricing_bundle
+AWS,m6idn.large,2.0,8.0,0.38,General Purpose,True,pricing_bundle
+AWS,m6idn.xlarge,4.0,16.0,0.76,General Purpose,True,pricing_bundle
+AWS,m6in.12xlarge,48.0,192.0,9.120000000000001,General Purpose,True,pricing_bundle
+AWS,m6in.16xlarge,64.0,256.0,12.16,General Purpose,True,pricing_bundle
+AWS,m6in.24xlarge,96.0,384.0,18.240000000000002,General Purpose,True,pricing_bundle
+AWS,m6in.2xlarge,8.0,32.0,1.52,General Purpose,True,pricing_bundle
+AWS,m6in.32xlarge,128.0,512.0,24.32,General Purpose,True,pricing_bundle
+AWS,m6in.4xlarge,16.0,64.0,3.04,General Purpose,True,pricing_bundle
+AWS,m6in.8xlarge,32.0,128.0,6.08,General Purpose,True,pricing_bundle
+AWS,m6in.large,2.0,8.0,0.38,General Purpose,True,pricing_bundle
+AWS,m6in.xlarge,4.0,16.0,0.76,General Purpose,True,pricing_bundle
+AWS,m7a.12xlarge,48.0,192.0,10.8,General Purpose,True,pricing_bundle
+AWS,m7a.16xlarge,64.0,256.0,14.4,General Purpose,True,pricing_bundle
+AWS,m7a.24xlarge,96.0,384.0,21.6,General Purpose,True,pricing_bundle
+AWS,m7a.2xlarge,8.0,32.0,1.8,General Purpose,True,pricing_bundle
+AWS,m7a.32xlarge,128.0,512.0,28.8,General Purpose,True,pricing_bundle
+AWS,m7a.48xlarge,192.0,768.0,43.2,General Purpose,True,pricing_bundle
+AWS,m7a.4xlarge,16.0,64.0,3.6,General Purpose,True,pricing_bundle
+AWS,m7a.8xlarge,32.0,128.0,7.2,General Purpose,True,pricing_bundle
+AWS,m7a.xlarge,4.0,16.0,0.9,General Purpose,True,pricing_bundle
+AWS,m7g.12xlarge,48.0,192.0,11.52,General Purpose,True,pricing_bundle
+AWS,m7g.16xlarge,64.0,256.0,15.36,General Purpose,True,pricing_bundle
+AWS,m7g.2xlarge,8.0,32.0,1.92,General Purpose,True,pricing_bundle
+AWS,m7g.4xlarge,16.0,64.0,3.84,General Purpose,True,pricing_bundle
+AWS,m7g.8xlarge,32.0,128.0,7.68,General Purpose,True,pricing_bundle
+AWS,m7g.large,2.0,8.0,0.48,General Purpose,True,pricing_bundle
+AWS,m7g.xlarge,4.0,16.0,0.96,General Purpose,True,pricing_bundle
+AWS,m7gd.12xlarge,48.0,192.0,11.52,General Purpose,True,pricing_bundle
+AWS,m7gd.16xlarge,64.0,256.0,15.36,General Purpose,True,pricing_bundle
+AWS,m7gd.2xlarge,8.0,32.0,1.92,General Purpose,True,pricing_bundle
+AWS,m7gd.4xlarge,16.0,64.0,3.84,General Purpose,True,pricing_bundle
+AWS,m7gd.8xlarge,32.0,128.0,7.68,General Purpose,True,pricing_bundle
+AWS,m7gd.large,2.0,8.0,0.48,General Purpose,True,pricing_bundle
+AWS,m7gd.xlarge,4.0,16.0,0.96,General Purpose,True,pricing_bundle
+AWS,m7i.12xlarge,48.0,192.0,10.02,General Purpose,True,pricing_bundle
+AWS,m7i.16xlarge,64.0,256.0,13.36,General Purpose,True,pricing_bundle
+AWS,m7i.24xlarge,96.0,384.0,20.04,General Purpose,True,pricing_bundle
+AWS,m7i.2xlarge,8.0,32.0,1.67,General Purpose,True,pricing_bundle
+AWS,m7i.48xlarge,192.0,768.0,40.08,General Purpose,True,pricing_bundle
+AWS,m7i.4xlarge,16.0,64.0,3.34,General Purpose,True,pricing_bundle
+AWS,m7i.8xlarge,32.0,128.0,6.68,General Purpose,True,pricing_bundle
+AWS,m7i.large,2.0,8.0,0.42,General Purpose,True,pricing_bundle
+AWS,m7i.metal-24xl,96.0,384.0,20.04,General Purpose,True,pricing_bundle
+AWS,m7i.metal-48xl,192.0,768.0,40.08,General Purpose,True,pricing_bundle
+AWS,m7i.xlarge,4.0,16.0,0.84,General Purpose,True,pricing_bundle
+AWS,m8g.12xlarge,48.0,192.0,13.71,General Purpose,True,pricing_bundle
+AWS,m8g.16xlarge,64.0,256.0,18.28,General Purpose,True,pricing_bundle
+AWS,m8g.24xlarge,96.0,384.0,27.42,General Purpose,True,pricing_bundle
+AWS,m8g.2xlarge,8.0,32.0,2.28,General Purpose,True,pricing_bundle
+AWS,m8g.48xlarge,192.0,768.0,54.84,General Purpose,True,pricing_bundle
+AWS,m8g.4xlarge,16.0,64.0,4.57,General Purpose,True,pricing_bundle
+AWS,m8g.8xlarge,32.0,128.0,9.14,General Purpose,True,pricing_bundle
+AWS,m8g.large,2.0,8.0,0.57,General Purpose,True,pricing_bundle
+AWS,m8g.medium,1.0,4.0,0.29,General Purpose,True,pricing_bundle
+AWS,m8g.xlarge,4.0,16.0,1.14,General Purpose,True,pricing_bundle
+AWS,m8gd.12xlarge,48.0,192.0,13.71,General Purpose,True,pricing_bundle
+AWS,m8gd.16xlarge,64.0,256.0,18.28,General Purpose,True,pricing_bundle
+AWS,m8gd.24xlarge,96.0,384.0,27.42,General Purpose,True,pricing_bundle
+AWS,m8gd.2xlarge,8.0,32.0,2.28,General Purpose,True,pricing_bundle
+AWS,m8gd.48xlarge,192.0,768.0,54.84,General Purpose,True,pricing_bundle
+AWS,m8gd.4xlarge,16.0,64.0,4.57,General Purpose,True,pricing_bundle
+AWS,m8gd.8xlarge,32.0,128.0,9.14,General Purpose,True,pricing_bundle
+AWS,m8gd.large,2.0,8.0,0.57,General Purpose,True,pricing_bundle
+AWS,m8gd.xlarge,4.0,16.0,1.14,General Purpose,True,pricing_bundle
+AWS,m8i.12xlarge,48.0,192.0,11.22,General Purpose,True,pricing_bundle
+AWS,m8i.16xlarge,64.0,256.0,14.96,General Purpose,True,pricing_bundle
+AWS,m8i.24xlarge,96.0,384.0,22.44,General Purpose,True,pricing_bundle
+AWS,m8i.2xlarge,8.0,32.0,1.87,General Purpose,True,pricing_bundle
+AWS,m8i.48xlarge,192.0,768.0,44.88,General Purpose,True,pricing_bundle
+AWS,m8i.4xlarge,16.0,64.0,3.74,General Purpose,True,pricing_bundle
+AWS,m8i.8xlarge,32.0,128.0,7.48,General Purpose,True,pricing_bundle
+AWS,m8i.large,2.0,8.0,0.4675,General Purpose,True,pricing_bundle
+AWS,m8i.xlarge,4.0,16.0,0.935,General Purpose,True,pricing_bundle
+AWS,p2.16xlarge,64.0,732.0,19.52,GPU,True,pricing_bundle
+AWS,p2.8xlarge,32.0,488.0,9.76,GPU,True,pricing_bundle
+AWS,p2.xlarge,4.0,61.0,1.22,GPU,True,pricing_bundle
+AWS,p3.16xlarge,64.0,488.0,33.2,GPU,True,pricing_bundle
+AWS,p3.2xlarge,8.0,61.0,4.15,GPU,True,pricing_bundle
+AWS,p3.8xlarge,32.0,244.0,16.6,GPU,True,pricing_bundle
+AWS,p3dn.24xlarge,96.0,768.0,42.33,GPU,True,pricing_bundle
+AWS,p4d.24xlarge,96.0,1152.0,44.4548,GPU,True,pricing_bundle
+AWS,p4de.24xlarge,96.0,1152.0,55.5685,GPU,True,pricing_bundle
+AWS,p5.48xlarge,192.0,2048.0,88.9096,GPU,True,pricing_bundle
+AWS,r4.16xlarge,64.0,488.0,16.0,Memory Optimized,True,pricing_bundle
+AWS,r5.12xlarge,48.0,384.0,10.8,Memory Optimized,True,pricing_bundle
+AWS,r5.16xlarge,64.0,512.0,14.4,Memory Optimized,True,pricing_bundle
+AWS,r5.24xlarge,96.0,768.0,21.6,Memory Optimized,True,pricing_bundle
+AWS,r5.2xlarge,8.0,64.0,1.8,Memory Optimized,True,pricing_bundle
+AWS,r5.4xlarge,16.0,128.0,3.6,Memory Optimized,True,pricing_bundle
+AWS,r5.8xlarge,32.0,256.0,7.2,Memory Optimized,True,pricing_bundle
+AWS,r5.large,2.0,16.0,0.45,Memory Optimized,True,pricing_bundle
+AWS,r5.xlarge,4.0,32.0,0.9,Memory Optimized,True,pricing_bundle
+AWS,r5a.12xlarge,48.0,384.0,9.685714286,Memory Optimized,True,pricing_bundle
+AWS,r5a.16xlarge,64.0,512.0,12.91428571,Memory Optimized,True,pricing_bundle
+AWS,r5a.24xlarge,96.0,768.0,19.37142857,Memory Optimized,True,pricing_bundle
+AWS,r5a.2xlarge,8.0,64.0,1.614285714,Memory Optimized,True,pricing_bundle
+AWS,r5a.4xlarge,16.0,128.0,3.228571429,Memory Optimized,True,pricing_bundle
+AWS,r5a.8xlarge,32.0,256.0,6.457142857,Memory Optimized,True,pricing_bundle
+AWS,r5a.large,2.0,16.0,0.41,Memory Optimized,True,pricing_bundle
+AWS,r5a.xlarge,4.0,32.0,0.8142857143,Memory Optimized,True,pricing_bundle
+AWS,r5d.12xlarge,48.0,384.0,10.8,Memory Optimized,True,pricing_bundle
+AWS,r5d.16xlarge,64.0,512.0,14.4,Memory Optimized,True,pricing_bundle
+AWS,r5d.24xlarge,96.0,768.0,21.6,Memory Optimized,True,pricing_bundle
+AWS,r5d.2xlarge,8.0,64.0,1.8,Memory Optimized,True,pricing_bundle
+AWS,r5d.4xlarge,16.0,128.0,3.6,Memory Optimized,True,pricing_bundle
+AWS,r5d.8xlarge,32.0,256.0,7.2,Memory Optimized,True,pricing_bundle
+AWS,r5d.large,2.0,16.0,0.45,Memory Optimized,True,pricing_bundle
+AWS,r5d.xlarge,4.0,32.0,0.9,Memory Optimized,True,pricing_bundle
+AWS,r5dn.12xlarge,48.0,384.0,12.528,Memory Optimized,True,pricing_bundle
+AWS,r5dn.16xlarge,64.0,512.0,16.704,Memory Optimized,True,pricing_bundle
+AWS,r5dn.24xlarge,96.0,768.0,25.056,Memory Optimized,True,pricing_bundle
+AWS,r5dn.2xlarge,8.0,64.0,2.088,Memory Optimized,True,pricing_bundle
+AWS,r5dn.4xlarge,16.0,128.0,4.176,Memory Optimized,True,pricing_bundle
+AWS,r5dn.8xlarge,32.0,256.0,8.352,Memory Optimized,True,pricing_bundle
+AWS,r5dn.large,2.0,16.0,0.522,Memory Optimized,True,pricing_bundle
+AWS,r5dn.metal,96.0,768.0,25.056,Memory Optimized,True,pricing_bundle
+AWS,r5dn.xlarge,4.0,32.0,1.044,Memory Optimized,True,pricing_bundle
+AWS,r5n.12xlarge,48.0,384.0,10.8,Memory Optimized,True,pricing_bundle
+AWS,r5n.16xlarge,64.0,512.0,14.4,Memory Optimized,True,pricing_bundle
+AWS,r5n.24xlarge,96.0,768.0,21.6,Memory Optimized,True,pricing_bundle
+AWS,r5n.2xlarge,8.0,64.0,1.8,Memory Optimized,True,pricing_bundle
+AWS,r5n.4xlarge,16.0,128.0,3.6,Memory Optimized,True,pricing_bundle
+AWS,r5n.8xlarge,32.0,256.0,7.2,Memory Optimized,True,pricing_bundle
+AWS,r5n.large,2.0,16.0,0.45,Memory Optimized,True,pricing_bundle
+AWS,r5n.metal,96.0,768.0,21.6,Memory Optimized,True,pricing_bundle
+AWS,r5n.xlarge,4.0,32.0,0.9,Memory Optimized,True,pricing_bundle
+AWS,r6g.12xlarge,48.0,384.0,12.0,Memory Optimized,True,pricing_bundle
+AWS,r6g.16xlarge,64.0,512.0,16.0,Memory Optimized,True,pricing_bundle
+AWS,r6g.2xlarge,8.0,64.0,2.0,Memory Optimized,True,pricing_bundle
+AWS,r6g.4xlarge,16.0,128.0,4.0,Memory Optimized,True,pricing_bundle
+AWS,r6g.8xlarge,32.0,256.0,8.0,Memory Optimized,True,pricing_bundle
+AWS,r6g.large,2.0,16.0,0.5,Memory Optimized,True,pricing_bundle
+AWS,r6g.xlarge,4.0,32.0,1.0,Memory Optimized,True,pricing_bundle
+AWS,r6gd.12xlarge,48.0,384.0,12.0,Memory Optimized,True,pricing_bundle
+AWS,r6gd.16xlarge,64.0,512.0,16.0,Memory Optimized,True,pricing_bundle
+AWS,r6gd.2xlarge,8.0,64.0,2.0,Memory Optimized,True,pricing_bundle
+AWS,r6gd.4xlarge,16.0,128.0,4.0,Memory Optimized,True,pricing_bundle
+AWS,r6gd.8xlarge,32.0,256.0,8.0,Memory Optimized,True,pricing_bundle
+AWS,r6gd.large,2.0,16.0,0.5,Memory Optimized,True,pricing_bundle
+AWS,r6gd.xlarge,4.0,32.0,1.0,Memory Optimized,True,pricing_bundle
+AWS,r6i.12xlarge,48.0,384.0,12.24,Memory Optimized,True,pricing_bundle
+AWS,r6i.16xlarge,64.0,512.0,16.32,Memory Optimized,True,pricing_bundle
+AWS,r6i.24xlarge,96.0,768.0,24.48,Memory Optimized,True,pricing_bundle
+AWS,r6i.2xlarge,8.0,64.0,2.04,Memory Optimized,True,pricing_bundle
+AWS,r6i.32xlarge,128.0,1024.0,32.64,Memory Optimized,True,pricing_bundle
+AWS,r6i.4xlarge,16.0,128.0,4.08,Memory Optimized,True,pricing_bundle
+AWS,r6i.8xlarge,32.0,256.0,8.16,Memory Optimized,True,pricing_bundle
+AWS,r6i.large,2.0,16.0,0.51,Memory Optimized,True,pricing_bundle
+AWS,r6i.xlarge,4.0,32.0,1.02,Memory Optimized,True,pricing_bundle
+AWS,r6id.12xlarge,48.0,384.0,12.24,Memory Optimized,True,pricing_bundle
+AWS,r6id.16xlarge,64.0,512.0,16.32,Memory Optimized,True,pricing_bundle
+AWS,r6id.24xlarge,96.0,768.0,24.48,Memory Optimized,True,pricing_bundle
+AWS,r6id.2xlarge,8.0,64.0,2.04,Memory Optimized,True,pricing_bundle
+AWS,r6id.32xlarge,128.0,1024.0,32.64,Memory Optimized,True,pricing_bundle
+AWS,r6id.4xlarge,16.0,128.0,4.08,Memory Optimized,True,pricing_bundle
+AWS,r6id.8xlarge,32.0,256.0,8.16,Memory Optimized,True,pricing_bundle
+AWS,r6id.large,2.0,16.0,0.51,Memory Optimized,True,pricing_bundle
+AWS,r6id.xlarge,4.0,32.0,1.02,Memory Optimized,True,pricing_bundle
+AWS,r6idn.12xlarge,48.0,384.0,12.24,Memory Optimized,True,pricing_bundle
+AWS,r6idn.16xlarge,64.0,512.0,16.32,Memory Optimized,True,pricing_bundle
+AWS,r6idn.24xlarge,96.0,768.0,24.48,Memory Optimized,True,pricing_bundle
+AWS,r6idn.2xlarge,8.0,64.0,2.04,Memory Optimized,True,pricing_bundle
+AWS,r6idn.32xlarge,128.0,1024.0,32.64,Memory Optimized,True,pricing_bundle
+AWS,r6idn.4xlarge,16.0,128.0,4.08,Memory Optimized,True,pricing_bundle
+AWS,r6idn.8xlarge,32.0,256.0,8.16,Memory Optimized,True,pricing_bundle
+AWS,r6idn.large,2.0,16.0,0.51,Memory Optimized,True,pricing_bundle
+AWS,r6idn.xlarge,4.0,32.0,1.02,Memory Optimized,True,pricing_bundle
+AWS,r6in.12xlarge,48.0,384.0,12.24,Memory Optimized,True,pricing_bundle
+AWS,r6in.16xlarge,64.0,512.0,16.32,Memory Optimized,True,pricing_bundle
+AWS,r6in.24xlarge,96.0,768.0,24.48,Memory Optimized,True,pricing_bundle
+AWS,r6in.2xlarge,8.0,64.0,2.04,Memory Optimized,True,pricing_bundle
+AWS,r6in.32xlarge,128.0,1024.0,32.64,Memory Optimized,True,pricing_bundle
+AWS,r6in.4xlarge,16.0,128.0,4.08,Memory Optimized,True,pricing_bundle
+AWS,r6in.8xlarge,32.0,256.0,8.16,Memory Optimized,True,pricing_bundle
+AWS,r6in.large,2.0,16.0,0.51,Memory Optimized,True,pricing_bundle
+AWS,r6in.xlarge,4.0,32.0,1.02,Memory Optimized,True,pricing_bundle
+AWS,r7a.48xlarge,192.0,1536.0,58.08,Memory Optimized,True,pricing_bundle
+AWS,r7g.12xlarge,48.0,384.0,15.120000000000001,Memory Optimized,True,pricing_bundle
+AWS,r7g.16xlarge,64.0,512.0,20.16,Memory Optimized,True,pricing_bundle
+AWS,r7g.2xlarge,8.0,64.0,2.52,Memory Optimized,True,pricing_bundle
+AWS,r7g.4xlarge,16.0,128.0,5.04,Memory Optimized,True,pricing_bundle
+AWS,r7g.8xlarge,32.0,256.0,10.08,Memory Optimized,True,pricing_bundle
+AWS,r7g.large,2.0,16.0,0.63,Memory Optimized,True,pricing_bundle
+AWS,r7g.xlarge,4.0,32.0,1.26,Memory Optimized,True,pricing_bundle
+AWS,r7gd.12xlarge,48.0,384.0,15.12,Memory Optimized,True,pricing_bundle
+AWS,r7gd.16xlarge,64.0,512.0,20.16,Memory Optimized,True,pricing_bundle
+AWS,r7gd.2xlarge,8.0,64.0,2.52,Memory Optimized,True,pricing_bundle
+AWS,r7gd.4xlarge,16.0,128.0,5.04,Memory Optimized,True,pricing_bundle
+AWS,r7gd.8xlarge,32.0,256.0,10.08,Memory Optimized,True,pricing_bundle
+AWS,r7gd.large,2.0,16.0,0.63,Memory Optimized,True,pricing_bundle
+AWS,r7gd.xlarge,4.0,32.0,1.26,Memory Optimized,True,pricing_bundle
+AWS,r7i.12xlarge,48.0,384.0,13.44,Memory Optimized,True,pricing_bundle
+AWS,r7i.16xlarge,64.0,512.0,17.92,Memory Optimized,True,pricing_bundle
+AWS,r7i.24xlarge,96.0,768.0,26.88,Memory Optimized,True,pricing_bundle
+AWS,r7i.2xlarge,8.0,64.0,2.24,Memory Optimized,True,pricing_bundle
+AWS,r7i.48xlarge,192.0,1536.0,53.76,Memory Optimized,True,pricing_bundle
+AWS,r7i.4xlarge,16.0,128.0,4.48,Memory Optimized,True,pricing_bundle
+AWS,r7i.8xlarge,32.0,256.0,8.96,Memory Optimized,True,pricing_bundle
+AWS,r7i.large,2.0,16.0,0.56,Memory Optimized,True,pricing_bundle
+AWS,r7i.metal-24xl,96.0,768.0,26.88,Memory Optimized,True,pricing_bundle
+AWS,r7i.metal-48xl,192.0,1536.0,53.76,Memory Optimized,True,pricing_bundle
+AWS,r7i.xlarge,4.0,32.0,1.12,Memory Optimized,True,pricing_bundle
+AWS,r7iz.12xlarge,48.0,384.0,14.52,Memory Optimized,True,pricing_bundle
+AWS,r7iz.16xlarge,64.0,512.0,19.36,Memory Optimized,True,pricing_bundle
+AWS,r7iz.2xlarge,8.0,64.0,2.42,Memory Optimized,True,pricing_bundle
+AWS,r7iz.32xlarge,128.0,1024.0,38.72,Memory Optimized,True,pricing_bundle
+AWS,r7iz.4xlarge,16.0,128.0,4.84,Memory Optimized,True,pricing_bundle
+AWS,r7iz.8xlarge,32.0,256.0,9.68,Memory Optimized,True,pricing_bundle
+AWS,r7iz.xlarge,4.0,32.0,1.21,Memory Optimized,True,pricing_bundle
+AWS,r8g.12xlarge,48.0,384.0,18.0,General Purpose,True,pricing_bundle
+AWS,r8g.16xlarge,64.0,512.0,24.0,General Purpose,True,pricing_bundle
+AWS,r8g.24xlarge,96.0,768.0,36.0,General Purpose,True,pricing_bundle
+AWS,r8g.2xlarge,8.0,64.0,3.0,General Purpose,True,pricing_bundle
+AWS,r8g.48xlarge,192.0,1536.0,72.0,General Purpose,True,pricing_bundle
+AWS,r8g.4xlarge,16.0,128.0,6.0,General Purpose,True,pricing_bundle
+AWS,r8g.8xlarge,32.0,256.0,12.0,General Purpose,True,pricing_bundle
+AWS,r8g.large,2.0,16.0,0.75,General Purpose,True,pricing_bundle
+AWS,r8g.xlarge,4.0,32.0,1.5,General Purpose,True,pricing_bundle
+AWS,r8gd.12xlarge,48.0,384.0,18.0,General Purpose,True,pricing_bundle
+AWS,r8gd.16xlarge,64.0,512.0,24.0,General Purpose,True,pricing_bundle
+AWS,r8gd.24xlarge,96.0,768.0,36.0,General Purpose,True,pricing_bundle
+AWS,r8gd.2xlarge,8.0,64.0,3.0,General Purpose,True,pricing_bundle
+AWS,r8gd.48xlarge,192.0,1536.0,72.0,General Purpose,True,pricing_bundle
+AWS,r8gd.4xlarge,16.0,128.0,6.0,General Purpose,True,pricing_bundle
+AWS,r8gd.8xlarge,32.0,256.0,12.0,General Purpose,True,pricing_bundle
+AWS,r8gd.large,2.0,16.0,0.75,General Purpose,True,pricing_bundle
+AWS,r8gd.xlarge,4.0,32.0,1.5,General Purpose,True,pricing_bundle
+AWS,r8i.12xlarge,48.0,384.0,15.0,General Purpose,True,pricing_bundle
+AWS,r8i.16xlarge,64.0,512.0,20.0,General Purpose,True,pricing_bundle
+AWS,r8i.24xlarge,96.0,768.0,30.0,General Purpose,True,pricing_bundle
+AWS,r8i.2xlarge,8.0,64.0,2.5,General Purpose,True,pricing_bundle
+AWS,r8i.48xlarge,192.0,1536.0,60.0,General Purpose,True,pricing_bundle
+AWS,r8i.4xlarge,16.0,128.0,5.0,General Purpose,True,pricing_bundle
+AWS,r8i.8xlarge,32.0,256.0,10.0,General Purpose,True,pricing_bundle
+AWS,r8i.large,2.0,16.0,0.63,General Purpose,True,pricing_bundle
+AWS,r8i.xlarge,4.0,32.0,1.25,General Purpose,True,pricing_bundle
+AWS,x2gd.12xlarge,48.0,768.0,17.52,Memory Optimized,True,pricing_bundle
+AWS,x2gd.16xlarge,64.0,1024.0,23.36,Memory Optimized,True,pricing_bundle
+AWS,x2gd.2xlarge,8.0,128.0,2.92,Memory Optimized,True,pricing_bundle
+AWS,x2gd.4xlarge,16.0,256.0,5.84,Memory Optimized,True,pricing_bundle
+AWS,x2gd.8xlarge,32.0,512.0,11.68,Memory Optimized,True,pricing_bundle
+AWS,x2gd.large,2.0,32.0,0.73,Memory Optimized,True,pricing_bundle
+AWS,x2gd.xlarge,4.0,64.0,1.46,Memory Optimized,True,pricing_bundle
+AWS,z1d.12xlarge,48.0,384.0,15.94,Memory Optimized,True,pricing_bundle
+AWS,z1d.2xlarge,8.0,64.0,2.66,Memory Optimized,True,pricing_bundle
+AWS,z1d.3xlarge,12.0,96.0,3.99,Memory Optimized,True,pricing_bundle
+AWS,z1d.6xlarge,24.0,192.0,7.97,Memory Optimized,True,pricing_bundle
+AWS,z1d.large,2.0,16.0,0.66,Memory Optimized,True,pricing_bundle
+AWS,z1d.xlarge,4.0,32.0,1.33,Memory Optimized,True,pricing_bundle
+AZURE,Standard_2X-Large,576.0,4608.0,144.0,General Purpose,True,pricing_bundle
+AZURE,Standard_2X-Small,16.0,128.0,4.0,General Purpose,True,pricing_bundle
+AZURE,Standard_3X-Large,1088.0,8704.0,272.0,General Purpose,True,pricing_bundle
+AZURE,Standard_4X-Large,2112.0,16896.0,528.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D128ds_v6,128.0,512.0,35.84,General Purpose,True,pricing_bundle
+AZURE,Standard_D12_v2,4.0,28.0,1.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D13_v2,8.0,56.0,2.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D14_v2,16.0,112.0,4.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D15_v2,20.0,140.0,5.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16_v3,16.0,64.0,3.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16a_v4,16.0,64.0,3.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16ads_v5,16.0,64.0,4.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16ads_v6,16.0,64.0,5.1,General Purpose,True,pricing_bundle
+AZURE,Standard_D16as_v4,16.0,64.0,3.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16as_v5,16.0,64.0,4.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16d_v4,16.0,64.0,3.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16ds_v4,16.0,64.0,3.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16ds_v5,16.0,64.0,4.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16ds_v6,16.0,64.0,4.48,General Purpose,True,pricing_bundle
+AZURE,Standard_D16pds_v6,16.0,64.0,4.68,General Purpose,True,pricing_bundle
+AZURE,Standard_D16ps_v6,16.0,64.0,4.68,General Purpose,True,pricing_bundle
+AZURE,Standard_D16s_v3,16.0,64.0,3.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16s_v4,16.0,64.0,3.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D16s_v5,16.0,64.0,4.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D2ads_v6,2.0,8.0,0.64,General Purpose,True,pricing_bundle
+AZURE,Standard_D2ds_v6,2.0,8.0,0.56,General Purpose,True,pricing_bundle
+AZURE,Standard_D32_v3,32.0,128.0,6.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D32a_v4,32.0,128.0,6.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D32ads_v5,32.0,128.0,8.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D32ads_v6,32.0,128.0,10.2,General Purpose,True,pricing_bundle
+AZURE,Standard_D32as_v4,32.0,128.0,6.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D32as_v5,32.0,128.0,8.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D32d_v4,32.0,128.0,6.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D32ds_v4,32.0,128.0,6.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D32ds_v5,32.0,128.0,8.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D32ds_v6,32.0,128.0,8.96,General Purpose,True,pricing_bundle
+AZURE,Standard_D32pds_v6,32.0,128.0,9.36,General Purpose,True,pricing_bundle
+AZURE,Standard_D32ps_v6,32.0,128.0,9.36,General Purpose,True,pricing_bundle
+AZURE,Standard_D32s_v3,32.0,128.0,6.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D32s_v4,32.0,128.0,6.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D32s_v5,32.0,128.0,8.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D3_v2,4.0,14.0,0.75,General Purpose,True,pricing_bundle
+AZURE,Standard_D48a_v4,48.0,192.0,9.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D48ads_v5,48.0,192.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D48ads_v6,48.0,192.0,15.3,General Purpose,True,pricing_bundle
+AZURE,Standard_D48as_v4,48.0,192.0,9.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D48as_v5,48.0,192.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D48d_v4,48.0,192.0,9.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D48ds_v4,48.0,192.0,9.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D48ds_v5,48.0,192.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D48ds_v6,48.0,192.0,13.44,General Purpose,True,pricing_bundle
+AZURE,Standard_D48pds_v6,48.0,192.0,14.04,General Purpose,True,pricing_bundle
+AZURE,Standard_D48ps_v6,48.0,192.0,14.04,General Purpose,True,pricing_bundle
+AZURE,Standard_D48s_v4,48.0,192.0,9.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D48s_v5,48.0,192.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D4_v2,8.0,28.0,1.5,General Purpose,True,pricing_bundle
+AZURE,Standard_D4a_v4,4.0,16.0,0.75,General Purpose,True,pricing_bundle
+AZURE,Standard_D4ads_v5,4.0,16.0,1.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D4ads_v6,4.0,16.0,1.28,General Purpose,True,pricing_bundle
+AZURE,Standard_D4as_v5,4.0,16.0,1.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D4d_v4,4.0,16.0,0.75,General Purpose,True,pricing_bundle
+AZURE,Standard_D4ds_v4,4.0,16.0,0.75,General Purpose,True,pricing_bundle
+AZURE,Standard_D4ds_v5,4.0,16.0,1.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D4ds_v6,4.0,16.0,1.12,General Purpose,True,pricing_bundle
+AZURE,Standard_D4pds_v6,4.0,16.0,1.17,General Purpose,True,pricing_bundle
+AZURE,Standard_D4ps_v6,4.0,16.0,1.17,General Purpose,True,pricing_bundle
+AZURE,Standard_D4s_v3,4.0,16.0,0.75,General Purpose,True,pricing_bundle
+AZURE,Standard_D4s_v4,4.0,16.0,0.75,General Purpose,True,pricing_bundle
+AZURE,Standard_D4s_v5,4.0,16.0,1.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D5_v2,16.0,56.0,3.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64_v3,64.0,256.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64a_v4,64.0,256.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64ads_v5,64.0,256.0,16.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64ads_v6,64.0,256.0,20.4,General Purpose,True,pricing_bundle
+AZURE,Standard_D64as_v4,64.0,256.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64as_v5,64.0,256.0,16.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64d_v4,64.0,256.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64ds_v4,64.0,256.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64ds_v5,64.0,256.0,16.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64ds_v6,64.0,256.0,17.92,General Purpose,True,pricing_bundle
+AZURE,Standard_D64pds_v6,64.0,256.0,18.72,General Purpose,True,pricing_bundle
+AZURE,Standard_D64ps_v6,64.0,256.0,18.72,General Purpose,True,pricing_bundle
+AZURE,Standard_D64s_v3,64.0,256.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64s_v4,64.0,256.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D64s_v5,64.0,256.0,16.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D8_v3,8.0,32.0,1.5,General Purpose,True,pricing_bundle
+AZURE,Standard_D8a_v4,8.0,32.0,1.5,General Purpose,True,pricing_bundle
+AZURE,Standard_D8ads_v5,8.0,32.0,2.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D8ads_v6,8.0,32.0,2.55,General Purpose,True,pricing_bundle
+AZURE,Standard_D8as_v4,8.0,32.0,1.5,General Purpose,True,pricing_bundle
+AZURE,Standard_D8as_v5,8.0,32.0,2.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D8d_v4,8.0,32.0,1.5,General Purpose,True,pricing_bundle
+AZURE,Standard_D8ds_v4,8.0,32.0,1.5,General Purpose,True,pricing_bundle
+AZURE,Standard_D8ds_v5,8.0,32.0,2.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D8ds_v6,8.0,32.0,2.24,General Purpose,True,pricing_bundle
+AZURE,Standard_D8pds_v6,8.0,32.0,2.34,General Purpose,True,pricing_bundle
+AZURE,Standard_D8ps_v6,8.0,32.0,2.34,General Purpose,True,pricing_bundle
+AZURE,Standard_D8s_v3,8.0,32.0,1.5,General Purpose,True,pricing_bundle
+AZURE,Standard_D8s_v4,8.0,32.0,1.5,General Purpose,True,pricing_bundle
+AZURE,Standard_D8s_v5,8.0,32.0,2.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D96a_v4,96.0,384.0,18.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D96ads_v5,96.0,384.0,24.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D96ads_v6,96.0,384.0,30.6,General Purpose,True,pricing_bundle
+AZURE,Standard_D96as_v4,96.0,384.0,18.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D96as_v5,96.0,384.0,24.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D96ds_v5,96.0,384.0,24.0,General Purpose,True,pricing_bundle
+AZURE,Standard_D96ds_v6,96.0,384.0,26.88,General Purpose,True,pricing_bundle
+AZURE,Standard_D96pds_v6,96.0,384.0,28.08,General Purpose,True,pricing_bundle
+AZURE,Standard_D96ps_v6,96.0,384.0,28.08,General Purpose,True,pricing_bundle
+AZURE,Standard_D96s_v5,96.0,384.0,24.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC16ads_v5,16.0,64.0,4.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC16ads_v6,16.0,64.0,5.1,General Purpose,True,pricing_bundle
+AZURE,Standard_DC16as_v5,16.0,64.0,4.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC2ads_v6,2.0,8.0,0.64,General Purpose,True,pricing_bundle
+AZURE,Standard_DC32ads_v5,32.0,128.0,8.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC32ads_v6,32.0,128.0,10.2,General Purpose,True,pricing_bundle
+AZURE,Standard_DC32as_v5,32.0,128.0,8.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC48ads_v5,48.0,192.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC48ads_v6,48.0,192.0,15.3,General Purpose,True,pricing_bundle
+AZURE,Standard_DC48as_v5,48.0,192.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC4ads_v5,4.0,16.0,1.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC4ads_v6,4.0,16.0,1.28,General Purpose,True,pricing_bundle
+AZURE,Standard_DC4as_v5,4.0,16.0,1.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC64ads_v5,64.0,256.0,16.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC64ads_v6,64.0,256.0,20.4,General Purpose,True,pricing_bundle
+AZURE,Standard_DC64as_v5,64.0,256.0,16.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC8ads_v5,8.0,32.0,2.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC8ads_v6,8.0,32.0,2.55,General Purpose,True,pricing_bundle
+AZURE,Standard_DC8as_v5,8.0,32.0,2.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC96ads_v5,96.0,384.0,24.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DC96ads_v6,96.0,384.0,30.6,General Purpose,True,pricing_bundle
+AZURE,Standard_DC96as_v5,96.0,384.0,24.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DS12_v2,4.0,28.0,1.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DS13_v2,8.0,56.0,2.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DS14_v2,16.0,112.0,4.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DS15_v2,20.0,140.0,5.0,General Purpose,True,pricing_bundle
+AZURE,Standard_DS1_v2,1.0,3.5,0.2,General Purpose,True,pricing_bundle
+AZURE,Standard_DS2_v2,2.0,7.0,0.4,General Purpose,True,pricing_bundle
+AZURE,Standard_DS3_v2,4.0,14.0,0.75,General Purpose,True,pricing_bundle
+AZURE,Standard_DS4_v2,8.0,28.0,1.5,General Purpose,True,pricing_bundle
+AZURE,Standard_DS5_v2,16.0,56.0,3.0,General Purpose,True,pricing_bundle
+AZURE,Standard_E128ds_v6,128.0,1024.0,49.28,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16_v3,16.0,128.0,4.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16a_v4,16.0,128.0,4.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16ads_v5,16.0,128.0,5.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16ads_v6,16.0,128.0,7.02,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16as_v4,16.0,128.0,4.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16as_v5,16.0,128.0,5.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16d_v4,16.0,128.0,4.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16ds_v4,16.0,128.0,4.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16ds_v5,16.0,128.0,5.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16ds_v6,16.0,128.0,6.16,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16pds_v6,16.0,128.0,6.44,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16ps_v6,16.0,128.0,6.44,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16s_v3,16.0,128.0,4.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16s_v4,16.0,128.0,4.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E16s_v5,16.0,128.0,5.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20a_v4,20.0,160.0,5.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20ads_v5,20.0,160.0,7.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20ads_v6,20.0,160.0,8.78,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20as_v4,20.0,160.0,5.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20as_v5,20.0,160.0,7.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20d_v4,20.0,160.0,5.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20ds_v4,20.0,160.0,5.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20ds_v5,20.0,160.0,7.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20ds_v6,20.0,160.0,7.7,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20s_v4,20.0,160.0,5.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E20s_v5,20.0,160.0,7.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E2_v3,2.0,16.0,0.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E2ads_v6,2.0,16.0,0.88,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E2ds_v5,2.0,16.0,0.75,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E2ds_v6,2.0,16.0,0.77,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E2pds_v6,2.0,16.0,0.81,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32_v3,32.0,256.0,8.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32a_v4,32.0,256.0,8.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32ads_v5,32.0,256.0,11.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32ads_v6,32.0,256.0,14.04,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32as_v4,32.0,256.0,8.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32as_v5,32.0,256.0,11.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32d_v4,32.0,256.0,8.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32ds_v4,32.0,256.0,8.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32ds_v5,32.0,256.0,11.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32ds_v6,32.0,256.0,12.32,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32pds_v6,32.0,256.0,12.88,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32ps_v6,32.0,256.0,12.88,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32s_v3,32.0,256.0,8.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32s_v4,32.0,256.0,8.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E32s_v5,32.0,256.0,11.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48a_v4,48.0,384.0,12.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48ads_v5,48.0,384.0,16.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48ads_v6,48.0,384.0,21.06,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48as_v4,48.0,384.0,12.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48as_v5,48.0,384.0,16.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48d_v4,48.0,384.0,12.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48ds_v4,48.0,384.0,12.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48ds_v5,48.0,384.0,16.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48ds_v6,48.0,384.0,18.48,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48pds_v6,48.0,384.0,19.32,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48ps_v6,48.0,384.0,19.32,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48s_v4,48.0,384.0,12.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E48s_v5,48.0,384.0,16.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4_v3,4.0,32.0,1.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4a_v4,4.0,32.0,1.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4ads_v5,4.0,32.0,1.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4ads_v6,4.0,32.0,1.76,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4as_v4,4.0,32.0,1.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4as_v5,4.0,32.0,1.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4d_v4,4.0,32.0,1.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4ds_v4,4.0,32.0,1.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4ds_v5,4.0,32.0,1.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4ds_v6,4.0,32.0,1.54,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4pds_v6,4.0,32.0,1.61,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4ps_v6,4.0,32.0,1.61,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4s_v4,4.0,32.0,1.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E4s_v5,4.0,32.0,1.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64_v3,64.0,432.0,16.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64a_v4,64.0,512.0,16.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64ads_v5,64.0,512.0,22.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64ads_v6,64.0,512.0,28.08,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64as_v4,64.0,432.0,16.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64as_v5,64.0,512.0,22.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64d_v4,64.0,504.0,16.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64ds_v4,64.0,504.0,16.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64ds_v5,64.0,512.0,22.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64ds_v6,64.0,512.0,24.64,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64pds_v6,64.0,512.0,25.76,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64ps_v6,64.0,512.0,25.76,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64s_v3,64.0,432.0,16.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64s_v4,64.0,504.0,16.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E64s_v5,64.0,512.0,22.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E80ids_v4,80.0,504.0,20.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E80is_v4,80.0,504.0,20.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8_v3,8.0,64.0,2.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8a_v4,8.0,64.0,2.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8ads_v5,8.0,64.0,2.75,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8ads_v6,8.0,64.0,3.51,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8as_v4,8.0,64.0,2.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8as_v5,8.0,64.0,2.75,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8d_v4,8.0,64.0,2.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8ds_v4,8.0,64.0,2.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8ds_v5,8.0,64.0,2.75,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8ds_v6,8.0,64.0,3.08,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8pds_v6,8.0,64.0,3.22,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8ps_v6,8.0,64.0,3.22,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8s_v3,8.0,64.0,2.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8s_v4,8.0,64.0,2.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E8s_v5,8.0,64.0,2.75,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E96a_v4,96.0,672.0,24.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E96ads_v5,96.0,672.0,33.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E96ads_v6,96.0,672.0,42.12,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E96as_v4,96.0,672.0,24.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E96as_v5,96.0,672.0,33.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E96ds_v5,96.0,672.0,33.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E96ds_v6,96.0,768.0,36.96,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E96pds_v6,96.0,672.0,38.64,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E96ps_v6,96.0,672.0,38.64,Memory Optimized,True,pricing_bundle
+AZURE,Standard_E96s_v5,96.0,672.0,33.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC16ads_v5,16.0,128.0,5.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC16ads_v6,16.0,128.0,7.02,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC16as_v5,16.0,128.0,5.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC16as_v6,16.0,128.0,7.02,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC20ads_v5,20.0,160.0,7.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC20ads_v6,20.0,160.0,8.78,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC20as_v5,20.0,160.0,7.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC20as_v6,20.0,160.0,8.78,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC2ads_v6,2.0,16.0,0.88,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC2as_v6,2.0,16.0,0.88,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC32ads_v5,32.0,256.0,11.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC32ads_v6,32.0,256.0,14.04,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC32as_v5,32.0,256.0,11.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC32as_v6,32.0,256.0,14.04,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC48ads_v5,48.0,384.0,16.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC48ads_v6,48.0,384.0,21.06,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC48as_v5,48.0,384.0,16.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC48as_v6,48.0,384.0,21.06,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC4ads_v5,4.0,32.0,1.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC4ads_v6,4.0,32.0,1.76,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC4as_v5,4.0,32.0,1.5,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC4as_v6,4.0,32.0,1.76,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC64ads_v5,64.0,512.0,22.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC64ads_v6,64.0,512.0,28.08,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC64as_v5,64.0,512.0,22.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC64as_v6,64.0,512.0,28.08,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC8ads_v5,8.0,64.0,2.75,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC8ads_v6,8.0,64.0,3.51,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC8as_v5,8.0,64.0,2.75,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC8as_v6,8.0,64.0,3.51,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC96ads_v5,96.0,672.0,33.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC96ads_v6,96.0,672.0,42.12,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC96as_v5,96.0,672.0,33.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_EC96as_v6,96.0,672.0,42.12,Memory Optimized,True,pricing_bundle
+AZURE,Standard_F16,16.0,32.0,2.0,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F16s,16.0,32.0,2.0,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F16s_v2,16.0,32.0,3.0,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F32s_v2,32.0,64.0,6.0,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F4,4.0,8.0,0.5,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F4s,4.0,8.0,0.5,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F4s_v2,4.0,8.0,0.75,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F64s_v2,64.0,128.0,12.0,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F72s_v2,72.0,144.0,13.5,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F8,8.0,16.0,1.0,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F8s,8.0,16.0,1.0,Compute Optimized,True,pricing_bundle
+AZURE,Standard_F8s_v2,8.0,16.0,1.5,Compute Optimized,True,pricing_bundle
+AZURE,Standard_H16,16.0,112.0,4.0,General Purpose,True,pricing_bundle
+AZURE,Standard_H8,8.0,56.0,2.5,General Purpose,True,pricing_bundle
+AZURE,Standard_L16as_v3,16.0,128.0,5.5,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L16s,16.0,128.0,4.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L16s_v2,16.0,128.0,4.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L16s_v3,16.0,128.0,5.5,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L32as_v3,32.0,256.0,11.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L32s,32.0,256.0,8.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L32s_v2,32.0,256.0,8.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L32s_v3,32.0,256.0,11.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L48as_v3,48.0,384.0,16.5,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L48s_v3,48.0,384.0,16.5,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L4s,4.0,32.0,1.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L64as_v3,64.0,512.0,22.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L64s_v2,64.0,512.0,16.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L64s_v3,64.0,512.0,22.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L80as_v3,80.0,640.0,27.5,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L80s_v2,80.0,640.0,20.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L80s_v3,80.0,640.0,27.5,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L8as_v3,8.0,64.0,2.75,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L8s,8.0,64.0,2.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L8s_v2,8.0,64.0,2.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_L8s_v3,8.0,64.0,2.75,Storage Optimized,True,pricing_bundle
+AZURE,Standard_Large,160.0,1280.0,40.0,Storage Optimized,True,pricing_bundle
+AZURE,Standard_Medium,96.0,768.0,24.0,Memory Optimized,True,pricing_bundle
+AZURE,Standard_NC12,12.0,112.0,3.0,GPU,True,pricing_bundle
+AZURE,Standard_NC12s_v3,12.0,224.0,10.0,GPU,True,pricing_bundle
+AZURE,Standard_NC16as_T4_v3,16.0,110.0,2.5,GPU,True,pricing_bundle
+AZURE,Standard_NC24,24.0,224.0,6.0,GPU,True,pricing_bundle
+AZURE,Standard_NC24ads_A100_v4,24.0,220.0,10.0,GPU,True,pricing_bundle
+AZURE,Standard_NC24s_v3,24.0,448.0,20.0,GPU,True,pricing_bundle
+AZURE,Standard_NC40ads_H100_V5,40.0,320.0,13.0585975,GPU,True,pricing_bundle
+AZURE,Standard_NC48ads_A100_v4,48.0,440.0,20.0,GPU,True,pricing_bundle
+AZURE,Standard_NC4as_T4_v3,4.0,28.0,1.0,GPU,True,pricing_bundle
+AZURE,Standard_NC64as_T4_v3,64.0,440.0,10.0,GPU,True,pricing_bundle
+AZURE,Standard_NC6s_v3,6.0,112.0,5.0,GPU,True,pricing_bundle
+AZURE,Standard_NC80ads_H100_V5,80.0,640.0,26.117195,GPU,True,pricing_bundle
+AZURE,Standard_NC8as_T4_v3,8.0,56.0,1.5,GPU,True,pricing_bundle
+AZURE,Standard_NC96ads_A100_v4,96.0,880.0,44.0,GPU,True,pricing_bundle
+AZURE,Standard_NCCads_H100_v5,40.0,320.0,13.0585975,GPU,True,pricing_bundle
+AZURE,Standard_ND96asr_v4,96.0,900.0,44.0,GPU,True,pricing_bundle
+AZURE,Standard_ND96isr_H100_V5,96.0,1900.0,88.9096,GPU,True,pricing_bundle
+AZURE,Standard_NV36adms_A10_v5,36.0,880.0,6.0,GPU,True,pricing_bundle
+AZURE,Standard_NV36ads_A10_v5,36.0,440.0,4.0,GPU,True,pricing_bundle
+AZURE,Standard_NV72ads_A10_v5,72.0,880.0,8.0,GPU,True,pricing_bundle
+AZURE,Standard_Small,48.0,384.0,12.0,General Purpose,True,pricing_bundle
+AZURE,Standard_X-Large,320.0,2560.0,80.0,General Purpose,True,pricing_bundle
+AZURE,Standard_X-Small,24.0,192.0,6.0,General Purpose,True,pricing_bundle
+GCP,a2-highgpu-1g,12.0,85.0,5.43,GPU,True,pricing_bundle
+GCP,a2-highgpu-2g,24.0,170.0,10.86,GPU,True,pricing_bundle
+GCP,a2-highgpu-4g,48.0,340.0,21.72,GPU,True,pricing_bundle
+GCP,a2-highgpu-8g,96.0,680.0,43.44,GPU,True,pricing_bundle
+GCP,a2-megagpu-16g,96.0,1360.0,63.839999999999996,GPU,True,pricing_bundle
+GCP,a2-ultragpu-1g,12.0,170.0,7.9799999999999995,GPU,True,pricing_bundle
+GCP,a2-ultragpu-2g,24.0,340.0,15.959999999999999,GPU,True,pricing_bundle
+GCP,a2-ultragpu-4g,48.0,680.0,31.919999999999998,GPU,True,pricing_bundle
+GCP,a2-ultragpu-8g,96.0,1360.0,63.839999999999996,GPU,True,pricing_bundle
+GCP,a3-highgpu-1g,26.0,234.0,14.127,General Purpose,True,pricing_bundle
+GCP,a3-highgpu-2g,26.0,234.0,28.254,General Purpose,True,pricing_bundle
+GCP,a3-highgpu-4g,26.0,234.0,56.509,General Purpose,True,pricing_bundle
+GCP,a3-highgpu-8g,26.0,234.0,113.018,General Purpose,True,pricing_bundle
+GCP,c2-standard-16,16.0,64.0,2.88,Compute Optimized,True,pricing_bundle
+GCP,c2-standard-30,30.0,120.0,5.3999999999999995,Compute Optimized,True,pricing_bundle
+GCP,c2-standard-4,4.0,16.0,0.72,Compute Optimized,True,pricing_bundle
+GCP,c2-standard-60,60.0,240.0,10.799999999999999,Compute Optimized,True,pricing_bundle
+GCP,c2-standard-8,8.0,32.0,1.44,Compute Optimized,True,pricing_bundle
+GCP,c3-highmem-22,22.0,176.0,6.6,Compute Optimized,True,pricing_bundle
+GCP,c3-highmem-4,4.0,32.0,1.2,Compute Optimized,True,pricing_bundle
+GCP,c3-highmem-44,44.0,352.0,13.2,Compute Optimized,True,pricing_bundle
+GCP,c3-highmem-8,8.0,64.0,2.4,Compute Optimized,True,pricing_bundle
+GCP,c3-highmem-88,88.0,704.0,26.4,Compute Optimized,True,pricing_bundle
+GCP,c3-standard-22 (-lssd),22.0,88.0,4.68,Compute Optimized,True,pricing_bundle
+GCP,c3-standard-4  (-lssd),4.0,16.0,0.85,Compute Optimized,True,pricing_bundle
+GCP,c3-standard-44 (-lssd),44.0,176.0,9.35,Compute Optimized,True,pricing_bundle
+GCP,c3-standard-8 (-lssd),8.0,32.0,1.7,Compute Optimized,True,pricing_bundle
+GCP,c3-standard-88 (-lssd),88.0,352.0,18.7,Compute Optimized,True,pricing_bundle
+GCP,c3d-highmem-16 (-lssd),16.0,128.0,4.8,General Purpose,True,pricing_bundle
+GCP,c3d-highmem-180 (-lssd),180.0,1440.0,54.0,General Purpose,True,pricing_bundle
+GCP,c3d-highmem-30 (-lssd),30.0,240.0,9.0,General Purpose,True,pricing_bundle
+GCP,c3d-highmem-360 (-lssd),360.0,2880.0,108.0,General Purpose,True,pricing_bundle
+GCP,c3d-highmem-4 (-lssd),4.0,32.0,1.2,General Purpose,True,pricing_bundle
+GCP,c3d-highmem-60 (-lssd),60.0,480.0,18.0,General Purpose,True,pricing_bundle
+GCP,c3d-highmem-8 (-lssd),8.0,64.0,2.4,General Purpose,True,pricing_bundle
+GCP,c3d-highmem-90 (-lssd),90.0,720.0,27.0,General Purpose,True,pricing_bundle
+GCP,c3d-standard-16 (-lssd),16.0,64.0,3.4,General Purpose,True,pricing_bundle
+GCP,c3d-standard-180 (-lssd),180.0,720.0,38.25,General Purpose,True,pricing_bundle
+GCP,c3d-standard-30 (-lssd),30.0,120.0,6.38,General Purpose,True,pricing_bundle
+GCP,c3d-standard-360 (-lssd),360.0,1440.0,76.5,General Purpose,True,pricing_bundle
+GCP,c3d-standard-4 (-lssd),4.0,16.0,0.85,General Purpose,True,pricing_bundle
+GCP,c3d-standard-60 (-lssd),60.0,240.0,12.75,General Purpose,True,pricing_bundle
+GCP,c3d-standard-8 (-lssd),8.0,32.0,1.7,General Purpose,True,pricing_bundle
+GCP,c3d-standard-90 (-lssd),90.0,360.0,19.13,General Purpose,True,pricing_bundle
+GCP,c4-standard-16,16.0,60.0,4.24,General Purpose,True,pricing_bundle
+GCP,c4-standard-2,2.0,7.0,0.53,General Purpose,True,pricing_bundle
+GCP,c4-standard-24,24.0,90.0,6.36,General Purpose,True,pricing_bundle
+GCP,c4-standard-32,32.0,120.0,8.48,General Purpose,True,pricing_bundle
+GCP,c4-standard-4,4.0,15.0,1.06,General Purpose,True,pricing_bundle
+GCP,c4-standard-8,8.0,30.0,2.12,General Purpose,True,pricing_bundle
+GCP,c4a-highmem-16 (-lssd),16.0,128.0,7.92,General Purpose,True,pricing_bundle
+GCP,c4a-highmem-32 (-lssd),32.0,256.0,15.84,General Purpose,True,pricing_bundle
+GCP,c4a-highmem-4 (-lssd),4.0,32.0,1.98,General Purpose,True,pricing_bundle
+GCP,c4a-highmem-48 (-lssd),48.0,384.0,23.76,General Purpose,True,pricing_bundle
+GCP,c4a-highmem-64 (-lssd),64.0,512.0,31.68,General Purpose,True,pricing_bundle
+GCP,c4a-highmem-72 (-lssd),72.0,576.0,35.64,General Purpose,True,pricing_bundle
+GCP,c4a-highmem-8 (-lssd),8.0,64.0,3.96,General Purpose,True,pricing_bundle
+GCP,c4a-standard-16 (-lssd),16.0,64.0,5.6,General Purpose,True,pricing_bundle
+GCP,c4a-standard-32 (-lssd),32.0,128.0,11.2,General Purpose,True,pricing_bundle
+GCP,c4a-standard-4 (-lssd),4.0,16.0,1.4,General Purpose,True,pricing_bundle
+GCP,c4a-standard-48 (-lssd),48.0,192.0,16.8,General Purpose,True,pricing_bundle
+GCP,c4a-standard-64 (-lssd),64.0,256.0,22.4,General Purpose,True,pricing_bundle
+GCP,c4a-standard-72 (-lssd),72.0,288.0,25.2,General Purpose,True,pricing_bundle
+GCP,c4a-standard-8 (-lssd),8.0,32.0,2.8,General Purpose,True,pricing_bundle
+GCP,c4d-standard-16,16.0,62.0,5.94,General Purpose,True,pricing_bundle
+GCP,c4d-standard-2,2.0,7.0,0.7425,General Purpose,True,pricing_bundle
+GCP,c4d-standard-32,32.0,124.0,11.88,General Purpose,True,pricing_bundle
+GCP,c4d-standard-4,4.0,15.0,1.485,General Purpose,True,pricing_bundle
+GCP,c4d-standard-8,8.0,31.0,2.97,General Purpose,True,pricing_bundle
+GCP,e2_highcpu_16,16.0,16.0,2.16,General Purpose,True,pricing_bundle
+GCP,e2_highcpu_32,32.0,32.0,4.32,General Purpose,True,pricing_bundle
+GCP,e2_highmem_16,16.0,128.0,3.84,General Purpose,True,pricing_bundle
+GCP,e2_highmem_2,2.0,16.0,0.48,General Purpose,True,pricing_bundle
+GCP,e2_highmem_4,4.0,32.0,0.96,General Purpose,True,pricing_bundle
+GCP,e2_highmem_8,8.0,64.0,1.92,General Purpose,True,pricing_bundle
+GCP,e2_standard_16,16.0,64.0,2.88,General Purpose,True,pricing_bundle
+GCP,e2_standard_32,32.0,128.0,5.76,General Purpose,True,pricing_bundle
+GCP,e2_standard_4,4.0,16.0,0.72,General Purpose,True,pricing_bundle
+GCP,e2_standard_8,8.0,32.0,1.44,General Purpose,True,pricing_bundle
+GCP,g2-standard-12,12.0,48.0,4.32,GPU,True,pricing_bundle
+GCP,g2-standard-16,16.0,64.0,5.76,GPU,True,pricing_bundle
+GCP,g2-standard-24,24.0,96.0,8.64,GPU,True,pricing_bundle
+GCP,g2-standard-32,32.0,128.0,11.52,GPU,True,pricing_bundle
+GCP,g2-standard-4,4.0,16.0,1.44,GPU,True,pricing_bundle
+GCP,g2-standard-48,48.0,192.0,17.28,GPU,True,pricing_bundle
+GCP,g2-standard-8,8.0,32.0,2.88,GPU,True,pricing_bundle
+GCP,g2-standard-96,96.0,384.0,34.56,GPU,True,pricing_bundle
+GCP,n1-highcpu-16,16.0,14.4,2.136,General Purpose,True,pricing_bundle
+GCP,n1-highcpu-32,32.0,28.8,4.272,General Purpose,True,pricing_bundle
+GCP,n1-highcpu-64,64.0,57.6,8.544,General Purpose,True,pricing_bundle
+GCP,n1-highcpu-96,96.0,86.4,12.815999999999999,General Purpose,True,pricing_bundle
+GCP,n1-highmem-16,16.0,104.0,3.48,General Purpose,True,pricing_bundle
+GCP,n1-highmem-32,32.0,208.0,6.96,General Purpose,True,pricing_bundle
+GCP,n1-highmem-4,4.0,26.0,0.87,General Purpose,True,pricing_bundle
+GCP,n1-highmem-64,64.0,416.0,13.92,General Purpose,True,pricing_bundle
+GCP,n1-highmem-8,8.0,52.0,1.74,General Purpose,True,pricing_bundle
+GCP,n1-highmem-96,96.0,624.0,20.88,General Purpose,True,pricing_bundle
+GCP,n1-standard-16,16.0,60.0,2.82,General Purpose,True,pricing_bundle
+GCP,n1-standard-32,32.0,120.0,5.64,General Purpose,True,pricing_bundle
+GCP,n1-standard-4,4.0,15.0,0.71,General Purpose,True,pricing_bundle
+GCP,n1-standard-64,64.0,240.0,11.28,General Purpose,True,pricing_bundle
+GCP,n1-standard-8,8.0,30.0,1.41,General Purpose,True,pricing_bundle
+GCP,n1-standard-96,96.0,360.0,16.92,General Purpose,True,pricing_bundle
+GCP,n2-highcpu-16,16.0,16.0,2.16,General Purpose,True,pricing_bundle
+GCP,n2-highcpu-32,32.0,32.0,4.32,General Purpose,True,pricing_bundle
+GCP,n2-highcpu-48,48.0,48.0,6.4799999999999995,General Purpose,True,pricing_bundle
+GCP,n2-highcpu-64,64.0,64.0,8.64,General Purpose,True,pricing_bundle
+GCP,n2-highcpu-80,80.0,80.0,10.799999999999999,General Purpose,True,pricing_bundle
+GCP,n2-highmem-16,16.0,128.0,3.84,General Purpose,True,pricing_bundle
+GCP,n2-highmem-2,2.0,16.0,0.48,General Purpose,True,pricing_bundle
+GCP,n2-highmem-32,32.0,256.0,7.68,General Purpose,True,pricing_bundle
+GCP,n2-highmem-4,4.0,32.0,0.96,General Purpose,True,pricing_bundle
+GCP,n2-highmem-48,48.0,384.0,11.52,General Purpose,True,pricing_bundle
+GCP,n2-highmem-64,64.0,512.0,15.36,General Purpose,True,pricing_bundle
+GCP,n2-highmem-8,8.0,64.0,1.92,General Purpose,True,pricing_bundle
+GCP,n2-highmem-80,80.0,640.0,19.2,General Purpose,True,pricing_bundle
+GCP,n2-standard-16,16.0,64.0,2.88,General Purpose,True,pricing_bundle
+GCP,n2-standard-32,32.0,128.0,5.76,General Purpose,True,pricing_bundle
+GCP,n2-standard-4,4.0,16.0,0.72,General Purpose,True,pricing_bundle
+GCP,n2-standard-48,48.0,192.0,8.64,General Purpose,True,pricing_bundle
+GCP,n2-standard-64,64.0,256.0,11.52,General Purpose,True,pricing_bundle
+GCP,n2-standard-8,8.0,32.0,1.44,General Purpose,True,pricing_bundle
+GCP,n2-standard-80,80.0,320.0,14.399999999999999,General Purpose,True,pricing_bundle
+GCP,n2d-highcpu-128,128.0,128.0,17.28,General Purpose,True,pricing_bundle
+GCP,n2d-highcpu-16,16.0,16.0,2.16,General Purpose,True,pricing_bundle
+GCP,n2d-highcpu-224,224.0,224.0,30.24,General Purpose,True,pricing_bundle
+GCP,n2d-highcpu-32,32.0,32.0,4.32,General Purpose,True,pricing_bundle
+GCP,n2d-highcpu-48,48.0,48.0,6.4799999999999995,General Purpose,True,pricing_bundle
+GCP,n2d-highcpu-64,64.0,64.0,8.64,General Purpose,True,pricing_bundle
+GCP,n2d-highcpu-80,80.0,80.0,10.799999999999999,General Purpose,True,pricing_bundle
+GCP,n2d-highcpu-96,96.0,96.0,12.959999999999999,General Purpose,True,pricing_bundle
+GCP,n2d-highmem-16,16.0,128.0,3.84,General Purpose,True,pricing_bundle
+GCP,n2d-highmem-2,2.0,16.0,0.48,General Purpose,True,pricing_bundle
+GCP,n2d-highmem-32,32.0,256.0,7.68,General Purpose,True,pricing_bundle
+GCP,n2d-highmem-4,4.0,32.0,0.96,General Purpose,True,pricing_bundle
+GCP,n2d-highmem-48,48.0,384.0,11.52,General Purpose,True,pricing_bundle
+GCP,n2d-highmem-64,64.0,512.0,15.36,General Purpose,True,pricing_bundle
+GCP,n2d-highmem-8,8.0,64.0,1.92,General Purpose,True,pricing_bundle
+GCP,n2d-highmem-80,80.0,640.0,19.2,General Purpose,True,pricing_bundle
+GCP,n2d-highmem-96,96.0,768.0,23.04,General Purpose,True,pricing_bundle
+GCP,n2d-standard-128,128.0,512.0,23.04,General Purpose,True,pricing_bundle
+GCP,n2d-standard-16,16.0,64.0,2.88,General Purpose,True,pricing_bundle
+GCP,n2d-standard-224,224.0,896.0,40.32,General Purpose,True,pricing_bundle
+GCP,n2d-standard-32,32.0,128.0,5.76,General Purpose,True,pricing_bundle
+GCP,n2d-standard-4,4.0,16.0,0.72,General Purpose,True,pricing_bundle
+GCP,n2d-standard-48,48.0,192.0,8.64,General Purpose,True,pricing_bundle
+GCP,n2d-standard-64,64.0,256.0,11.52,General Purpose,True,pricing_bundle
+GCP,n2d-standard-8,8.0,32.0,1.44,General Purpose,True,pricing_bundle
+GCP,n2d-standard-80,80.0,320.0,14.399999999999999,General Purpose,True,pricing_bundle
+GCP,n2d-standard-96,96.0,384.0,17.28,General Purpose,True,pricing_bundle
+GCP,n4-standard-16,16.0,64.0,3.36,General Purpose,True,pricing_bundle
+GCP,n4-standard-2,2.0,8.0,0.42,General Purpose,True,pricing_bundle
+GCP,n4-standard-32,32.0,128.0,6.72,General Purpose,True,pricing_bundle
+GCP,n4-standard-4,4.0,16.0,0.84,General Purpose,True,pricing_bundle
+GCP,n4-standard-8,8.0,32.0,1.68,General Purpose,True,pricing_bundle
