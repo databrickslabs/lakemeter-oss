@@ -184,6 +184,7 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
             "secrets_scope": "lakemeter-secrets",
             "sp_client_id_key": "sp_clientid",
             "sp_secret_key": "sp_secret",
+            "claude_endpoint": "databricks-claude-opus-4-6",
         }
 
     instance_name = prompt_input("Lakebase instance name", "lakemeter-customer")
@@ -197,6 +198,7 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
     secrets_scope = prompt_input("Secrets scope name", "lakemeter-secrets")
     sp_client_id_key = prompt_input("SP client ID secret key", "sp_clientid")
     sp_secret_key = prompt_input("SP secret key name", "sp_secret")
+    claude_endpoint = prompt_input("Claude serving endpoint name (for AI Assistant)", "databricks-claude-opus-4-6")
 
     return {
         "instance_name": instance_name,
@@ -206,6 +208,7 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
         "secrets_scope": secrets_scope,
         "sp_client_id_key": sp_client_id_key,
         "sp_secret_key": sp_secret_key,
+        "claude_endpoint": claude_endpoint,
     }
 
 
@@ -1607,6 +1610,14 @@ def configure_app_resources(ctx: dict, instance_info: dict, cfg: dict):
             "description": desc,
             "secret": {"scope": scope, "key": secret_key, "permission": "READ"},
         })
+
+    # 4. Add serving endpoint resource for AI Assistant (Claude)
+    claude_endpoint = cfg.get("claude_endpoint", "databricks-claude-opus-4-6")
+    resources.append({
+        "name": f"{app_name}-claude-endpoint",
+        "description": "Claude model endpoint for AI Assistant",
+        "serving_endpoint": {"name": claude_endpoint, "permission": "CAN_QUERY"},
+    })
 
     host = ctx["host"].rstrip("/")
     headers = w.config.authenticate()
