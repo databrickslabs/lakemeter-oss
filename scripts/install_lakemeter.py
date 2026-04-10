@@ -111,14 +111,12 @@ def validate_prerequisites(profile: str) -> dict:
         sys.exit(1)
     log_ok("Required Python packages installed")
 
-    # Check Node.js/npm (needed for frontend build during deploy)
-    if not shutil.which("node"):
-        log_warn("Node.js not found — frontend build will be skipped during deploy")
-    elif not shutil.which("npm"):
-        log_warn("npm not found — frontend build will be skipped during deploy")
-    else:
+    # Check Node.js/npm (optional — only needed to rebuild frontend from source)
+    if shutil.which("node") and shutil.which("npm"):
         result = subprocess.run(["node", "--version"], capture_output=True, text=True)
-        log_ok(f"Node.js {result.stdout.strip()}")
+        log_ok(f"Node.js {result.stdout.strip()} (frontend will be rebuilt from source)")
+    else:
+        log_info("Node.js not found — using pre-built frontend assets from repository")
 
     # Check Databricks CLI
     if not shutil.which("databricks"):
@@ -1328,9 +1326,7 @@ command:
   - "/bin/bash"
   - "-c"
   - |
-    # Build frontend from source (Node.js 22 + npm available in Databricks Apps runtime)
-    cd frontend && npm ci --silent && npm run build && cd .. &&
-    # Start FastAPI backend
+    # Start FastAPI backend (frontend is pre-built into backend/static/)
     cd backend && ../.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port ${{DATABRICKS_APP_PORT:-8000}}
 
 env:
@@ -1528,6 +1524,7 @@ def deploy_app(ctx: dict, cfg: dict):
     - app.yaml, requirements.txt
     """
     import base64
+    import shutil
     import subprocess
     from databricks.sdk.service.workspace import ImportFormat, Language
 
@@ -1536,10 +1533,11 @@ def deploy_app(ctx: dict, cfg: dict):
     app_name = cfg["app_name"]
     ws_path = f"/Workspace/Users/{user}/apps/{app_name}"
 
-    # 1. Build frontend if source exists
+    # 1. Build frontend from source if Node.js is available, otherwise use pre-built assets
     frontend_dir = APP_DIR / "frontend"
-    if frontend_dir.exists() and (frontend_dir / "package.json").exists():
-        log_info("Building frontend...")
+    static_dir = APP_DIR / "backend" / "static"
+    if shutil.which("npm") and frontend_dir.exists() and (frontend_dir / "package.json").exists():
+        log_info("Building frontend from source...")
         result = subprocess.run(
             ["npm", "ci", "--silent"],
             cwd=str(frontend_dir),
@@ -1554,9 +1552,17 @@ def deploy_app(ctx: dict, cfg: dict):
                 capture_output=True, text=True, timeout=120,
             )
             if result.returncode == 0:
-                log_ok("Frontend built")
+                log_ok("Frontend built from source")
             else:
                 log_warn(f"npm build failed: {result.stderr[:200]}")
+    else:
+        log_info("Using pre-built frontend assets from repository")
+
+    # Verify pre-built static assets exist (either from npm build or committed in repo)
+    if not (static_dir / "index.html").exists():
+        log_err("No frontend assets found at backend/static/index.html")
+        log_info("Either install Node.js to build from source, or ensure the repo was cloned completely")
+        return
 
     # 2. Sync essential files to workspace
     MAX_FILE_SIZE = 9 * 1024 * 1024  # workspace import limit ~10MB

@@ -8,16 +8,28 @@ Lakemeter includes a zero-click installer (`scripts/install_lakemeter.py`) that 
 
 ## Prerequisites
 
-Before running the installer, ensure you have:
+### Local machine
 
-- **Python 3.10+** with `databricks-sdk`, `psycopg2-binary`, and `requests` (these are used by the installer script itself to provision Lakebase and create tables)
-- **Databricks CLI** installed and configured with a workspace profile
+- **Python 3.10+** with three packages:
+  ```bash
+  pip install databricks-sdk psycopg2-binary requests
+  ```
+- **Databricks CLI** installed and configured with a workspace profile ([installation guide](https://docs.databricks.com/en/dev-tools/cli/install.html))
+- **Node.js + npm** (optional) — only needed if you want to rebuild the frontend from source. If not installed, the installer uses the pre-built frontend assets included in the repository.
 
-That's it. The installer handles everything else automatically:
-- Lakebase is available on all Databricks workspaces — the installer provisions the instance
-- The Databricks App gets its own Service Principal automatically — no need to register one
-- The frontend is pre-built locally and deployed as static assets — no Node.js needed at runtime
-- Pricing data files ship with the repository as pre-flattened CSV files
+### Databricks workspace
+
+- **AWS workspace** in a [Lakebase-supported region](https://docs.databricks.com/en/oltp/projects/manage-projects.html): `us-east-1`, `us-east-2`, `us-west-2`, `ca-central-1`, `sa-east-1`, `eu-central-1`, `eu-west-1`, `eu-west-2`, `ap-south-1`, `ap-southeast-1`, `ap-southeast-2`
+- **Permissions** — the user running the installer needs:
+  - **Lakebase**: `CAN CREATE` on database projects (granted to all workspace users by default)
+  - **Secret scopes**: ability to create a scope or `WRITE` access to an existing one (all workspace users can create scopes by default)
+  - **Databricks Apps**: ability to create apps (granted to all workspace users by default)
+  - **Serverless compute**: access to run a one-shot serverless job (Step 5 loads pricing data)
+
+The installer handles everything else automatically:
+- Lakebase instance provisioning (reuses existing if same name)
+- App Service Principal creation and Lakebase access grants
+- Pricing data loading from pre-flattened CSV files included in the repository
 
 ## Usage
 
