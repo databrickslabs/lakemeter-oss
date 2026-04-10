@@ -225,8 +225,6 @@ def provision_lakebase(ctx: dict, cfg: dict) -> dict:
         pass
 
     log_info(f"Creating Lakebase instance '{name}' (autoscaling 0.5–16 CU, scale-to-zero)...")
-    from databricks.sdk.service.database import CreateDatabaseInstanceRequest
-
     instance = w.database.create_database_instance(
         name=name,
         capacity=cfg["cu_size"],
