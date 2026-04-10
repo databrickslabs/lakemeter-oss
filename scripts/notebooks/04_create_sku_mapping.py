@@ -25,7 +25,8 @@ w = WorkspaceClient()
 # Get Lakebase connection via owner credentials (OAuth)
 instance = w.database.get_database_instance(instance_name)
 instance_host = instance.read_write_dns
-cred = w.database.generate_database_credential(instance_name=instance_name)
+import uuid
+cred = w.database.generate_database_credential(request_id=str(uuid.uuid4()), instance_names=[instance_name])
 owner_user = w.current_user.me().user_name
 
 conn = psycopg2.connect(

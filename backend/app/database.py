@@ -33,8 +33,8 @@ def _get_database_url() -> str:
 
     from app.auth.token_manager import token_manager
 
-    # Try OAuth token manager ONLY if SP credentials were successfully loaded
-    if token_manager and token_manager._sp_client_id and token_manager._sp_client_secret:
+    # Try OAuth token manager if it has a valid token
+    if token_manager and token_manager.get_token():
         params = token_manager.get_connection_params()
         if params.get("password"):
             # Test SP connection before committing — fast timeout to avoid blocking
@@ -159,11 +159,6 @@ def refresh_engine():
             # Force token refresh
             token_manager._token = None
             token_manager._expires_at = None
-            # Also re-fetch SP credentials in case they were updated
-            try:
-                token_manager._fetch_sp_credentials()
-            except Exception as e:
-                log_warning(f"Could not re-fetch SP credentials: {e}")
         
         try:
             engine, SessionLocal = _create_engine_with_token_refresh()

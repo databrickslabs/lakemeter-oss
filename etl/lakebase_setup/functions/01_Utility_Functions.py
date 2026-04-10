@@ -296,12 +296,13 @@ AS $$
 DECLARE
     v_price DECIMAL(10,4);
 BEGIN
+    -- Try sku_name first (OSS schema), then product_type (legacy schema)
     SELECT price_per_dbu INTO v_price
     FROM lakemeter.sync_pricing_dbu_rates
     WHERE UPPER(cloud) = UPPER(p_cloud)
       AND UPPER(region) = UPPER(p_region)
       AND UPPER(tier) = UPPER(p_tier)
-      AND UPPER(product_type) = UPPER(p_product_type)
+      AND (UPPER(sku_name) = UPPER(p_product_type) OR UPPER(COALESCE(product_type, '')) = UPPER(p_product_type))
     LIMIT 1;
     
     RETURN COALESCE(v_price, 0);

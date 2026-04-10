@@ -26,6 +26,7 @@ print(f"Claude endpoint: {claude_endpoint}")
 
 # COMMAND ----------
 
+import uuid
 import requests
 import psycopg2
 from datetime import datetime
@@ -83,11 +84,12 @@ except Exception:
 # 3. Configure app resources (valueFrom references)
 print("Configuring app resources...")
 
+# Resource names must be <= 30 chars. Use short fixed prefixes.
 resource_map = {
-    f"{app_name}-lakebase-instance": ("lakebase-instance-name", "Lakebase instance name"),
-    f"{app_name}-db-host": ("lakebase-host", "Database host"),
-    f"{app_name}-db-user": ("lakebase-user", "Database user"),
-    f"{app_name}-db-name": ("lakebase-database", "Database name"),
+    "lm-lakebase-instance": ("lakebase-instance-name", "Lakebase instance name"),
+    "lm-db-host": ("lakebase-host", "Database host"),
+    "lm-db-user": ("lakebase-user", "Database user"),
+    "lm-db-name": ("lakebase-database", "Database name"),
 }
 
 resources = []
@@ -100,7 +102,7 @@ for name, (secret_key, desc) in resource_map.items():
 
 # Add serving endpoint resource for AI Assistant (Claude)
 resources.append({
-    "name": f"{app_name}-claude-endpoint",
+    "name": "lm-claude-endpoint",
     "description": "Claude model endpoint for AI Assistant",
     "serving_endpoint": {"name": claude_endpoint, "permission": "CAN_QUERY"},
 })
@@ -114,7 +116,9 @@ resp = requests.patch(
 if resp.status_code == 200:
     print(f"App resources configured ({len(resources)} resources)")
 else:
-    print(f"Warning: Failed to configure app resources: {resp.status_code} {resp.text[:200]}")
+    error_msg = f"Failed to configure app resources: {resp.status_code} {resp.text[:300]}"
+    print(f"ERROR: {error_msg}")
+    raise RuntimeError(error_msg)
 
 # COMMAND ----------
 
@@ -140,13 +144,13 @@ env:
 
   # Lakebase database configuration
   - name: "LAKEBASE_INSTANCE_NAME"
-    valueFrom: "{app_name}-lakebase-instance"
+    valueFrom: "lm-lakebase-instance"
   - name: "DB_HOST"
-    valueFrom: "{app_name}-db-host"
+    valueFrom: "lm-db-host"
   - name: "DB_USER"
-    valueFrom: "{app_name}-db-user"
+    valueFrom: "lm-db-user"
   - name: "DB_NAME"
-    valueFrom: "{app_name}-db-name"
+    valueFrom: "lm-db-name"
   - name: "DB_PORT"
     value: "5432"
   - name: "DB_SSLMODE"
@@ -154,13 +158,17 @@ env:
 
   # AI Assistant (Claude) model serving endpoint
   - name: "CLAUDE_MODEL_ENDPOINT"
-    valueFrom: "{app_name}-claude-endpoint"
+    valueFrom: "lm-claude-endpoint"
 """
 
 import os
 # Write to bundle's app_source directory so 06_deploy_app can copy it
-bundle_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-app_source_dir = os.path.join(bundle_root, "app_source")
+nb_context = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
+nb_path = nb_context.notebookPath().get()
+if not nb_path.startswith("/Workspace"):
+    nb_path = "/Workspace" + nb_path
+bundle_files_dir = os.path.dirname(os.path.dirname(nb_path))
+app_source_dir = os.path.join(bundle_files_dir, "app_source")
 app_yaml_path = os.path.join(app_source_dir, "app.yaml")
 
 with open(app_yaml_path, "w") as f:
@@ -207,7 +215,7 @@ try:
     # Grant SQL-level permissions
     instance = w.database.get_database_instance(instance_name)
     instance_host = instance.read_write_dns
-    cred = w.database.generate_database_credential(instance_name=instance_name)
+    cred = w.database.generate_database_credential(request_id=str(uuid.uuid4()), instance_names=[instance_name])
     owner_user = w.current_user.me().user_name
 
     conn = psycopg2.connect(
