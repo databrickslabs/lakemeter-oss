@@ -22,17 +22,17 @@ Before running the installer, ensure you have:
 ## Usage
 
 ```bash
-# Full installation (provisions everything from scratch)
+# Full installation with static pricing (default — uses bundled JSON files)
 python scripts/install_lakemeter.py --profile <cli-profile>
+
+# Full installation with live API pricing (fetches from cloud APIs + scheduled sync)
+python scripts/install_lakemeter.py --profile <cli-profile> --pricing-source api
 
 # Skip instance provisioning (use an existing Lakebase instance)
 python scripts/install_lakemeter.py --profile <cli-profile> --skip-provision
 
 # Skip app deployment (database setup only)
 python scripts/install_lakemeter.py --profile <cli-profile> --skip-deploy
-
-# Skip ETL pipeline setup (no UC catalog, notebooks, or workflow)
-python scripts/install_lakemeter.py --profile <cli-profile> --skip-etl
 
 # Preview mode (validate config without making changes)
 python scripts/install_lakemeter.py --profile <cli-profile> --dry-run
@@ -46,9 +46,9 @@ python scripts/install_lakemeter.py --profile <cli-profile> --non-interactive
 | Flag | Description |
 |------|-------------|
 | `--profile` | **(Required)** Databricks CLI profile name |
+| `--pricing-source` | Pricing data source: `static` (bundled JSON, default) or `api` (live cloud APIs + scheduled sync) |
 | `--skip-provision` | Skip Lakebase instance creation — use an existing instance |
 | `--skip-deploy` | Skip frontend build and app deployment |
-| `--skip-etl` | Skip UC catalog creation, ETL notebook upload, and workflow creation |
 | `--dry-run` | Validate prerequisites and show config plan without executing |
 | `--non-interactive` | Use all defaults with no prompts (for CI/CD pipelines) |
 
@@ -74,13 +74,34 @@ Checks Python version (3.10+), required Python packages (`databricks-sdk`, `psyc
 
 Interactive prompts collect deployment parameters. All parameters have sensible defaults. Use `--non-interactive` to skip prompts and accept all defaults.
 
+#### Pricing Source
+
+The installer asks whether to use **static** (bundled JSON files) or **live API** pricing:
+
+- **Static (default):** Uses pre-bundled pricing data in `backend/static/pricing/`. No cloud credentials needed. Steps 5, 10, and 11 are skipped.
+- **Live API:** Fetches pricing from cloud APIs (AWS Pricing API, Azure Retail Prices API, GCP Cloud Billing API) and Databricks `system.billing.list_prices`. Creates a UC catalog, uploads ETL notebooks, and schedules a weekly sync workflow.
+
+When **Live API** is selected, the installer prompts for cloud credentials:
+
+| Credential | Purpose | Required for |
+|------------|---------|--------------|
+| AWS Access Key ID | AWS Pricing API (boto3) | `03_Fetch_AWS_VM` notebook |
+| AWS Secret Access Key | AWS Pricing API (boto3) | `03_Fetch_AWS_VM` notebook |
+| GCP Service Account JSON | GCP Cloud Billing Catalog API | `05_Fetch_GCP_VM` notebook |
+| AWS workspace config | Databricks REST API for DBU prices | `01_Fetch_DBU_Prices` notebook |
+| Azure workspace config | Databricks REST API for DBU prices | `01_Fetch_DBU_Prices` notebook |
+| GCP workspace config | Databricks REST API for DBU prices | `01_Fetch_DBU_Prices` notebook |
+
+Workspace configs are JSON objects: `{"host": "https://...", "token": "dapi...", "warehouse_id": "..."}`. Azure VM pricing requires no credentials (public API). All credentials are stored in the secrets scope automatically.
+
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | Instance name | `lakemeter-customer` | Lakebase instance identifier |
 | Database name | `lakemeter_pricing` | PostgreSQL database name |
 | App name | `lakemeter` | Databricks App name |
 | Secrets scope | `lakemeter-secrets` | Databricks secret scope name |
-| UC catalog name | `lakemeter_catalog` | Unity Catalog for ETL pricing tables |
+| Pricing source | `static` | `static` (bundled JSON files) or `api` (live cloud APIs) |
+| UC catalog name | `lakemeter_catalog` | Unity Catalog for ETL pricing tables (only when pricing source is `api`) |
 
 The following are fixed (not user-configurable):
 
@@ -118,11 +139,14 @@ Connects to the Lakebase instance using owner credentials (via `generate_databas
 
 ### Step 5: Create Unity Catalog and Schema
 
+:::note
+Only runs when pricing source is `api`. Skipped for `static` (default).
+:::
+
 Creates a Unity Catalog and schema for ETL pricing tables. If the catalog or schema already exists, the installer reuses it.
 
 - Creates the catalog (e.g., `lakemeter_catalog`) via `w.catalogs.create()` if it doesn't exist
 - Creates the `lakemeter` schema within the catalog via `w.schemas.create()` if it doesn't exist
-- Skipped with `--skip-etl`
 
 ### Step 6: Load Pricing Reference Data
 
@@ -169,22 +193,31 @@ Creates PostgreSQL views that aggregate pricing data for common query patterns u
 
 ### Step 10: Upload ETL Notebooks
 
-Uploads 12 ETL pricing sync notebooks from `etl/pricing_sync/` to the workspace at `/Workspace/Users/{user}/lakemeter/etl/pricing_sync/`. If the user chose a different UC catalog name, the installer patches the `CATALOG` variable in each notebook before uploading.
+:::note
+Only runs when pricing source is `api`. Skipped for `static` (default).
+:::
+
+Stores cloud API credentials in the secrets scope and uploads 12 ETL pricing sync notebooks from `etl/pricing_sync/` to the workspace at `/Workspace/Users/{user}/lakemeter/etl/pricing_sync/`.
+
+- Stores all collected API credentials (AWS keys, GCP SA JSON, workspace configs) in the secrets scope
+- Patches `CATALOG` and `SECRET_SCOPE` variables in each notebook to match user's configuration
+- Uploads `Instance Type Pricing.xlsx` alongside notebooks (used by `02_Load_DBU_Rates`)
+- Debug/utility notebooks (98/99 prefix) are excluded
 
 Notebooks uploaded:
 - `01_Fetch_DBU_Prices` through `12_Load_FMAPI_Proprietary_Rates`
-- Debug/utility notebooks (98/99 prefix) are excluded
-
-Skipped with `--skip-etl`.
 
 ### Step 11: Create Pricing Sync Workflow
+
+:::note
+Only runs when pricing source is `api`. Skipped for `static` (default).
+:::
 
 Creates a Databricks Workflow (`lakemeter-pricing-sync`) that runs all 12 ETL notebooks as a sequential task chain. If a workflow with the same name already exists, the installer updates it.
 
 - Tasks run sequentially (each depends on the previous)
 - Schedule: Weekly on Sundays at 2:00 AM UTC
 - Uses serverless compute (no cluster management)
-- Skipped with `--skip-etl`
 
 ### Step 12: Generate App Configuration
 
@@ -217,10 +250,11 @@ Runs `deploy.sh --workspace-deploy` to sync the application files to the Databri
 
 Once all steps complete:
 
-1. Run the pricing sync workflow manually for the first time (the weekly schedule starts automatically, but you need initial data):
+1. **If you chose Live API pricing:** Run the pricing sync workflow manually for the first time (the weekly schedule starts automatically, but you need initial data):
    ```bash
    databricks jobs run-now lakemeter-pricing-sync -p your-profile
    ```
+   If you chose Static pricing, this step is not needed — pricing data was loaded from bundled JSON files.
 2. If you used `--skip-deploy`, deploy manually:
    ```bash
    cd backend && databricks apps deploy lakemeter --source-code-path . -p your-profile
