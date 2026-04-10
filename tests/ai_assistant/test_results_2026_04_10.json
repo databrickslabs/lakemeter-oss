@@ -1,0 +1,123 @@
+{
+  "test_date": "2026-04-10",
+  "test_type": "AI Accept Button - All Workload Types",
+  "app_url": "https://lakemeter-oss-335310294452632.aws.databricksapps.com",
+  "cloud": "aws",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "summary": "14/14 tests passed. All non-default values preserved after confirm.",
+  "results": [
+    {
+      "type": "JOBS",
+      "variant": "Classic",
+      "name": "ETL Pipeline Test",
+      "status": "PASS",
+      "requested": {"driver_node_type": "i3.xlarge", "worker_node_type": "i3.2xlarge", "num_workers": 5, "photon_enabled": true, "runs_per_day": 8, "avg_runtime_minutes": 45, "days_per_month": 22},
+      "confirmed_match": true
+    },
+    {
+      "type": "JOBS",
+      "variant": "Serverless",
+      "name": "Nightly Data Sync",
+      "status": "PASS",
+      "requested": {"serverless_enabled": true, "serverless_mode": "performance", "runs_per_day": 4, "avg_runtime_minutes": 30, "days_per_month": 30},
+      "confirmed_match": true
+    },
+    {
+      "type": "ALL_PURPOSE",
+      "variant": "Classic",
+      "name": "Dev Notebook Cluster",
+      "status": "PASS",
+      "requested": {"driver_node_type": "m5.2xlarge", "worker_node_type": "r5.xlarge", "num_workers": 3, "photon_enabled": true, "hours_per_month": 176, "driver_pricing_tier": "1yr_reserved"},
+      "confirmed_match": true
+    },
+    {
+      "type": "DLT",
+      "variant": "Classic PRO",
+      "name": "Streaming Ingest Pipeline",
+      "status": "PASS",
+      "requested": {"dlt_edition": "PRO", "driver_node_type": "m5.xlarge", "worker_node_type": "i3.xlarge", "num_workers": 4, "photon_enabled": true, "hours_per_month": 500, "days_per_month": 30},
+      "confirmed_match": true
+    },
+    {
+      "type": "DBSQL",
+      "variant": "Pro",
+      "name": "BI Analytics Warehouse",
+      "status": "PASS",
+      "requested": {"dbsql_warehouse_type": "PRO", "dbsql_warehouse_size": "Large", "dbsql_num_clusters": 3, "hours_per_month": 400},
+      "confirmed_match": true
+    },
+    {
+      "type": "DBSQL",
+      "variant": "Serverless",
+      "name": "Real-time Dashboard",
+      "status": "PASS",
+      "requested": {"dbsql_warehouse_type": "SERVERLESS", "dbsql_warehouse_size": "Medium", "dbsql_num_clusters": 2, "hours_per_month": 600},
+      "confirmed_match": true
+    },
+    {
+      "type": "MODEL_SERVING",
+      "variant": "GPU Small",
+      "name": "Fraud Detection Model",
+      "status": "PASS",
+      "requested": {"hours_per_month": 730},
+      "confirmed_match": true
+    },
+    {
+      "type": "VECTOR_SEARCH",
+      "variant": "Storage Optimized",
+      "name": "Document Search Index",
+      "status": "PASS",
+      "requested": {"vector_capacity_millions": 50, "vector_search_storage_gb": 100},
+      "confirmed_match": true
+    },
+    {
+      "type": "FMAPI_DATABRICKS",
+      "variant": "Meta Llama 70B",
+      "name": "Llama Chat Input",
+      "status": "PASS",
+      "requested": {"fmapi_model": "llama-3-3-70b", "fmapi_provider": "meta", "fmapi_rate_type": "input_token", "fmapi_quantity": 100, "fmapi_endpoint_type": "regional"},
+      "confirmed_match": true
+    },
+    {
+      "type": "FMAPI_PROPRIETARY",
+      "variant": "Anthropic Claude",
+      "name": "Claude Output Tokens",
+      "status": "PASS",
+      "requested": {"fmapi_model": "claude-sonnet-4-5", "fmapi_provider": "anthropic", "fmapi_rate_type": "output_token", "fmapi_quantity": 25, "fmapi_endpoint_type": "global", "fmapi_context_length": "long"},
+      "confirmed_match": true
+    },
+    {
+      "type": "LAKEBASE",
+      "variant": "HA with replicas",
+      "name": "Product Catalog DB",
+      "status": "PASS",
+      "requested": {"lakebase_storage_gb": 500, "lakebase_pitr_gb": 200, "lakebase_snapshot_gb": 100, "lakebase_cu": 2, "lakebase_ha_nodes": 3},
+      "confirmed_match": true
+    },
+    {
+      "type": "DATABRICKS_APPS",
+      "variant": "Large",
+      "name": "Internal Dashboard App",
+      "status": "PASS",
+      "requested": {"databricks_apps_size": "large", "hours_per_month": 500},
+      "confirmed_match": true
+    },
+    {
+      "type": "AI_PARSE",
+      "variant": "Pages High",
+      "name": "Contract Scanner",
+      "status": "PASS",
+      "requested": {"ai_parse_mode": "pages", "ai_parse_complexity": "high", "ai_parse_pages_thousands": 200},
+      "confirmed_match": true
+    },
+    {
+      "type": "SHUTTERSTOCK_IMAGEAI",
+      "variant": "5000 images",
+      "name": "Marketing Image Gen",
+      "status": "PASS",
+      "requested": {"shutterstock_images": 5000},
+      "confirmed_match": true
+    }
+  ]
+}
