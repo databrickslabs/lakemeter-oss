@@ -139,7 +139,9 @@ def calculate_all_purpose_serverless_cost(
     try:
         params = {
             "p1": "ALL_PURPOSE", "p2": request.cloud.upper(), "p3": request.region, "p4": request.tier.upper(),
-            "p5": True, "p6": False, "p7": None, "p8": None, "p9": None, "p10": 0,
+            "p5": True, "p6": False, "p7": None,
+            "p8": request.driver_node_type, "p9": request.worker_node_type,
+            "p10": request.num_workers or 0,
             "p11": "on_demand", "p12": "on_demand",
             "p13": 0, "p14": 0,
             "p15": request.days_per_month or 30,
