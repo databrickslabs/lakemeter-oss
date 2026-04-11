@@ -18,7 +18,9 @@ That's it — no Python packages, no Node.js, no other dependencies needed local
 
 ### Databricks workspace
 
-- **AWS workspace** in a [Lakebase-supported region](https://docs.databricks.com/en/oltp/projects/manage-projects.html): `us-east-1`, `us-east-2`, `us-west-2`, `ca-central-1`, `sa-east-1`, `eu-central-1`, `eu-west-1`, `eu-west-2`, `ap-south-1`, `ap-southeast-1`, `ap-southeast-2`
+- **AWS** or **Azure** workspace in a [Lakebase-supported region](https://docs.databricks.com/en/oltp/projects/manage-projects.html):
+  - **AWS:** `us-east-1`, `us-east-2`, `us-west-2`, `ca-central-1`, `sa-east-1`, `eu-central-1`, `eu-west-1`, `eu-west-2`, `ap-south-1`, `ap-southeast-1`, `ap-southeast-2`
+  - **Azure:** `eastus`, `eastus2`, `centralus`, `southcentralus`, `westus`, `westus2`, `canadacentral`, `brazilsouth`, `northeurope`, `uksouth`, `westeurope`, `australiaeast`, `centralindia`, `southeastasia`
 
 All required permissions (Lakebase, secret scopes, Apps, serverless compute) are granted to all workspace users by default. No special admin setup is needed.
 
