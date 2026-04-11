@@ -9,8 +9,8 @@ This guide covers the complete Lakemeter workflow from creating an estimate to i
 ## Video walkthrough
 
 <video controls width="100%" preload="metadata" aria-label="End-to-end workflow tutorial showing the complete Lakemeter process from estimate creation through export">
-  <source src="/docs/video/getting-started-tutorial.mp4" type="video/mp4" />
-  Your browser does not support the video tag. <a href="/docs/video/getting-started-tutorial.mp4">Download the tutorial video</a>.
+  <source src="/lakemeter-opensource/video/getting-started-tutorial.mp4" type="video/mp4" />
+  Your browser does not support the video tag. <a href="/lakemeter-opensource/video/getting-started-tutorial.mp4">Download the tutorial video</a>.
 </video>
 
 *Full walkthrough: create an estimate, add workloads, configure compute and usage, review costs, and export the report.*
