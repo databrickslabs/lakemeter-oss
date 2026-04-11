@@ -10,15 +10,7 @@ Lakemeter is a **Databricks App** — a managed web application with built-in SS
 
 - **Databricks CLI** installed and configured with a workspace profile ([installation guide](https://docs.databricks.com/en/dev-tools/cli/install.html))
 
-The CLI profile must have permission to:
-- Create Lakebase instances (or reuse an existing one)
-- Create secret scopes (or write to an existing one)
-- Create Databricks Apps
-- Run serverless compute jobs
-
-:::tip
-On most workspaces, all of these permissions are granted to workspace users by default. No special admin setup is needed.
-:::
+All required permissions (Lakebase, secret scopes, Apps, serverless compute) are granted to workspace users by default. No special admin setup is needed.
 
 ## Install
 
