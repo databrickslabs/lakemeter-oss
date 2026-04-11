@@ -8,9 +8,18 @@ Lakemeter is a **Databricks App** — a managed web application with built-in SS
 
 ## Prerequisites
 
-- **Databricks CLI** installed and configured with a workspace profile ([installation guide](https://docs.databricks.com/en/dev-tools/cli/install.html))
+You need a **Databricks CLI** configured with a [workspace profile](https://docs.databricks.com/aws/en/dev-tools/cli/profiles.html). All other permissions (Lakebase, secret scopes, Apps, serverless compute) are granted to workspace users by default.
 
-All required permissions (Lakebase, secret scopes, Apps, serverless compute) are granted to workspace users by default. No special admin setup is needed.
+:::tip No local CLI? Use the notebook terminal
+If you can't install the Databricks CLI locally, you can run the installer directly from your workspace. Create any notebook on a serverless cluster, click the **terminal button** (bottom-right corner), and use the pre-installed CLI — no profile needed since it's already authenticated.
+
+```bash
+# In the notebook terminal — CLI is pre-installed and authenticated
+git clone <repository-url>
+cd lakemeter-opensource
+./scripts/install.sh --non-interactive
+```
+:::
 
 ## Install
 
