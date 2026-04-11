@@ -205,20 +205,179 @@ cd "$SCRIPT_DIR"
 databricks bundle deploy $PROFILE_FLAG --auto-approve
 echo -e "${GREEN}Bundle deployed${NC}"
 
-# Run installer workflow
+# Run installer workflow (in background so we can poll progress)
 echo ""
 echo -e "${YELLOW}Running installer workflow on serverless compute...${NC}"
 echo -e "  This will provision Lakebase, create tables, load pricing data,"
 echo -e "  configure the app, and deploy it."
 echo ""
+echo -e "${BOLD}Note: The full installation typically takes 15-20 minutes.${NC}"
+echo ""
+
+# Start the bundle run in background, capture output for run URL
+BUNDLE_RUN_OUTPUT=$(mktemp)
 databricks bundle run lakemeter_installer $PROFILE_FLAG \
-    --params "instance_name=$INSTANCE_NAME,db_name=$DB_NAME,app_name=$APP_NAME,secrets_scope=$SECRETS_SCOPE,claude_endpoint=$CLAUDE_ENDPOINT"
+    --params "instance_name=$INSTANCE_NAME,db_name=$DB_NAME,app_name=$APP_NAME,secrets_scope=$SECRETS_SCOPE,claude_endpoint=$CLAUDE_ENDPOINT" \
+    --no-wait 2>&1 | tee "$BUNDLE_RUN_OUTPUT"
+
+# Extract run ID from bundle run output
+RUN_ID=$(grep -oE 'runs/[0-9]+' "$BUNDLE_RUN_OUTPUT" | head -1 | sed 's/runs\///')
+if [ -z "$RUN_ID" ]; then
+    # Fallback: try to extract a plain numeric run ID
+    RUN_ID=$(grep -oE '[0-9]{5,}' "$BUNDLE_RUN_OUTPUT" | head -1)
+fi
+rm -f "$BUNDLE_RUN_OUTPUT"
+
+if [ -z "$RUN_ID" ]; then
+    echo -e "${RED}Could not determine run ID. Check the Databricks UI for progress.${NC}"
+    # Cleanup and exit
+    rm -rf "$PRICING_DST" "$APP_SRC_DST"
+    exit 1
+fi
+
+# Get the workspace host for the run URL
+WORKSPACE_HOST=$(databricks auth env $PROFILE_FLAG 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('DATABRICKS_HOST',''))" 2>/dev/null || true)
+if [ -n "$WORKSPACE_HOST" ]; then
+    echo -e "  Run URL: ${CYAN}${WORKSPACE_HOST}/#job/0/run/${RUN_ID}${NC}"
+else
+    echo -e "  Run ID: ${CYAN}${RUN_ID}${NC}"
+fi
+echo ""
+
+# Task display order (matches the DAG)
+TASK_ORDER="provision_lakebase create_app create_database create_functions load_pricing_data create_sku_mapping grant_app_access deploy_app"
+
+# Poll progress every 10 seconds
+INSTALL_START=$(date +%s)
+
+while true; do
+    # Get run status as JSON
+    RUN_JSON=$(databricks runs get --run-id "$RUN_ID" $PROFILE_FLAG 2>/dev/null || true)
+    if [ -z "$RUN_JSON" ]; then
+        echo -e "${RED}Could not fetch run status. Check the Databricks UI.${NC}"
+        break
+    fi
+
+    # Parse task states using Python
+    STATUS_OUTPUT=$(echo "$RUN_JSON" | python3 -c "
+import json, sys
+
+data = json.load(sys.stdin)
+tasks = data.get('tasks', [])
+run_state = data.get('state', {}).get('life_cycle_state', 'UNKNOWN')
+result_state = data.get('state', {}).get('result_state', '')
+
+task_map = {}
+for t in tasks:
+    key = t.get('task_key', '')
+    state = t.get('state', {}).get('life_cycle_state', 'PENDING')
+    result = t.get('state', {}).get('result_state', '')
+    start_ms = t.get('start_time', 0)
+    end_ms = t.get('end_time', 0)
+    elapsed = ''
+    if start_ms and end_ms and end_ms > start_ms:
+        secs = (end_ms - start_ms) // 1000
+        if secs >= 60:
+            elapsed = f'{secs // 60}m{secs % 60:02d}s'
+        else:
+            elapsed = f'{secs}s'
+    elif start_ms and state == 'RUNNING':
+        import time
+        secs = int(time.time()) - start_ms // 1000
+        if secs >= 60:
+            elapsed = f'{secs // 60}m{secs % 60:02d}s'
+        else:
+            elapsed = f'{secs}s'
+    task_map[key] = (state, result, elapsed)
+
+# Print run-level state first
+print(f'RUN_STATE={run_state}')
+print(f'RESULT_STATE={result_state}')
+
+# Print each task
+task_order = '$TASK_ORDER'.split()
+for key in task_order:
+    if key in task_map:
+        state, result, elapsed = task_map[key]
+        print(f'TASK|{key}|{state}|{result}|{elapsed}')
+" 2>/dev/null || echo "RUN_STATE=UNKNOWN")
+
+    # Parse run-level state
+    RUN_STATE=$(echo "$STATUS_OUTPUT" | grep '^RUN_STATE=' | cut -d= -f2)
+    RESULT_STATE=$(echo "$STATUS_OUTPUT" | grep '^RESULT_STATE=' | cut -d= -f2)
+
+    # Calculate elapsed time
+    NOW=$(date +%s)
+    ELAPSED_SECS=$(( NOW - INSTALL_START ))
+    if [ "$ELAPSED_SECS" -ge 60 ]; then
+        ELAPSED_DISPLAY="$(( ELAPSED_SECS / 60 ))m$(printf '%02d' $(( ELAPSED_SECS % 60 )))s"
+    else
+        ELAPSED_DISPLAY="${ELAPSED_SECS}s"
+    fi
+
+    # Clear previous output and redraw
+    # Move cursor up (number of task lines + 2 for header/elapsed)
+    if [ "${FIRST_DRAW:-}" = "done" ]; then
+        # Move up: 1 header + 8 tasks + 1 elapsed + 1 blank = 11 lines
+        printf '\033[11A'
+    fi
+    FIRST_DRAW="done"
+
+    echo -e "${BOLD}  Task Progress:${NC}                                      "
+    echo "$STATUS_OUTPUT" | grep '^TASK|' | while IFS='|' read -r _ TASK_KEY STATE RESULT TASK_ELAPSED; do
+        # Format task name for display (replace underscores with spaces, pad)
+        DISPLAY_NAME=$(printf '%-22s' "$TASK_KEY")
+
+        if [ "$RESULT" = "SUCCESS" ]; then
+            echo -e "    ${GREEN}[done]${NC} ${DISPLAY_NAME} ${GREEN}(${TASK_ELAPSED})${NC}          "
+        elif [ "$RESULT" = "FAILED" ]; then
+            echo -e "    ${RED}[FAIL]${NC} ${DISPLAY_NAME} ${RED}(${TASK_ELAPSED})${NC}          "
+        elif [ "$STATE" = "RUNNING" ]; then
+            echo -e "    ${YELLOW}[ .. ]${NC} ${DISPLAY_NAME} ${YELLOW}running${NC} (${TASK_ELAPSED})     "
+        elif [ "$STATE" = "PENDING" ] || [ "$STATE" = "BLOCKED" ] || [ "$STATE" = "QUEUED" ]; then
+            echo -e "    ${CYAN}[    ]${NC} ${DISPLAY_NAME} waiting               "
+        elif [ "$STATE" = "SKIPPED" ]; then
+            echo -e "    ${CYAN}[skip]${NC} ${DISPLAY_NAME}                       "
+        else
+            echo -e "    ${CYAN}[    ]${NC} ${DISPLAY_NAME} ${STATE}              "
+        fi
+    done
+    echo -e "  Elapsed: ${BOLD}${ELAPSED_DISPLAY}${NC}                         "
+
+    # Check if run is finished
+    if [ "$RUN_STATE" = "TERMINATED" ] || [ "$RUN_STATE" = "INTERNAL_ERROR" ] || [ "$RUN_STATE" = "SKIPPED" ]; then
+        break
+    fi
+
+    sleep 10
+done
+
+echo ""
 
 # Cleanup temporary directories
 rm -rf "$PRICING_DST" "$APP_SRC_DST"
 
-echo ""
-echo -e "${BOLD}${GREEN}Installation complete!${NC}"
-echo ""
-echo -e "  Verify: databricks apps get ${APP_NAME} ${PROFILE_FLAG}"
-echo ""
+# Final status
+if [ "$RESULT_STATE" = "SUCCESS" ]; then
+    # Try to get the app URL
+    APP_URL=$(databricks apps get "$APP_NAME" $PROFILE_FLAG 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('url',''))" 2>/dev/null || true)
+
+    echo -e "${BOLD}${GREEN}Installation complete!${NC}"
+    echo ""
+    if [ -n "$APP_URL" ]; then
+        echo -e "  App URL: ${CYAN}${APP_URL}${NC}"
+    fi
+    echo -e "  Verify:  databricks apps get ${APP_NAME} ${PROFILE_FLAG}"
+    echo ""
+elif [ "$RESULT_STATE" = "FAILED" ] || [ "$RUN_STATE" = "INTERNAL_ERROR" ]; then
+    echo -e "${BOLD}${RED}Installation failed.${NC}"
+    echo -e "  Check the run in the Databricks UI for error details."
+    if [ -n "$WORKSPACE_HOST" ]; then
+        echo -e "  Run URL: ${CYAN}${WORKSPACE_HOST}/#job/0/run/${RUN_ID}${NC}"
+    fi
+    echo ""
+    exit 1
+else
+    echo -e "${YELLOW}Installation ended with status: ${RUN_STATE} / ${RESULT_STATE}${NC}"
+    echo ""
+fi
