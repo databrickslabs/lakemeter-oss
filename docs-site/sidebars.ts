@@ -67,31 +67,6 @@ const sidebars: SidebarsConfig = {
       ],
     },
   ],
-  testingGuideSidebar: [
-    {
-      type: 'category',
-      label: 'Testing Guide',
-      collapsed: false,
-      items: [
-        'testing/overview',
-        'testing/parity-tests',
-        'testing/jobs-workload-tests',
-        'testing/allpurpose-compute-tests',
-        'testing/dlt-calculation-tests',
-        'testing/dlt-ai-tests',
-        'testing/dbsql-ai-tests',
-        'testing/model-serving-ai-tests',
-        'testing/vector-search-ai-tests',
-        'testing/fmapi-databricks-ai-tests',
-        'testing/fmapi-proprietary-ai-tests',
-        'testing/lakebase-excel-tests',
-        'testing/multi-workload-ai-tests',
-        'testing/ml-pipeline-ai-tests',
-        'testing/installation-tests',
-        'testing/integration-validation-tests',
-      ],
-    },
-  ],
 };
 
 export default sidebars;

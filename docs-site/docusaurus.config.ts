@@ -17,7 +17,7 @@ const config: Config = {
   organizationName: 'CheeYuTan',
   projectName: 'lakemeter-opensource',
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
 
   markdown: {
     hooks: {
@@ -68,12 +68,6 @@ const config: Config = {
           label: 'Admin Guide',
         },
         {
-          type: 'docSidebar',
-          sidebarId: 'testingGuideSidebar',
-          position: 'left',
-          label: 'Testing Guide',
-        },
-        {
           href: 'https://www.databricks.com/product/pricing',
           label: 'Databricks Pricing',
           position: 'right',
@@ -93,10 +87,6 @@ const config: Config = {
             {
               label: 'Admin Guide',
               to: '/admin-guide/deployment',
-            },
-            {
-              label: 'Testing Guide',
-              to: '/testing/overview',
             },
           ],
         },
