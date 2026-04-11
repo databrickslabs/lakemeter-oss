@@ -190,7 +190,7 @@ The following are fixed (not user-configurable):
 |---------|-------|--------|
 | Lakebase scaling | 1–16 CU, scale-to-zero | Optimal for cost and performance |
 | Claude endpoint | `databricks-claude-opus-4-6` | Same endpoint on every Databricks workspace |
-| Serverless environment | v5 | Pre-installed psycopg2, requests, databricks-sdk |
+| Serverless environment | v5 | Latest serverless environment version |
 
 ## What Gets Created
 
