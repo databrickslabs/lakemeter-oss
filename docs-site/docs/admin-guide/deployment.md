@@ -45,7 +45,7 @@ For a list of all resources created by the installer, see the [Deployment Invent
 Once the installer completes, your app is live at:
 
 ```
-https://lakemeter-<workspace-id>.aws.databricksapps.com
+https://lakemeter-<workspace-id>.<cloud>.databricksapps.com
 ```
 
 Users access the app through their Databricks workspace — authentication is handled automatically via SSO. No additional user setup is required.

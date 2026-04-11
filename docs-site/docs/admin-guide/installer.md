@@ -141,7 +141,7 @@ The progress display refreshes every 10 seconds with live task status:
 ```
 Installation complete!
 
-  App URL:      https://lakemeter-XXXXX.aws.databricksapps.com
+  App URL:      https://lakemeter-<workspace-id>.<cloud>.databricksapps.com
   Verification: All smoke tests passed
   Details:      databricks runs get-output --run-id XXXXX --profile <profile>
 ```
@@ -202,7 +202,7 @@ After a successful installation, your workspace will have:
 | **Database** | `lakemeter_pricing` with `lakemeter` schema |
 | **Secret scope** | `lakemeter-secrets` with 5 secrets |
 | **Databricks App** | `lakemeter` with 5 resources |
-| **App URL** | `https://lakemeter-XXXXX.aws.databricksapps.com` |
+| **App URL** | `https://lakemeter-<workspace-id>.<cloud>.databricksapps.com` |
 
 For a detailed breakdown of all resources created, see the [Deployment Inventory](./deployment-inventory).
 
