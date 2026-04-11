@@ -97,7 +97,7 @@ const config: Config = {
           ],
         },
         {
-          title: 'Databricks Resources',
+          title: 'Databricks',
           items: [
             {
               label: 'Official Pricing',
@@ -107,27 +107,10 @@ const config: Config = {
               label: 'Databricks Documentation',
               href: 'https://docs.databricks.com',
             },
-            {
-              label: 'Databricks Apps',
-              href: 'https://docs.databricks.com/en/dev-tools/databricks-apps/index.html',
-            },
-          ],
-        },
-        {
-          title: 'Platform',
-          items: [
-            {
-              label: 'Unity Catalog',
-              href: 'https://docs.databricks.com/en/data-governance/unity-catalog/index.html',
-            },
-            {
-              label: 'Lakebase',
-              href: 'https://docs.databricks.com/en/lakebase/index.html',
-            },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Databricks, Inc. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Databricks, Inc.`,
     },
     prism: {
       theme: prismThemes.github,

@@ -13,6 +13,12 @@ You need a **Databricks CLI** configured with a [workspace profile](https://docs
 :::tip No local CLI? Use the notebook terminal
 If you can't install the Databricks CLI locally, you can run the installer directly from your workspace. Create any notebook on a serverless cluster, click the **terminal button** (bottom-right corner), and use the pre-installed CLI — no profile needed since it's already authenticated.
 
+![Notebook with terminal button highlighted](/img/guides/notebook-terminal-button.png)
+*Click the terminal button in the bottom-right corner of any notebook.*
+
+![Terminal open with Databricks CLI available](/img/guides/notebook-terminal-cli.png)
+*The Databricks CLI is pre-installed and authenticated in the notebook terminal.*
+
 ```bash
 # In the notebook terminal — CLI is pre-installed and authenticated
 git clone <repository-url>
