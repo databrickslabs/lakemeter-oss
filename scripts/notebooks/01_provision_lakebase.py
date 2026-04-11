@@ -6,6 +6,9 @@
 
 # COMMAND ----------
 
+import time as _time
+_start = _time.time()
+
 dbutils.widgets.text("instance_name", "lakemeter-customer")
 instance_name = dbutils.widgets.get("instance_name")
 print(f"Instance name: {instance_name}")
@@ -47,7 +50,7 @@ try:
     dbutils.jobs.taskValues.set(key="instance_uid", value=instance_uid)
     dbutils.jobs.taskValues.set(key="instance_name", value=existing.name)
     print(f"Instance AVAILABLE at {instance_host}")
-    dbutils.notebook.exit(f"Reused existing instance: {instance_host}")
+    dbutils.notebook.exit(f"Reused existing instance: {instance_host} ({_time.time() - _start:.1f}s)")
 
 except Exception:
     print(f"Instance '{instance_name}' not found — creating new one")
@@ -112,7 +115,7 @@ for i in range(120):  # 10 minutes max
         dbutils.jobs.taskValues.set(key="instance_host", value=inst.read_write_dns)
         dbutils.jobs.taskValues.set(key="instance_uid", value=inst.uid)
         dbutils.jobs.taskValues.set(key="instance_name", value=inst.name)
-        dbutils.notebook.exit(f"Created new instance: {inst.read_write_dns}")
+        dbutils.notebook.exit(f"Created new instance: {inst.read_write_dns} ({_time.time() - _start:.1f}s)")
     if "FAILED" in state or "DELETED" in state:
         raise RuntimeError(f"Instance entered {state} state")
     if i % 10 == 0:

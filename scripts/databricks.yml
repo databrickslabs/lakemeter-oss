@@ -26,7 +26,21 @@ resources:
           default: "lakemeter-secrets"
         - name: claude_endpoint
           default: "databricks-claude-opus-4-6"
+
+      # Task dependency graph (parallel where possible):
+      #
+      #   01_provision (26s)  ║  05a_create_app (~3min)   ← parallel from start
+      #         │             ║        │
+      #   02_create_db (17s)  ║        │
+      #         │             ╠════════╝
+      #     ┌───┴──────┐      │
+      #   02b_funcs  03_data  05b_grant_sp (~30s)
+      #     (12s)    (19s)         │
+      #               │      06_deploy_app (10m41s)
+      #          04_sku (10s)
+      #
       tasks:
+        # ── Branch 1: Database provisioning ──────────────────────────────
         - task_key: provision_lakebase
           notebook_task:
             notebook_path: ./notebooks/01_provision_lakebase.py
@@ -57,7 +71,7 @@ resources:
 
         - task_key: load_pricing_data
           depends_on:
-            - task_key: create_functions
+            - task_key: create_database
           notebook_task:
             notebook_path: ./notebooks/03_load_pricing_data.py
             base_parameters:
@@ -76,11 +90,10 @@ resources:
               db_name: "{{job.parameters.db_name}}"
           environment_key: serverless_env
 
-        - task_key: configure_app
-          depends_on:
-            - task_key: create_sku_mapping
+        # ── Branch 2: App creation (parallel with DB provisioning) ──────
+        - task_key: create_app
           notebook_task:
-            notebook_path: ./notebooks/05_configure_app.py
+            notebook_path: ./notebooks/05a_create_app.py
             base_parameters:
               instance_name: "{{job.parameters.instance_name}}"
               db_name: "{{job.parameters.db_name}}"
@@ -89,9 +102,23 @@ resources:
               claude_endpoint: "{{job.parameters.claude_endpoint}}"
           environment_key: serverless_env
 
+        # ── Merge point: grant SP access (needs app + database) ─────────
+        - task_key: grant_app_access
+          depends_on:
+            - task_key: create_app
+            - task_key: create_database
+          notebook_task:
+            notebook_path: ./notebooks/05b_grant_app_access.py
+            base_parameters:
+              instance_name: "{{job.parameters.instance_name}}"
+              db_name: "{{job.parameters.db_name}}"
+              app_name: "{{job.parameters.app_name}}"
+          environment_key: serverless_env
+
+        # ── Deploy (needs app configured + SP granted) ──────────────────
         - task_key: deploy_app
           depends_on:
-            - task_key: configure_app
+            - task_key: grant_app_access
           notebook_task:
             notebook_path: ./notebooks/06_deploy_app.py
             base_parameters:
