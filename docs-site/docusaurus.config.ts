@@ -68,6 +68,12 @@ const config: Config = {
           label: 'Admin Guide',
         },
         {
+          type: 'doc',
+          docId: 'changelog',
+          position: 'left',
+          label: 'Changelog',
+        },
+        {
           href: 'https://www.databricks.com/product/pricing',
           label: 'Databricks Pricing',
           position: 'right',
