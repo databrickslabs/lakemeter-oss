@@ -67,6 +67,9 @@ const sidebars: SidebarsConfig = {
       ],
     },
   ],
+  changelogSidebar: [
+    'changelog',
+  ],
 };
 
 export default sidebars;
