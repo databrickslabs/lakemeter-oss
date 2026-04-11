@@ -15,8 +15,8 @@ Lakemeter exposes a REST API at `/api/v1/`. All endpoints require authentication
 https://<your-app-name>-xxxxx.aws.databricksapps.com/api/v1
 ```
 
-:::info
-In production (`ENVIRONMENT=production`), the Swagger API docs at `/docs` and `/redoc` are disabled (the Docusaurus documentation site at `/docs/` is unaffected). Set `ENVIRONMENT=development` to re-enable Swagger.
+:::tip
+Interactive Swagger API docs are available at `/api/docs` and `/api/redoc` on your deployed app.
 :::
 
 ---
