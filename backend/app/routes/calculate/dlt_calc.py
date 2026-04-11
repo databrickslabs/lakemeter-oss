@@ -132,7 +132,8 @@ def calculate_dlt_serverless_cost(
         params = {
             "p1": "DLT", "p2": request.cloud.upper(), "p3": request.region, "p4": request.tier.upper(),
             "p5": True, "p6": True, "p7": None,
-            "p8": None, "p9": None, "p10": 0,
+            "p8": request.driver_node_type, "p9": request.worker_node_type,
+            "p10": request.num_workers or 0,
             "p11": "on_demand", "p12": "on_demand",
             "p13": request.runs_per_day if has_run_params else 0,
             "p14": request.avg_runtime_minutes if has_run_params else 0,

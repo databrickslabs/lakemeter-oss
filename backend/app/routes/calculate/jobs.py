@@ -225,7 +225,9 @@ def calculate_jobs_serverless_cost(
         serverless_multiplier = 2 if request.serverless_mode == "performance" else 1
         params = {
             "p1": "JOBS", "p2": request.cloud.upper(), "p3": request.region, "p4": request.tier.upper(),
-            "p5": True, "p6": False, "p7": None, "p8": None, "p9": None, "p10": 0,
+            "p5": True, "p6": False, "p7": None,
+            "p8": request.driver_node_type, "p9": request.worker_node_type,
+            "p10": request.num_workers or 0,
             "p11": "on_demand", "p12": "on_demand",
             "p13": request.runs_per_day if has_run_params else 0,
             "p14": request.avg_runtime_minutes if has_run_params else 0,
