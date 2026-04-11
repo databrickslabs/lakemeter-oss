@@ -37,7 +37,8 @@ resources:
       #   02b_funcs  03_data  05b_grant_sp (~30s)
       #     (12s)    (19s)         │
       #               │      06_deploy_app (10m41s)
-      #          04_sku (10s)
+      #          04_sku (10s)      │
+      #                       07_verify (~30s)
       #
       tasks:
         # ── Branch 1: Database provisioning ──────────────────────────────
@@ -123,6 +124,18 @@ resources:
             notebook_path: ./notebooks/06_deploy_app.py
             base_parameters:
               app_name: "{{job.parameters.app_name}}"
+          environment_key: serverless_env
+
+        # ── Verify (smoke tests against deployed app) ─────────────────
+        - task_key: verify_installation
+          depends_on:
+            - task_key: deploy_app
+          notebook_task:
+            notebook_path: ./notebooks/07_verify_installation.py
+            base_parameters:
+              app_name: "{{job.parameters.app_name}}"
+              instance_name: "{{job.parameters.instance_name}}"
+              db_name: "{{job.parameters.db_name}}"
           environment_key: serverless_env
 
       environments:

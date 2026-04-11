@@ -245,7 +245,7 @@ fi
 echo ""
 
 # Task display order (matches the DAG)
-TASK_ORDER="provision_lakebase create_app create_database create_functions load_pricing_data create_sku_mapping grant_app_access deploy_app"
+TASK_ORDER="provision_lakebase create_app create_database create_functions load_pricing_data create_sku_mapping grant_app_access deploy_app verify_installation"
 
 # Poll progress every 10 seconds
 INSTALL_START=$(date +%s)
@@ -318,8 +318,8 @@ for key in task_order:
     # Clear previous output and redraw
     # Move cursor up (number of task lines + 2 for header/elapsed)
     if [ "${FIRST_DRAW:-}" = "done" ]; then
-        # Move up: 1 header + 8 tasks + 1 elapsed + 1 blank = 11 lines
-        printf '\033[11A'
+        # Move up: 1 header + 9 tasks + 1 elapsed + 1 blank = 12 lines
+        printf '\033[12A'
     fi
     FIRST_DRAW="done"
 
@@ -362,12 +362,26 @@ if [ "$RESULT_STATE" = "SUCCESS" ]; then
     # Try to get the app URL
     APP_URL=$(databricks apps get "$APP_NAME" $PROFILE_FLAG 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('url',''))" 2>/dev/null || true)
 
+    # Try to get verification test results from the run
+    VERIFY_RESULT=$(echo "$RUN_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for t in data.get('tasks', []):
+    if t.get('task_key') == 'verify_installation':
+        state = t.get('state', {})
+        # notebook_output contains the exit value
+        output = state.get('result_state', '')
+        print(output)
+        break
+" 2>/dev/null || true)
+
     echo -e "${BOLD}${GREEN}Installation complete!${NC}"
     echo ""
     if [ -n "$APP_URL" ]; then
-        echo -e "  App URL: ${CYAN}${APP_URL}${NC}"
+        echo -e "  App URL:      ${CYAN}${APP_URL}${NC}"
     fi
-    echo -e "  Verify:  databricks apps get ${APP_NAME} ${PROFILE_FLAG}"
+    echo -e "  Verification: ${GREEN}All smoke tests passed${NC}"
+    echo -e "  Details:      databricks runs get-output --run-id ${RUN_ID} ${PROFILE_FLAG}"
     echo ""
 elif [ "$RESULT_STATE" = "FAILED" ] || [ "$RUN_STATE" = "INTERNAL_ERROR" ]; then
     echo -e "${BOLD}${RED}Installation failed.${NC}"
