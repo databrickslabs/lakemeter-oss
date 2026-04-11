@@ -76,7 +76,7 @@ The most critical validation: the installer must create SP roles with `identity_
 - `test_sp_role_uses_service_principal_identity` — checks the string `identity_type=SERVICE_PRINCIPAL` or `"identity_type": "SERVICE_PRINCIPAL"` appears in the installer source
 - `test_sp_role_not_pg_only_default` — checks that `PG_ONLY` is not used as the default identity type
 
-See the [Permissions Guide](/admin-guide/permissions) for why this matters.
+The installer handles SP role creation automatically with the correct `identity_type=SERVICE_PRINCIPAL`.
 
 ### Pricing Data Integrity
 
