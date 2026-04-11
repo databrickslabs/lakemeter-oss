@@ -220,12 +220,14 @@ databricks bundle run lakemeter_installer $PROFILE_FLAG \
     --params "instance_name=$INSTANCE_NAME,db_name=$DB_NAME,app_name=$APP_NAME,secrets_scope=$SECRETS_SCOPE,claude_endpoint=$CLAUDE_ENDPOINT" \
     --no-wait 2>&1 | tee "$BUNDLE_RUN_OUTPUT"
 
-# Extract run ID from bundle run output
-RUN_ID=$(grep -oE 'runs/[0-9]+' "$BUNDLE_RUN_OUTPUT" | head -1 | sed 's/runs\///')
+# Extract run ID and URL from bundle run output
+# Format: https://host/?o=12345#job/67890/run/11111  (note: "run/" not "runs/")
+RUN_ID=$(grep -oE 'run/[0-9]+' "$BUNDLE_RUN_OUTPUT" | tail -1 | sed 's/run\///')
 if [ -z "$RUN_ID" ]; then
-    # Fallback: try to extract a plain numeric run ID
-    RUN_ID=$(grep -oE '[0-9]{5,}' "$BUNDLE_RUN_OUTPUT" | head -1)
+    # Fallback: look for "Run [number]" pattern from bundle CLI
+    RUN_ID=$(grep -oE 'Run [0-9]+' "$BUNDLE_RUN_OUTPUT" | head -1 | sed 's/Run //')
 fi
+RUN_URL=$(grep -oE 'https://[^ ]+' "$BUNDLE_RUN_OUTPUT" | head -1 || true)
 rm -f "$BUNDLE_RUN_OUTPUT"
 
 if [ -z "$RUN_ID" ]; then
@@ -235,10 +237,8 @@ if [ -z "$RUN_ID" ]; then
     exit 1
 fi
 
-# Get the workspace host for the run URL
-WORKSPACE_HOST=$(databricks auth env $PROFILE_FLAG 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('DATABRICKS_HOST',''))" 2>/dev/null || true)
-if [ -n "$WORKSPACE_HOST" ]; then
-    echo -e "  Run URL: ${CYAN}${WORKSPACE_HOST}/#job/0/run/${RUN_ID}${NC}"
+if [ -n "$RUN_URL" ]; then
+    echo -e "  Run URL: ${CYAN}${RUN_URL}${NC}"
 else
     echo -e "  Run ID: ${CYAN}${RUN_ID}${NC}"
 fi
@@ -252,7 +252,7 @@ INSTALL_START=$(date +%s)
 
 while true; do
     # Get run status as JSON
-    RUN_JSON=$(databricks runs get --run-id "$RUN_ID" $PROFILE_FLAG 2>/dev/null || true)
+    RUN_JSON=$(databricks jobs get-run "$RUN_ID" $PROFILE_FLAG 2>/dev/null || true)
     if [ -z "$RUN_JSON" ]; then
         echo -e "${RED}Could not fetch run status. Check the Databricks UI.${NC}"
         break
@@ -386,8 +386,8 @@ for t in data.get('tasks', []):
 elif [ "$RESULT_STATE" = "FAILED" ] || [ "$RUN_STATE" = "INTERNAL_ERROR" ]; then
     echo -e "${BOLD}${RED}Installation failed.${NC}"
     echo -e "  Check the run in the Databricks UI for error details."
-    if [ -n "$WORKSPACE_HOST" ]; then
-        echo -e "  Run URL: ${CYAN}${WORKSPACE_HOST}/#job/0/run/${RUN_ID}${NC}"
+    if [ -n "$RUN_URL" ]; then
+        echo -e "  Run URL: ${CYAN}${RUN_URL}${NC}"
     fi
     echo ""
     exit 1
