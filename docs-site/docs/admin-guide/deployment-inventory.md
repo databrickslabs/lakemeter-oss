@@ -59,7 +59,7 @@ This page lists everything the Lakemeter installer creates in your Databricks wo
 | **Compute size** | MEDIUM (2 vCPU, 6 GB RAM) |
 | **Runtime** | Ubuntu 22.04, Python 3.11, Node.js 22.16 |
 | **Source path** | `/Workspace/Users/{user}/apps/lakemeter` |
-| **URL** | `https://lakemeter-{workspace_id}.aws.databricksapps.com` |
+| **URL** | `https://lakemeter-<workspace-id>.<cloud>.databricksapps.com` |
 
 ### App Resources
 

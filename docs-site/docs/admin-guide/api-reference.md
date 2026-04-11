@@ -12,7 +12,7 @@ Lakemeter exposes a REST API at `/api/v1/`. All endpoints require authentication
 ## Base URL
 
 ```
-https://<your-app-name>-xxxxx.aws.databricksapps.com/api/v1
+https://<your-app-name>-<workspace-id>.<cloud>.databricksapps.com/api/v1
 ```
 
 :::tip
