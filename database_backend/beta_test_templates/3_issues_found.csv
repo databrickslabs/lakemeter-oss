@@ -1,4 +1,0 @@
-Date,Tester Name,What You Did,What Went Wrong,What You Expected,Severity (Critical/High/Medium/Low)
-2024-12-18,Example User,Added JOBS Classic with AI Copilot,AI recommended too many workers for small workload,AI should suggest fewer workers for described size,Medium
-,,,,,
-,,,,,
