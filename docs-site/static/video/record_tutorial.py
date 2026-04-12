@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from cursor import (
     CURSOR_INJECT, SUBTITLE_INJECT,
     inject_cursor, inject_subtitle,
-    smooth_move, move_to, click_on,
+    smooth_move, move_to, click_on, fire_ring_at,
     show_subtitle, hide_subtitle,
     visual_select, visual_searchable_select,
 )
@@ -175,9 +175,9 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
-            viewport={"width": 1280, "height": 800},
+            viewport={"width": 1440, "height": 900},
             record_video_dir=VIDEO_DIR,
-            record_video_size={"width": 1280, "height": 800},
+            record_video_size={"width": 1440, "height": 900},
         )
         page = await context.new_page()
         await page.add_init_script(CURSOR_INJECT)
@@ -196,9 +196,9 @@ async def main():
         t = time.time()
         rec.mark("s1_welcome")
         await show_subtitle(page, "Welcome to Lakemeter — Databricks Pricing Calculator", 0)
-        await smooth_move(page, 640, 300)
+        await smooth_move(page, 720, 350)
         await page.wait_for_timeout(1000)
-        await smooth_move(page, 640, 500)
+        await smooth_move(page, 720, 550)
         await sync_wait(page, "s1_welcome", t)
         await hide_subtitle(page)
 
@@ -211,7 +211,7 @@ async def main():
             await move_to(page, est_link, pause=800)
         except:
             pass
-        await smooth_move(page, 400, 400)
+        await smooth_move(page, 500, 450)
         await page.wait_for_timeout(500)
         await sync_wait(page, "s1_estimates", t)
         await hide_subtitle(page)
@@ -259,7 +259,7 @@ async def main():
         await hide_subtitle(page)
 
         # Close help dropdown
-        await page.mouse.click(640, 400)
+        await page.mouse.click(720, 400)
         await page.wait_for_timeout(500)
 
         # ══════════════════════════════════════════
@@ -288,10 +288,18 @@ async def main():
         t = time.time()
         rec.mark("s3_name")
         await show_subtitle(page, "Naming the estimate", 0)
-        name_field = page.get_by_role("textbox").first
+        name_field = page.locator('input[placeholder="Untitled Estimate"]').first
         await move_to(page, name_field, pause=400)
         await name_field.click(click_count=3)
-        await page.keyboard.type("Q4 Data Platform Estimate", delay=55)
+        await page.wait_for_timeout(200)
+        await name_field.press_sequentially("Q4 Data Platform Estimate", delay=55)
+        await page.wait_for_timeout(400)
+        # Verify name was typed into React state
+        typed_val = await name_field.input_value()
+        if not typed_val.strip():
+            # Fallback: use fill() which reliably triggers React onChange
+            await name_field.fill("Q4 Data Platform Estimate")
+            await page.wait_for_timeout(200)
         await sync_wait(page, "s3_name", t)
         await hide_subtitle(page)
 
@@ -317,6 +325,15 @@ async def main():
         t = time.time()
         rec.mark("s3_done")
         await show_subtitle(page, "Estimate created! Now let's add workloads", 0)
+        # Wait for button to be enabled (all fields filled)
+        try:
+            await page.wait_for_selector('button:has-text("Create Estimate"):not([disabled])', timeout=5000)
+        except:
+            print("  [warn] Create Estimate still disabled — checking fields")
+            # Debug: print field values
+            n = await page.locator('input[placeholder="Untitled Estimate"]').first.input_value()
+            r = await page.locator('select').first.input_value()
+            print(f"  [debug] name='{n}' region='{r}'")
         create_btn = page.locator('button:has-text("Create Estimate")').first
         await click_on(page, create_btn, pause=500)
         await page.wait_for_timeout(3000)
@@ -837,16 +854,24 @@ async def main():
         rec.mark("s6_response")
         await show_subtitle(page, "AI configures and adds the workload to the estimate", 0)
 
-        # Poll for workload count to increase (AI adds it), max 30 seconds
-        for check in range(30):
+        # Poll for workload count to increase (AI adds it), max 20 seconds
+        # Move cursor around the AI chat panel to show it's actively streaming
+        ai_added = False
+        for check in range(20):
             await page.wait_for_timeout(1000)
             new_count = await page.locator('[aria-roledescription="sortable"]').count()
             if new_count > initial_workload_count:
                 print(f"    AI added workload after {check+1}s ({initial_workload_count} → {new_count})")
                 await page.wait_for_timeout(2000)  # Extra pause to show streaming finish
+                ai_added = True
                 break
+            # Move cursor to show engagement with AI response area
+            if check % 3 == 1:
+                await smooth_move(page, 1200, 350)  # Chat response area
+            elif check % 3 == 2:
+                await smooth_move(page, 1200, 500)  # Lower chat area
         else:
-            print(f"    Workload count unchanged after 30s ({new_count})")
+            print(f"    Workload count unchanged after 20s ({new_count})")
 
         await sync_wait(page, "s6_response", t)
         await hide_subtitle(page)
@@ -864,7 +889,11 @@ async def main():
         new_count = await page.locator('[aria-roledescription="sortable"]').count()
         if new_count > 0:
             last_wl = page.locator('[aria-roledescription="sortable"]').nth(new_count - 1)
-            await move_to(page, last_wl, pause=1000)
+            wl_box = await move_to(page, last_wl, pause=800)
+            # Fire ring to highlight the workload
+            if wl_box:
+                await fire_ring_at(page, wl_box["x"] + wl_box["width"]/2, wl_box["y"] + wl_box["height"]/2)
+                await page.wait_for_timeout(900)
 
         await page.wait_for_timeout(1000)
         await sync_wait(page, "s6_added", t)
@@ -880,13 +909,20 @@ async def main():
         rec.mark("s7_export")
         await show_subtitle(page, "Exporting to Excel with full cost breakdown", 0)
 
+        # Scroll to top to ensure export button is visible
+        await page.evaluate("window.scrollTo(0, 0)")
+        await page.wait_for_timeout(500)
+
         excel_btn = page.locator('button:has-text("Excel")').first
         try:
-            await move_to(page, excel_btn, pause=600)
-            await excel_btn.click()
-            await page.wait_for_timeout(2000)
+            await click_on(page, excel_btn, pause=2000)
         except:
-            pass
+            # Fallback: try any download/export icon button
+            try:
+                export_btn = page.locator('button[title*="Export"], button[title*="Download"]').first
+                await click_on(page, export_btn, pause=2000)
+            except:
+                pass
 
         await sync_wait(page, "s7_export", t)
         await hide_subtitle(page)
@@ -919,7 +955,7 @@ async def main():
     subprocess.run([
         "ffmpeg", "-y", "-i", video_path,
         "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-vf", "scale=1280:800",
+        "-vf", "scale=1440:900",
         "-movflags", "+faststart", "-an",
         silent_mp4
     ], capture_output=True)
