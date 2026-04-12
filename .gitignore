@@ -17,12 +17,19 @@ build/
 *.egg
 .next/
 
-# IDE
+# IDE & AI tools
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 .DS_Store
+
+# Databricks workspace metadata
+.databricks/
+
+# Harness (build agent artifacts)
+harness/
 
 # Logs
 *.log
@@ -32,6 +39,10 @@ npm-debug.log*
 coverage/
 .coverage
 htmlcov/
+test_results/
+test_screenshots/
+*_TEST_REPORT.md
+*_RESULTS.md
 
 # Virtual environments
 venv/
