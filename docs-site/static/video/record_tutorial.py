@@ -33,10 +33,49 @@ from cursor import (
     visual_select, visual_searchable_select,
 )
 
-APP_URL = "http://localhost:8000"
+APP_URL = "https://lakemeter-oss-335310294452632.aws.databricksapps.com"
 VIDEO_DIR = os.path.dirname(__file__)
 VOICE = "en-US-GuyNeural"
 AUDIO_DIR = os.path.join(VIDEO_DIR, "_audio_clips")
+PRICING_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "backend", "static", "pricing")
+
+
+def _get_databricks_token() -> str:
+    """Get a fresh Databricks OAuth token via CLI profile."""
+    import json as _json
+    result = subprocess.run(
+        ["databricks", "auth", "token", "--profile", "lakemeter"],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to get Databricks token: {result.stderr}")
+    return _json.loads(result.stdout)["access_token"]
+
+
+def _build_regions_from_bundle() -> dict:
+    """Extract regions from the static pricing bundle (no DB needed)."""
+    import json as _json
+    regions_by_cloud: dict[str, set] = {"aws": set(), "azure": set(), "gcp": set()}
+    for fname in ("dbu-rates.json", "instance-dbu-rates.json"):
+        path = os.path.join(PRICING_DIR, fname)
+        if not os.path.exists(path):
+            continue
+        with open(path) as f:
+            data = _json.load(f)
+        for key in data:
+            parts = key.split(":")
+            if len(parts) >= 2:
+                cloud = parts[0].lower()
+                region = parts[1]
+                if cloud in regions_by_cloud:
+                    regions_by_cloud[cloud].add(region)
+    result = {}
+    for cloud, region_set in regions_by_cloud.items():
+        result[cloud] = sorted(
+            [{"region_code": r, "sku_region": r} for r in region_set],
+            key=lambda x: x["region_code"],
+        )
+    return result
 
 
 # ─── Timestamp-synced audio ───
@@ -63,10 +102,9 @@ async def generate_clips(narrations: list[tuple[str, str]]):
     os.makedirs(AUDIO_DIR, exist_ok=True)
     for clip_id, text in narrations:
         path = os.path.join(AUDIO_DIR, f"{clip_id}.mp3")
-        if not os.path.exists(path):
-            communicate = edge_tts.Communicate(text, VOICE, rate="-5%")
-            await communicate.save(path)
-            print(f"    [tts] {clip_id}")
+        communicate = edge_tts.Communicate(text, VOICE, rate="-5%")
+        await communicate.save(path)
+        print(f"    [tts] {clip_id}")
 
 
 def clip_duration(clip_id: str) -> float:
@@ -104,10 +142,16 @@ async def setup_page(page):
 
 
 async def wait_for_regions(page):
-    for _ in range(30):
-        opt_count = await page.locator('select').first.evaluate('(el) => el.options.length')
-        if opt_count > 5:
-            break
+    """Wait until the region select has options with us-east-1 available."""
+    for _ in range(40):
+        try:
+            has_region = await page.locator('select').first.evaluate(
+                '(el) => Array.from(el.options).some(o => o.value === "us-east-1")'
+            )
+            if has_region:
+                break
+        except:
+            pass
         await page.wait_for_timeout(500)
     await page.wait_for_timeout(500)
 
@@ -136,6 +180,11 @@ async def main():
         ("s4a_usage", "Set usage to 3 runs per day, 45 minutes each, 22 days per month."),
         ("s4a_save", "Save the workload to see the calculated cost."),
         ("s4a_calc", "The cost breakdown shows monthly D-B-U and V-M charges."),
+        ("s4a_formula", "Let's expand the calculation formula to see exactly how the cost is derived."),
+        ("s4a_formula_detail", "The D-B-U cost combines driver and worker instance rates, "
+                               "multiplied by monthly hours and the per-D-B-U price. "
+                               "The V-M cost uses cloud instance hourly rates times total hours. "
+                               "Together they give the total workload cost."),
         # Scene 4b: DBSQL
         ("s4b_intro", "Now let's add a Databricks SQL warehouse for analytics queries."),
         ("s4b_type", "Select Databricks SQL as the workload type."),
@@ -146,11 +195,15 @@ async def main():
         # Scene 5: Summary (shorter clips — 3-4s each)
         ("s5_summary", "The total cost breaks down by D-B-U and V-M charges."),
         ("s5_detail", "Each workload shows its share of the total cost."),
-        # Scene 6: AI
-        ("s6_intro", "Let's explore the AI assistant for pricing guidance and workload recommendations."),
-        ("s6_ask", "We'll ask it to set up a Foundation Model API workload using Claude Opus."),
-        ("s6_response", "The AI analyzes pricing and suggests a workload configuration."),
-        ("s6_added", "The AI proposes workloads conversationally."),
+        # Scene 6: AI multi-turn conversation
+        ("s6_intro", "Let's explore the AI assistant. We'll ask it to propose a workload."),
+        ("s6_ask", "We start by asking what type of workload we need."),
+        ("s6_pick", "We'll choose document parsing for an A-I Parse workload."),
+        ("s6_config", "We specify per-page billing, low complexity, and one million pages."),
+        ("s6_response", "The AI generates a full workload configuration with billing mode, "
+                       "complexity, and volume. We can review the details before accepting."),
+        ("s6_accept", "We click the confirm button to add the workload to the estimate."),
+        ("s6_added", "The A-I Parse workload has been added with calculated costs."),
         # Scene 7: Export
         ("s7_export", "Finally, export the estimate to Excel for a full cost breakdown "
                       "with SKU details, token rates, and VM pricing."),
@@ -165,14 +218,20 @@ async def main():
     print("Recording video...")
     rec = SyncRecorder()
 
+    # Get Databricks auth token for deployed app
+    print("  Authenticating with Databricks...")
+    db_token = _get_databricks_token()
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
             viewport={"width": 1440, "height": 900},
             record_video_dir=VIDEO_DIR,
             record_video_size={"width": 1440, "height": 900},
+            extra_http_headers={"Authorization": f"Bearer {db_token}"},
         )
         page = await context.new_page()
+        rec.start()  # Start timestamp tracking aligned with video recording start
         page.set_default_timeout(10000)  # 10s default timeout to avoid long waits in video
         # Set background + title card immediately to avoid blank white opening frame
         await page.add_init_script("document.documentElement.style.background = '#f8fafc'")
@@ -194,11 +253,34 @@ async def main():
         """)
         await page.wait_for_timeout(2000)  # Hold title card for 2s
 
+        # Seed localStorage with regions from pricing bundle (no DB needed)
+        # Uses add_init_script so it runs before React on each navigation
+        import json as _json
+        regions_map = _build_regions_from_bundle()
+        cache_data = {
+            "workloadTypes": [], "cloudProviders": [], "dbsqlSizes": [],
+            "dltEditions": [], "fmapiProviders": [], "vmPricingTiers": [],
+            "vmPaymentOptions": [], "fmapiDatabricksConfig": None,
+            "fmapiProprietaryConfig": None, "serverlessModes": [],
+            "instanceTypes": [], "modelServingGPUTypes": [],
+            "regions": regions_map.get("aws", []),
+            "regionsMap": regions_map,
+            "photonMultipliers": [], "instanceFamilies": [],
+            "dbsqlWarehouseTypes": [], "fmapiDatabricksModels": [],
+            "timestamp": int(time.time() * 1000),
+        }
+        cache_json = _json.dumps(cache_data)
+        await page.add_init_script(f"""
+          try {{ localStorage.setItem('lakemeter_reference_data_v7', '{cache_json.replace("'", "\\'")}'); }} catch(e) {{}}
+        """)
+
         # ══════════════════════════════════════════
         # Scene 1: Landing
         # ══════════════════════════════════════════
         print("  Scene 1: Landing")
-        await page.goto(APP_URL, wait_until="networkidle", timeout=60000)
+        await page.goto(APP_URL, wait_until="domcontentloaded", timeout=60000)
+        # Extra wait for React hydration + Google Fonts
+        await page.wait_for_timeout(3000)
         # Wait for app content to render
         try:
             await page.wait_for_selector('text="Pricing Estimates"', timeout=10000)
@@ -208,7 +290,6 @@ async def main():
         await setup_page(page)
         # Show subtitle as soon as page is loaded
         await show_subtitle(page, "Welcome to Lakemeter — Databricks Pricing Calculator", 0)
-        rec.start()
 
         # ── s1_welcome (compact — ~7s) ──
         t = time.time()
@@ -394,21 +475,23 @@ async def main():
             print(f"  [warn] Could not fill workload name: {e}")
 
         # ── s4a_type: JOBS is the default type ──
+        # Setup: find the workload type select before narration
+        wl_type_sel = page.locator('select').first
+        has_jobs = False
+        try:
+            opts = await wl_type_sel.evaluate('(el) => Array.from(el.options).map(o => o.value)')
+            has_jobs = 'JOBS' in opts
+        except Exception as e:
+            print(f"  [warn] type select: {e}")
+
         t = time.time()
         rec.mark("s4a_type")
         await show_subtitle(page, "Selecting Jobs Compute workload type", 0)
 
-        # JOBS is the default. Find the workload type <select> and visual-select it
-        wl_type_sel = page.locator('select').first
-        try:
-            # Verify this is the workload type select by checking for JOBS option
-            opts = await wl_type_sel.evaluate('(el) => Array.from(el.options).map(o => o.value)')
-            if 'JOBS' in opts:
-                await visual_select(page, wl_type_sel, value="JOBS")
-        except Exception as e:
-            print(f"  [warn] type select: {e}")
+        if has_jobs:
+            await visual_select(page, wl_type_sel, value="JOBS")
 
-        # Wait for VM config section (SearchableSelect "Select type..." appears)
+        # Wait for VM config section
         await page.wait_for_timeout(2000)
         try:
             await page.wait_for_selector('text="Select type..."', timeout=10000)
@@ -420,18 +503,25 @@ async def main():
         await hide_subtitle(page)
 
         # ── s4a_driver: Select driver instance type ──
+        # Setup: find and scroll to element before narration
+        select_trigger = None
+        try:
+            select_trigger = page.locator('text="Select type..."').first
+            await select_trigger.scroll_into_view_if_needed()
+            await page.wait_for_timeout(300)
+        except:
+            pass
+
         t = time.time()
         rec.mark("s4a_driver")
         await show_subtitle(page, "Choosing driver instance type: i3.xlarge", 0)
 
         try:
-            select_trigger = page.locator('text="Select type..."').first
-            await select_trigger.scroll_into_view_if_needed()
-            await page.wait_for_timeout(500)
-            await visual_searchable_select(
-                page, select_trigger, "i3.xlarge",
-                option_text="i3.xlarge", pause=500, load_wait=3000
-            )
+            if select_trigger:
+                await visual_searchable_select(
+                    page, select_trigger, "i3.xlarge",
+                    option_text="i3.xlarge", pause=500, load_wait=2000
+                )
         except Exception as e:
             print(f"  [skip] driver select: {e}")
 
@@ -439,20 +529,26 @@ async def main():
         await hide_subtitle(page)
 
         # ── s4a_worker: Configure workers ──
+        # Setup: find worker select before narration
+        await page.wait_for_timeout(500)
+        worker_trigger = None
+        try:
+            worker_trigger = page.locator('text="Select type..."').first
+            await worker_trigger.scroll_into_view_if_needed()
+            await page.wait_for_timeout(300)
+        except:
+            pass
+
         t = time.time()
         rec.mark("s4a_worker")
         await show_subtitle(page, "Configuring worker nodes: m5.xlarge × 3", 0)
 
-        await page.wait_for_timeout(500)
         try:
-            # After driver selection, "Select type..." appears again for workers
-            select_trigger = page.locator('text="Select type..."').first
-            await select_trigger.scroll_into_view_if_needed()
-            await page.wait_for_timeout(500)
-            await visual_searchable_select(
-                page, select_trigger, "m5.xlarge",
-                option_text="m5.xlarge", pause=500, load_wait=3000
-            )
+            if worker_trigger:
+                await visual_searchable_select(
+                    page, worker_trigger, "m5.xlarge",
+                    option_text="m5.xlarge", pause=500, load_wait=2000
+                )
         except Exception as e:
             print(f"  [skip] worker select: {e}")
 
@@ -481,13 +577,13 @@ async def main():
         await hide_subtitle(page)
 
         # ── s4a_usage: Set usage parameters ──
+        # Setup: scroll to usage section before narration
+        await page.evaluate("window.scrollBy(0, 200)")
+        await page.wait_for_timeout(300)
+
         t = time.time()
         rec.mark("s4a_usage")
         await show_subtitle(page, "Setting usage: 3 runs/day, 45 min each, 22 days/month", 0)
-
-        # Scroll to usage section
-        await page.evaluate("window.scrollBy(0, 200)")
-        await page.wait_for_timeout(500)
 
         # Fill runs/day and avg runtime with visible typing
         # Default: Runs/Day=1, Avg Runtime=30, Days/Month=22
@@ -528,16 +624,14 @@ async def main():
         await hide_subtitle(page)
 
         # ── s4a_save: Save workload ──
+        # Setup: scroll to submit button before narration
+        await page.evaluate("window.scrollBy(0, 300)")
+        await page.wait_for_timeout(300)
+        save_btn = page.locator('button[type="submit"]:has-text("Add Workload")')
+
         t = time.time()
         rec.mark("s4a_save")
         await show_subtitle(page, "Saving the workload", 0)
-
-        # Scroll to ensure submit button visible
-        await page.evaluate("window.scrollBy(0, 300)")
-        await page.wait_for_timeout(300)
-
-        # Check button state before clicking
-        save_btn = page.locator('button[type="submit"]:has-text("Add Workload")')
         try:
             is_disabled = await save_btn.is_disabled()
             print(f"    Submit button disabled={is_disabled}")
@@ -583,12 +677,13 @@ async def main():
         await hide_subtitle(page)
 
         # ── s4a_calc: Show calculations ──
+        # Setup: scroll to top before narration
+        await page.evaluate("window.scrollTo(0, 0)")
+        await page.wait_for_timeout(300)
+
         t = time.time()
         rec.mark("s4a_calc")
         await show_subtitle(page, "Cost breakdown: monthly DBU and VM charges", 0)
-
-        await page.evaluate("window.scrollTo(0, 0)")
-        await page.wait_for_timeout(500)
 
         # Click on the workload row to expand cost details
         try:
@@ -599,6 +694,72 @@ async def main():
 
         await page.wait_for_timeout(1500)
         await sync_wait(page, "s4a_calc", t)
+        await hide_subtitle(page)
+
+        # ── s4a_formula: Expand calculation formula ──
+        t = time.time()
+        rec.mark("s4a_formula")
+        await show_subtitle(page, "Expanding the cost calculation formula", 0)
+
+        # Click "Show Cost Calculation" button in the expanded workload details
+        try:
+            calc_btn = page.locator('button:has-text("Show Cost Calculation")').first
+            await calc_btn.scroll_into_view_if_needed()
+            await click_on(page, calc_btn, pause=800)
+        except Exception as e:
+            # Fallback: try calculator icon button with title
+            try:
+                calc_btn = page.locator('button[title="Show calculation"]').first
+                await click_on(page, calc_btn, pause=800)
+            except:
+                print(f"  [skip] formula toggle: {e}")
+
+        await page.wait_for_timeout(500)
+        await sync_wait(page, "s4a_formula", t)
+        await hide_subtitle(page)
+
+        # ── s4a_formula_detail: Hover through DBU, VM, Total formula lines ──
+        t = time.time()
+        rec.mark("s4a_formula_detail")
+        await show_subtitle(page, "DBU + VM cost formula with actual instance rates", 0)
+
+        # Scroll formula into view and hover each line
+        try:
+            # Hover DBU formula line
+            dbu_label = page.locator('span:has-text("DBU:")').first
+            await dbu_label.scroll_into_view_if_needed()
+            await move_to(page, dbu_label, pause=600)
+            # Slowly scan across the DBU formula
+            dbu_box = await dbu_label.bounding_box()
+            if dbu_box:
+                await smooth_move(page, dbu_box["x"] + 200, dbu_box["y"] + dbu_box["height"]/2)
+                await page.wait_for_timeout(500)
+                await smooth_move(page, dbu_box["x"] + 450, dbu_box["y"] + dbu_box["height"]/2)
+                await page.wait_for_timeout(500)
+        except Exception as e:
+            print(f"  [skip] DBU formula hover: {e}")
+
+        try:
+            # Hover VM formula line
+            vm_label = page.locator('span:has-text("VM:")').first
+            await move_to(page, vm_label, pause=600)
+            vm_box = await vm_label.bounding_box()
+            if vm_box:
+                await smooth_move(page, vm_box["x"] + 200, vm_box["y"] + vm_box["height"]/2)
+                await page.wait_for_timeout(500)
+                await smooth_move(page, vm_box["x"] + 400, vm_box["y"] + vm_box["height"]/2)
+                await page.wait_for_timeout(500)
+        except Exception as e:
+            print(f"  [skip] VM formula hover: {e}")
+
+        try:
+            # Hover Total line
+            total_label = page.locator('span:has-text("Total:")').first
+            await move_to(page, total_label, pause=800)
+        except Exception as e:
+            print(f"  [skip] Total formula hover: {e}")
+
+        await sync_wait(page, "s4a_formula_detail", t)
         await hide_subtitle(page)
 
         # Collapse workload before adding next
@@ -614,15 +775,14 @@ async def main():
         print("  Scene 4b: DBSQL workload")
 
         # ── s4b_intro ──
+        # Setup: scroll to top and find Add button before narration
+        await page.evaluate("window.scrollTo(0, 0)")
+        await page.wait_for_timeout(300)
+        add_btn = page.locator('button:has-text("Add Workload")').first
+
         t = time.time()
         rec.mark("s4b_intro")
         await show_subtitle(page, "Adding a Databricks SQL warehouse for analytics", 0)
-
-        await page.evaluate("window.scrollTo(0, 0)")
-        await page.wait_for_timeout(500)
-
-        # After first workload saved, "Add" button in header or "Add Workload" dashed button
-        add_btn = page.locator('button:has-text("Add Workload")').first
         try:
             await click_on(page, add_btn, pause=1000)
         except:
@@ -654,32 +814,30 @@ async def main():
             print(f"  [warn] DBSQL name fill: {e}")
 
         # ── s4b_type ──
+        # Setup: find select before narration
+        wl_type_sel = page.locator('select').first
+        has_dbsql = False
+        try:
+            opts = await wl_type_sel.evaluate('(el) => Array.from(el.options).map(o => o.value)')
+            has_dbsql = 'DBSQL' in opts
+        except Exception as e:
+            print(f"  [warn] DBSQL type select: {e}")
+
         t = time.time()
         rec.mark("s4b_type")
         await show_subtitle(page, "Selecting Databricks SQL workload type", 0)
 
-        # Find the workload type select and change to DBSQL
-        wl_type_sel = page.locator('select').first
-        try:
-            opts = await wl_type_sel.evaluate('(el) => Array.from(el.options).map(o => o.value)')
-            if 'DBSQL' in opts:
-                await visual_select(page, wl_type_sel, value="DBSQL")
-        except Exception as e:
-            print(f"  [warn] DBSQL type select: {e}")
+        if has_dbsql:
+            await visual_select(page, wl_type_sel, value="DBSQL")
         await page.wait_for_timeout(1500)
         await sync_wait(page, "s4b_type", t)
         await hide_subtitle(page)
 
         # ── s4b_size: Select warehouse size ──
-        t = time.time()
-        rec.mark("s4b_size")
-        await show_subtitle(page, "Choosing Large warehouse size for analytics", 0)
-
+        # Setup: scroll and find size select before narration
         await page.evaluate("window.scrollBy(0, 150)")
-        await page.wait_for_timeout(500)
-
-        # DBSQL Serverless is default. Find the warehouse size select.
-        # It's a <select> with options like "2X-Small", "X-Small", "Small", "Medium", "Large"
+        await page.wait_for_timeout(300)
+        size_sel = None
         try:
             selects = page.locator('select')
             sel_count = await selects.count()
@@ -687,22 +845,30 @@ async def main():
                 sel = selects.nth(i)
                 opts = await sel.evaluate('(el) => Array.from(el.options).map(o => o.value)')
                 if 'Large' in opts or any('Small' in o for o in opts):
-                    await visual_select(page, sel, value="Large")
-                    print(f"    Warehouse size set to Large")
+                    size_sel = sel
                     break
         except Exception as e:
             print(f"  [skip] size select: {e}")
+
+        t = time.time()
+        rec.mark("s4b_size")
+        await show_subtitle(page, "Choosing Large warehouse size for analytics", 0)
+
+        if size_sel:
+            await visual_select(page, size_sel, value="Large")
+            print(f"    Warehouse size set to Large")
 
         await sync_wait(page, "s4b_size", t)
         await hide_subtitle(page)
 
         # ── s4b_usage ──
+        # Setup: scroll before narration
+        await page.evaluate("window.scrollBy(0, 200)")
+        await page.wait_for_timeout(300)
+
         t = time.time()
         rec.mark("s4b_usage")
         await show_subtitle(page, "Setting avg runtime to 300 minutes per session", 0)
-
-        await page.evaluate("window.scrollBy(0, 200)")
-        await page.wait_for_timeout(500)
 
         # DBSQL default: Runs/Day=1, Avg Runtime=30, Days/Month=22
         # Change Avg Runtime to 300 → 1×300min×22days = 110 hours/month
@@ -733,14 +899,14 @@ async def main():
         await hide_subtitle(page)
 
         # ── s4b_save ──
+        # Setup: scroll and find button before narration
+        await page.evaluate("window.scrollBy(0, 300)")
+        await page.wait_for_timeout(300)
+        save_btn = page.locator('button[type="submit"]:has-text("Add Workload")')
+
         t = time.time()
         rec.mark("s4b_save")
         await show_subtitle(page, "Saving the SQL warehouse workload", 0)
-
-        await page.evaluate("window.scrollBy(0, 300)")
-        await page.wait_for_timeout(300)
-
-        save_btn = page.locator('button[type="submit"]:has-text("Add Workload")')
         try:
             is_disabled = await save_btn.is_disabled()
             print(f"    DBSQL submit disabled={is_disabled}")
@@ -884,93 +1050,204 @@ async def main():
         await hide_subtitle(page)
 
         # ══════════════════════════════════════════
-        # Scene 6: AI Assistant
+        # Scene 6: AI Assistant — multi-turn conversation
         # ══════════════════════════════════════════
         print("  Scene 6: AI Assistant")
 
+        # Setup: scroll to top and find chat area
         await page.evaluate("window.scrollTo(0, 0)")
         await page.wait_for_timeout(300)
+        initial_workload_count = await page.locator('[aria-roledescription="sortable"]').count()
 
-        # ── s6_intro ──
+        # Helper: send a chat message and wait for AI response
+        async def send_chat_message(text, typing_delay=30):
+            chat_input = page.locator('textarea').last
+            await move_to(page, chat_input, pause=200, timeout=5000)
+            await chat_input.click()
+            await page.keyboard.type(text, delay=typing_delay)
+            await page.wait_for_timeout(400)
+            await page.keyboard.press("Enter")
+
+        # Helper: wait for AI to finish streaming (spinner disappears or new text stops)
+        async def wait_for_ai_response(max_wait=45):
+            """Wait for the AI assistant to finish generating a response."""
+            prev_text = ""
+            stable_ticks = 0
+            for i in range(max_wait):
+                await page.wait_for_timeout(1000)
+                # Check if a loading spinner is visible
+                spinner = await page.locator('.animate-spin').count()
+                if spinner == 0 and i > 2:
+                    # No spinner — check if text is stable
+                    try:
+                        cur_text = await page.locator('[class*="message"], [class*="chat-message"]').last.inner_text()
+                    except:
+                        cur_text = ""
+                    if cur_text == prev_text and cur_text:
+                        stable_ticks += 1
+                        if stable_ticks >= 2:
+                            print(f"    AI responded after {i+1}s")
+                            return True
+                    else:
+                        stable_ticks = 0
+                    prev_text = cur_text
+                # Gently move cursor to follow the streaming text
+                y_pos = 300 + (i * 25) % 350
+                await smooth_move(page, 1200, y_pos)
+            print(f"    [WARN] AI response wait timed out after {max_wait}s")
+            return False
+
+        # ── s6_intro: Move to chat area ──
         t = time.time()
         rec.mark("s6_intro")
-        await show_subtitle(page, "Exploring the AI assistant for pricing guidance", 0)
-        # Move cursor to the AI chat panel area
+        await show_subtitle(page, "Exploring the AI assistant to propose a workload", 0)
         try:
             chat_area = page.locator('textarea').last
-            await move_to(page, chat_area, pause=300, timeout=5000)
+            await move_to(page, chat_area, pause=400, timeout=5000)
         except:
             await smooth_move(page, 1200, 500)
         await sync_wait(page, "s6_intro", t)
         await hide_subtitle(page)
 
-        # ── s6_ask ──
+        # ── s6_ask: First message — ask for workload type ──
         t = time.time()
         rec.mark("s6_ask")
-        await show_subtitle(page, "Asking AI to configure a Foundation Model API workload", 0)
+        await show_subtitle(page, "Asking the AI to propose a new workload", 0)
 
-        # Count current workloads to detect when new one is added
-        initial_workload_count = await page.locator('[aria-roledescription="sortable"]').count()
-
-        chat_input = page.locator('textarea').last
         try:
-            await move_to(page, chat_input, pause=500, timeout=5000)
-            await chat_input.click()
-            await page.keyboard.type(
-                "Add a Foundation Model Proprietary workload using Claude Opus 4.6 "
-                "with 5 million input tokens per month",
-                delay=30
+            await send_chat_message(
+                "Propose a new workload for my existing estimate. Ask me what type I need.",
+                typing_delay=25
             )
-            await page.wait_for_timeout(600)
-            await page.keyboard.press("Enter")
         except Exception as e:
-            print(f"  [skip] AI type: {e}")
+            print(f"  [skip] AI msg 1: {e}")
 
+        # Wait for AI to respond with workload type list
+        await wait_for_ai_response(max_wait=30)
+        await page.wait_for_timeout(1000)
         await sync_wait(page, "s6_ask", t)
         await hide_subtitle(page)
 
-        # ── s6_response: Wait for AI to respond and add workload ──
+        # ── s6_pick: Second message — choose document parsing ──
+        t = time.time()
+        rec.mark("s6_pick")
+        await show_subtitle(page, "Choosing document parsing for an AI Parse workload", 0)
+
+        try:
+            await send_chat_message("document parsing", typing_delay=40)
+        except Exception as e:
+            print(f"  [skip] AI msg 2: {e}")
+
+        # Wait for AI to respond with follow-up questions
+        await wait_for_ai_response(max_wait=30)
+        await page.wait_for_timeout(1000)
+        await sync_wait(page, "s6_pick", t)
+        await hide_subtitle(page)
+
+        # ── s6_config: Third message — specify per-page, low, 1M pages ──
+        t = time.time()
+        rec.mark("s6_config")
+        await show_subtitle(page, "Specifying per-page billing, low complexity, one million pages", 0)
+
+        try:
+            await send_chat_message("per page, low, 1 million page", typing_delay=35)
+        except Exception as e:
+            print(f"  [skip] AI msg 3: {e}")
+
+        await sync_wait(page, "s6_config", t)
+        await hide_subtitle(page)
+
+        # ── s6_response: Wait for AI to generate the configuration proposal ──
         t = time.time()
         rec.mark("s6_response")
-        await show_subtitle(page, "AI analyzes pricing and suggests a workload configuration", 0)
+        await show_subtitle(page, "AI generates a full workload configuration for review", 0)
 
-        # Poll for workload count to increase (AI adds it), max 10 seconds
-        # Move cursor actively through AI chat area while streaming
-        ai_added = False
-        for check in range(10):
+        # Wait for the proposal card with confirm/reject buttons to appear
+        confirm_btn = page.locator('button[title="Confirm & Add"]').first
+        proposal_found = False
+        for check in range(60):
             await page.wait_for_timeout(1000)
-            new_count = await page.locator('[aria-roledescription="sortable"]').count()
-            if new_count > initial_workload_count:
-                print(f"    AI added workload after {check+1}s ({initial_workload_count} → {new_count})")
-                await page.wait_for_timeout(1500)
-                ai_added = True
+            btn_count = await page.locator('button[title="Confirm & Add"]').count()
+            if btn_count > 0:
+                print(f"    AI proposal appeared after {check+1}s")
+                proposal_found = True
                 break
-            # Move cursor vertically through chat area to follow streaming text
-            y_pos = 250 + (check * 40) % 300
+            # Follow streaming text
+            y_pos = 300 + (check * 25) % 350
             await smooth_move(page, 1200, y_pos)
         else:
-            print(f"    Workload count unchanged after 10s ({new_count})")
+            # Also check for "Accept All" as alternative
+            accept_all = await page.locator('button:has-text("Accept All")').count()
+            if accept_all > 0:
+                proposal_found = True
+                print(f"    AI proposal (Accept All) found")
+            else:
+                print(f"    [WARN] AI proposal not found after 60s")
+
+        # Scroll to make the proposal card fully visible
+        await page.wait_for_timeout(1000)
+        try:
+            proposal_card = page.locator('button[title="Confirm & Add"]').first
+            await proposal_card.scroll_into_view_if_needed()
+            await page.wait_for_timeout(500)
+        except:
+            pass
 
         await sync_wait(page, "s6_response", t)
         await hide_subtitle(page)
 
-        # ── s6_added: Show the result ──
+        # ── s6_accept: Click the confirm button ──
+        t = time.time()
+        rec.mark("s6_accept")
+        ai_added = False
+
+        if proposal_found:
+            await show_subtitle(page, "Confirming the proposed workload configuration", 0)
+            try:
+                confirm_btn = page.locator('button[title="Confirm & Add"]').first
+                await move_to(page, confirm_btn, pause=600)
+                await confirm_btn.click()
+                print("    Clicked Confirm & Add")
+                # Wait for workload to appear in the list
+                for check in range(20):
+                    await page.wait_for_timeout(1000)
+                    new_count = await page.locator('[aria-roledescription="sortable"]').count()
+                    if new_count > initial_workload_count:
+                        print(f"    Workload added ({initial_workload_count} → {new_count})")
+                        ai_added = True
+                        break
+            except Exception as e:
+                print(f"  [skip] confirm click: {e}")
+        else:
+            await show_subtitle(page, "The AI assistant generates workload configurations from chat", 0)
+
+        await page.wait_for_timeout(1000)
+        await sync_wait(page, "s6_accept", t)
+        await hide_subtitle(page)
+
+        # ── s6_added: Show the new workload in the list ──
+        await page.evaluate("window.scrollTo(0, 0)")
+        await page.wait_for_timeout(500)
+
         t = time.time()
         rec.mark("s6_added")
 
         if ai_added:
-            await show_subtitle(page, "New workload appears in the list with calculated cost", 0)
-            await page.evaluate("window.scrollTo(0, 0)")
-            await page.wait_for_timeout(500)
+            await show_subtitle(page, "AI Parse workload has been added with calculated costs", 0)
             new_count = await page.locator('[aria-roledescription="sortable"]').count()
             if new_count > 0:
                 last_wl = page.locator('[aria-roledescription="sortable"]').nth(new_count - 1)
-                wl_box = await move_to(page, last_wl, pause=400)
+                wl_box = await move_to(page, last_wl, pause=600)
                 if wl_box:
                     await fire_ring_at(page, wl_box["x"] + wl_box["width"]/2, wl_box["y"] + wl_box["height"]/2)
+                await page.wait_for_timeout(1000)
+                try:
+                    total = page.locator('text=/\\$[\\d,]+\\.\\d{2}/').first
+                    await move_to(page, total, pause=400)
+                except:
+                    pass
         else:
-            await show_subtitle(page, "The AI assistant proposes workload configurations conversationally", 0)
-            # Scroll through AI response area actively
+            await show_subtitle(page, "The AI assistant generates workload configurations from natural language", 0)
             try:
                 msgs = page.locator('[class*="message"], [class*="chat"]').last
                 await move_to(page, msgs, pause=400, timeout=3000)
@@ -987,15 +1264,14 @@ async def main():
         print("  Scene 7: Export")
 
         # ── s7_export ──
+        # Setup: scroll to top and find button before narration
+        await page.evaluate("window.scrollTo(0, 0)")
+        await page.wait_for_timeout(300)
+        excel_btn = page.locator('button:has-text("Excel")').first
+
         t = time.time()
         rec.mark("s7_export")
         await show_subtitle(page, "Exporting to Excel with full cost breakdown", 0)
-
-        # Scroll to top to ensure export button is visible
-        await page.evaluate("window.scrollTo(0, 0)")
-        await page.wait_for_timeout(500)
-
-        excel_btn = page.locator('button:has-text("Excel")').first
         try:
             await click_on(page, excel_btn, pause=2000)
         except:
