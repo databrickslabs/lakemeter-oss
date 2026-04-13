@@ -15,10 +15,14 @@ import os
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING, Generator
 from uuid import uuid4
+from dotenv import load_dotenv
 from fastapi import Request, HTTPException, Depends
 from sqlalchemy.orm import Session
 
 from app.config import log_info
+
+# Load .env before reading env vars at module level
+load_dotenv()
 
 # Import User model only for type checking to avoid circular import
 if TYPE_CHECKING:

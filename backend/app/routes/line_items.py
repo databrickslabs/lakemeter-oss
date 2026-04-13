@@ -304,8 +304,6 @@ def clone_line_item(
         lakebase_storage_gb=original.lakebase_storage_gb,
         lakebase_ha_nodes=original.lakebase_ha_nodes,
         lakebase_backup_retention_days=original.lakebase_backup_retention_days,
-        lakebase_pitr_gb=original.lakebase_pitr_gb,
-        lakebase_snapshot_gb=original.lakebase_snapshot_gb,
         # Usage
         runs_per_day=original.runs_per_day,
         avg_runtime_minutes=original.avg_runtime_minutes,

@@ -12,27 +12,27 @@ class LineItemBase(BaseModel):
     workload_type: Optional[str] = None
     display_order: Optional[int] = 0
     cloud: Optional[str] = None
-    
+
     # Serverless toggle
     serverless_enabled: Optional[bool] = False
     serverless_mode: Optional[str] = None
-    
+
     # Classic Compute Configuration
     photon_enabled: Optional[bool] = False
     driver_node_type: Optional[str] = None
     worker_node_type: Optional[str] = None
     num_workers: Optional[int] = 1
-    
+
     # DLT Configuration
     dlt_edition: Optional[str] = None
-    
+
     # DBSQL Configuration
     dbsql_warehouse_type: Optional[str] = None
     dbsql_warehouse_size: Optional[str] = None
     dbsql_num_clusters: Optional[int] = None
     dbsql_vm_pricing_tier: Optional[str] = None
     dbsql_vm_payment_option: Optional[str] = None
-    
+
     # Vector Search Configuration
     vector_search_mode: Optional[str] = None
     vector_capacity_millions: Optional[int] = None
@@ -42,6 +42,7 @@ class LineItemBase(BaseModel):
     model_serving_gpu_type: Optional[str] = None
     model_serving_concurrency: Optional[int] = None
     model_serving_scale_out: Optional[str] = None
+    model_servings_number_endpoints: Optional[int] = None
 
     # Foundation Model API Configuration (Proprietary)
     fmapi_provider: Optional[str] = None
@@ -53,30 +54,45 @@ class LineItemBase(BaseModel):
 
     # Databricks Apps Configuration
     databricks_apps_size: Optional[str] = None
+    databricks_apps_hours_per_month: Optional[float] = None
+    databricks_apps_num_apps: Optional[int] = None
 
     # Clean Room Configuration
-    clean_room_collaborators: Optional[int] = None
+    clean_room_num_collaborators: Optional[int] = None
+    clean_room_days_per_month: Optional[int] = None
 
     # AI Parse Configuration
-    ai_parse_mode: Optional[str] = None
+    ai_parse_calculation_method: Optional[str] = None
     ai_parse_complexity: Optional[str] = None
-    ai_parse_pages_thousands: Optional[float] = None
+    ai_parse_dbu_quantity: Optional[float] = None
+    ai_parse_num_pages: Optional[float] = None
 
     # Shutterstock ImageAI Configuration
-    shutterstock_images: Optional[int] = None
+    shutterstock_imageai_num_images: Optional[int] = None
+
+    # Databricks Support Configuration
+    databricks_support_tier: Optional[str] = None
+    databricks_support_annual_commit: Optional[float] = None
 
     # Lakeflow Connect Configuration
-    lakeflow_connect_pipeline_mode: Optional[str] = None
-    lakeflow_connect_gateway_enabled: Optional[bool] = False
-    lakeflow_connect_gateway_instance: Optional[str] = None
+    lakeflow_connect_connector_type: Optional[str] = None
+    lakeflow_connect_pipeline_driver_node_type: Optional[str] = None
+    lakeflow_connect_pipeline_worker_node_type: Optional[str] = None
+    lakeflow_connect_pipeline_num_workers: Optional[int] = None
+    lakeflow_connect_pipeline_serverless_mode: Optional[str] = None
+    lakeflow_connect_pipeline_runs_per_day: Optional[int] = None
+    lakeflow_connect_pipeline_avg_runtime_minutes: Optional[int] = None
+    lakeflow_connect_pipeline_hours_per_month: Optional[float] = None
+    lakeflow_connect_gateway_cloud: Optional[str] = None
+    lakeflow_connect_gateway_instance_type: Optional[str] = None
+    lakeflow_connect_gateway_num_workers: Optional[int] = None
+    lakeflow_connect_gateway_hours_per_month: Optional[float] = None
 
     # Lakebase Configuration
     lakebase_cu: Optional[float] = None
     lakebase_storage_gb: Optional[int] = None
     lakebase_ha_nodes: Optional[int] = None
     lakebase_backup_retention_days: Optional[int] = None
-    lakebase_pitr_gb: Optional[int] = None
-    lakebase_snapshot_gb: Optional[int] = None
 
     # Usage Configuration
     runs_per_day: Optional[int] = None
@@ -93,6 +109,10 @@ class LineItemBase(BaseModel):
     # Additional Configuration
     workload_config: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
+
+    # Calculated results
+    cost_calculation_response: Optional[Dict[str, Any]] = None
+    calculation_completed_at: Optional[datetime] = None
 
 
 class LineItemCreate(LineItemBase):
@@ -131,11 +151,12 @@ class LineItemUpdate(BaseModel):
     vector_search_mode: Optional[str] = None
     vector_capacity_millions: Optional[int] = None
     vector_search_storage_gb: Optional[int] = None
-    
+
     # Model Serving Configuration
     model_serving_gpu_type: Optional[str] = None
     model_serving_concurrency: Optional[int] = None
     model_serving_scale_out: Optional[str] = None
+    model_servings_number_endpoints: Optional[int] = None
 
     # Foundation Model API Configuration (Proprietary)
     fmapi_provider: Optional[str] = None
@@ -147,30 +168,45 @@ class LineItemUpdate(BaseModel):
 
     # Databricks Apps Configuration
     databricks_apps_size: Optional[str] = None
+    databricks_apps_hours_per_month: Optional[float] = None
+    databricks_apps_num_apps: Optional[int] = None
 
     # Clean Room Configuration
-    clean_room_collaborators: Optional[int] = None
+    clean_room_num_collaborators: Optional[int] = None
+    clean_room_days_per_month: Optional[int] = None
 
     # AI Parse Configuration
-    ai_parse_mode: Optional[str] = None
+    ai_parse_calculation_method: Optional[str] = None
     ai_parse_complexity: Optional[str] = None
-    ai_parse_pages_thousands: Optional[float] = None
+    ai_parse_dbu_quantity: Optional[float] = None
+    ai_parse_num_pages: Optional[float] = None
 
     # Shutterstock ImageAI Configuration
-    shutterstock_images: Optional[int] = None
+    shutterstock_imageai_num_images: Optional[int] = None
+
+    # Databricks Support Configuration
+    databricks_support_tier: Optional[str] = None
+    databricks_support_annual_commit: Optional[float] = None
 
     # Lakeflow Connect Configuration
-    lakeflow_connect_pipeline_mode: Optional[str] = None
-    lakeflow_connect_gateway_enabled: Optional[bool] = None
-    lakeflow_connect_gateway_instance: Optional[str] = None
+    lakeflow_connect_connector_type: Optional[str] = None
+    lakeflow_connect_pipeline_driver_node_type: Optional[str] = None
+    lakeflow_connect_pipeline_worker_node_type: Optional[str] = None
+    lakeflow_connect_pipeline_num_workers: Optional[int] = None
+    lakeflow_connect_pipeline_serverless_mode: Optional[str] = None
+    lakeflow_connect_pipeline_runs_per_day: Optional[int] = None
+    lakeflow_connect_pipeline_avg_runtime_minutes: Optional[int] = None
+    lakeflow_connect_pipeline_hours_per_month: Optional[float] = None
+    lakeflow_connect_gateway_cloud: Optional[str] = None
+    lakeflow_connect_gateway_instance_type: Optional[str] = None
+    lakeflow_connect_gateway_num_workers: Optional[int] = None
+    lakeflow_connect_gateway_hours_per_month: Optional[float] = None
 
     # Lakebase Configuration
     lakebase_cu: Optional[float] = None
     lakebase_storage_gb: Optional[int] = None
     lakebase_ha_nodes: Optional[int] = None
     lakebase_backup_retention_days: Optional[int] = None
-    lakebase_pitr_gb: Optional[int] = None
-    lakebase_snapshot_gb: Optional[int] = None
 
     # Usage Configuration
     runs_per_day: Optional[int] = None
@@ -188,6 +224,10 @@ class LineItemUpdate(BaseModel):
     workload_config: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
 
+    # Calculated results
+    cost_calculation_response: Optional[Dict[str, Any]] = None
+    calculation_completed_at: Optional[datetime] = None
+
 
 class LineItemResponse(LineItemBase):
     """Schema for line item response."""
@@ -195,5 +235,5 @@ class LineItemResponse(LineItemBase):
     estimate_id: UUID
     created_at: datetime
     updated_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
