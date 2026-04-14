@@ -50,4 +50,4 @@ title: Dependencies & License
 
 This project is licensed under the **Databricks License**.
 
-[View the full license text](https://docs.google.com/document/d/1E63AvWv9v_WGGw8xZp9o7MH0fwpNtnjdQeqOVaWjlwc/edit)
+[View the full license text](https://www.databricks.com/legal/db-license)
