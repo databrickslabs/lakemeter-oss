@@ -43,6 +43,45 @@ Full documentation is available at **[cheeyutan.github.io/lakemeter-opensource](
 | AI | Claude via Databricks Foundation Model APIs |
 | Hosting | Databricks Apps (SSO, managed compute) |
 
+## Dependencies
+
+### Backend (Python)
+
+- fastapi
+- uvicorn
+- sqlalchemy
+- psycopg2-binary
+- pydantic
+- pydantic-settings
+- python-multipart
+- xlsxwriter
+- python-jose
+- passlib
+- python-dotenv
+- cachetools
+- databricks-sdk
+
+### Frontend (Node.js)
+
+- react
+- react-dom
+- react-router-dom
+- axios
+- zustand
+- framer-motion
+- clsx
+- file-saver
+- react-hot-toast
+- react-markdown
+- remark-gfm
+- @headlessui/react
+- @heroicons/react
+- @dnd-kit/core
+- @dnd-kit/sortable
+- @dnd-kit/modifiers
+- @dnd-kit/utilities
+- TypeScript, Tailwind CSS, Vite (dev)
+
 ## License
 
-MIT
+Databricks License — [view full license](https://docs.google.com/document/d/1E63AvWv9v_WGGw8xZp9o7MH0fwpNtnjdQeqOVaWjlwc/edit)
