@@ -84,4 +84,4 @@ Full documentation is available at **[cheeyutan.github.io/lakemeter-opensource](
 
 ## License
 
-Databricks License — [view full license](https://docs.google.com/document/d/1E63AvWv9v_WGGw8xZp9o7MH0fwpNtnjdQeqOVaWjlwc/edit)
+Databricks License — [view full license](https://www.databricks.com/legal/db-license)
