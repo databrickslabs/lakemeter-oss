@@ -47,8 +47,6 @@ Full documentation is available at **[cheeyutan.github.io/lakemeter-opensource](
 
 Copyright (2026) Databricks, Inc. This Software includes software developed at Databricks (https://www.databricks.com/) and its use is subject to the included LICENSE file.
 
-**© 2026 Databricks, Inc. All rights reserved.** The source code is provided under the [Databricks License](https://www.databricks.com/legal/db-license), with all included third-party libraries subject to their respective licenses.
-
 ### Backend Dependencies (Python)
 
 | Library | Purpose | License | Source |
