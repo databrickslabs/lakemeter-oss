@@ -278,14 +278,13 @@ def test_lakebase_accept(http_client, test_estimate):
         test_estimate,
         [
             "Add a Lakebase database named 'Product Catalog DB' with "
-            "10000 reads per second, 5000 bulk writes per second, "
-            "500 incremental writes per second, 1KB average row size, "
-            "HA enabled, 2 read replicas, 500 GB storage, "
+            "4 CU, HA enabled, 2 read replicas, 500 GB storage, "
             "200 GB PITR, 100 GB snapshot storage."
         ],
         {
             "workload_type": "LAKEBASE",
             "workload_name": "Product Catalog DB",
+            "lakebase_cu": 4,
             "lakebase_storage_gb": 500,
             "lakebase_pitr_gb": 200,
             "lakebase_snapshot_gb": 100,
