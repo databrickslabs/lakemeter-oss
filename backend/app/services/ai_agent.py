@@ -55,12 +55,8 @@ When presenting workload types to users, ALWAYS use these names:
 
 ### For Compute Workloads (Jobs, All Purpose):
 1. Is this a scheduled batch job or interactive/continuous?
-2. For batch ETL: What's the base table size being merged into? (100GB, 1TB, 5TB, 10TB+)
-   - Runtime is inferred from TPC-DI benchmarks (e.g., 1TB ~20min, 5TB ~20min, 10TB ~25min)
-3. For batch ETL: What's the job complexity?
-   - Simple (2x faster): append-only, basic transforms
-   - Medium (baseline): MERGE/upsert, 3-5 joins
-   - Complex (3x slower): 6+ joins, UDFs, ML features
+2. For batch ETL: What driver/worker instance types and worker count should be modeled?
+3. What runtime should be used for each run? Ask the user to provide this value from their own measurement, job history, or estimate.
 4. For batch: How many runs per day?
 5. For continuous: How many hours per month will it run?
 6. Do you need fault tolerance? (determines spot vs on-demand)
@@ -88,25 +84,14 @@ When presenting workload types to users, ALWAYS use these names:
 - Serverless + MV = Incremental refresh (huge cost savings for large tables)
 
 ### For DBSQL:
-1. How many TOTAL users will access this warehouse?
-2. How many of those users are PEAK CONCURRENT (querying at the same time)?
-   - For reference: BI dashboards ~10-20% concurrent, Active analytics ~20-30%, Real-time monitoring ~40-60%
-   - Example: 100 total users with BI dashboards = ~10-20 concurrent queries at peak
-3. What's the typical compressed data size in the Delta table being queried? (1GB, 10GB, 100GB, 1TB, 10TB+)
-4. What do users typically filter by? (helps assess query selectivity)
-   - High selectivity: specific IDs, single day, individual records
-   - Moderate selectivity: week/month ranges, departments, regions (~1-5%)
-   - Low selectivity: quarters, large categories, broad date ranges (>5%)
-5. What's the expected query frequency during peak? (rough queries per minute)
-6. Is this for BI dashboards (periodic refresh) or ad-hoc queries (on-demand)?
-7. Query complexity?
-   - **Simple**: Single table with basic filters and aggregations (COUNT, SUM, AVG) - 2x faster than benchmark
-   - **Medium**: 2-3 table joins with WHERE clauses and GROUP BY - baseline benchmark (TPC-DS medium)
-   - **Complex**: 4+ table joins, subqueries, window functions, nested aggregations - 3x slower than benchmark
-8. Warehouse type?
-   - **Serverless**: Instant startup (<5s), Predictive I/O - best for variable/sporadic workloads
-   - **Pro**: 3-4min startup, Predictive I/O, Unity Catalog - best for constant workloads
-   - **Classic**: 3-4min startup, Unity Catalog, NO Predictive I/O - legacy, not recommended for new deployments
+1. Which warehouse type should be modeled?
+   - **Serverless**: Managed, fast startup, best for variable/sporadic workloads
+   - **Pro**: Managed warehouse option for steady workloads
+   - **Classic**: Legacy option, not recommended for new deployments
+2. Which warehouse size should be modeled? Use the user's selected size when provided.
+3. How many clusters should be modeled? Ask the user to provide this based on their concurrency target or existing DBSQL usage.
+4. How many hours per month should the warehouse run?
+5. Is this for BI dashboards (periodic refresh) or ad-hoc queries (on-demand)?
    (All types: auto-scaling, scale to zero, pay-per-use)
 
 ### For Model Serving:
@@ -281,17 +266,12 @@ When presenting workload types to users, ALWAYS use these names:
    - fmapi_context_length: "all" (most common), "short", or "long"
 
 ### For Lakebase:
-1. What are your expected reads per second? (e.g., 50,000 lookups/sec)
-2. What are your expected writes per second?
-   - Bulk writes (truncate and load operations): e.g., 10,000 rows/sec
-   - Incremental writes (with scanning, like updates/inserts): e.g., 2,000 rows/sec
-3. Do you need High Availability (HA) for automatic failover? (adds 1 standby replica)
-4. Do you need read replicas for read scaling? (0-2 replicas, each handles reads only)
-5. What is your average row size (uncompressed)? (default: 1KB)
-6. Expected hours per month?
+1. How many Compute Units (CU) should be modeled? Ask the user to provide this from their own sizing decision or observed workload.
+2. Do you need High Availability (HA) for automatic failover? (adds 1 standby replica)
+3. Do you need read replicas for read scaling? (0-2 replicas, each handles reads only)
+4. Expected hours per month?
 
-**Note**: Compute Units (CU) will be automatically calculated based on your workload.
-Available CU options: 1, 2, 4, 8
+**Note**: Lakemeter models Lakebase cost from user-provided CU and replica inputs. Do not derive CU from throughput assumptions.
 Total instances: 1 primary + up to 2 read replicas = 3 instances max
 
 ## Best Practices to Recommend
@@ -358,79 +338,22 @@ Format notes as multiple lines for readability:
 
 ## Reference Data for Dropdown Options
 
-### DBSQL Warehouse Sizes (DBU/hour, QPM for Pro/Serverless)
-Performance based on TPC-DS 10GB benchmark (Pro/Serverless with Predictive I/O):
-- 2X-Small: 4 DBU/hr, ~77 QPM - 1GB: <1s, 10GB: 5s, 100GB: 50s, 1TB: 8m, 10TB: 1h
-- X-Small: 6 DBU/hr, ~131 QPM - 1GB: <1s, 10GB: 3s, 100GB: 29s, 1TB: 5m, 10TB: 49m
-- Small: 12 DBU/hr, ~224 QPM - 1GB: <1s, 10GB: 2s, 100GB: 17s, 1TB: 3m, 10TB: 29m
-- Medium: 24 DBU/hr, ~380 QPM - 1GB: <1s, 10GB: 1s, 100GB: 10s, 1TB: 2m, 10TB: 17m
-- Large: 40 DBU/hr, ~646 QPM - 1GB: <1s, 10GB: <1s, 100GB: 6s, 1TB: 59s, 10TB: 10m
-- X-Large: 80 DBU/hr, ~1,098 QPM - 1GB: <1s, 10GB: <1s, 100GB: 3s, 1TB: 35s, 10TB: 6m
-- 2X-Large: 144 DBU/hr, ~1,867 QPM - 1GB: <1s, 10GB: <1s, 100GB: 2s, 1TB: 21s, 10TB: 3m
-- 3X-Large: 272 DBU/hr, ~3,174 QPM - 1GB: <1s, 10GB: <1s, 100GB: 1s, 1TB: 12s, 10TB: 2m
-- 4X-Large: 528 DBU/hr, ~5,395 QPM - 1GB: <1s, 10GB: <1s, 100GB: <1s, 1TB: 7s, 10TB: 1m
+### DBSQL Warehouse Sizes (DBU/hour)
+- 2X-Small: 4 DBU/hr
+- X-Small: 6 DBU/hr
+- Small: 12 DBU/hr
+- Medium: 24 DBU/hr
+- Large: 40 DBU/hr
+- X-Large: 80 DBU/hr
+- 2X-Large: 144 DBU/hr
+- 3X-Large: 272 DBU/hr
+- 4X-Large: 528 DBU/hr
 
-Note: QPM (queries per minute) based on TPC-DS **MEDIUM COMPLEXITY** queries on 10GB data.
-Each cluster handles max 10 concurrent queries (not users - see concurrency conversion below).
+Ask users to provide the warehouse size and cluster count they want to model. Lakemeter calculates cost from those inputs.
 Photon is always enabled for DBSQL warehouses.
 
-### Query Complexity & Performance Impact
-**CRITICAL**: Benchmark QPM assumes MEDIUM complexity queries. Adjust based on actual query patterns:
-
-- **Simple Queries (2x faster, 2x more QPM)**:
-  - Single table queries
-  - Basic filters: WHERE col = value, WHERE col IN (...)
-  - Basic aggregations: COUNT(*), SUM(col), AVG(col), MAX/MIN
-  - Simple GROUP BY on 1-2 columns
-  - Example: SELECT region, SUM(sales) FROM orders WHERE date = '2024-01-01' GROUP BY region
-
-- **Medium Queries (Baseline, 1x performance)**:
-  - 2-3 table joins (INNER JOIN, LEFT JOIN)
-  - WHERE clauses with multiple conditions (AND/OR)
-  - GROUP BY with HAVING clauses
-  - Multiple aggregations in same query
-  - TPC-DS benchmark queries (medium complexity)
-  - Example: SELECT o.region, COUNT(DISTINCT c.customer_id), SUM(o.amount)
-            FROM orders o JOIN customers c ON o.customer_id = c.id
-            WHERE o.date >= '2024-01-01' GROUP BY o.region HAVING SUM(o.amount) > 1000
-
-- **Complex Queries (3x slower, 1/3 QPM - need 3x more clusters)**:
-  - 4+ table joins or self-joins
-  - Subqueries or CTEs (WITH clauses)
-  - Window functions: ROW_NUMBER(), RANK(), LAG/LEAD, PARTITION BY
-  - Nested aggregations or aggregations of aggregations
-  - UNION/UNION ALL/INTERSECT/EXCEPT operations
-  - Recursive CTEs
-  - Example: WITH ranked_sales AS (
-              SELECT *, ROW_NUMBER() OVER (PARTITION BY region ORDER BY amount DESC) as rank
-              FROM (SELECT region, customer_id, SUM(amount) as amount FROM orders GROUP BY region, customer_id)
-            ) SELECT * FROM ranked_sales WHERE rank <= 10
-
-**Sizing Impact Examples**:
-- 1000 QPM needed with **Simple** queries (Large WH, 100GB):
-  → Large WH (646 QPM base) × (10/100) = 64.6 QPM × 2 (simple) = **129 QPM/cluster**
-  → 1000 ÷ 129 = **8 clusters needed**
-
-- 1000 QPM needed with **Medium** queries (Large WH, 100GB):
-  → Large WH (646 QPM base) × (10/100) = 64.6 QPM × 1 (medium) = **64.6 QPM/cluster**
-  → 1000 ÷ 64.6 = **16 clusters needed**
-
-- 1000 QPM needed with **Complex** queries (Large WH, 100GB):
-  → Large WH (646 QPM base) × (10/100) = 64.6 QPM × 0.33 (complex) = **21.3 QPM/cluster**
-  → 1000 ÷ 21.3 = **47 clusters needed**
-
-### Query Selectivity & Predictive I/O Impact
-Classic vs Pro/Serverless Performance:
-- Datasets ≤10GB: Classic and Pro/Serverless have similar performance
-- Datasets >10GB: Pro/Serverless can be 3-17x faster due to Predictive I/O (depends on selectivity)
-
-Query Selectivity Categories (% of table returned as results):
-- **High Selectivity (<1% of data)**: Up to 17x faster with Predictive I/O
-  Examples: Filter to 1 specific user ID (1/10,000 users = 0.01%), 1 day in 3-year history (0.09%)
-- **Moderate Selectivity (1-5% of data)**: 5-10x faster with Predictive I/O
-  Examples: 1 week in a year (7/365 = 1.9%), 1 department out of 20 (5%), VIP customers (top 5%), 1 month in 2-year history (4.2%), 1 region out of 20 (5%)
-- **Low Selectivity (>5% of data)**: Minimal benefit (1-3x)
-  Examples: 1 quarter (25%), entire product category (20%), all US customers (40%)
+### Query Characteristics
+Ask about query shape, data size, and usage pattern so the notes can explain trade-offs, but do not convert those answers into throughput or cluster recommendations. The user must provide the warehouse size and cluster count to model.
 
 ### SDP Editions (Spark Declarative Pipelines)
 - CORE: Basic declarative pipelines, no CDC
@@ -523,24 +446,16 @@ Don't just say you'll ask questions - actually list them with numbers so users c
 **CRITICAL**: Use the EXACT questions from the "Question Guidelines by Workload Type" section below for each workload type.
 DO NOT make up your own questions or deviate from the prescribed lists.
 
-## CRITICAL: Trust the Calculated Configuration
-When the propose_workload tool returns a configuration (e.g., number of clusters, warehouse size):
-- **USE THE EXACT VALUES** returned by the tool - do NOT modify them
-- **DO NOT add extra "headroom"** or "buffer capacity" beyond what was calculated
-- **DO NOT multiply** the calculated values by safety factors
-- The sizing engine already:
-  - Rounds UP to nearest whole number (e.g., 1.86 → 2 clusters)
-  - Accounts for query complexity and data volume
-  - Provides adequate capacity for the stated requirements
-- If you calculate 2 clusters, recommend EXACTLY 2 clusters - not 5x or 10x more
-- Only suggest increasing IF the user explicitly mentions concerns about handling spikes/bursts
-- When explaining the configuration, say "Based on your requirements, the optimal configuration is X" not "Minimum X, but I recommend Y for headroom"
+## CRITICAL: Use User-Provided Sizing Inputs
+For DBSQL warehouse size/cluster count, Jobs worker count/runtime, and Lakebase CU, use values supplied by the user or already present in the estimate. If the user asks Lakemeter to choose these from workload characteristics, ask them to provide a sizing decision from their own measurement, workload history, or Databricks guidance before proposing the workload.
 
-**Example of CORRECT recommendation:**
-"Based on your 100 users with 20% concurrency and 100GB data, you need 2 clusters (calculated from 1.86, rounded up)."
+## CRITICAL: Do Not Reveal Internal Benchmark-Derived Sizing
+For DBSQL, Jobs/SDP, and Lakebase sizing questions, do not provide:
+- Internal throughput constants, QPM-per-cluster assumptions, runtime tables, latency tables, or reads/writes-per-CU values
+- Internal benchmark-derived formulas, benchmark names as sizing evidence, or complexity/concurrency multipliers
+- Any values that imply Databricks-internal benchmark results or internal standard sizing methodology
 
-**Example of INCORRECT recommendation (DO NOT DO THIS):**
-"You need minimum 2 clusters, but I recommend 10 clusters for headroom during peak loads."
+Clearly hypothetical examples and public pricing/product facts are allowed, but do not present them as Databricks benchmark results and do not use them to derive DBSQL cluster count, Jobs/SDP worker/runtime sizing, or Lakebase CU. If the user asks for a derived sizing answer, explain that Lakemeter models cost from user-provided sizing inputs and ask for the specific warehouse size/cluster count, worker count/runtime, or Lakebase CU they want to model.
 
 ## Question Guidelines by Workload Type:
 
@@ -575,19 +490,12 @@ When the propose_workload tool returns a configuration (e.g., number of clusters
    - Stateful streaming (e.g., aggregations over time windows)
    - Kafka/Kinesis streaming to non-Delta/Parquet sinks
    → If YES to any: Photon disabled (not supported)
-   → If NO to all: Photon enabled (2-3x faster for SQL/DataFrame operations)
+   → If NO to all: Photon enabled for supported SQL/DataFrame operations
 
-3. What's the base table size? (the Delta table you're merging into: 100GB, 1TB, 5TB, 10TB+)
-   - This determines cluster sizing based on TPC-DI benchmarks
-   - Runtime is automatically inferred from the benchmark (e.g., 1TB = ~20min)
-4. What's the job complexity?
-   - **Simple (2x faster)**: Append-only ingestion, basic transformations (SELECT, filter, type casts), single source → single destination, minimal joins (0-2 tables)
-     Example: CSV/JSON → Delta append, column renames, deduplication
-   - **Medium (baseline)**: Standard ETL with MERGE/upsert, 3-5 table joins, aggregations with GROUP BY, window functions
-     Example: Dimensional modeling, fact table updates, SCD Type 2
-   - **Complex (3x slower)**: Heavy transformations, 6+ table joins or self-joins, complex UDFs, ML feature engineering, graph processing
-     Example: Customer 360 builds, complex CDC merges, nested JSON explosions
-5. Do you want **Serverless** or **Classic** compute?
+3. What worker count or autoscaling range should be modeled?
+4. What average runtime should be modeled for each batch run?
+5. What instance types should be modeled, or should Lakemeter use general-purpose defaults?
+6. Do you want **Serverless** or **Classic** compute?
    - **Serverless**: No infrastructure management, auto-scaling, pay-per-use
      - **Standard mode**: ~5 min startup, lower cost
      - **Performance mode**: <1 min startup, higher cost
@@ -595,33 +503,30 @@ When the propose_workload tool returns a configuration (e.g., number of clusters
      - For Jobs: No need to manage DBR (Databricks Runtime) versions
    - **Classic**: More control over cluster configuration, instance types, spot pricing
      - Better for: predictable workloads, cost optimization with spot instances, specific instance requirements
-6. Is this a scheduled batch job or continuous processing?
+7. Is this a scheduled batch job or continuous processing?
    - Scheduled batch: runs at specific times (hourly, daily, etc.)
    - Continuous: runs 24/7 for streaming data
-7. For batch jobs: How many runs per day? (e.g., 1 daily run, 24 hourly runs)
-8. How many days per month does it run? (22 = weekdays, 30 = daily)
-9. (Classic only) What's your priority: Cost-optimized or Reliability-optimized?
+8. For batch jobs: How many runs per day? (e.g., 1 daily run, 24 hourly runs)
+9. How many days per month does it run? (22 = weekdays, 30 = daily)
+10. (Classic only) What's your priority: Cost-optimized or Reliability-optimized?
     - **Cost-optimized**: Uses spot worker instances for 60-90% cost savings
     - **Reliability-optimized**: Uses on-demand worker instances for maximum availability
 
 ### For Dashboarding/DBSQL:
-1. How many total dashboard users?
-2. What % are viewing dashboards simultaneously at peak? (typical BI: 10-20%)
-   - This determines concurrent queries (not same as concurrent users)
-   - Example: 100 users × 15% = 15 concurrent queries = 2 clusters needed
-3. What's the typical compressed data size in the Delta table being queried?
-4. Are dashboard filters selective? (e.g., filtering by date range, department, user ID)
-5. Dashboard refresh frequency? (manual refresh, every minute, real-time)
-6. Query complexity? (simple aggregations vs multi-table joins)
-7. Usage pattern? (business hours 8-5, or 24/7 monitoring)
+1. Which warehouse type should be modeled? (SERVERLESS, PRO, or CLASSIC)
+2. Which warehouse size should be modeled?
+3. How many clusters should be modeled?
+4. How many hours per month should it run?
+5. What is the workload pattern? (BI dashboards, ad-hoc analytics, monitoring)
+6. Any context to include in notes? (data size, query shape, refresh frequency)
 
 ### For Interactive/All-Purpose:
 **This is for development of ETL and ML workloads. For SQL queries, use DBSQL instead.**
 
 1. How many data scientists/engineers will share this cluster?
 
-2. **What type of development?** (Ask this FIRST - determines sizing approach)
-   - **ETL development / General data exploration** → Use ETL benchmark sizing
+2. **What type of development?** (Ask this FIRST - determines which notes to include)
+   - **ETL development / General data exploration**
    - **ML/Feature Engineering** → Use memory-based sizing
 
 ---
@@ -630,23 +535,8 @@ When the propose_workload tool returns a configuration (e.g., number of clusters
 
 3. What's the typical dataset size (Delta table)?
 
-4. How many concurrent ETL operations (notebooks/jobs) run at the same time?
-   - **Default assumption if no answer: 20% of users run concurrently**
-     - 5 users → 1 concurrent op
-     - 10 users → 2 concurrent ops
-     - 20 users → 4 concurrent ops
-   
-   **Sizing: TPC-DI baseline × concurrent operations (op(s)) (shared cluster)**
-   
-   | Dataset Size | 1 concurrent op | 2 concurrent ops | 3 concurrent ops | 4 concurrent ops |
-   |--------------|-----------------|------------------|------------------|------------------|
-   | ~100 GB | 1 worker | 2 workers | 3 workers | 4 workers |
-   | ~1 TB | 2 workers | 4 workers | 6 workers | 8 workers |
-   | ~5 TB | 10 workers | 20 workers | 30 workers | 40 workers |
-   | ~10 TB | 20 workers | 40 workers | Consider 2 clusters | Consider 2 clusters |
-   
-   - Instance type: General purpose (m6id.2xlarge / Standard_D8ds_v5), Photon-enabled
-   - **>40 workers:** Split into 2+ smaller clusters
+4. What worker count or autoscaling range should be modeled?
+5. What instance type should be modeled, or should Lakemeter use a general-purpose default?
 
 ---
 
@@ -746,105 +636,33 @@ When user requests multiple workloads at once (like "I need ETL, dashboards, and
 I can help you set up all of these! To configure them optimally, I need a few details:
 
 **For your ETL pipelines:**
-1. What's the base table size you're merging into? (100GB, 1TB, 5TB, 10TB+)
-2. What's the job complexity? (Simple: append-only, Medium: MERGE/upsert with joins, Complex: 6+ joins, UDFs)
-3. How many batch runs per day?
+1. What worker count or autoscaling range should be modeled?
+2. What average runtime should be modeled for each batch run?
+3. What instance types should be modeled?
+4. How many batch runs per day?
 
 **For dashboarding (20 users):**
-3. Are all 20 users active at the same time, or spread throughout the day?
-4. Simple dashboard queries or complex aggregations?
+5. Which SQL warehouse type and size should be modeled?
+6. How many clusters should be modeled?
 
 **For GenAI chatbot (10 users):**
-5. What model do you prefer? (Anthropic Claude, OpenAI GPT, Google Gemini, Meta Llama)
+7. What model do you prefer? (Anthropic Claude, OpenAI GPT, Google Gemini, Meta Llama)
    - Recommend: claude-sonnet-4-5 (balanced), claude-haiku-4-5 (fast/cheap), claude-opus-4-5 (most capable)
-6. How many documents in your knowledge base?
+8. How many documents in your knowledge base?
 
 Once you answer these, I'll propose each workload with the right configuration!
 ```
 
 ## Configuration Tips
-- For JOBS/SDP: Ask about base_table_size + runs_per_day for batch (runtime inferred from TPC-DI benchmarks), OR hours_per_month for continuous
-- For DBSQL: Ask about total users, concurrency %, data volume, and query selectivity to size warehouse
+- For JOBS/SDP: Ask for worker count or autoscaling range, runtime, runs_per_day, and days_per_month for batch, OR hours_per_month for continuous
+- For DBSQL: Ask for warehouse type, warehouse size, cluster count, and hours_per_month
 - For serverless: STILL include driver_node_type, worker_node_type, and num_workers as these serve as cost estimation proxies
 - For reserved pricing: Only recommend for predictable, long-running workloads
 - For spot workers: Only for fault-tolerant batch jobs that can handle interruptions
 - ALWAYS use instance types appropriate for the estimate's cloud provider!
 
-## DBSQL Sizing Guidelines
-
-### Concurrent Users to Queries Per Minute Calculation
-Step 1: Calculate concurrent users from total users
-- **BI Dashboards**: 10-20% concurrent (use 15% default)
-- **Active Analytics**: 20-30% concurrent (use 25% default)
-- **Real-time Monitoring**: 40-60% concurrent (use 50% default)
-
-Step 2: Calculate queries per minute from concurrent users
-- **BI Dashboard users**: Submit ~1 query/minute (mostly viewing, occasional interactions)
-- **Analytics users**: Submit ~2 queries/minute (active exploration, filter changes)
-- **Monitoring dashboards**: Usually automated refreshes (treat as queries/minute directly)
-
-Example Calculations:
-- **100 BI users**: 100 × 15% = 15 concurrent users × 1 query/min = 15 queries/min needed
-- **100 Analytics users**: 100 × 25% = 25 concurrent users × 2 queries/min = 50 queries/min needed
-- **2000 Analytics users**: 2000 × 25% = 500 concurrent users × 2 queries/min = 1000 queries/min needed
-
-### Number of Clusters Calculation
-IMPORTANT: This is based on QUERIES PER MINUTE throughput, not concurrent connections.
-
-Step 1: Calculate queries per minute needed (from Step 2 above)
-Step 2: Adjust warehouse QPM based on data volume
-- QPM scales linearly with data volume: Larger data = proportionally lower QPM
-- Formula: Adjusted QPM = Base QPM × (10GB / actual_data_volume_GB)
-- Examples:
-  - Large WH (646 QPM at 10GB): 100GB data → 646 × (10/100) = 64.6 QPM per cluster
-  - Medium WH (380 QPM at 10GB): 1TB data → 380 × (10/1000) = 3.8 QPM per cluster
-
-Step 3: Calculate clusters needed
-- Formula: clusters = CEILING(queries_per_minute_needed / adjusted_QPM_per_cluster) - ALWAYS round UP
-- Example: 1000 queries/min needed, Large WH with 100GB data:
-  - Adjusted QPM = 646 × (10/100) = 64.6 QPM
-  - Clusters = 1000 / 64.6 = 15.48 → **16 clusters** (rounded UP)
-- Another example: 120 QPM needed, 64.6 QPM/cluster:
-  - Clusters = 120 / 64.6 = 1.86 → **2 clusters** (rounded UP, NOT 1!)
-
-### Warehouse Size Selection Process
-Step 1: Assess Data Volume
-- ≤10GB: Classic, Pro, Serverless perform similarly
-- >10GB with selective queries: Pro/Serverless 3-17x faster (Predictive I/O benefit)
-
-Step 2: Query Selectivity (for >10GB datasets)
-- **High selectivity (<1% results)**: 10-17x faster with Pro/Serverless
-  - "Show me user ID 12345's orders" (1 user out of 100K users)
-  - "Show me yesterday's transactions" (1 day out of 3 years)
-  - Speedup example: 1TB scan → Classic: 3min, Pro: 10-20s
-- **Moderate selectivity (1-5% results)**: 5-10x faster with Pro/Serverless
-  - "Show me last week's data" (1 week out of 1 year = ~2%)
-  - "Show me Northeast region sales" (1 region out of 20 = 5%)
-  - "Show me VIP tier customers" (top 5% of customer base)
-  - Speedup example: 1TB scan → Classic: 3min, Pro: 20-40s
-- **Low selectivity (>5% results)**: 1-3x faster
-  - "Show me this quarter's data" (3 months out of 1 year = 25%)
-  - "Show me all US customers" (40% of global base)
-
-Step 3: Size by QPM & Query Time Requirements
-- **Interactive dashboards**: Target <3s query time
-  - 10GB data → Small (2s) or larger
-  - 100GB data → Medium (10s) or larger
-  - 1TB data → Large (59s) or larger
-- **Analytical workloads**: 1-5min query times acceptable
-  - 1TB data → Medium (2m) is sufficient
-- **Heavy analytics**: Use QPM as guide
-  - 200 queries/min → Small (224 QPM)
-  - 400 queries/min → Medium (380 QPM)
-  - 650 queries/min → Large (646 QPM)
-
-### Warehouse Type Selection
-- **SERVERLESS**: Instant startup (<5 seconds), scales to zero when idle, best for sporadic/variable workloads, includes Predictive I/O. Auto-scaling and pay-per-use.
-- **PRO**: Slower startup (3-4 minutes), better for constant workloads where startup time matters, Unity Catalog support, includes Predictive I/O. Auto-scaling and pay-per-use.
-- **CLASSIC**: Legacy (not recommended for new deployments), slower startup (3-4 minutes), Unity Catalog support, NO Predictive I/O. Auto-scaling, can scale to zero, and pay-per-use.
-Note: All three types support Unity Catalog, auto-scaling, scale to zero, and pay-per-use. Main differences are startup time and Predictive I/O support (only Pro/Serverless have it).
-
-**When in doubt:** If user mentions filtering by date ranges, user IDs, specific categories, or "drill-down" queries, assume moderate selectivity (5%) and recommend Pro/Serverless for datasets >10GB."""
+## DBSQL Configuration Guidelines
+Do not derive warehouse size or cluster count from query throughput assumptions. If the user has not provided those values, ask for them. You may explain that Lakemeter will calculate cost once the selected warehouse type, size, cluster count, and usage hours are saved."""
 
 
 # Home mode system prompt (Q&A only, no workload creation)
@@ -995,7 +813,7 @@ The user will review and confirm before it's added to the estimate.""",
                 "dbsql_warehouse_type": {
                     "type": "string",
                     "enum": ["SERVERLESS", "PRO", "CLASSIC"],
-                    "description": "DBSQL warehouse type: SERVERLESS (instant startup <5s, Predictive I/O), PRO (3-4min startup, Unity Catalog, Predictive I/O), CLASSIC (3-4min startup, Unity Catalog, NO Predictive I/O). All auto-scale and pay-per-use."
+                    "description": "DBSQL warehouse type: SERVERLESS, PRO, or CLASSIC. All auto-scale and pay-per-use."
                 },
                 "dbsql_warehouse_size": {
                     "type": "string",
@@ -1004,7 +822,7 @@ The user will review and confirm before it's added to the estimate.""",
                 },
                 "dbsql_num_clusters": {
                     "type": "integer",
-                    "description": "Number of DBSQL clusters for scaling (1-100). 1 cluster = 10 concurrent queries."
+                    "description": "Number of DBSQL clusters for scaling (1-100). Use the user-provided cluster count."
                 },
                 "total_users": {
                     "type": "integer",
@@ -1012,27 +830,27 @@ The user will review and confirm before it's added to the estimate.""",
                 },
                 "concurrent_queries": {
                     "type": "integer",
-                    "description": "Peak concurrent queries (NOT users). If unknown, provide total_users and use_case_type instead."
+                    "description": "Peak concurrent queries (NOT users). Use as context in notes; do not convert it into cluster count."
                 },
                 "use_case_type": {
                     "type": "string",
                     "enum": ["bi_dashboard", "analytics", "monitoring"],
-                    "description": "Type of use case - affects concurrency ratio: BI dashboards ~15%, Analytics ~25%, Monitoring ~50%"
+                    "description": "Type of use case for explanatory notes"
                 },
                 "query_selectivity": {
                     "type": "string",
                     "enum": ["high", "moderate", "low", "unknown"],
-                    "description": "Query selectivity (% of table data returned): high=<1% (specific IDs, single day), moderate=1-5% (week in year, one region), low=>5% (quarter, large categories). Affects Predictive I/O: high=10-17x, moderate=5-10x, low=1-3x faster vs Classic"
+                    "description": "Query selectivity context for notes: high=specific IDs/small date ranges, moderate=bounded filters, low=broad scans"
                 },
                 "query_complexity": {
                     "type": "string",
                     "enum": ["simple", "medium", "complex"],
-                    "description": "Query complexity: simple (single table, basic filters/aggregations, 2x faster), medium (2-3 table joins, baseline benchmark), complex (4+ joins, subqueries, window functions, 3x slower)"
+                    "description": "Query complexity context for notes: simple, medium, or complex"
                 },
                 "typical_data_volume": {
                     "type": "string",
                     "enum": ["<1GB", "1-10GB", "10-100GB", "100GB-1TB", ">1TB"],
-                    "description": "Typical compressed data size in Delta table being queried (affects query performance and QPM)"
+                    "description": "Typical compressed data size in Delta table being queried"
                 },
                 
                 # === Model Serving Specific ===
@@ -1094,19 +912,19 @@ The user will review and confirm before it's added to the estimate.""",
                 # === Lakebase Specific ===
                 "lakebase_expected_reads_per_sec": {
                     "type": "integer",
-                    "description": "Expected lookup reads per second (e.g., 10000)"
+                    "description": "Expected lookup reads per second, used only as notes context"
                 },
                 "lakebase_expected_bulk_writes_per_sec": {
                     "type": "integer",
-                    "description": "Expected bulk write operations per second - truncate and load style (e.g., 5000)"
+                    "description": "Expected bulk write operations per second, used only as notes context"
                 },
                 "lakebase_expected_incremental_writes_per_sec": {
                     "type": "integer",
-                    "description": "Expected incremental writes per second - updates/inserts with scanning (e.g., 1000)"
+                    "description": "Expected incremental writes per second, used only as notes context"
                 },
                 "lakebase_avg_row_size_kb": {
                     "type": "number",
-                    "description": "Average row size (uncompressed) in KB (default: 1KB). Affects throughput calculations"
+                    "description": "Average row size (uncompressed) in KB, used only as notes context"
                 },
                 "lakebase_ha_enabled": {
                     "type": "boolean",
@@ -1115,6 +933,10 @@ The user will review and confirm before it's added to the estimate.""",
                 "lakebase_num_read_replicas": {
                     "type": "integer",
                     "description": "Number of read replicas (0-2) for read scaling. Total instances = 1 primary + 0-2 read replicas (max 3 total). Each replica has same CU as primary and handles reads only. Writes always go to primary."
+                },
+                "lakebase_cu": {
+                    "type": "number",
+                    "description": "Lakebase Compute Units to model. Use the user-provided CU value; do not derive CU from throughput."
                 },
                 "lakebase_storage_gb": {
                     "type": "integer",
@@ -2405,21 +2227,20 @@ Each workload needs to be confirmed individually. Review the configurations and 
         wtype = workload["workload_type"]
         cloud = workload.get("cloud", "aws").lower()
         
-        # Cloud-specific instance types for balanced cost/performance
-        # Using widely available instance types across regions
-        # Worker nodes based on TPC-DI ETL benchmarks
+        # Cloud-specific instance types for balanced cost/performance.
+        # Use broadly available defaults unless the user provides a specific size.
         instance_types = {
             "aws": {
                 "general": "m6i.xlarge",      # General purpose, widely available
                 "memory": "r5.xlarge",        # Memory optimized
                 "compute": "c5.xlarge",       # Compute optimized
-                "etl_worker": "m6id.2xlarge", # TPC-DI benchmark: 8 vCPU, 32GB, NVMe SSD
+                "etl_worker": "m6id.2xlarge",
             },
             "azure": {
                 "general": "Standard_D4s_v3",      # General purpose, widely available
                 "memory": "Standard_E4s_v3",       # Memory optimized
                 "compute": "Standard_F4s_v2",      # Compute optimized
-                "etl_worker": "Standard_D8ds_v5",  # TPC-DI benchmark: 8 vCPU, 32GB, NVMe SSD
+                "etl_worker": "Standard_D8ds_v5",
             },
             "gcp": {
                 "general": "n1-standard-4",        # Balanced
@@ -2475,16 +2296,16 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 notes_parts.append("=" * 60)
                 notes_parts.append("")
                 
-                # Instance Selection - Based on TPC-DI ETL Benchmarks
-                notes_parts.append(f"**📦 Worker Instance Type: {default_instance}** (TPC-DI Benchmark):")
+                # Instance selection
+                notes_parts.append(f"**📦 Worker Instance Type: {default_instance}**:")
                 if cloud == "aws":
                     notes_parts.append("• **m6id.2xlarge**: 8 vCPUs, 32 GB RAM, 474 GB NVMe SSD")
-                    notes_parts.append("• **Why chosen**: TPC-DI benchmark-proven for ETL workloads")
-                    notes_parts.append("• **NVMe SSD**: Optimal for Spark shuffle and intermediate data")
+                    notes_parts.append("• **Why chosen**: General-purpose ETL default with local NVMe SSD")
+                    notes_parts.append("• **NVMe SSD**: Useful for Spark shuffle and intermediate data")
                     notes_parts.append("• **Alternative**: m6i.xlarge for smaller workloads, r5.xlarge for memory-intensive")
                 elif cloud == "azure":
                     notes_parts.append("• **Standard_D8ds_v5**: 8 vCPUs, 32 GB RAM, 300 GB NVMe SSD")
-                    notes_parts.append("• **Why chosen**: TPC-DI benchmark-proven for ETL workloads")
+                    notes_parts.append("• **Why chosen**: General-purpose ETL default with local NVMe SSD")
                     notes_parts.append("• **Availability**: D-series widely available across ALL Azure regions")
                     notes_parts.append("• **Alternative**: Standard_D4ds_v5 for smaller workloads, E-series for memory-optimized")
                 else:  # GCP
@@ -2493,64 +2314,10 @@ Each workload needs to be confirmed individually. Review the configurations and 
                     notes_parts.append("• **Alternative**: n1-highmem-8 for memory-intensive jobs")
                 
                 notes_parts.append("")
-                notes_parts.append("**📊 TPC-DI ETL Benchmark Reference (MEDIUM Complexity Baseline):**")
-                notes_parts.append("(Same performance for Classic Jobs, Serverless Jobs, SDP all editions)")
-                notes_parts.append("")
-                if cloud == "aws":
-                    notes_parts.append("| Data Scale | Driver         | Worker         | Workers | Runtime |")
-                    notes_parts.append("|------------|----------------|----------------|---------|---------|")
-                    notes_parts.append("| ~100 GB    | m6i.xlarge     | m6id.2xlarge   | 1       | ~10 min |")
-                    notes_parts.append("| ~1 TB      | m6i.xlarge     | m6id.2xlarge   | 2       | ~20 min |")
-                    notes_parts.append("| ~5 TB      | m6i.xlarge     | m6id.2xlarge   | 10      | ~20 min |")
-                    notes_parts.append("| ~10 TB     | m6i.2xlarge    | m6id.2xlarge   | 20      | ~25 min |")
-                elif cloud == "azure":
-                    notes_parts.append("| Data Scale | Driver              | Worker              | Workers | Runtime |")
-                    notes_parts.append("|------------|---------------------|---------------------|---------|---------|")
-                    notes_parts.append("| ~100 GB    | Standard_D4ds_v5    | Standard_D8ds_v5    | 1       | ~10 min |")
-                    notes_parts.append("| ~1 TB      | Standard_D4ds_v5    | Standard_D8ds_v5    | 2       | ~20 min |")
-                    notes_parts.append("| ~5 TB      | Standard_D4ds_v5    | Standard_D8ds_v5    | 10      | ~20 min |")
-                    notes_parts.append("| ~10 TB     | Standard_D8ds_v5    | Standard_D8ds_v5    | 20      | ~25 min |")
-                else:  # GCP
-                    notes_parts.append("| Data Scale | Driver         | Worker         | Workers | Runtime |")
-                    notes_parts.append("|------------|----------------|----------------|---------|---------|")
-                    notes_parts.append("| ~100 GB    | n1-standard-4  | n1-standard-8  | 1       | ~10 min |")
-                    notes_parts.append("| ~1 TB      | n1-standard-4  | n1-standard-8  | 2       | ~20 min |")
-                    notes_parts.append("| ~5 TB      | n1-standard-4  | n1-standard-8  | 10      | ~20 min |")
-                    notes_parts.append("| ~10 TB     | n1-standard-8  | n1-standard-8  | 20      | ~25 min |")
-                notes_parts.append("")
-                notes_parts.append("**⚡ Job Complexity Multipliers:**")
-                notes_parts.append("Benchmark above is for MEDIUM complexity. Adjust based on job type:")
-                notes_parts.append("")
-                notes_parts.append("• **SIMPLE** (2x faster → half the workers or runtime):")
-                notes_parts.append("  - Basic transformations: SELECT, filter, simple aggregations")
-                notes_parts.append("  - Single source to single destination")
-                notes_parts.append("  - Minimal joins (1-2 tables)")
-                notes_parts.append("  - Example: CSV → Delta with column renames and type casts")
-                notes_parts.append("")
-                notes_parts.append("• **MEDIUM** (Baseline - TPC-DI benchmark):")
-                notes_parts.append("  - Standard ETL with multiple transformations")
-                notes_parts.append("  - 3-5 table joins")
-                notes_parts.append("  - Aggregations with GROUP BY, window functions")
-                notes_parts.append("  - Example: Dimensional modeling, fact table creation")
-                notes_parts.append("")
-                notes_parts.append("• **COMPLEX** (3x slower → 3x the workers or runtime):")
-                notes_parts.append("  - Heavy transformations, nested structures")
-                notes_parts.append("  - 6+ table joins, self-joins")
-                notes_parts.append("  - Complex UDFs, ML feature engineering")
-                notes_parts.append("  - Graph processing, recursive operations")
-                notes_parts.append("  - Example: Customer 360, complex CDC merges")
-                notes_parts.append("")
-                notes_parts.append("**📋 Scaling Guidelines (MEDIUM complexity):**")
-                notes_parts.append("• ~100 GB: 1 worker, ~10 min (rounded to 5-min buffer)")
-                notes_parts.append("• ~1 TB: 2-4 workers, ~20 min")
-                notes_parts.append("• ~5 TB: 8-12 workers, ~20 min (scales efficiently)")
-                notes_parts.append("• ~10 TB+: 20 workers, ~25 min (use larger driver)")
-                notes_parts.append("")
-                notes_parts.append("**💰 Cost Estimation Tip:**")
-                notes_parts.append("• Always round runtime UP to nearest 5 minutes for buffer")
-                notes_parts.append("• Actual: 6 min → Estimate: 10 min")
-                notes_parts.append("• Actual: 19 min → Estimate: 20 min")
-                notes_parts.append("• Actual: 22 min → Estimate: 25 min")
+                notes_parts.append("**📊 Sizing Inputs:**")
+                notes_parts.append("• Worker count, runtime, and schedule are modeled from user-provided inputs.")
+                notes_parts.append("• Use recent job history, customer measurements, or Databricks guidance to choose these values.")
+                notes_parts.append("• Lakemeter calculates cost after those values are saved; it does not infer runtime or workers from data size.")
                 
                 # Pricing Strategy
                 notes_parts.append("")
@@ -2562,14 +2329,11 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 notes_parts.append(f"• **Driver node**: {default_driver} (on-demand for stability)")
                 notes_parts.append("  → Driver coordinates tasks and manages metadata")
                 if cloud == "aws":
-                    notes_parts.append("  → m6i.xlarge (4 vCPU, 16 GB) for up to ~5TB datasets")
-                    notes_parts.append("  → m6i.2xlarge (8 vCPU, 32 GB) for 10TB+ datasets")
+                    notes_parts.append("  → m6i.xlarge (4 vCPU, 16 GB) as a general-purpose default")
                 elif cloud == "azure":
-                    notes_parts.append("  → Standard_D4ds_v5 (4 vCPU, 16 GB) for up to ~5TB datasets")
-                    notes_parts.append("  → Standard_D8ds_v5 (8 vCPU, 32 GB) for 10TB+ datasets")
+                    notes_parts.append("  → Standard_D4ds_v5 (4 vCPU, 16 GB) as a general-purpose default")
                 else:  # GCP
-                    notes_parts.append("  → n1-standard-4 (4 vCPU, 15 GB) for up to ~5TB datasets")
-                    notes_parts.append("  → n1-standard-8 (8 vCPU, 30 GB) for 10TB+ datasets")
+                    notes_parts.append("  → n1-standard-4 (4 vCPU, 15 GB) as a general-purpose default")
                 notes_parts.append("• **Cost impact**: ~70-80% reduction in VM costs vs all on-demand")
                 notes_parts.append("• **Risk mitigation**: Driver stays up even if workers are interrupted")
                 
@@ -2731,76 +2495,9 @@ Each workload needs to be confirmed individually. Review the configurations and 
             warehouse_type = workload["dbsql_warehouse_type"]
             size = workload.setdefault("dbsql_warehouse_size", "Small")
             
-            # Calculate num_clusters based on queries per minute throughput
-            total_users = workload.get("total_users", 0)
-            use_case_type = workload.get("use_case_type", "bi_dashboard")
-            typical_data_volume = workload.get("typical_data_volume", "1-10GB")
-            query_complexity = workload.get("query_complexity", "medium")
-            
-            # Warehouse QPM at 10GB baseline (medium complexity queries)
-            warehouse_qpm = {
-                "2X-Small": 77,
-                "X-Small": 131,
-                "Small": 224,
-                "Medium": 380,
-                "Large": 646,
-                "X-Large": 1098,
-                "2X-Large": 1867,
-                "3X-Large": 3174,
-                "4X-Large": 5395,
-            }
-            base_qpm = warehouse_qpm.get(size, 224)  # Default to Small
-            
-            # Calculate queries per minute needed
-            if total_users > 0:
-                # Step 1: Calculate concurrent users
-                concurrency_ratios = {
-                    "bi_dashboard": 0.15,  # 15% average
-                    "analytics": 0.25,     # 25% average
-                    "monitoring": 0.50,    # 50% average
-                }
-                ratio = concurrency_ratios.get(use_case_type, 0.15)
-                concurrent_users = int(total_users * ratio)
-                
-                # Step 2: Calculate queries per minute
-                queries_per_user_per_minute = {
-                    "bi_dashboard": 1,    # BI users: mostly viewing, occasional interactions
-                    "analytics": 2,       # Analytics users: active exploration
-                    "monitoring": 2,      # Monitoring: automated refreshes
-                }
-                qpm_per_user = queries_per_user_per_minute.get(use_case_type, 1)
-                queries_per_minute_needed = concurrent_users * qpm_per_user
-                
-                # Step 3: Adjust QPM based on data volume (linear scaling)
-                data_volume_gb_map = {
-                    "<1GB": 0.5,
-                    "1-10GB": 10,
-                    "10-100GB": 50,
-                    "100GB-1TB": 500,
-                    ">1TB": 5000,
-                }
-                avg_data_gb = data_volume_gb_map.get(typical_data_volume, 10)
-                adjusted_qpm_per_cluster = base_qpm * (10 / avg_data_gb)
-                
-                # Step 4: Adjust QPM based on query complexity
-                # Baseline QPM is for medium complexity queries (TPC-DS benchmark)
-                complexity_multipliers = {
-                    "simple": 2.0,    # Simple queries are 2x faster
-                    "medium": 1.0,    # Baseline
-                    "complex": 0.33,  # Complex queries are 3x slower (1/3 throughput)
-                }
-                complexity_multiplier = complexity_multipliers.get(query_complexity, 1.0)
-                adjusted_qpm_per_cluster = adjusted_qpm_per_cluster * complexity_multiplier
-                
-                # Step 5: Calculate clusters needed
-                if adjusted_qpm_per_cluster > 0:
-                    import math
-                    num_clusters = max(1, math.ceil(queries_per_minute_needed / adjusted_qpm_per_cluster))  # Always round UP
-                    workload.setdefault("dbsql_num_clusters", num_clusters)
-                else:
-                    workload.setdefault("dbsql_num_clusters", 1)
-            else:
-                workload.setdefault("dbsql_num_clusters", 1)
+            # Use user-provided cluster count. Do not derive clusters from
+            # internal sizing assumptions in the OSS assistant.
+            workload.setdefault("dbsql_num_clusters", 1)
             
             notes_parts.append(f"**Warehouse Type ({warehouse_type})**:")
             if warehouse_type == "SERVERLESS":
@@ -2817,27 +2514,28 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 notes_parts.append("• Slower startup (3-4 minutes)")
                 notes_parts.append("• Unity Catalog support")
                 notes_parts.append("• Auto-scaling, can scale to zero, pay-per-use")
-                notes_parts.append("• NO Predictive I/O (slower for large datasets >10GB)")
+                notes_parts.append("• For new workloads, consider Serverless or Pro unless Classic is required")
             
             notes_parts.append("")
             notes_parts.append(f"**Warehouse Size ({size})**:")
             size_info = {
-                "2X-Small": "4 DBU/hr, 77 QPM - Light usage: 1-5 users, 10GB: ~5s, suitable for small teams",
-                "X-Small": "6 DBU/hr, 131 QPM - Small team: 5-10 users, 10GB: ~3s, 1TB: ~5min",
-                "Small": "12 DBU/hr, 224 QPM - Standard BI: 10-20 users, 10GB: ~2s, 100GB: ~17s (default choice)",
-                "Medium": "24 DBU/hr, 380 QPM - Active dashboards: 20-40 users, 10GB: <1s, 1TB: ~2min",
-                "Large": "40 DBU/hr, 646 QPM - Heavy workloads: 40-80 users, 100GB: ~6s, 1TB: <1min",
-                "X-Large": "80 DBU/hr, 1,098 QPM - High concurrency: 80-150 users, sub-second for 100GB",
-                "2X-Large": "144 DBU/hr, 1,867 QPM - Enterprise scale: 150-250 users, 1TB: ~21s",
-                "3X-Large": "272 DBU/hr, 3,174 QPM - Very large scale: 250-400 users, 10TB: ~2min",
-                "4X-Large": "528 DBU/hr, 5,395 QPM - Maximum performance: 400+ users, 10TB: ~1min",
+                "2X-Small": "4 DBU/hr",
+                "X-Small": "6 DBU/hr",
+                "Small": "12 DBU/hr",
+                "Medium": "24 DBU/hr",
+                "Large": "40 DBU/hr",
+                "X-Large": "80 DBU/hr",
+                "2X-Large": "144 DBU/hr",
+                "3X-Large": "272 DBU/hr",
+                "4X-Large": "528 DBU/hr",
             }
-            notes_parts.append(f"• {size_info.get(size, 'Sized based on expected query complexity')}")
+            notes_parts.append(f"• {size_info.get(size, 'Use the DBU/hr rate from the pricing table')}")
             
-            # Comprehensive sizing calculation with all inputs and assumptions
+            # Configuration summary. The OSS assistant models user-provided
+            # DBSQL size and cluster count inputs.
             notes_parts.append("")
             notes_parts.append("=" * 60)
-            notes_parts.append("**DETAILED SIZING CALCULATION**")
+            notes_parts.append("**DBSQL CONFIGURATION SUMMARY**")
             notes_parts.append("=" * 60)
             
             num_clusters = workload.get("dbsql_num_clusters", 1)
@@ -2846,10 +2544,9 @@ Each workload needs to be confirmed individually. Review the configurations and 
             typical_data_volume = workload.get("typical_data_volume", "1-10GB")
             query_complexity = workload.get("query_complexity", "medium")
             query_selectivity = workload.get("query_selectivity", "unknown")
-            
-            # Section 1: Inputs Collected
+
             notes_parts.append("")
-            notes_parts.append("**📊 INPUTS COLLECTED:**")
+            notes_parts.append("**📊 Inputs Captured:**")
             notes_parts.append(f"• Total Users: {total_users if total_users > 0 else 'Not specified'}")
             notes_parts.append(f"• Use Case Type: {use_case_type.replace('_', ' ').title()}")
             notes_parts.append(f"• Data Volume (compressed): {typical_data_volume}")
@@ -2857,147 +2554,35 @@ Each workload needs to be confirmed individually. Review the configurations and 
             if query_complexity == "simple":
                 notes_parts.append("  → Single table, basic filters/aggregations (COUNT, SUM, AVG)")
             elif query_complexity == "medium":
-                notes_parts.append("  → 2-3 table joins with WHERE clauses and GROUP BY (TPC-DS baseline)")
+                notes_parts.append("  → 2-3 table joins with WHERE clauses and GROUP BY")
             elif query_complexity == "complex":
                 notes_parts.append("  → 4+ table joins, subqueries, window functions, nested aggregations")
             notes_parts.append(f"• Query Selectivity: {query_selectivity.title()}")
             notes_parts.append(f"• Selected Warehouse: {warehouse_type} {size}")
-            
-            # Section 2: Assumptions Made
+            notes_parts.append(f"• Cluster Count: {num_clusters}")
             notes_parts.append("")
-            notes_parts.append("**🎯 ASSUMPTIONS:**")
-            concurrency_ratios = {"bi_dashboard": 0.15, "analytics": 0.25, "monitoring": 0.50}
-            queries_per_user = {"bi_dashboard": 1, "analytics": 2, "monitoring": 2}
-            ratio = concurrency_ratios.get(use_case_type, 0.15)
-            qpm_per_user = queries_per_user.get(use_case_type, 1)
-            
-            if use_case_type == "bi_dashboard":
-                notes_parts.append("• BI Dashboard Users:")
-                notes_parts.append("  → Peak concurrency: ~15% of total users")
-                notes_parts.append("  → Query frequency: 1 query/user/minute (mostly viewing, occasional filters)")
-            elif use_case_type == "analytics":
-                notes_parts.append("• Analytics Users:")
-                notes_parts.append("  → Peak concurrency: ~25% of total users")
-                notes_parts.append("  → Query frequency: 2 queries/user/minute (active exploration, filter changes)")
-            elif use_case_type == "monitoring":
-                notes_parts.append("• Monitoring Dashboard:")
-                notes_parts.append("  → Peak concurrency: ~50% of total users")
-                notes_parts.append("  → Query frequency: 2 queries/user/minute (automated refreshes)")
-            
-            notes_parts.append("• Benchmark: TPC-DS medium complexity queries on 10GB data")
-            notes_parts.append("• Data volume scaling: Linear (100GB = 1/10th of 10GB QPM)")
-            notes_parts.append("• Query complexity impact:")
-            notes_parts.append("  → Simple queries: 2x faster than baseline")
-            notes_parts.append("  → Medium queries: Baseline performance")
-            notes_parts.append("  → Complex queries: 3x slower than baseline (1/3 throughput)")
-            notes_parts.append("• Cluster rounding: ALWAYS round UP (e.g., 1.86 → 2 clusters, NOT 1)")
-            notes_parts.append("  → Better to have extra capacity than insufficient throughput")
-            
-            # Section 3: Step-by-Step Calculation
-            if total_users > 0:
-                notes_parts.append("")
-                notes_parts.append("**🔢 CALCULATION STEPS:**")
-                
-                # Step 1: Concurrent users
-                concurrent_users = int(total_users * ratio)
-                notes_parts.append(f"Step 1 - Calculate Concurrent Users:")
-                notes_parts.append(f"  {total_users} total users × {int(ratio*100)}% = {concurrent_users} concurrent users")
-                
-                # Step 2: Queries per minute needed
-                queries_per_minute_needed = concurrent_users * qpm_per_user
-                notes_parts.append(f"Step 2 - Calculate Queries Per Minute Needed:")
-                notes_parts.append(f"  {concurrent_users} users × {qpm_per_user} queries/user/min = {queries_per_minute_needed} QPM needed")
-                
-                # Step 3: Base QPM for warehouse size
-                warehouse_qpm = {"2X-Small": 77, "X-Small": 131, "Small": 224, "Medium": 380, "Large": 646, "X-Large": 1098, "2X-Large": 1867, "3X-Large": 3174, "4X-Large": 5395}
-                base_qpm = warehouse_qpm.get(size, 224)
-                notes_parts.append(f"Step 3 - Base Warehouse QPM (10GB, Medium Complexity):")
-                notes_parts.append(f"  {size} warehouse = {base_qpm} QPM per cluster")
-                
-                # Step 4: Adjust for data volume
-                data_volume_gb_map = {"<1GB": 0.5, "1-10GB": 10, "10-100GB": 50, "100GB-1TB": 500, ">1TB": 5000}
-                avg_data_gb = data_volume_gb_map.get(typical_data_volume, 10)
-                qpm_after_volume = base_qpm * (10 / avg_data_gb)
-                notes_parts.append(f"Step 4 - Adjust for Data Volume:")
-                notes_parts.append(f"  {base_qpm} QPM × (10GB / {avg_data_gb}GB) = {qpm_after_volume:.1f} QPM")
-                
-                # Step 5: Adjust for query complexity
-                complexity_multipliers = {"simple": 2.0, "medium": 1.0, "complex": 0.33}
-                complexity_multiplier = complexity_multipliers.get(query_complexity, 1.0)
-                final_qpm_per_cluster = qpm_after_volume * complexity_multiplier
-                notes_parts.append(f"Step 5 - Adjust for Query Complexity:")
-                notes_parts.append(f"  {qpm_after_volume:.1f} QPM × {complexity_multiplier} ({query_complexity}) = {final_qpm_per_cluster:.1f} QPM/cluster")
-                
-                # Step 6: Calculate clusters needed
-                notes_parts.append(f"Step 6 - Calculate Clusters Needed:")
-                notes_parts.append(f"  {queries_per_minute_needed} QPM needed ÷ {final_qpm_per_cluster:.1f} QPM/cluster = {queries_per_minute_needed / final_qpm_per_cluster:.2f}")
-                notes_parts.append(f"  → Rounded UP to {num_clusters} cluster(s) (always round up for capacity)")
-                
-                # Section 4: Final Results
-                notes_parts.append("")
-                notes_parts.append("**✅ FINAL CONFIGURATION:**")
-                total_capacity_qpm = num_clusters * final_qpm_per_cluster
-                notes_parts.append(f"• Total Capacity: {num_clusters} clusters × {final_qpm_per_cluster:.1f} QPM = {total_capacity_qpm:.0f} QPM")
-                notes_parts.append(f"• Required Throughput: {queries_per_minute_needed} QPM")
-                headroom_pct = ((total_capacity_qpm - queries_per_minute_needed) / queries_per_minute_needed * 100) if queries_per_minute_needed > 0 else 0
-                notes_parts.append(f"• Headroom: {headroom_pct:.0f}% above requirement")
-                notes_parts.append(f"• Can support: ~{int(total_capacity_qpm / qpm_per_user / ratio)} total users at peak concurrency")
-            else:
-                notes_parts.append("")
-                notes_parts.append(f"**Configuration:** {num_clusters} cluster(s) manually specified")
+            notes_parts.append("**Cost Model:**")
+            notes_parts.append("• Lakemeter will calculate DBSQL cost from warehouse DBU/hr, cluster count, usage hours, and $/DBU pricing.")
+            notes_parts.append("• Warehouse size and cluster count are user-provided inputs in this OSS assistant.")
             
             notes_parts.append("")
             notes_parts.append("=" * 60)
-            
-            # Add performance information
+
             notes_parts.append("")
-            notes_parts.append(f"**Query Performance ({size})**:")
-            qpm_info = {
-                "2X-Small": "77 QPM - 10GB: ~5s (Pro/Serverless with Predictive I/O)",
-                "X-Small": "131 QPM - 10GB: ~3s, 1TB: ~5min",
-                "Small": "224 QPM - 10GB: ~2s, 100GB: ~17s",
-                "Medium": "380 QPM - 10GB: <1s, 1TB: ~2min",
-                "Large": "646 QPM - 100GB: ~6s, 1TB: <1min",
-                "X-Large": "1,098 QPM - 100GB: ~3s, 1TB: ~35s",
-                "2X-Large": "1,867 QPM - 100GB: ~2s, 1TB: ~21s",
-                "3X-Large": "3,174 QPM - 100GB: ~1s, 1TB: ~12s",
-                "4X-Large": "5,395 QPM - 100GB: <1s, 1TB: ~7s",
-            }
-            notes_parts.append(f"• {qpm_info.get(size, 'Scales with warehouse size')}")
+            notes_parts.append("**Query Performance:**")
+            notes_parts.append("• Validate performance with query history, SQL warehouse monitoring, and representative workload tests.")
             notes_parts.append("• Photon acceleration always enabled for DBSQL")
-            
-            # Add Predictive I/O note for Pro/Serverless
-            data_volume = workload.get("typical_data_volume", "unknown")
-            selectivity = workload.get("query_selectivity", "unknown")
-            
+
             if warehouse_type in ["SERVERLESS", "PRO"]:
                 notes_parts.append("")
-                notes_parts.append("**Predictive I/O Acceleration:**")
-                notes_parts.append("• Enabled for Pro/Serverless warehouses")
-                
-                if data_volume in ["10-100GB", "100GB-1TB", ">1TB"]:
-                    if selectivity == "high":
-                        notes_parts.append("• High selectivity queries (<1%): up to 17x faster than Classic")
-                        notes_parts.append("  Example: Filter to specific user ID, single day of data")
-                    elif selectivity == "moderate":
-                        notes_parts.append("• Moderate selectivity queries (1-5%): 5-10x faster than Classic")
-                        notes_parts.append("  Example: Filter to 1 week in a year, 1 region out of 20, VIP customers")
-                    elif selectivity == "low":
-                        notes_parts.append("• Low selectivity queries (>5%): 1-3x faster than Classic")
-                        notes_parts.append("  Example: Filter to 1 quarter, large categories")
-                    else:
-                        notes_parts.append("• For selective queries (<5% of data): 5-17x faster than Classic")
-                        notes_parts.append("  Example: Filtering by date ranges, user IDs, specific categories")
-                else:
-                    notes_parts.append("• For datasets >10GB: significant speedup on selective queries")
-                    
+                notes_parts.append("**Optimization Note:**")
+                notes_parts.append("• Pro and Serverless warehouses include platform-managed performance optimizations.")
+                notes_parts.append("• Use query profile and warehouse monitoring to tune size and cluster count.")
             elif warehouse_type == "CLASSIC":
                 notes_parts.append("")
                 notes_parts.append("**Performance Note:**")
                 notes_parts.append("• Classic: Supports Unity Catalog, auto-scaling, scale to zero")
-                notes_parts.append("• Classic: NO Predictive I/O (slower for large datasets)")
-                if data_volume in ["10-100GB", "100GB-1TB", ">1TB"]:
-                    notes_parts.append("• ⚠️ Consider Pro/Serverless for 5-17x faster performance on selective queries with Predictive I/O")
+                notes_parts.append("• For new workloads, consider Serverless or Pro unless Classic is required")
         
         if wtype == "LAKEBASE":
             # Get user inputs
@@ -3011,52 +2596,9 @@ Each workload needs to be confirmed individually. Review the configurations and 
             # Validate read replicas (max 2, total 3 instances including primary)
             num_read_replicas = min(max(0, num_read_replicas), 2)
             workload["lakebase_num_read_replicas"] = num_read_replicas
-            
-            # Performance benchmarks for 1 CU with 1KB row size (uncompressed)
-            READS_PER_CU_1KB = 10000  # Can vary 2,000-30,000 based on data size and cache hit ratio
-            BULK_WRITES_PER_CU_1KB = 15000
-            INCREMENTAL_WRITES_PER_CU_1KB = 1200
-            
-            # Adjust for row size (throughput inversely proportional to row size)
-            row_size_factor = avg_row_size_kb / 1.0
-            reads_per_cu = READS_PER_CU_1KB / row_size_factor
-            bulk_writes_per_cu = BULK_WRITES_PER_CU_1KB / row_size_factor
-            incremental_writes_per_cu = INCREMENTAL_WRITES_PER_CU_1KB / row_size_factor
-            
-            # Calculate CU needed
-            if reads_per_sec > 0 or bulk_writes_per_sec > 0 or incremental_writes_per_sec > 0:
-                import math
-                
-                # Calculate reads distribution across primary + read replicas
-                # All nodes (primary + replicas) can handle reads
-                total_read_nodes = 1 + num_read_replicas  # primary + replicas (max 3 total)
-                reads_per_node = reads_per_sec / total_read_nodes
-                cu_for_reads_per_node = reads_per_node / reads_per_cu
-                
-                # Calculate writes (only primary handles writes)
-                # Note: Bulk and incremental writes use different capacities, so calculate separately
-                cu_for_bulk_writes = bulk_writes_per_sec / bulk_writes_per_cu if bulk_writes_per_sec > 0 else 0
-                cu_for_incremental_writes = incremental_writes_per_sec / incremental_writes_per_cu if incremental_writes_per_sec > 0 else 0
-                
-                # Read and write QPS ARE cumulative (sum, not max)
-                # Primary must handle: (reads distributed across nodes) + (all writes)
-                cu_for_primary = cu_for_reads_per_node + cu_for_bulk_writes + cu_for_incremental_writes
-                
-                # Each replica only handles reads
-                cu_for_replica = cu_for_reads_per_node
-                
-                # All nodes must have the same CU (replicas match primary)
-                # So we use the primary's requirement (which is always >= replica)
-                cu_needed = cu_for_primary
-                
-                # Round up to next available CU option: 1, 2, 4, 8
-                CU_OPTIONS = [1, 2, 4, 8]
-                cu = next((cu_opt for cu_opt in CU_OPTIONS if cu_opt >= cu_needed), 8)
-                cu = min(cu, 8)  # Cap at 8 CU
-            else:
-                # No workload specified, default to 2 CU
-                cu = 2
-            
+
+            # Use user-provided CU. Do not derive CU from throughput in OSS.
+            cu = workload.get("lakebase_cu", 2)
             workload["lakebase_cu"] = cu
             
             # Total active nodes = primary + read replicas (for billing/display)
@@ -3069,7 +2611,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
             notes_parts.append("**LAKEBASE (POSTGRESQL) CONFIGURATION**")
             notes_parts.append("=" * 60)
             notes_parts.append("")
-            notes_parts.append(f"**🗄️ Compute Units: {cu} CU** (Auto-calculated from workload)")
+            notes_parts.append(f"**🗄️ Compute Units: {cu} CU** (user-provided sizing input)")
             notes_parts.append(f"• Each CU = 1 vCPU + dedicated memory + storage IOPS")
             notes_parts.append(f"• **Your configuration**: {cu} CU = ~{cu*2}GB RAM, {cu*1000} IOPS baseline")
             notes_parts.append("")
@@ -3084,42 +2626,12 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 if incremental_writes_per_sec > 0:
                     notes_parts.append(f"• Incremental writes: {incremental_writes_per_sec:,} rows/sec (updates/inserts with scanning)")
                 if avg_row_size_kb != 1.0:
-                    notes_parts.append(f"• Average row size (uncompressed): {avg_row_size_kb}KB (affects throughput)")
+                    notes_parts.append(f"• Average row size (uncompressed): {avg_row_size_kb}KB")
                 notes_parts.append("")
-                
-                notes_parts.append("**🔧 CU Sizing Calculation:**")
-                notes_parts.append(f"• Performance per CU (1KB rows): {int(reads_per_cu):,} reads/sec, {int(bulk_writes_per_cu):,} bulk writes/sec, {int(incremental_writes_per_cu):,} incremental writes/sec")
-                
-                total_read_nodes = 1 + num_read_replicas
-                if num_read_replicas > 0:
-                    reads_per_node = reads_per_sec / total_read_nodes
-                    notes_parts.append(f"• Reads distributed across {total_read_nodes} nodes (1 primary + {num_read_replicas} read replica(s)): {reads_per_node:.0f} reads/sec per node")
-                    cu_for_reads_per_node = reads_per_node / reads_per_cu
-                    notes_parts.append(f"• CU for reads per node: {cu_for_reads_per_node:.2f} CU")
-                else:
-                    cu_for_reads_per_node = reads_per_sec / reads_per_cu if reads_per_sec > 0 else 0
-                    notes_parts.append(f"• CU for reads (primary only): {cu_for_reads_per_node:.2f} CU")
-                
-                cu_for_bulk = bulk_writes_per_sec / bulk_writes_per_cu if bulk_writes_per_sec > 0 else 0
-                cu_for_incr = incremental_writes_per_sec / incremental_writes_per_cu if incremental_writes_per_sec > 0 else 0
-                notes_parts.append(f"• CU for writes (primary only): {cu_for_bulk:.2f} (bulk) + {cu_for_incr:.2f} (incremental) = {cu_for_bulk + cu_for_incr:.2f} CU")
-                notes_parts.append(f"• **Total CU needed (reads + writes are cumulative)**: {cu_for_reads_per_node + cu_for_bulk + cu_for_incr:.2f} CU")
-                notes_parts.append(f"• **Selected CU** (rounded to available options 1/2/4/8): **{cu} CU**")
-                notes_parts.append("")
-            
-            notes_parts.append("**Performance Benchmarks (1 CU with 1KB uncompressed rows):**")
-            notes_parts.append("• **Reads**: ~10,000 reads/sec (varies 2,000-30,000 based on data size and cache hit ratio)")
-            notes_parts.append("• **Bulk Writes**: ~15,000 rows/sec (truncate and load operations)")
-            notes_parts.append("• **Incremental Writes**: ~1,200 rows/sec (updates/inserts with scanning)")
-            notes_parts.append("• **Concurrent Connections**: ~50 per CU")
-            notes_parts.append(f"• **Your {cu} CU capacity**: ~{int(cu * 10000):,} reads/sec, ~{int(cu * 15000):,} bulk writes/sec, ~{int(cu * 1200):,} incremental writes/sec")
-            notes_parts.append("")
-            
-            notes_parts.append("**Sizing Guidelines:**")
-            notes_parts.append("• 1 CU: Development, light workloads, <10K reads/sec")
-            notes_parts.append("• 2 CU: Small production, <20K reads/sec, <30K bulk writes/sec")
-            notes_parts.append("• 4 CU: Medium production, <40K reads/sec, <60K bulk writes/sec")
-            notes_parts.append("• 8 CU: Large production, <80K reads/sec, <120K bulk writes/sec")
+                notes_parts.append("**Sizing Note:**")
+                notes_parts.append("• Throughput values are captured for context only.")
+                notes_parts.append("• Lakemeter models cost from the CU value provided by the user.")
+                notes_parts.append("• Validate CU sizing with Lakebase metrics, workload testing, or Databricks guidance.")
             notes_parts.append("")
             
             # Read Replicas
@@ -3129,8 +2641,8 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 notes_parts.append(f"• Each replica has {cu} CU (same as primary)")
                 notes_parts.append("• ✅ Read replicas handle READ requests only")
                 notes_parts.append("• ⚠️ Write requests ALWAYS go to primary node")
-                notes_parts.append(f"• **Read capacity**: {total_active_nodes}x scaling for reads ({int(total_active_nodes * cu * 10000):,} reads/sec total)")
-                notes_parts.append(f"• **Write capacity**: No scaling (writes on primary only: {int(cu * 15000):,} bulk writes/sec, {int(cu * 1200):,} incremental writes/sec)")
+                notes_parts.append(f"• **Read scaling**: {total_active_nodes} active read node(s)")
+                notes_parts.append("• **Write scaling**: Writes continue to route to the primary")
                 notes_parts.append(f"• **Cost**: +{num_read_replicas * 100}% (each replica = full CU cost)")
                 notes_parts.append("• **Best for**: Read-heavy workloads needing horizontal read scaling")
                 notes_parts.append("")
@@ -3164,8 +2676,8 @@ Each workload needs to be confirmed individually. Review the configurations and 
             notes_parts.append("  - Horizontal (add read replicas): Scale reads only (max 2 replicas, 3 instances total)")
             notes_parts.append("• **Cost optimization**: Right-size CUs based on actual CPU/memory/throughput usage")
             notes_parts.append("• **Write vs Read**:")
-            notes_parts.append("  - Bulk writes: Use for initial loads, full refreshes (faster: 15K rows/sec/CU)")
-            notes_parts.append("                    - Incremental writes: Use for updates/inserts (slower due to scanning: 1.2K rows/sec/CU)")
+            notes_parts.append("  - Bulk writes: Use for initial loads and full refreshes")
+            notes_parts.append("  - Incremental writes: Use for updates/inserts")
             notes_parts.append("  - Reads: Can distribute across replicas for horizontal scaling")
             
             # Storage / PITR / Snapshot cost info (DSU multipliers per SKU page)
@@ -3465,7 +2977,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 cu = workload.get("lakebase_cu", 2)
                 total_nodes = workload.get("lakebase_ha_nodes", 1)
                 num_read_replicas = workload.get("lakebase_num_read_replicas", 0)
-                footer_parts.append(f"• **Compute Units**: {cu} CU (auto-calculated)")
+                footer_parts.append(f"• **Compute Units**: {cu} CU (user-provided)")
                 footer_parts.append(f"• **Active Nodes**: {total_nodes} (1 primary + {num_read_replicas} read replica(s))")
             elif wtype == "VECTOR_SEARCH":
                 endpoint_type = workload.get("vector_search_endpoint_type", "STANDARD")
@@ -3731,7 +3243,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
                             "suggestion": "Migrate to Serverless SQL Warehouse",
                             "detail": "Serverless offers instant startup (<5s vs 5-10 min), automatic scaling, and scales to zero when idle.",
                             "potential_savings": "Scales to zero when idle, instant startup eliminates warm-up costs",
-                            "consideration": "Serverless has Predictive I/O for 5-10x faster selective queries."
+                            "consideration": "Validate performance with query history and representative workload testing."
                         })
                     
                     # Check for oversized warehouse
