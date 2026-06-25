@@ -11,11 +11,11 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://cheeyutan.github.io',
-  baseUrl: '/lakemeter-opensource/',
+  url: 'https://databrickslabs.github.io',
+  baseUrl: '/lakemeter-oss/',
 
-  organizationName: 'CheeYuTan',
-  projectName: 'lakemeter-opensource',
+  organizationName: 'databrickslabs',
+  projectName: 'lakemeter-oss',
 
   onBrokenLinks: 'warn',
 

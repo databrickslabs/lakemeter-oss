@@ -22,7 +22,7 @@ If you can't install the Databricks CLI locally, you can run the installer direc
 ```bash
 # In the notebook terminal — CLI is pre-installed and authenticated
 git clone <repository-url>
-cd lakemeter-opensource
+cd lakemeter-oss
 ./scripts/install.sh --non-interactive
 ```
 :::
@@ -31,7 +31,7 @@ cd lakemeter-opensource
 
 ```bash
 git clone <repository-url>
-cd lakemeter-opensource
+cd lakemeter-oss
 
 ./scripts/install.sh --profile <your-cli-profile>
 ```
