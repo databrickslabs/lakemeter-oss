@@ -35,8 +35,8 @@ The installer handles everything else automatically:
 
 ```bash
 # Clone the repository
-git clone https://github.com/steven-tan_data/lakemeter-opensource.git
-cd lakemeter-opensource
+git clone https://github.com/databrickslabs/lakemeter-oss.git
+cd lakemeter-oss
 
 # Interactive installation (prompts for names)
 ./scripts/install.sh --profile <cli-profile>

@@ -17,8 +17,8 @@ Create, manage, and export detailed pricing estimates for 16 Databricks workload
 ## Quick Start
 
 ```bash
-git clone https://github.com/steven-tan_data/lakemeter-opensource.git
-cd lakemeter-opensource
+git clone https://github.com/databrickslabs/lakemeter-oss.git
+cd lakemeter-oss
 
 ./scripts/install.sh --profile <your-cli-profile>
 ```
@@ -27,11 +27,11 @@ The installer provisions everything in ~15 minutes. You only need a [Databricks 
 
 ## Documentation
 
-Full documentation is available at **[cheeyutan.github.io/lakemeter-opensource](https://cheeyutan.github.io/lakemeter-opensource/)**.
+Full documentation is available at **[databrickslabs.github.io/lakemeter-oss](https://databrickslabs.github.io/lakemeter-oss/)**.
 
-- [User Guide](https://cheeyutan.github.io/lakemeter-opensource/user-guide/overview) — How to create estimates, configure workloads, use the AI assistant, and export
-- [Admin Guide](https://cheeyutan.github.io/lakemeter-opensource/admin-guide/deployment) — Installation, deployment inventory, and API reference
-- [Changelog](https://cheeyutan.github.io/lakemeter-opensource/changelog) — Release history
+- [User Guide](https://databrickslabs.github.io/lakemeter-oss/user-guide/overview) — How to create estimates, configure workloads, use the AI assistant, and export
+- [Admin Guide](https://databrickslabs.github.io/lakemeter-oss/admin-guide/deployment) — Installation, deployment inventory, and API reference
+- [Changelog](https://databrickslabs.github.io/lakemeter-oss/changelog) — Release history
 
 ## Tech Stack
 

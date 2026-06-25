@@ -12,8 +12,8 @@ This tutorial walks you through creating a real cost estimate from scratch. By t
 ## Video walkthrough
 
 <video controls width="100%" preload="metadata" aria-label="Getting Started tutorial video showing the end-to-end workflow: login, create estimate, add workloads, review costs, use AI assistant, and export to Excel">
-  <source src="/lakemeter-opensource/video/getting-started-tutorial.mp4" type="video/mp4" />
-  Your browser does not support the video tag. <a href="/lakemeter-opensource/video/getting-started-tutorial.mp4">Download the tutorial video</a>.
+  <source src="/lakemeter-oss/video/getting-started-tutorial.mp4" type="video/mp4" />
+  Your browser does not support the video tag. <a href="/lakemeter-oss/video/getting-started-tutorial.mp4">Download the tutorial video</a>.
 </video>
 
 *End-to-end tutorial: create an estimate, add Jobs and DBSQL workloads, review costs, ask the AI assistant, and export to Excel.*
