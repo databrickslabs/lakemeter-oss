@@ -1,4 +1,22 @@
 {
+  "aws:bge-large-en:input_token": {
+    "dbu_rate": 1.429,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:bge-large-en:provisioned_entry": {
+    "dbu_rate": 24.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:bge-large-en:provisioned_scaling": {
+    "dbu_rate": 24.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
   "aws:bge-large:input_token": {
     "dbu_rate": 1.429,
     "input_divisor": 1000000,
@@ -85,6 +103,24 @@
   },
   "aws:gpt-oss-20b:provisioned_scaling": {
     "dbu_rate": 53.571,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:gte-large-en:input_token": {
+    "dbu_rate": 1.857,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:gte-large-en:provisioned_entry": {
+    "dbu_rate": 20.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:gte-large-en:provisioned_scaling": {
+    "dbu_rate": 20.0,
     "input_divisor": 1,
     "is_hourly": true,
     "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
@@ -203,6 +239,90 @@
     "is_hourly": true,
     "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
   },
+  "aws:qwen3-embedding-0-6b:input_token": {
+    "dbu_rate": 0.286,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:qwen3-embedding-0-6b:provisioned_entry": {
+    "dbu_rate": 25.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:qwen3-embedding-0-6b:provisioned_scaling": {
+    "dbu_rate": 25.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:qwen3-next-80b-a3b-instruct:input_token": {
+    "dbu_rate": 2.143,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:qwen3-next-80b-a3b-instruct:output_token": {
+    "dbu_rate": 17.143,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:qwen3-next-80b-a3b-instruct:provisioned_entry": {
+    "dbu_rate": 78.571,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:qwen3-next-80b-a3b-instruct:provisioned_scaling": {
+    "dbu_rate": 78.571,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:qwen35-122b-a10b:input_token": {
+    "dbu_rate": 3.143,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:qwen35-122b-a10b:output_token": {
+    "dbu_rate": 31.429,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:qwen35-122b-a10b:provisioned_entry": {
+    "dbu_rate": 85.714,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "aws:qwen35-122b-a10b:provisioned_scaling": {
+    "dbu_rate": 85.714,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:bge-large-en:input_token": {
+    "dbu_rate": 1.429,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:bge-large-en:provisioned_entry": {
+    "dbu_rate": 24.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:bge-large-en:provisioned_scaling": {
+    "dbu_rate": 24.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
   "azure:bge-large:input_token": {
     "dbu_rate": 1.429,
     "input_divisor": 1000000,
@@ -289,6 +409,24 @@
   },
   "azure:gpt-oss-20b:provisioned_scaling": {
     "dbu_rate": 53.571,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:gte-large-en:input_token": {
+    "dbu_rate": 1.857,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:gte-large-en:provisioned_entry": {
+    "dbu_rate": 20.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:gte-large-en:provisioned_scaling": {
+    "dbu_rate": 20.0,
     "input_divisor": 1,
     "is_hourly": true,
     "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
@@ -407,6 +545,90 @@
     "is_hourly": true,
     "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
   },
+  "azure:qwen3-embedding-0-6b:input_token": {
+    "dbu_rate": 0.286,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:qwen3-embedding-0-6b:provisioned_entry": {
+    "dbu_rate": 25.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:qwen3-embedding-0-6b:provisioned_scaling": {
+    "dbu_rate": 25.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:qwen3-next-80b-a3b-instruct:input_token": {
+    "dbu_rate": 2.143,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:qwen3-next-80b-a3b-instruct:output_token": {
+    "dbu_rate": 17.143,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:qwen3-next-80b-a3b-instruct:provisioned_entry": {
+    "dbu_rate": 78.571,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:qwen3-next-80b-a3b-instruct:provisioned_scaling": {
+    "dbu_rate": 78.571,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:qwen35-122b-a10b:input_token": {
+    "dbu_rate": 3.143,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:qwen35-122b-a10b:output_token": {
+    "dbu_rate": 31.429,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:qwen35-122b-a10b:provisioned_entry": {
+    "dbu_rate": 85.714,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "azure:qwen35-122b-a10b:provisioned_scaling": {
+    "dbu_rate": 85.714,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:bge-large-en:input_token": {
+    "dbu_rate": 1.429,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:bge-large-en:provisioned_entry": {
+    "dbu_rate": 24.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:bge-large-en:provisioned_scaling": {
+    "dbu_rate": 24.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
   "gcp:bge-large:input_token": {
     "dbu_rate": 1.429,
     "input_divisor": 1000000,
@@ -493,6 +715,24 @@
   },
   "gcp:gpt-oss-20b:provisioned_scaling": {
     "dbu_rate": 53.571,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:gte-large-en:input_token": {
+    "dbu_rate": 1.857,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:gte-large-en:provisioned_entry": {
+    "dbu_rate": 20.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:gte-large-en:provisioned_scaling": {
+    "dbu_rate": 20.0,
     "input_divisor": 1,
     "is_hourly": true,
     "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
@@ -606,6 +846,72 @@
     "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
   },
   "gcp:llama-4-maverick:provisioned_scaling": {
+    "dbu_rate": 85.714,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen3-embedding-0-6b:input_token": {
+    "dbu_rate": 0.286,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen3-embedding-0-6b:provisioned_entry": {
+    "dbu_rate": 25.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen3-embedding-0-6b:provisioned_scaling": {
+    "dbu_rate": 25.0,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen3-next-80b-a3b-instruct:input_token": {
+    "dbu_rate": 2.143,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen3-next-80b-a3b-instruct:output_token": {
+    "dbu_rate": 17.143,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen3-next-80b-a3b-instruct:provisioned_entry": {
+    "dbu_rate": 78.571,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen3-next-80b-a3b-instruct:provisioned_scaling": {
+    "dbu_rate": 78.571,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen35-122b-a10b:input_token": {
+    "dbu_rate": 3.143,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen35-122b-a10b:output_token": {
+    "dbu_rate": 31.429,
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen35-122b-a10b:provisioned_entry": {
+    "dbu_rate": 85.714,
+    "input_divisor": 1,
+    "is_hourly": true,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+  },
+  "gcp:qwen35-122b-a10b:provisioned_scaling": {
     "dbu_rate": 85.714,
     "input_divisor": 1,
     "is_hourly": true,
