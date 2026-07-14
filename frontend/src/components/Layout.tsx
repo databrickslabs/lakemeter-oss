@@ -45,6 +45,7 @@ function SparklesIcon({ className }: { className?: string }) {
 const navigation = [
   { name: 'Estimates', href: '/', icon: Squares2X2Icon },
   { name: 'New Estimate', href: '/calculator', icon: PlusCircleIcon },
+  { name: 'Pricing', href: '/pricing', icon: CurrencyDollarIcon },
 ]
 
 // Lakemeter logo - White icon on Databricks Lava background
