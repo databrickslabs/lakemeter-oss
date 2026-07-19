@@ -87,6 +87,29 @@ const PREMIUM_ONLY_WORKLOAD_TYPES = new Set([
   'SHUTTERSTOCK_IMAGEAI',
 ])
 
+import {
+  LAKEBASE_AUTOSCALE_CU_OPTIONS,
+  LAKEBASE_MAX_AUTOSCALE_SPREAD_CU,
+  capMaxCu,
+} from '../utils/lakebasePricing'
+
+const LAKEBASE_FIXED_CU_OPTIONS = [80, 96, 112]
+
+function lakebaseCuLabel(cu: number): string {
+  const ramGb = cu * 2
+  return `${cu} CU (${ramGb % 1 === 0 ? ramGb.toFixed(0) : ramGb} GB)`
+}
+
+function normalizeLakebaseRange(minCu: number, maxCu: number): { minCu: number; maxCu: number } {
+  return { minCu, maxCu: capMaxCu(minCu, Math.max(minCu, maxCu)) }
+}
+
+function validMaxCuOptions(minCu: number): number[] {
+  return LAKEBASE_AUTOSCALE_CU_OPTIONS.filter(
+    cu => cu >= minCu && cu - minCu <= LAKEBASE_MAX_AUTOSCALE_SPREAD_CU,
+  )
+}
+
 // Helper to check if a workload type is available for the selected tier
 function isWorkloadAvailableForTier(
   workloadType: string,
@@ -454,6 +477,13 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
         lakebase_cu: lineItem.lakebase_cu || 1,
+        lakebase_compute_mode: (lineItem.workload_config as any)?.lakebase_compute_mode || ((lineItem.lakebase_cu || 1) > 64 ? 'fixed' : 'autoscale'),
+        lakebase_min_cu: (lineItem.workload_config as any)?.lakebase_min_cu || lineItem.lakebase_cu || 1,
+        lakebase_max_cu: (lineItem.workload_config as any)?.lakebase_max_cu || lineItem.lakebase_cu || 1,
+        lakebase_scale_to_zero_enabled: Boolean((lineItem.workload_config as any)?.lakebase_scale_to_zero_enabled),
+        lakebase_active_hours_per_month: (lineItem.workload_config as any)?.lakebase_active_hours_per_month || lineItem.hours_per_month || 730,
+        lakebase_scale_up_hours_per_month: (lineItem.workload_config as any)?.lakebase_scale_up_hours_per_month || 0,
+        lakebase_always_on_discount_pct: (lineItem.workload_config as any)?.lakebase_always_on_discount_pct ?? 25,
         lakebase_storage_gb: lineItem.lakebase_storage_gb || 0,
         lakebase_ha_nodes: lineItem.lakebase_ha_nodes || 1,
         lakebase_backup_retention_days: lineItem.lakebase_backup_retention_days || 7,
@@ -501,6 +531,13 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       model_serving_scale_out: 'small',
       model_serving_concurrency: 4,
       lakebase_cu: 1,
+      lakebase_compute_mode: 'autoscale',
+      lakebase_min_cu: 1,
+      lakebase_max_cu: 1,
+      lakebase_scale_to_zero_enabled: false,
+      lakebase_active_hours_per_month: 730,
+      lakebase_scale_up_hours_per_month: 0,
+      lakebase_always_on_discount_pct: 25,
       lakebase_storage_gb: 0,
       lakebase_ha_nodes: 1,
       lakebase_backup_retention_days: 7,
@@ -559,6 +596,13 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     lakeflow_connect_gateway_enabled: false,
     lakeflow_connect_gateway_instance: '',
     lakebase_cu: 1,
+    lakebase_compute_mode: 'autoscale',
+    lakebase_min_cu: 1,
+    lakebase_max_cu: 1,
+    lakebase_scale_to_zero_enabled: false,
+    lakebase_active_hours_per_month: 730,
+    lakebase_scale_up_hours_per_month: 0,
+    lakebase_always_on_discount_pct: 25,
     lakebase_storage_gb: 0,
     lakebase_ha_nodes: 1,
     lakebase_backup_retention_days: 7,
@@ -618,6 +662,13 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
         lakebase_cu: lineItem.lakebase_cu || 1,
+        lakebase_compute_mode: (lineItem.workload_config as any)?.lakebase_compute_mode || ((lineItem.lakebase_cu || 1) > 64 ? 'fixed' : 'autoscale'),
+        lakebase_min_cu: (lineItem.workload_config as any)?.lakebase_min_cu || lineItem.lakebase_cu || 1,
+        lakebase_max_cu: (lineItem.workload_config as any)?.lakebase_max_cu || lineItem.lakebase_cu || 1,
+        lakebase_scale_to_zero_enabled: Boolean((lineItem.workload_config as any)?.lakebase_scale_to_zero_enabled),
+        lakebase_active_hours_per_month: (lineItem.workload_config as any)?.lakebase_active_hours_per_month || lineItem.hours_per_month || 730,
+        lakebase_scale_up_hours_per_month: (lineItem.workload_config as any)?.lakebase_scale_up_hours_per_month || 0,
+        lakebase_always_on_discount_pct: (lineItem.workload_config as any)?.lakebase_always_on_discount_pct ?? 25,
         lakebase_storage_gb: lineItem.lakebase_storage_gb || 0,
         lakebase_ha_nodes: lineItem.lakebase_ha_nodes || 1,
         lakebase_backup_retention_days: lineItem.lakebase_backup_retention_days || 7,
@@ -650,6 +701,39 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       setUseDirectHours(false)
     }
   }, [lineItem?.line_item_id]) // Use line_item_id to detect when switching between items
+
+  const setLakebaseComputeMode = (mode: 'autoscale' | 'fixed') => {
+    setForm(f => {
+      if (mode === 'fixed') {
+        const fixedCu = LAKEBASE_FIXED_CU_OPTIONS.includes(f.lakebase_cu)
+          ? f.lakebase_cu
+          : LAKEBASE_FIXED_CU_OPTIONS[0]
+
+        return {
+          ...f,
+          lakebase_compute_mode: 'fixed',
+          lakebase_cu: fixedCu,
+          lakebase_min_cu: fixedCu,
+          lakebase_max_cu: fixedCu,
+          lakebase_scale_to_zero_enabled: false,
+          lakebase_scale_up_hours_per_month: 0,
+        }
+      }
+
+      const minCu = LAKEBASE_AUTOSCALE_CU_OPTIONS.includes(f.lakebase_min_cu)
+        ? f.lakebase_min_cu
+        : 1
+      const range = normalizeLakebaseRange(minCu, f.lakebase_max_cu || minCu)
+
+      return {
+        ...f,
+        lakebase_compute_mode: 'autoscale',
+        lakebase_cu: range.minCu,
+        lakebase_min_cu: range.minCu,
+        lakebase_max_cu: range.maxCu,
+      }
+    })
+  }
   
   // Auto-adjust form when tier changes to STANDARD (disable serverless options)
   useEffect(() => {
@@ -774,6 +858,13 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       lakeflow_connect_gateway_enabled: form.lakeflow_connect_gateway_enabled,
       lakeflow_connect_gateway_instance: form.lakeflow_connect_gateway_instance || undefined,
       lakebase_cu: form.lakebase_cu,
+      lakebase_compute_mode: form.lakebase_compute_mode,
+      lakebase_min_cu: form.lakebase_min_cu,
+      lakebase_max_cu: form.lakebase_max_cu,
+      lakebase_scale_to_zero_enabled: form.lakebase_scale_to_zero_enabled,
+      lakebase_active_hours_per_month: form.lakebase_active_hours_per_month,
+      lakebase_scale_up_hours_per_month: form.lakebase_scale_up_hours_per_month,
+      lakebase_always_on_discount_pct: form.lakebase_always_on_discount_pct,
       lakebase_storage_gb: form.lakebase_storage_gb,
       lakebase_ha_nodes: form.lakebase_ha_nodes,
       lakebase_pitr_gb: form.lakebase_pitr_gb,
@@ -937,12 +1028,29 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
 
       // Lakebase config
       if (selectedWorkloadType?.show_lakebase_config) {
-        data.lakebase_cu = form.lakebase_cu
+        const isFixedLakebase = form.lakebase_compute_mode === 'fixed'
+        const fixedCu = form.lakebase_cu || 80
+        const minCu = isFixedLakebase ? fixedCu : form.lakebase_min_cu
+        const maxCu = isFixedLakebase ? fixedCu : Math.max(form.lakebase_max_cu || form.lakebase_min_cu, form.lakebase_min_cu || 0)
+        data.lakebase_cu = minCu || form.lakebase_cu
         data.lakebase_storage_gb = form.lakebase_storage_gb || 0
         data.lakebase_ha_nodes = form.lakebase_ha_nodes
         data.lakebase_backup_retention_days = form.lakebase_backup_retention_days
         data.lakebase_pitr_gb = form.lakebase_pitr_gb || 0
         data.lakebase_snapshot_gb = form.lakebase_snapshot_gb || 0
+        data.hours_per_month = !isFixedLakebase && form.lakebase_scale_to_zero_enabled
+          ? form.lakebase_active_hours_per_month
+          : 730
+        data.workload_config = {
+          ...(data.workload_config || {}),
+          lakebase_compute_mode: form.lakebase_compute_mode,
+          lakebase_min_cu: minCu,
+          lakebase_max_cu: maxCu,
+          lakebase_scale_to_zero_enabled: isFixedLakebase ? false : form.lakebase_scale_to_zero_enabled,
+          lakebase_active_hours_per_month: form.lakebase_active_hours_per_month,
+          lakebase_scale_up_hours_per_month: isFixedLakebase ? 0 : form.lakebase_scale_up_hours_per_month,
+          lakebase_always_on_discount_pct: form.lakebase_always_on_discount_pct,
+        }
       } else {
         data.lakebase_cu = null
         data.lakebase_storage_gb = null
@@ -1995,31 +2103,151 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         {/* Lakebase Config */}
         {selectedWorkloadType?.show_lakebase_config && (
           <>
-            <div>
-              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Capacity Units (CU)</label>
-              <select
-                value={form.lakebase_cu}
-                onChange={(e) => setForm(f => ({ ...f, lakebase_cu: parseFloat(e.target.value) || 1 }))}
-                className="w-full text-sm"
-              >
-                <optgroup label="Autoscale (0.5–32 CU)">
-                  <option value={0.5}>0.5 CU (1 GB)</option>
-                  <option value={1}>1 CU (2 GB)</option>
-                  <option value={2}>2 CU (4 GB)</option>
-                  <option value={4}>4 CU (8 GB)</option>
-                  <option value={8}>8 CU (16 GB)</option>
-                  <option value={16}>16 CU (32 GB)</option>
-                  <option value={32}>32 CU (64 GB)</option>
-                </optgroup>
-                <optgroup label="Fixed Size (48–112 CU)">
-                  <option value={48}>48 CU (96 GB)</option>
-                  <option value={64}>64 CU (128 GB)</option>
-                  <option value={80}>80 CU (160 GB)</option>
-                  <option value={96}>96 CU (192 GB)</option>
-                  <option value={112}>112 CU (224 GB)</option>
-                </optgroup>
-              </select>
+            <div className="col-span-full">
+              <label className="block text-xs font-medium mb-2 text-[var(--text-secondary)]">Lakebase Compute Type</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLakebaseComputeMode('autoscale')}
+                  className={clsx(
+                    "text-left rounded-lg border p-3 transition-colors",
+                    form.lakebase_compute_mode === 'autoscale'
+                      ? "border-lava-600 bg-lava-50 text-lava-900 dark:bg-lava-900/20 dark:text-lava-100"
+                      : "border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                  )}
+                >
+                  <span className="block text-sm font-semibold">Auto-scaling</span>
+                  <span className="block mt-1 text-xs opacity-80">Set min/max CU, scale-to-zero, and scale-up hours.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLakebaseComputeMode('fixed')}
+                  className={clsx(
+                    "text-left rounded-lg border p-3 transition-colors",
+                    form.lakebase_compute_mode === 'fixed'
+                      ? "border-lava-600 bg-lava-50 text-lava-900 dark:bg-lava-900/20 dark:text-lava-100"
+                      : "border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                  )}
+                >
+                  <span className="block text-sm font-semibold">Fixed size</span>
+                  <span className="block mt-1 text-xs opacity-80">Pick one larger fixed CU size without autoscaling.</span>
+                </button>
+              </div>
             </div>
+            {form.lakebase_compute_mode === 'autoscale' ? (
+              <>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Minimum CU</label>
+                  <select
+                    value={form.lakebase_min_cu}
+                    onChange={(e) => {
+                      const minCu = parseFloat(e.target.value) || 1
+                      setForm(f => {
+                        const range = normalizeLakebaseRange(minCu, f.lakebase_max_cu || minCu)
+                        return {
+                          ...f,
+                          lakebase_min_cu: range.minCu,
+                          lakebase_cu: range.minCu,
+                          lakebase_max_cu: range.maxCu
+                        }
+                      })
+                    }}
+                    className="w-full text-sm"
+                  >
+                    {LAKEBASE_AUTOSCALE_CU_OPTIONS.map(cu => (
+                      <option key={cu} value={cu}>{lakebaseCuLabel(cu)}</option>
+                    ))}
+                  </select>
+                  <span className="text-[10px] text-[var(--text-tertiary)]">Always-on floor gets 25% discount when scale-to-zero is off.</span>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Maximum CU</label>
+                  <select
+                    value={form.lakebase_max_cu}
+                    onChange={(e) => setForm(f => {
+                      const selectedMax = parseFloat(e.target.value) || f.lakebase_min_cu
+                      const range = normalizeLakebaseRange(f.lakebase_min_cu || selectedMax, selectedMax)
+                      return {
+                        ...f,
+                        lakebase_min_cu: range.minCu,
+                        lakebase_cu: range.minCu,
+                        lakebase_max_cu: range.maxCu
+                      }
+                    })}
+                    className="w-full text-sm"
+                  >
+                    {validMaxCuOptions(form.lakebase_min_cu || 1).map(cu => (
+                      <option key={cu} value={cu}>{lakebaseCuLabel(cu)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Scale to Zero</label>
+                  <select
+                    value={form.lakebase_scale_to_zero_enabled ? 'true' : 'false'}
+                    onChange={(e) => setForm(f => ({ ...f, lakebase_scale_to_zero_enabled: e.target.value === 'true' }))}
+                    className="w-full text-sm"
+                  >
+                    <option value="false">Off (minimum CU always on)</option>
+                    <option value="true">On (active hours only)</option>
+                  </select>
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Fixed Size</label>
+                <select
+                  value={form.lakebase_cu}
+                  onChange={(e) => {
+                    const fixedCu = parseFloat(e.target.value) || LAKEBASE_FIXED_CU_OPTIONS[0]
+                    setForm(f => ({
+                      ...f,
+                      lakebase_cu: fixedCu,
+                      lakebase_min_cu: fixedCu,
+                      lakebase_max_cu: fixedCu,
+                      lakebase_scale_to_zero_enabled: false,
+                      lakebase_scale_up_hours_per_month: 0,
+                    }))
+                  }}
+                  className="w-full text-sm"
+                >
+                  {LAKEBASE_FIXED_CU_OPTIONS.map(cu => (
+                    <option key={cu} value={cu}>{lakebaseCuLabel(cu)}</option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-[var(--text-tertiary)]">Fixed-size computes do not support autoscaling or scale-to-zero.</span>
+              </div>
+            )}
+            {form.lakebase_compute_mode === 'autoscale' && form.lakebase_scale_to_zero_enabled && (
+              <div>
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Active Hours / Month</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={730}
+                  step={1}
+                  value={form.lakebase_active_hours_per_month}
+                  onChange={(e) => setForm(f => ({ ...f, lakebase_active_hours_per_month: Math.min(parseInt(e.target.value) || 0, 730) }))}
+                  className="w-full text-sm"
+                />
+              </div>
+            )}
+            {form.lakebase_compute_mode === 'autoscale' && (
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Scale-up Hours / Month</label>
+              <input
+                type="number"
+                min={0}
+                max={730}
+                step={1}
+                value={form.lakebase_scale_up_hours_per_month}
+                onChange={(e) => setForm(f => ({ ...f, lakebase_scale_up_hours_per_month: Math.min(parseInt(e.target.value) || 0, 730) }))}
+                className="w-full text-sm"
+                placeholder="Hours at max CU"
+              />
+              <span className="text-[10px] text-[var(--text-tertiary)]">Autoscale max-min must be 16 CU or less. Values above 64 CU are fixed-size only.</span>
+            </div>
+            )}
             <div>
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Number of Nodes</label>
               <select
@@ -2030,6 +2258,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 <option value={1}>1 Node</option>
                 <option value={2}>2 Nodes (HA)</option>
                 <option value={3}>3 Nodes (HA)</option>
+                <option value={4}>4 Nodes (HA, 3 read replicas)</option>
               </select>
             </div>
             <div>

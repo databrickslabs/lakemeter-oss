@@ -1,13 +1,13 @@
 """Helper functions for Lakebase calculation verification."""
 
 
-def calc_dbu_per_hour(cu: float, ha_nodes: int = 1) -> float:
-    """Calculate Lakebase DBU/hr: CU × HA_nodes."""
-    return cu * ha_nodes
+def calc_dbu_per_hour(cu: float, ha_nodes: int = 1, dbu_per_cu_hour: float = 0.230, discount_pct: float = 25.0) -> float:
+    """Calculate discounted equivalent Lakebase DBU/hr for an always-on minimum CU floor."""
+    return cu * ha_nodes * dbu_per_cu_hour * (1 - discount_pct / 100)
 
 
 def calc_monthly_dbus(cu: float, ha_nodes: int, hours: float) -> float:
-    """Calculate monthly DBUs: DBU/hr × hours."""
+    """Calculate billable monthly DBUs."""
     return calc_dbu_per_hour(cu, ha_nodes) * hours
 
 

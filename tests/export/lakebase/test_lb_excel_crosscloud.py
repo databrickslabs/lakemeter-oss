@@ -11,6 +11,7 @@ from tests.export.lakebase.excel_helpers import (
     generate_xlsx, find_compute_row, find_storage_row,
     COL_SKU, COL_DBU_HR,
 )
+from tests.export.lakebase.lb_calc_helpers import calc_dbu_per_hour
 
 
 class TestCrossCloudExcel:
@@ -69,7 +70,7 @@ class TestHalfCUExcel:
         assert row is not None
         dbu_hr = ws.cell(row=row, column=COL_DBU_HR).value
         assert isinstance(dbu_hr, (int, float))
-        assert abs(dbu_hr - 0.5) < 0.01
+        assert abs(dbu_hr - calc_dbu_per_hour(0.5, 1)) < 0.01
 
     def test_half_cu_with_storage(self):
         """Half CU + storage: both rows present and correct."""

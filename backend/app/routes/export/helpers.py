@@ -165,8 +165,17 @@ def _fmapi_details(item) -> list:
 
 def _lakebase_details(item) -> list:
     details = []
-    if item.lakebase_cu:
-        details.append(f"CU: {item.lakebase_cu}")
+    config = getattr(item, 'workload_config', None) or {}
+    min_cu = config.get('lakebase_min_cu') or item.lakebase_cu
+    max_cu = config.get('lakebase_max_cu') or min_cu
+    scale_to_zero = config.get('lakebase_scale_to_zero_enabled')
+    scale_up_hours = config.get('lakebase_scale_up_hours_per_month')
+    if min_cu:
+        details.append(f"CU range: {min_cu}-{max_cu}")
+    if scale_to_zero is not None:
+        details.append(f"Scale to zero: {'Yes' if scale_to_zero else 'No'}")
+    if scale_up_hours:
+        details.append(f"Scale-up hours: {scale_up_hours}")
     if item.lakebase_ha_nodes:
         details.append(f"Nodes: {item.lakebase_ha_nodes}")
     return details

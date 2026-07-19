@@ -47,6 +47,7 @@ def make_item(**kwargs):
         fmapi_provider=None, fmapi_endpoint_type=None,
         fmapi_context_length=None,
         lakebase_cu=None, lakebase_ha_nodes=None, lakebase_storage_gb=None,
+        workload_config=None,
     )
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)

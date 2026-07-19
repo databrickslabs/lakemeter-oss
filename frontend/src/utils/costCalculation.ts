@@ -6,6 +6,7 @@
 
 import type { LineItem, InstanceType, DBSQLSize, ModelServingGPUType } from '../types'
 import type { VectorSearchMode, PhotonMultiplier } from '../api/client'
+import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from './lakebasePricing'
 
 // Fallback DBU rates if fetched data not available ($/DBU)
 // These should match the actual Databricks pricing (PREMIUM tier defaults)
@@ -481,7 +482,6 @@ export function calculateWorkloadCost(
       break
     
     case 'LAKEBASE':
-      const lakebaseCU = item.lakebase_cu || 1
       const lakebaseNodes = item.lakebase_ha_nodes || 1
       // DBU multiplier per CU-hour varies by cloud/tier
       // Azure Premium = AWS/GCP Enterprise per pricing page footnote
@@ -492,8 +492,14 @@ export function calculateWorkloadCost(
       const lakebaseCloudRates = lakebaseDBURates[cloud] || lakebaseDBURates['aws']
       const lakebaseDBUPerCU = lakebaseCloudRates[tier?.toUpperCase() || 'PREMIUM'] || 0.213
 
-      dbuPerHour = lakebaseCU * lakebaseDBUPerCU * lakebaseNodes
-      monthlyDBUs = dbuPerHour * hoursPerMonth
+      const lakebaseAutoscaleConfig = resolveLakebaseAutoscaleConfig(item)
+      const lakebaseComputeUsage = calculateLakebaseComputeUsage(
+        lakebaseAutoscaleConfig,
+        lakebaseDBUPerCU,
+        lakebaseNodes,
+      )
+      dbuPerHour = lakebaseComputeUsage.equivalentDbuPerHour
+      monthlyDBUs = lakebaseComputeUsage.totalBillableDbu
       
       // Storage calculation for Lakebase
       // Total DSU = storage_gb × 15 (each GB consumes 15 DSU)

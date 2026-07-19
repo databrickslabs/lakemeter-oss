@@ -3,6 +3,10 @@ from .pricing import (
     INSTANCE_DBU_RATES, VECTOR_SEARCH_RATES, MODEL_SERVING_RATES,
     _get_photon_multiplier,
 )
+from app.services.lakebase_pricing import (
+    calculate_lakebase_compute_usage,
+    resolve_lakebase_autoscale_config,
+)
 
 
 def _calculate_hours_per_month(item) -> float:
@@ -15,6 +19,15 @@ def _calculate_hours_per_month(item) -> float:
     Always-on workloads (Vector Search, Model Serving, Lakebase, Databricks Apps)
     default to 730 hours/month when no usage data is provided.
     """
+    wt = (getattr(item, 'workload_type', '') or '').upper()
+    if wt == 'LAKEBASE':
+        config = resolve_lakebase_autoscale_config(
+            getattr(item, 'workload_config', None) or {},
+            legacy_cu=getattr(item, 'lakebase_cu', None),
+            hours_per_month=getattr(item, 'hours_per_month', None),
+        )
+        return config.active_hours_per_month if config.scale_to_zero_enabled else 730
+
     if item.runs_per_day and item.avg_runtime_minutes:
         runs = float(item.runs_per_day)
         runtime = float(item.avg_runtime_minutes)
@@ -23,7 +36,6 @@ def _calculate_hours_per_month(item) -> float:
     if item.hours_per_month:
         return float(item.hours_per_month)
     # Always-on workloads default to 730 hours/month (24/7)
-    wt = (getattr(item, 'workload_type', '') or '').upper()
     if wt in ('VECTOR_SEARCH', 'MODEL_SERVING', 'LAKEBASE', 'DATABRICKS_APPS', 'LAKEFLOW_CONNECT'):
         return 730
     return 0
@@ -60,7 +72,13 @@ def _calculate_dbu_per_hour(item, cloud: str = 'aws', tier: str = 'PREMIUM') -> 
         cloud_lc = cloud.strip().lower() if cloud else 'aws'
         tier_upper = tier.strip().upper() if tier else 'PREMIUM'
         dbu_per_cu_hour = lakebase_dbu_rates.get(cloud_lc, {}).get(tier_upper, 1.0)
-        return cu * dbu_per_cu_hour * nodes, warnings
+        config = resolve_lakebase_autoscale_config(
+            getattr(item, 'workload_config', None) or {},
+            legacy_cu=cu,
+            hours_per_month=getattr(item, 'hours_per_month', None),
+        )
+        usage = calculate_lakebase_compute_usage(config, dbu_per_cu_hour, nodes)
+        return usage.equivalent_dbu_per_hour, warnings
     elif wt == 'DATABRICKS_APPS':
         size = (getattr(item, 'databricks_apps_size', None) or 'medium').lower()
         rates = {'medium': 0.5, 'large': 1.0}

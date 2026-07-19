@@ -266,11 +266,11 @@ class TestVectorSearchRegression:
 class TestLakebaseRegression:
     def test_small_dbu(self):
         dbu, _ = _calculate_dbu_per_hour(make_lakebase_small(), 'aws')
-        assert dbu == pytest.approx(2.0, abs=0.01)  # 2 CU * 1 node
+        assert dbu == pytest.approx(2 * 1 * 0.230 * 0.75, abs=0.01)
 
     def test_large_dbu(self):
         dbu, _ = _calculate_dbu_per_hour(make_lakebase_large(), 'aws')
-        assert dbu == pytest.approx(24.0, abs=0.01)  # 8 CU * 3 nodes
+        assert dbu == pytest.approx(8 * 3 * 0.230 * 0.75, abs=0.01)
 
     def test_sku(self):
         assert _get_sku_type(make_lakebase_small(), 'aws') == 'DATABASE_SERVERLESS_COMPUTE'

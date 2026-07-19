@@ -1,6 +1,6 @@
 """Test Lakebase config display string generation.
 
-AC-9: Config display shows "CU: X | Nodes: Y".
+AC-9: Config display shows Lakebase CU range and node count.
 """
 import pytest
 
@@ -18,18 +18,18 @@ class TestDisplayName:
 
 
 class TestConfigDetails:
-    """AC-9: Config string shows CU and nodes."""
+    """AC-9: Config string shows CU range and nodes."""
 
     def test_basic_config(self):
         item = make_line_item(lakebase_cu=4, lakebase_ha_nodes=2)
         config = _get_workload_config_details(item)
-        assert 'CU: 4' in config
+        assert 'CU range: 4-4' in config
         assert 'Nodes: 2' in config
 
     def test_half_cu(self):
         item = make_line_item(lakebase_cu=0.5, lakebase_ha_nodes=1)
         config = _get_workload_config_details(item)
-        assert 'CU: 0.5' in config
+        assert 'CU range: 0.5-0.5' in config
         assert 'Nodes: 1' in config
 
     def test_large_cu(self):
@@ -53,4 +53,4 @@ class TestConfigDetails:
         """If nodes is None, only CU should appear."""
         item = make_line_item(lakebase_cu=4, lakebase_ha_nodes=None)
         config = _get_workload_config_details(item)
-        assert 'CU: 4' in config
+        assert 'CU range: 4-4' in config
