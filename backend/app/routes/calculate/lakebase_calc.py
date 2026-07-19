@@ -13,11 +13,16 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.services.validators import validate_cloud, validate_region, validate_tier, validate_sku_specific_discounts
 from app.services.lakebase_queries import get_product_type_for_pricing
-from app.routes.calculate.helpers import build_sku_breakdown_serverless
 from app.routes.calculate.discount import (
     apply_discount_to_sku_breakdown, calculate_total_discount_summary, enhance_total_cost_with_discount,
 )
 from app.routes.calculate.schemas import LakebaseCalculationRequest
+from app.services.lakebase_pricing import (
+    LAKEBASE_AUTOSCALE_CU_VALUES,
+    LAKEBASE_MAX_AUTOSCALE_SPREAD_CU,
+    calculate_lakebase_compute_usage,
+    resolve_lakebase_autoscale_config,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -31,7 +36,9 @@ LAKEBASE_DBU_RATES = {
     # GCP: Lakebase not available yet
 }
 
-VALID_CU_SIZES = [0.5, 1, 2, 4, 8, 16, 32, 48, 64, 80, 96, 112]
+VALID_AUTOSCALE_CU_SIZES = LAKEBASE_AUTOSCALE_CU_VALUES
+VALID_FIXED_CU_SIZES = [80, 96, 112]
+VALID_CU_SIZES = VALID_AUTOSCALE_CU_SIZES + VALID_FIXED_CU_SIZES
 
 # DSU multipliers for Databricks Storage SKU (per GB-month)
 # Ref: Database Serverless Compute SKU page
@@ -92,16 +99,36 @@ def calculate_lakebase_cost(
     if error:
         raise HTTPException(status_code=400, detail=error["error"])
 
+    compute_mode = request.compute_mode.lower()
+    if compute_mode not in {"autoscale", "fixed"}:
+        raise HTTPException(status_code=400, detail="compute_mode must be 'autoscale' or 'fixed'")
+
     if request.cu_size not in VALID_CU_SIZES:
         raise HTTPException(status_code=400, detail=f"Invalid CU size: {request.cu_size}. Valid: {VALID_CU_SIZES}")
+    if request.min_cu is not None and request.min_cu not in VALID_CU_SIZES:
+        raise HTTPException(status_code=400, detail=f"Invalid minimum CU size: {request.min_cu}. Valid: {VALID_CU_SIZES}")
+    if request.max_cu is not None and request.max_cu not in VALID_CU_SIZES:
+        raise HTTPException(status_code=400, detail=f"Invalid maximum CU size: {request.max_cu}. Valid: {VALID_CU_SIZES}")
+    min_cu_for_validation = request.min_cu if request.min_cu is not None else request.cu_size
+    max_cu_for_validation = request.max_cu if request.max_cu is not None else min_cu_for_validation
+    if compute_mode == "fixed":
+        if min_cu_for_validation not in VALID_FIXED_CU_SIZES or max_cu_for_validation != min_cu_for_validation:
+            raise HTTPException(status_code=400, detail=f"Fixed-size Lakebase compute must use one of: {VALID_FIXED_CU_SIZES}")
+    elif max_cu_for_validation > 64:
+        raise HTTPException(status_code=400, detail="Autoscaling is supported up to 64 CU. Use a fixed-size compute for values above 64 CU.")
+    if (
+        compute_mode == "autoscale"
+        and (max_cu_for_validation - min_cu_for_validation) > LAKEBASE_MAX_AUTOSCALE_SPREAD_CU
+    ):
+        raise HTTPException(status_code=400, detail="Lakebase autoscaling range cannot exceed 16 CU.")
 
     # Resolve num_nodes: prefer num_nodes (frontend sends this), fall back to read_replicas
     if request.num_nodes is not None:
         num_nodes = request.num_nodes
     else:
         num_nodes = 1 + request.read_replicas
-    if num_nodes > 3:
-        raise HTTPException(status_code=400, detail="Total nodes cannot exceed 3")
+    if num_nodes > 4:
+        raise HTTPException(status_code=400, detail="Total nodes cannot exceed 4")
     read_replicas = num_nodes - 1
 
     try:
@@ -117,9 +144,26 @@ def calculate_lakebase_cost(
         # ── Compute cost ──────────────────────────────────────────────
         cloud_rates = LAKEBASE_DBU_RATES.get(cloud_upper, {})
         dbu_per_cu_hour = cloud_rates.get(tier_upper, 0.213)
-
-        total_dbu_per_hour = request.cu_size * dbu_per_cu_hour * num_nodes
-        dbu_per_month = total_dbu_per_hour * hours_per_month
+        autoscale_config = resolve_lakebase_autoscale_config(
+            {
+                "lakebase_min_cu": request.min_cu,
+                "lakebase_max_cu": request.max_cu,
+                "lakebase_compute_mode": compute_mode,
+                "lakebase_scale_to_zero_enabled": request.scale_to_zero_enabled,
+                "lakebase_active_hours_per_month": request.active_hours_per_month,
+                "lakebase_scale_up_hours_per_month": request.scale_up_hours_per_month,
+                "lakebase_always_on_discount_pct": request.always_on_discount_pct,
+            },
+            legacy_cu=request.cu_size,
+            hours_per_month=hours_per_month,
+        )
+        compute_usage = calculate_lakebase_compute_usage(
+            autoscale_config,
+            dbu_per_cu_hour=dbu_per_cu_hour,
+            nodes=num_nodes,
+        )
+        total_dbu_per_hour = compute_usage.equivalent_dbu_per_hour
+        dbu_per_month = compute_usage.total_billable_dbu
 
         # Look up DBU price from database
         sku_type = get_product_type_for_pricing(db, "LAKEBASE", True, False, None, None, None)
@@ -136,18 +180,43 @@ def calculate_lakebase_cost(
             "cloud": request.cloud, "region": request.region,
             "tier": request.tier, "product_type": sku_type,
         }).fetchone()
-        dbu_price = float(price_row.price_per_dbu) if price_row else 0.0
+        if price_row:
+            dbu_price = float(price_row.price_per_dbu)
+        else:
+            static_key = f"{request.cloud.lower()}:{request.region}:{tier_upper}"
+            dbu_price = float((DBU_RATES_BY_REGION.get(static_key) or {}).get(sku_type, 0.0))
 
-        compute_cost = dbu_per_month * dbu_price
+        baseline_cu_hour_price = compute_usage.baseline_effective_dbu_per_cu_hour * dbu_price
+        scale_up_cu_hour_price = compute_usage.scale_up_effective_dbu_per_cu_hour * dbu_price
+        baseline_compute_cost = compute_usage.billable_baseline_dbu * dbu_price
+        scale_up_compute_cost = compute_usage.scale_up_dbu * dbu_price
+        compute_cost = baseline_compute_cost + scale_up_compute_cost
 
         # CU metadata
-        cu_type = "autoscale" if request.cu_size <= 32 else "fixed"
-        ram_gb = request.cu_size * 2
+        cu_type = "autoscale" if autoscale_config.min_cu <= 32 else "fixed"
+        ram_gb = autoscale_config.min_cu * 2
 
-        sku_breakdown = build_sku_breakdown_serverless(
-            sku_type=sku_type, dbu_cost=compute_cost,
-            dbu_quantity=dbu_per_month, dbu_price=dbu_price,
-        )
+        sku_breakdown = []
+        if compute_usage.billable_baseline_dbu > 0:
+            sku_breakdown.append({
+                "type": "dbu",
+                "sku": sku_type,
+                "cost": round(baseline_compute_cost, 2),
+                "qty": round(compute_usage.billable_baseline_dbu, 2),
+                "usage_unit": "DBU",
+                "unit_price_before_discount": round(dbu_price, 6),
+                "rate_type": "always_on_minimum",
+            })
+        if compute_usage.scale_up_dbu > 0:
+            sku_breakdown.append({
+                "type": "dbu",
+                "sku": sku_type,
+                "cost": round(scale_up_compute_cost, 2),
+                "qty": round(compute_usage.scale_up_dbu, 2),
+                "usage_unit": "DBU",
+                "unit_price_before_discount": round(dbu_price, 6),
+                "rate_type": "scale_up_max",
+            })
 
         # ── Storage / PITR / Snapshot costs ───────────────────────────
         dsu_price = _get_dsu_price(cloud_upper, request.region, tier_upper)
@@ -207,17 +276,41 @@ def calculate_lakebase_cost(
                 "configuration": {
                     "cloud": cloud_upper, "region": request.region, "tier": tier_upper,
                     "cu_size": request.cu_size, "cu_type": cu_type, "ram_gb": ram_gb,
+                    "compute_mode": autoscale_config.compute_mode,
+                    "min_cu": autoscale_config.min_cu,
+                    "max_cu": autoscale_config.max_cu,
+                    "scale_to_zero_enabled": autoscale_config.scale_to_zero_enabled,
                     "read_replicas": read_replicas, "total_nodes": num_nodes,
                 },
-                "usage": {"hours_per_month": hours_per_month},
+                "usage": {
+                    "hours_per_month": hours_per_month,
+                    "active_hours_per_month": autoscale_config.active_hours_per_month,
+                    "scale_up_hours_per_month": autoscale_config.scale_up_hours_per_month,
+                },
                 "dbu_calculation": {
                     "dbu_per_cu_hour": dbu_per_cu_hour,
-                    "dbu_per_hour_per_compute": round(request.cu_size * dbu_per_cu_hour, 4),
+                    "dbu_per_hour_per_compute": round(autoscale_config.min_cu * dbu_per_cu_hour, 4),
                     "dbu_per_hour": round(total_dbu_per_hour, 4),
                     "total_dbu_per_hour": round(total_dbu_per_hour, 4),
                     "dbu_per_month": round(dbu_per_month, 2),
                     "dbu_price": dbu_price,
+                    "baseline_sku_price": dbu_price,
+                    "scale_up_sku_price": dbu_price,
+                    "baseline_effective_dbu_per_cu_hour": round(compute_usage.baseline_effective_dbu_per_cu_hour, 6),
+                    "scale_up_effective_dbu_per_cu_hour": round(compute_usage.scale_up_effective_dbu_per_cu_hour, 6),
+                    "baseline_cu_hour_price": round(baseline_cu_hour_price, 6),
+                    "scale_up_cu_hour_price": round(scale_up_cu_hour_price, 6),
                     "dbu_cost_per_month": round(compute_cost, 2),
+                    "baseline_cu": compute_usage.baseline_cu,
+                    "baseline_hours": compute_usage.baseline_hours,
+                    "baseline_discount_pct": compute_usage.baseline_discount_pct,
+                    "baseline_dbu_before_discount": round(compute_usage.baseline_dbu, 2),
+                    "baseline_billable_dbu": round(compute_usage.billable_baseline_dbu, 2),
+                    "baseline_cost": round(baseline_compute_cost, 2),
+                    "scale_up_cu": compute_usage.scale_up_cu,
+                    "scale_up_hours": compute_usage.scale_up_hours,
+                    "scale_up_dbu": round(compute_usage.scale_up_dbu, 2),
+                    "scale_up_cost": round(scale_up_compute_cost, 2),
                 },
                 "storage_calculation": {
                     "dsu_price": dsu_price,

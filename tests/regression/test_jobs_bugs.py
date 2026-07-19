@@ -166,9 +166,10 @@ class TestBugS1_5_ServerlessPhotonFixed:
 
 
 class TestBugS1_6_LakebaseDBUFormulaFixed:
-    """BUG-S1-6: Backend previously used cu × nodes × 2, frontend uses cu × nodes.
-    FIXED: Backend now uses cu × nodes (matching frontend and Databricks docs).
-    Regression: verify formula is cu × nodes without the erroneous ×2.
+    """Lakebase uses discounted always-on equivalent DBU/hr.
+
+    The first CU floor is always on when scale-to-zero is disabled and gets the
+    25% always-on discount; export reports the equivalent billable DBU/hr.
     """
 
     def test_backend_lakebase_uses_cu_times_nodes(self):
@@ -178,9 +179,8 @@ class TestBugS1_6_LakebaseDBUFormulaFixed:
             workload_type="LAKEBASE", lakebase_cu=4, lakebase_ha_nodes=2,
         )
         dbu_hr, _ = _calculate_dbu_per_hour(item, "aws")
-        # Correct formula: cu × nodes = 4 × 2 = 8
-        assert dbu_hr == pytest.approx(8.0), \
-            f"Lakebase DBU/hr should be cu×nodes=8.0, got {dbu_hr}"
+        assert dbu_hr == pytest.approx(4 * 2 * 0.230 * 0.75), \
+            f"Lakebase equivalent DBU/hr should include DBU/CU-hour and 25% discount, got {dbu_hr}"
 
     def test_lakebase_single_node(self):
         from app.routes.export import _calculate_dbu_per_hour
@@ -189,9 +189,8 @@ class TestBugS1_6_LakebaseDBUFormulaFixed:
             workload_type="LAKEBASE", lakebase_cu=0.5, lakebase_ha_nodes=1,
         )
         dbu_hr, _ = _calculate_dbu_per_hour(item, "aws")
-        # 0.5 × 1 = 0.5
-        assert dbu_hr == pytest.approx(0.5), \
-            f"Lakebase 0.5CU × 1 node should be 0.5, got {dbu_hr}"
+        assert dbu_hr == pytest.approx(0.5 * 1 * 0.230 * 0.75), \
+            f"Lakebase 0.5CU × 1 node equivalent DBU/hr mismatch: {dbu_hr}"
 
     def test_lakebase_max_config(self):
         from app.routes.export import _calculate_dbu_per_hour
@@ -200,9 +199,8 @@ class TestBugS1_6_LakebaseDBUFormulaFixed:
             workload_type="LAKEBASE", lakebase_cu=112, lakebase_ha_nodes=3,
         )
         dbu_hr, _ = _calculate_dbu_per_hour(item, "aws")
-        # 112 × 3 = 336
-        assert dbu_hr == pytest.approx(336.0), \
-            f"Lakebase 112CU × 3 nodes should be 336.0, got {dbu_hr}"
+        assert dbu_hr == pytest.approx(112 * 3 * 0.230 * 0.75), \
+            f"Lakebase 112CU × 3 nodes equivalent DBU/hr mismatch: {dbu_hr}"
 
 
 class TestBugS1_12_NumWorkersDefaultFixed:

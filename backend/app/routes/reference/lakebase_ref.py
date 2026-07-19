@@ -1,43 +1,49 @@
 """Lakebase reference endpoints."""
 from fastapi import APIRouter, Query
 
+from app.services.lakebase_pricing import LAKEBASE_AUTOSCALE_CU_VALUES, LAKEBASE_MAX_AUTOSCALE_SPREAD_CU
+
 router = APIRouter()
 
+_DOCUMENTED_MAX_CONNECTIONS = {
+    0.5: 105,
+    1: 218,
+    2: 443,
+    3: 668,
+    4: 894,
+    5: 1119,
+    6: 1344,
+    7: 1570,
+    8: 1795,
+    9: 2020,
+    10: 2246,
+    12: 2696,
+    14: 3147,
+    16: 3597,
+}
+
+
+def _max_connections_for_cu(cu: float) -> int:
+    if cu in _DOCUMENTED_MAX_CONNECTIONS:
+        return _DOCUMENTED_MAX_CONNECTIONS[cu]
+    return 3993
+
+
+LAKEBASE_FIXED_CU_VALUES = [80, 96, 112]
+
 AUTOSCALE_SIZES = [
-    {"cu": 0.5, "ram_gb": 1, "max_connections": 104, "type": "autoscale"},
-    {"cu": 1, "ram_gb": 2, "max_connections": 209, "type": "autoscale"},
-    {"cu": 2, "ram_gb": 4, "max_connections": 419, "type": "autoscale"},
-    {"cu": 3, "ram_gb": 6, "max_connections": 629, "type": "autoscale"},
-    {"cu": 4, "ram_gb": 8, "max_connections": 839, "type": "autoscale"},
-    {"cu": 5, "ram_gb": 10, "max_connections": 1049, "type": "autoscale"},
-    {"cu": 6, "ram_gb": 12, "max_connections": 1258, "type": "autoscale"},
-    {"cu": 7, "ram_gb": 14, "max_connections": 1468, "type": "autoscale"},
-    {"cu": 8, "ram_gb": 16, "max_connections": 1678, "type": "autoscale"},
-    {"cu": 9, "ram_gb": 18, "max_connections": 1888, "type": "autoscale"},
-    {"cu": 10, "ram_gb": 20, "max_connections": 2098, "type": "autoscale"},
-    {"cu": 12, "ram_gb": 24, "max_connections": 2517, "type": "autoscale"},
-    {"cu": 14, "ram_gb": 28, "max_connections": 2937, "type": "autoscale"},
-    {"cu": 16, "ram_gb": 32, "max_connections": 3357, "type": "autoscale"},
-    {"cu": 24, "ram_gb": 48, "max_connections": 4000, "type": "autoscale"},
-    {"cu": 28, "ram_gb": 56, "max_connections": 4000, "type": "autoscale"},
-    {"cu": 32, "ram_gb": 64, "max_connections": 4000, "type": "autoscale"},
+    {
+        "cu": cu,
+        "ram_gb": cu * 2,
+        "max_connections": _max_connections_for_cu(cu),
+        "type": "autoscale",
+    }
+    for cu in LAKEBASE_AUTOSCALE_CU_VALUES
 ]
 
 FIXED_SIZES = [
-    {"cu": 36, "ram_gb": 72, "max_connections": 4000, "type": "fixed"},
-    {"cu": 40, "ram_gb": 80, "max_connections": 4000, "type": "fixed"},
-    {"cu": 44, "ram_gb": 88, "max_connections": 4000, "type": "fixed"},
-    {"cu": 48, "ram_gb": 96, "max_connections": 4000, "type": "fixed"},
-    {"cu": 52, "ram_gb": 104, "max_connections": 4000, "type": "fixed"},
-    {"cu": 56, "ram_gb": 112, "max_connections": 4000, "type": "fixed"},
-    {"cu": 60, "ram_gb": 120, "max_connections": 4000, "type": "fixed"},
-    {"cu": 64, "ram_gb": 128, "max_connections": 4000, "type": "fixed"},
-    {"cu": 72, "ram_gb": 144, "max_connections": 4000, "type": "fixed"},
-    {"cu": 80, "ram_gb": 160, "max_connections": 4000, "type": "fixed"},
-    {"cu": 88, "ram_gb": 176, "max_connections": 4000, "type": "fixed"},
-    {"cu": 96, "ram_gb": 192, "max_connections": 4000, "type": "fixed"},
-    {"cu": 104, "ram_gb": 208, "max_connections": 4000, "type": "fixed"},
-    {"cu": 112, "ram_gb": 224, "max_connections": 4000, "type": "fixed"},
+    {"cu": cu, "ram_gb": cu * 2, "max_connections": 3993, "type": "fixed"}
+    for cu in LAKEBASE_FIXED_CU_VALUES
 ]
 
 VALID_CU_SIZES = [s["cu"] for s in AUTOSCALE_SIZES + FIXED_SIZES]
@@ -61,8 +67,8 @@ def list_lakebase_sizes():
             "dbu_per_cu_hour": DBU_PER_CU_HOUR,
             "notes": {
                 "ram": "Each CU allocates approximately 2 GB RAM",
-                "autoscale": "Autoscaling supported for 0.5-32 CU. Range constraint: max - min <= 8 CU. Supports scale-to-zero.",
-                "fixed": "Fixed-size computes (36-112 CU) do not support autoscaling.",
+                "autoscale": f"Autoscaling supported for 0.5-64 CU. Range constraint: max - min <= {int(LAKEBASE_MAX_AUTOSCALE_SPREAD_CU)} CU. Supports scale-to-zero.",
+                "fixed": "Larger fixed-size computes use the documented 80, 96, and 112 CU sizes and do not support autoscaling.",
             },
         },
     }

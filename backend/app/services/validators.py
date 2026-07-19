@@ -292,17 +292,15 @@ def validate_warehouse_size(cloud: str, warehouse_type: str, warehouse_size: str
 
 
 def validate_lakebase_cu_size(cu_size: float) -> Optional[Dict]:
-    VALID_CU_SIZES = [
-        0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-        17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-        36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112,
-    ]
+    from app.services.lakebase_pricing import LAKEBASE_AUTOSCALE_CU_VALUES
+
+    VALID_CU_SIZES = LAKEBASE_AUTOSCALE_CU_VALUES + [80, 96, 112]
     if float(cu_size) not in VALID_CU_SIZES:
         return {
             "success": False,
             "error": {
                 "code": "INVALID_CU_SIZE",
-                "message": f"Invalid CU size '{cu_size}'. Valid autoscaling sizes: 0.5, 1-32. Fixed sizes: 36, 40, 44, 48, 52, 56, 60, 64, 72, 80, 88, 96, 104, 112.",
+                "message": f"Invalid CU size '{cu_size}'. Valid autoscaling sizes: 0.5, 1, 2, 4, 8, 12, 16, 24, 28, 32, 40, 48, 56, 64. Fixed sizes: 80, 96, 112.",
                 "field": "cu_size",
                 "allowed_values": VALID_CU_SIZES,
             },
@@ -311,14 +309,14 @@ def validate_lakebase_cu_size(cu_size: float) -> Optional[Dict]:
 
 
 def validate_lakebase_num_nodes(num_nodes: int) -> Optional[Dict]:
-    if num_nodes < 1 or num_nodes > 3:
+    if num_nodes < 1 or num_nodes > 4:
         return {
             "success": False,
             "error": {
                 "code": "INVALID_NUM_NODES",
-                "message": f"Invalid number of nodes '{num_nodes}'. Must be between 1 and 3.",
+                "message": f"Invalid number of nodes '{num_nodes}'. Must be between 1 and 4.",
                 "field": "num_nodes",
-                "allowed_values": [1, 2, 3],
+                "allowed_values": [1, 2, 3, 4],
             },
         }
     return None

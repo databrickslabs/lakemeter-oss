@@ -1476,9 +1476,16 @@ export const useStore = create<Store>((set, get) => ({
           break
           
         case 'LAKEBASE':
+          const lakebaseConfig = (lineItem.workload_config || {}) as Record<string, any>
           result = await api.calculateLakebase({
             ...baseParams,
             cu_size: lineItem.lakebase_cu || 2,
+            min_cu: lakebaseConfig.lakebase_min_cu ?? lineItem.lakebase_cu ?? 2,
+            max_cu: lakebaseConfig.lakebase_max_cu ?? lineItem.lakebase_cu ?? 2,
+            scale_to_zero_enabled: Boolean(lakebaseConfig.lakebase_scale_to_zero_enabled),
+            active_hours_per_month: lakebaseConfig.lakebase_active_hours_per_month ?? lineItem.hours_per_month ?? 730,
+            scale_up_hours_per_month: lakebaseConfig.lakebase_scale_up_hours_per_month ?? 0,
+            always_on_discount_pct: lakebaseConfig.lakebase_always_on_discount_pct ?? 25,
             num_nodes: lineItem.lakebase_ha_nodes || 1,
             hours_per_month: lineItem.hours_per_month || 730,
             storage_gb: lineItem.lakebase_storage_gb || 0,

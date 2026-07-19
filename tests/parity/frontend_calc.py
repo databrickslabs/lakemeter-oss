@@ -91,8 +91,8 @@ def fe_fmapi_provisioned_cost(*, hours, dbu_per_hour, dbu_price):
 
 
 def fe_lakebase_dbu_per_hour(*, cu, ha_nodes=1):
-    """Frontend Lakebase DBU/hr (matches costCalculation.ts)."""
-    return float(cu) * float(ha_nodes)
+    """Frontend Lakebase equivalent DBU/hr (discounted always-on floor)."""
+    return float(cu) * float(ha_nodes) * 0.230 * 0.75
 
 
 def fe_lakebase_storage_cost(*, storage_gb):

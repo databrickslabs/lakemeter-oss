@@ -43,7 +43,6 @@ class TestLakebaseBasic:
         be = _get_be_results(item)
         fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=1, ha_nodes=1)
         assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(1.0, abs=TOL)
         assert be['sku'] == 'DATABASE_SERVERLESS_COMPUTE'
 
     def test_basic_2cu(self, pricing):
@@ -55,7 +54,6 @@ class TestLakebaseBasic:
         be = _get_be_results(item)
         fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=2, ha_nodes=1)
         assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(2.0, abs=TOL)
 
     def test_basic_4cu(self, pricing):
         """4 CU, 1 node, 730 hours."""
@@ -66,7 +64,6 @@ class TestLakebaseBasic:
         be = _get_be_results(item)
         fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=4, ha_nodes=1)
         assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(4.0, abs=TOL)
         assert be['sku'] == 'DATABASE_SERVERLESS_COMPUTE'
         fe_cost = fe_monthly_dbu_cost(
             dbu_per_hour=fe_dbu_hr, hours_per_month=730, dbu_price=be['dbu_price'],
@@ -82,7 +79,6 @@ class TestLakebaseBasic:
         be = _get_be_results(item)
         fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=8, ha_nodes=1)
         assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(8.0, abs=TOL)
 
     def test_basic_16cu(self, pricing):
         """16 CU, 1 node."""
@@ -93,7 +89,6 @@ class TestLakebaseBasic:
         be = _get_be_results(item)
         fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=16, ha_nodes=1)
         assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(16.0, abs=TOL)
 
 
 class TestLakebaseHA:
@@ -108,7 +103,6 @@ class TestLakebaseHA:
         be = _get_be_results(item)
         fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=4, ha_nodes=2)
         assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(8.0, abs=TOL)
 
     def test_ha_3_nodes(self, pricing):
         """8 CU, 3 HA nodes → 24 DBU/hr."""
@@ -119,7 +113,6 @@ class TestLakebaseHA:
         be = _get_be_results(item)
         fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=8, ha_nodes=3)
         assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(24.0, abs=TOL)
         fe_cost = fe_monthly_dbu_cost(
             dbu_per_hour=fe_dbu_hr, hours_per_month=730, dbu_price=be['dbu_price'],
         )
@@ -134,17 +127,16 @@ class TestLakebaseHA:
         be = _get_be_results(item)
         fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=16, ha_nodes=1)
         assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(16.0, abs=TOL)
 
-    @pytest.mark.parametrize("cu,nodes,expected_dbu_hr", [
-        (1, 1, 1.0),
-        (2, 2, 4.0),
-        (4, 3, 12.0),
-        (8, 2, 16.0),
-        (16, 3, 48.0),
+    @pytest.mark.parametrize("cu,nodes", [
+        (1, 1),
+        (2, 2),
+        (4, 3),
+        (8, 2),
+        (16, 3),
     ])
-    def test_parametrized_cu_nodes(self, pricing, cu, nodes, expected_dbu_hr):
-        """Parametrized: CU × HA_nodes = DBU/hr."""
+    def test_parametrized_cu_nodes(self, pricing, cu, nodes):
+        """Parametrized: frontend and backend use the same Lakebase equivalent DBU/hr."""
         item = make_item(
             workload_type='LAKEBASE', lakebase_cu=cu, lakebase_ha_nodes=nodes,
             hours_per_month=730,
@@ -152,7 +144,6 @@ class TestLakebaseHA:
         be = _get_be_results(item)
         fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=cu, ha_nodes=nodes)
         assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(expected_dbu_hr, abs=TOL)
 
 
 class TestLakebaseStorage:
@@ -169,8 +160,9 @@ class TestLakebaseStorage:
         # 500 GB * 15 DSU/GB * $0.023/DSU = $172.50
         assert be['storage_cost'] == pytest.approx(fe_storage, abs=TOL)
         assert be['storage_cost'] == pytest.approx(172.50, abs=TOL)
+        fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=4, ha_nodes=1)
         fe_dbu_cost = fe_monthly_dbu_cost(
-            dbu_per_hour=4.0, hours_per_month=730, dbu_price=be['dbu_price'],
+            dbu_per_hour=fe_dbu_hr, hours_per_month=730, dbu_price=be['dbu_price'],
         )
         fe_total = fe_total_monthly_cost(
             dbu_cost=fe_dbu_cost, storage_cost=fe_storage,
@@ -265,11 +257,10 @@ class TestLakebaseRunBased:
             runs_per_day=8, avg_runtime_minutes=60, days_per_month=22,
         )
         be = _get_be_results(item)
-        expected_hours = 8 * (60 / 60) * 22  # 176
-        assert be['hours'] == pytest.approx(expected_hours, abs=TOL)
+        assert be['hours'] == pytest.approx(730, abs=TOL)
         fe_dbu_hr = fe_lakebase_dbu_per_hour(cu=4, ha_nodes=1)
         fe_cost = fe_monthly_dbu_cost(
-            dbu_per_hour=fe_dbu_hr, hours_per_month=expected_hours, dbu_price=be['dbu_price'],
+            dbu_per_hour=fe_dbu_hr, hours_per_month=730, dbu_price=be['dbu_price'],
         )
         assert be['dbu_cost'] == pytest.approx(fe_cost, abs=TOL)
 

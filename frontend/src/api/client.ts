@@ -1073,6 +1073,12 @@ export const calculateLakeflowConnect = async (request: LakeflowConnectRequest):
 // Lakebase
 export interface LakebaseRequest extends BaseCalculationRequest {
   cu_size: number
+  min_cu?: number
+  max_cu?: number
+  scale_to_zero_enabled?: boolean
+  active_hours_per_month?: number
+  scale_up_hours_per_month?: number
+  always_on_discount_pct?: number
   num_nodes: number
   hours_per_month?: number
   storage_gb?: number

@@ -30,6 +30,7 @@ def make_line_item(**kwargs):
         "lakebase_ha_nodes": 1,
         "lakebase_storage_gb": 100,
         "lakebase_backup_retention_days": None,
+        "workload_config": None,
         "runs_per_day": None,
         "avg_runtime_minutes": None,
         "days_per_month": None,

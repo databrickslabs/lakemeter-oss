@@ -58,6 +58,7 @@ import {
   getFMAPIProprietaryRate as getBundleFMAPIProprietaryRate,
   getAvailableRegionsFromBundle
 } from '../utils/pricingBundle'
+import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from '../utils/lakebasePricing'
 
 // Error Boundary for catching render errors
 interface ErrorBoundaryState {
@@ -1170,10 +1171,9 @@ export default function Calculator() {
 
       case 'LAKEBASE':
         // LAKEBASE (Managed PostgreSQL)
-        // Formula: DBU/Hour = cu_size × dbu_per_cu_hour × num_nodes
+        // Formula: discounted minimum CU floor + full-price autoscale headroom
         // dbu_per_cu_hour varies by cloud/tier (0.230 for AWS Premium, 0.213 for Enterprise/Azure)
-        const lakebaseCU = effectiveItem.lakebase_cu || 1
-        const lakebaseNodes = effectiveItem.lakebase_ha_nodes || 1  // 1-3 nodes for HA
+        const lakebaseNodes = effectiveItem.lakebase_ha_nodes || 1  // 1 primary + up to 3 read replicas
         const lakebaseDBURates: Record<string, Record<string, number>> = {
           'aws': { 'PREMIUM': 0.230, 'ENTERPRISE': 0.213 },
           'azure': { 'PREMIUM': 0.213, 'ENTERPRISE': 0.213 },
@@ -1181,8 +1181,14 @@ export default function Calculator() {
         const lakebaseCloudRates = lakebaseDBURates[cloud] || lakebaseDBURates['aws']
         const lakebaseDBUPerCU = lakebaseCloudRates[(formData.tier || 'PREMIUM').toUpperCase()] || 0.213
 
-        dbuPerHour = lakebaseCU * lakebaseDBUPerCU * lakebaseNodes
-        monthlyDBUs = dbuPerHour * hoursPerMonth
+        const lakebaseAutoscaleConfig = resolveLakebaseAutoscaleConfig(effectiveItem)
+        const lakebaseComputeUsage = calculateLakebaseComputeUsage(
+          lakebaseAutoscaleConfig,
+          lakebaseDBUPerCU,
+          lakebaseNodes,
+        )
+        dbuPerHour = lakebaseComputeUsage.equivalentDbuPerHour
+        monthlyDBUs = lakebaseComputeUsage.totalBillableDbu
         
         // Storage calculation for Lakebase (DSU-based pricing)
         // Storage: 15x DSU/GB, PITR: 8.7x DSU/GB, Snapshots: 3.91x DSU/GB
@@ -2888,7 +2894,6 @@ export default function Calculator() {
                                   
                                   // Lakebase formula
                                   if (wType === 'LAKEBASE') {
-                                    const cu = effectiveItem.lakebase_cu || 1
                                     const haNodes = effectiveItem.lakebase_ha_nodes || 1
                                     const lbDBURatesFormula: Record<string, Record<string, number>> = {
                                       'aws': { 'PREMIUM': 0.230, 'ENTERPRISE': 0.213 },
@@ -2905,6 +2910,13 @@ export default function Calculator() {
                                     const localSnapshotCost = snapshotGB * 3.91 * pricePerDSU
                                     const localTotalStorageCost = localStorageCost + localPitrCost + localSnapshotCost
                                     const hasStorageCosts = localTotalStorageCost > 0
+                                    const lakebaseConfig = resolveLakebaseAutoscaleConfig(effectiveItem)
+                                    const lakebaseUsage = calculateLakebaseComputeUsage(lakebaseConfig, lbDBUPerCU, haNodes)
+                                    const baselineCuHourPrice = lakebaseUsage.baselineEffectiveDbuPerCuHour * dbuPrice
+                                    const scaleUpCuHourPrice = lakebaseUsage.scaleUpEffectiveDbuPerCuHour * dbuPrice
+                                    const baselineCost = lakebaseUsage.billableBaselineDbu * dbuPrice
+                                    const scaleUpCost = lakebaseUsage.scaleUpDbu * dbuPrice
+                                    const hasScaleUpCost = lakebaseUsage.scaleUpHours > 0 && lakebaseUsage.scaleUpDbu > 0
                                     return (
                                       <div className="space-y-1">
                                         {/* Hours calculation (if run-based) */}
@@ -2921,21 +2933,51 @@ export default function Calculator() {
                                           </div>
                                         )}
                                         <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
-                                          <span className="text-blue-600 font-semibold">DBU:</span>
-                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{cu} CU</span>
-                                          <span>×</span>
-                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lbDBUPerCU} DBU/CU-hr</span>
-                                          <span>×</span>
-                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{haNodes} nodes</span>
-                                          <span>×</span>
-                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(isRunBased ? 1 : 0)}h</span>
-                                          <span>=</span>
-                                          <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                          <span className="text-blue-600 font-semibold">Min DBU:</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.baselineEffectiveDbuPerCuHour.toFixed(3)} DBU/CU-hr</span>
                                           <span>×</span>
                                           <span>${dbuPriceDisplay}/DBU</span>
                                           <span>=</span>
-                                          <span className="text-blue-500 font-semibold">{formatCurrency(costs.dbuCost)}</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">${baselineCuHourPrice.toFixed(3)}/CU-hr</span>
+                                          <span>×</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.baselineCu} CU</span>
+                                          <span>×</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{haNodes} nodes</span>
+                                          <span>×</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.baselineHours.toFixed(0)}h</span>
+                                          <span className="text-[var(--text-muted)]">
+                                            ({lakebaseUsage.baselineDiscountPct > 0 ? `${lakebaseUsage.baselineDiscountPct}% lower DBU/CU-hr` : 'normal DBU/CU-hr'})
+                                          </span>
+                                          <span>=</span>
+                                          <span>{formatNumber(lakebaseUsage.billableBaselineDbu)} DBUs</span>
+                                          <span>×</span>
+                                          <span>${dbuPriceDisplay}/DBU</span>
+                                          <span>=</span>
+                                          <span className="text-blue-500 font-semibold">{formatCurrency(baselineCost)}</span>
                                         </div>
+                                        {hasScaleUpCost && (
+                                          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                            <span className="text-blue-600 font-semibold">Max DBU:</span>
+                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.scaleUpEffectiveDbuPerCuHour.toFixed(3)} DBU/CU-hr</span>
+                                            <span>×</span>
+                                            <span>${dbuPriceDisplay}/DBU</span>
+                                            <span>=</span>
+                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">${scaleUpCuHourPrice.toFixed(3)}/CU-hr</span>
+                                            <span>×</span>
+                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.scaleUpCu} CU</span>
+                                            <span>×</span>
+                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{haNodes} nodes</span>
+                                            <span>×</span>
+                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.scaleUpHours.toFixed(0)}h</span>
+                                            <span>=</span>
+                                            <span>{formatNumber(lakebaseUsage.scaleUpDbu)} DBUs</span>
+                                            <span>×</span>
+                                            <span>${dbuPriceDisplay}/DBU</span>
+                                            <span className="text-[var(--text-muted)]">(normal compute SKU)</span>
+                                            <span>=</span>
+                                            <span className="text-blue-500 font-semibold">{formatCurrency(scaleUpCost)}</span>
+                                          </div>
+                                        )}
                                         {storageGB > 0 && (
                                           <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                             <span className="text-purple-600 font-semibold">Storage:</span>
@@ -3675,7 +3717,6 @@ export default function Calculator() {
                                 }
                                 
                                 if (wType === 'LAKEBASE') {
-                                  const cu = effectiveItem.lakebase_cu || 1
                                   const nodes = effectiveItem.lakebase_ha_nodes || 1
                                   const storageGB = effectiveItem.lakebase_storage_gb || 0
                                   const pitrGB = effectiveItem.lakebase_pitr_gb || 0
@@ -3692,24 +3733,61 @@ export default function Calculator() {
                                   }
                                   const lbCloudRatesCard = lbDBURatesCard[formData.cloud || 'aws'] || lbDBURatesCard['aws']
                                   const lbDBUPerCUCard = lbCloudRatesCard[(formData.tier || 'PREMIUM').toUpperCase()] || 0.213
+                                  const lakebaseConfig = resolveLakebaseAutoscaleConfig(effectiveItem)
+                                  const lakebaseUsage = calculateLakebaseComputeUsage(lakebaseConfig, lbDBUPerCUCard, nodes)
+                                  const baselineCuHourPrice = lakebaseUsage.baselineEffectiveDbuPerCuHour * dbuPrice
+                                  const scaleUpCuHourPrice = lakebaseUsage.scaleUpEffectiveDbuPerCuHour * dbuPrice
+                                  const baselineCost = lakebaseUsage.billableBaselineDbu * dbuPrice
+                                  const scaleUpCost = lakebaseUsage.scaleUpDbu * dbuPrice
+                                  const hasScaleUpCost = lakebaseUsage.scaleUpHours > 0 && lakebaseUsage.scaleUpDbu > 0
                                   return (
                                     <div className="space-y-1">
                                       <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
-                                        <span className="text-blue-600 font-semibold">DBU:</span>
-                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{cu} CU</span>
-                                        <span>×</span>
-                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lbDBUPerCUCard} DBU/CU-hr</span>
-                                        <span>×</span>
-                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{nodes} nodes</span>
-                                        <span>×</span>
-                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(0)}h</span>
-                                        <span>=</span>
-                                        <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                        <span className="text-blue-600 font-semibold">Min DBU:</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.baselineEffectiveDbuPerCuHour.toFixed(3)} DBU/CU-hr</span>
                                         <span>×</span>
                                         <span>${dbuPriceDisplay}/DBU</span>
                                         <span>=</span>
-                                        <span className="text-blue-500 font-semibold">{formatCurrency(costs.dbuCost)}</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">${baselineCuHourPrice.toFixed(3)}/CU-hr</span>
+                                        <span>×</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.baselineCu} CU</span>
+                                        <span>×</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{nodes} nodes</span>
+                                        <span>×</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.baselineHours.toFixed(0)}h</span>
+                                        <span className="text-[var(--text-muted)]">
+                                          ({lakebaseUsage.baselineDiscountPct > 0 ? `${lakebaseUsage.baselineDiscountPct}% lower DBU/CU-hr` : 'normal DBU/CU-hr'})
+                                        </span>
+                                        <span>=</span>
+                                        <span>{formatNumber(lakebaseUsage.billableBaselineDbu)} DBUs</span>
+                                        <span>×</span>
+                                        <span>${dbuPriceDisplay}/DBU</span>
+                                        <span>=</span>
+                                        <span className="text-blue-500 font-semibold">{formatCurrency(baselineCost)}</span>
                                       </div>
+                                      {hasScaleUpCost && (
+                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                          <span className="text-blue-600 font-semibold">Max DBU:</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.scaleUpEffectiveDbuPerCuHour.toFixed(3)} DBU/CU-hr</span>
+                                          <span>×</span>
+                                          <span>${dbuPriceDisplay}/DBU</span>
+                                          <span>=</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">${scaleUpCuHourPrice.toFixed(3)}/CU-hr</span>
+                                          <span>×</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.scaleUpCu} CU</span>
+                                          <span>×</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{nodes} nodes</span>
+                                          <span>×</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{lakebaseUsage.scaleUpHours.toFixed(0)}h</span>
+                                          <span>=</span>
+                                          <span>{formatNumber(lakebaseUsage.scaleUpDbu)} DBUs</span>
+                                          <span>×</span>
+                                          <span>${dbuPriceDisplay}/DBU</span>
+                                          <span className="text-[var(--text-muted)]">(normal compute SKU)</span>
+                                          <span>=</span>
+                                          <span className="text-blue-500 font-semibold">{formatCurrency(scaleUpCost)}</span>
+                                        </div>
+                                      )}
                                       {storageGB > 0 && (
                                         <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                           <span className="text-purple-600 font-semibold">Storage:</span>

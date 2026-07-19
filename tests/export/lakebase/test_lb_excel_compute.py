@@ -13,6 +13,7 @@ from tests.export.lakebase.excel_helpers import (
     COL_DBU_HR, COL_DBUS_MO, COL_DBU_RATE, COL_DBU_COST_L,
     COL_TOTAL_L, COL_NOTES, COL_CONFIG,
 )
+from tests.export.lakebase.lb_calc_helpers import calc_dbu_per_hour
 
 
 class TestComputeRowExists:
@@ -55,12 +56,12 @@ class TestComputeRowFormula:
         if isinstance(val, str):
             assert val.startswith('='), f"Expected formula, got: {val}"
 
-    @pytest.mark.parametrize("cu,nodes,hours,expected_dbu_hr", [
-        (0.5, 1, 730, 0.5),
-        (4, 2, 730, 8.0),
-        (32, 3, 730, 96.0),
+    @pytest.mark.parametrize("cu,nodes,hours", [
+        (0.5, 1, 730),
+        (4, 2, 730),
+        (32, 3, 730),
     ])
-    def test_dbu_hr_in_excel(self, cu, nodes, hours, expected_dbu_hr):
+    def test_dbu_hr_in_excel(self, cu, nodes, hours):
         items = [make_line_item(
             lakebase_cu=cu, lakebase_ha_nodes=nodes,
             hours_per_month=hours,
@@ -72,7 +73,7 @@ class TestComputeRowFormula:
         dbu_hr = ws.cell(row=row, column=COL_DBU_HR).value
         assert isinstance(dbu_hr, (int, float)), (
             f"DBU/hr should be numeric, got {type(dbu_hr)}: {dbu_hr}")
-        assert abs(dbu_hr - expected_dbu_hr) < 0.01
+        assert abs(dbu_hr - calc_dbu_per_hour(cu, nodes)) < 0.01
 
     def test_dbus_mo_numeric_correct(self):
         items = [make_line_item(

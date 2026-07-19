@@ -113,6 +113,13 @@ export interface LineItem {
 
   // Lakebase Configuration
   lakebase_cu?: number | null
+  lakebase_compute_mode?: 'autoscale' | 'fixed' | null
+  lakebase_min_cu?: number | null
+  lakebase_max_cu?: number | null
+  lakebase_scale_to_zero_enabled?: boolean | null
+  lakebase_active_hours_per_month?: number | null
+  lakebase_scale_up_hours_per_month?: number | null
+  lakebase_always_on_discount_pct?: number | null
   lakebase_storage_gb?: number | null
   lakebase_ha_nodes?: number | null
   lakebase_backup_retention_days?: number | null

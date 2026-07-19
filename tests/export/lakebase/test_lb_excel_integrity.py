@@ -13,6 +13,7 @@ from tests.export.lakebase.excel_helpers import (
     COL_SKU, COL_DBU_HR, COL_DISCOUNT, COL_DBU_RATE,
     COL_DBU_RATE_DISC, COL_DBU_COST_L, COL_DBU_COST_D,
 )
+from tests.export.lakebase.lb_calc_helpers import calc_dbu_per_hour
 
 
 class TestMultiItemExcel:
@@ -65,8 +66,8 @@ class TestMultiItemExcel:
             if isinstance(v, (int, float)):
                 dbu_values.append(v)
         assert len(dbu_values) == 2
-        assert abs(dbu_values[0] - 4.0) < 0.01
-        assert abs(dbu_values[1] - 32.0) < 0.01
+        assert abs(dbu_values[0] - calc_dbu_per_hour(4, 1)) < 0.01
+        assert abs(dbu_values[1] - calc_dbu_per_hour(16, 2)) < 0.01
 
     def test_three_items_produce_six_rows(self):
         """Three Lakebase items → 3 compute + 3 storage rows."""
