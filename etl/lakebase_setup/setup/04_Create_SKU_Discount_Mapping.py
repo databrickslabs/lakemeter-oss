@@ -162,10 +162,7 @@ INSERT INTO lakemeter.sku_discount_mapping (sku, discount_category, description)
 ('SERVERLESS_REAL_TIME_INFERENCE_LAUNCH', 'dbu', 'Serverless real-time inference launch'),
 ('ANTHROPIC_MODEL_SERVING', 'dbu', 'Anthropic model serving (FMAPI)'),
 ('OPENAI_MODEL_SERVING', 'dbu', 'OpenAI model serving (FMAPI)'),
-('GEMINI_MODEL_SERVING', 'dbu', 'Gemini model serving (FMAPI)'),
-
--- Clean Rooms
-('CLEAN_ROOMS_COLLABORATOR', 'dbu', 'Clean Rooms collaborator compute')
+('GEMINI_MODEL_SERVING', 'dbu', 'Gemini model serving (FMAPI)')
 ON CONFLICT (sku) DO NOTHING;
 """
 

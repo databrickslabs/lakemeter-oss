@@ -69,9 +69,6 @@ PRICING_TIERS = ["on_demand", "1yr_reserved", "3yr_reserved"]
 # Databricks Apps sizes
 DATABRICKS_APPS_SIZES = ["medium", "large"]
 
-# Clean Room collaborator counts
-CLEAN_ROOM_COLLABORATORS = [1, 3, 5, 10]
-
 # AI Parse configurations
 AI_PARSE_COMPLEXITIES = ["low_text", "low_images", "medium", "high"]
 AI_PARSE_PAGES = [1.0, 10.0, 50.0]  # thousands of pages

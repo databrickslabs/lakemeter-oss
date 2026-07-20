@@ -280,18 +280,6 @@ class E2EClient:
             payload["discount_config"] = discount_config
         return self.calculate("/calculate/databricks-apps", payload)
 
-    def calculate_clean_room(self, cloud: str, region: str, tier: str,
-                              collaborators: int,
-                              days_per_month: int = 30,
-                              discount_config: Optional[dict] = None) -> dict:
-        payload = {
-            "cloud": cloud, "region": region, "tier": tier,
-            "collaborators": collaborators, "days_per_month": days_per_month,
-        }
-        if discount_config:
-            payload["discount_config"] = discount_config
-        return self.calculate("/calculate/clean-room", payload)
-
     def calculate_ai_parse(self, cloud: str, region: str, tier: str,
                             mode: str = "pages",
                             complexity: Optional[str] = None,

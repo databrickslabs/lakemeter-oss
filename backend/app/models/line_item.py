@@ -64,10 +64,6 @@ class LineItem(Base):
     databricks_apps_hours_per_month = Column(Numeric(12, 2))
     databricks_apps_num_apps = Column(Integer)
 
-    # Clean Room Configuration
-    clean_room_num_collaborators = Column(Integer)  # 1-10
-    clean_room_days_per_month = Column(Integer)
-
     # AI Parse Configuration
     ai_parse_calculation_method = Column(String(20))  # dbu, pages
     ai_parse_complexity = Column(String(20))  # low_text, low_images, medium, high

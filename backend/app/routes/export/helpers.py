@@ -38,7 +38,6 @@ def _get_workload_display_name(workload_type: str) -> str:
         'FMAPI_PROPRIETARY': 'Foundation Models (Proprietary)',
         'LAKEBASE': 'Lakebase',
         'DATABRICKS_APPS': 'Databricks Apps',
-        'CLEAN_ROOM': 'Clean Room',
         'AI_PARSE': 'AI Parse (Document AI)',
         'SHUTTERSTOCK_IMAGEAI': 'Shutterstock ImageAI',
         'LAKEFLOW_CONNECT': 'Lakeflow Connect',
@@ -70,9 +69,6 @@ def _get_workload_config_details(item) -> str:
     elif wt == 'DATABRICKS_APPS':
         size = (getattr(item, 'databricks_apps_size', None) or 'medium').capitalize()
         details.append(f"Size: {size}")
-    elif wt == 'CLEAN_ROOM':
-        collaborators = getattr(item, 'clean_room_collaborators', None) or 1
-        details.append(f"Collaborators: {collaborators}")
     elif wt == 'AI_PARSE':
         details.extend(_ai_parse_details(item))
     elif wt == 'SHUTTERSTOCK_IMAGEAI':
