@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Sprint 3: DLT Calculation Tests
 
-Sprint 3 validates the **Delta Live Tables (DLT)** cost calculation logic across both frontend and backend, covering all three editions (Core, Pro, Advanced), classic and serverless compute modes, Photon pricing, SKU alignment, and Excel export accuracy.
+Sprint 3 validates the **Delta Live Tables (DLT)** cost calculation logic across both frontend and backend, covering all three editions (Core, Pro, Advanced), classic and serverless compute modes, Photon pricing, SKU alignment, and Excel export consistency.
 
 ## What's Tested
 
@@ -76,7 +76,7 @@ Sprint 3 includes end-to-end Excel tests that:
 4. Validate display names match expected DLT terminology
 
 ![Estimates List](/img/estimates-list.png)
-*The estimates list with export option — Sprint 3 tests verify the exported Excel files contain accurate formulas.*
+*The estimates list with export option — Sprint 3 tests verify the exported Excel files contain expected formulas.*
 
 ## Running Sprint 3 Tests
 

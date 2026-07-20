@@ -14,7 +14,7 @@ The test suite verifies that:
 - Proposed workload configurations contain all required fields with valid values
 - The confirm/reject workflow functions correctly
 - Cost calculation logic matches between frontend and backend
-- Excel export formulas produce accurate results
+- Excel export formulas produce expected results for the modeled assumptions
 
 ## Test Architecture
 
@@ -139,7 +139,7 @@ These tests validate the cost calculation logic directly — no AI calls needed:
 4. Test Excel export formulas against real `.xlsx` files
 
 ![Workload Calculation Detail](/img/workload-calculation-detail.png)
-*Workload configuration with cost breakdown — Sprint 3 tests verify these calculations are accurate.*
+*Workload configuration with cost breakdown — Sprint 3 tests verify these calculations match expected outputs for modeled inputs.*
 
 ### Documentation Media Tests (Docs Overhaul Sprints 3-5)
 
