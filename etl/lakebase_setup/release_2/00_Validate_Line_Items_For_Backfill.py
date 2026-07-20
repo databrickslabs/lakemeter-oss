@@ -256,9 +256,6 @@ def get_endpoint_for_validation(workload_type: str, serverless_enabled: Optional
     elif workload_type == "DATABRICKS_APPS":
         return "/api/v1/calculate/databricks-apps", None
     
-    elif workload_type == "CLEAN_ROOM":
-        return "/api/v1/calculate/clean-room", None
-    
     elif workload_type == "AI_PARSE":
         return "/api/v1/calculate/ai-parse", None
         
@@ -393,12 +390,6 @@ def get_required_fields(workload_type: str, serverless_enabled: Optional[bool],
         else:
             required = []
     
-    elif workload_type == "CLEAN_ROOM":
-        if "clean_room_num_collaborators" in available_columns:
-            required = ["clean_room_num_collaborators"]
-        else:
-            required = []
-    
     elif workload_type == "AI_PARSE":
         # AI Parse can use either dbu_quantity OR (num_pages + complexity)
         # Skip validation - will check at runtime
@@ -417,7 +408,6 @@ validation_columns = [
     'fmapi_provider', 'fmapi_model', 'fmapi_endpoint_type', 'fmapi_rate_type', 'fmapi_quantity',
     'lakebase_cu', 'lakebase_storage_gb',
     'databricks_apps_size', 'databricks_apps_hours_per_month',
-    'clean_room_num_collaborators', 'clean_room_days_per_month',
     'ai_parse_calculation_method', 'ai_parse_dbu_quantity', 'ai_parse_num_pages', 'ai_parse_complexity'
 ]
 

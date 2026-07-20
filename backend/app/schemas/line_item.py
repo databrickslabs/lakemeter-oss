@@ -57,10 +57,6 @@ class LineItemBase(BaseModel):
     databricks_apps_hours_per_month: Optional[float] = None
     databricks_apps_num_apps: Optional[int] = None
 
-    # Clean Room Configuration
-    clean_room_num_collaborators: Optional[int] = None
-    clean_room_days_per_month: Optional[int] = None
-
     # AI Parse Configuration
     ai_parse_calculation_method: Optional[str] = None
     ai_parse_complexity: Optional[str] = None
@@ -170,10 +166,6 @@ class LineItemUpdate(BaseModel):
     databricks_apps_size: Optional[str] = None
     databricks_apps_hours_per_month: Optional[float] = None
     databricks_apps_num_apps: Optional[int] = None
-
-    # Clean Room Configuration
-    clean_room_num_collaborators: Optional[int] = None
-    clean_room_days_per_month: Optional[int] = None
 
     # AI Parse Configuration
     ai_parse_calculation_method: Optional[str] = None

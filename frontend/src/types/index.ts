@@ -95,9 +95,6 @@ export interface LineItem {
   // Databricks Apps Configuration
   databricks_apps_size?: string | null  // medium, large
 
-  // Clean Room Configuration
-  clean_room_collaborators?: number | null  // 1-10
-
   // AI Parse Configuration
   ai_parse_mode?: string | null  // dbu, pages
   ai_parse_complexity?: string | null  // low_text, low_images, medium, high

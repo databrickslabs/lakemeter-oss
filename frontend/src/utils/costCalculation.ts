@@ -223,10 +223,6 @@ export function calculateWorkloadCost(
       productType = 'ALL_PURPOSE_SERVERLESS_COMPUTE'
       break
 
-    case 'CLEAN_ROOM':
-      productType = 'CLEAN_ROOMS_COLLABORATOR'
-      break
-
     case 'AI_PARSE':
     case 'SHUTTERSTOCK_IMAGEAI':
       productType = 'SERVERLESS_REAL_TIME_INFERENCE'

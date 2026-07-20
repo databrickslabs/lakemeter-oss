@@ -83,10 +83,6 @@ def _calculate_dbu_per_hour(item, cloud: str = 'aws', tier: str = 'PREMIUM') -> 
         size = (getattr(item, 'databricks_apps_size', None) or 'medium').lower()
         rates = {'medium': 0.5, 'large': 1.0}
         return rates.get(size, 0.5), warnings
-    elif wt == 'CLEAN_ROOM':
-        collaborators = int(getattr(item, 'clean_room_collaborators', None) or 1)
-        # 1 DBU per collaborator per day; convert to hourly (day=24h)
-        return collaborators / 24.0, warnings
     elif wt == 'AI_PARSE':
         # AI Parse is quantity-based, not hour-based; return 0, handled separately
         return 0, warnings
@@ -210,7 +206,7 @@ def _is_serverless_workload(item) -> bool:
     """Check if workload is serverless (no VM costs)."""
     wt = (item.workload_type or '').upper()
     if wt in ('VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY',
-              'LAKEBASE', 'DATABRICKS_APPS', 'CLEAN_ROOM', 'AI_PARSE', 'SHUTTERSTOCK_IMAGEAI',
+              'LAKEBASE', 'DATABRICKS_APPS', 'AI_PARSE', 'SHUTTERSTOCK_IMAGEAI',
               'LAKEFLOW_CONNECT'):
         return True
     if wt in ('JOBS', 'ALL_PURPOSE', 'DLT') and item.serverless_enabled:

@@ -47,7 +47,7 @@ const _vmCostInflight: Record<string, Promise<any>> = {}
 // =============================================================================
 // LOCAL STORAGE CACHE UTILITIES
 // =============================================================================
-const CACHE_VERSION = 'v7'  // Bumped - added DATABRICKS_APPS, AI_PARSE, SHUTTERSTOCK_IMAGEAI; removed CLEAN_ROOM, LAKEFLOW_CONNECT
+const CACHE_VERSION = 'v7'  // Bumped - added DATABRICKS_APPS, AI_PARSE, SHUTTERSTOCK_IMAGEAI; removed LAKEFLOW_CONNECT
 const CACHE_KEY = `lakemeter_reference_data_${CACHE_VERSION}`
 const CACHE_TTL = 4 * 60 * 60 * 1000 // 4 hours in milliseconds (reduced from 24h)
 

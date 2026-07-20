@@ -34,7 +34,6 @@ The notebooks support the following workload types:
 - **FMAPI_DATABRICKS** (split type - direct routing)
 - **LAKEBASE**
 - **DATABRICKS_APPS** (medium/large sizes)
-- **CLEAN_ROOM** (collaborator-based)
 - **AI_PARSE** (DBU or pages+complexity)
 
 ### ⚠️ Excluded from Backfill (Validation Only):
@@ -66,7 +65,6 @@ The notebook will show warnings for any skipped workload types.
 
 #### New Workload Types (Release 2)
 - **DATABRICKS_APPS**: `databricks_apps_size`, `databricks_apps_hours_per_month` (or `hours_per_month`)
-- **CLEAN_ROOM**: `clean_room_num_collaborators`, `clean_room_days_per_month` (or `days_per_month`)
 - **AI_PARSE**: Either:
   - Method 1: `ai_parse_dbu_quantity` (set `ai_parse_calculation_method` = 'dbu')
   - Method 2: `ai_parse_num_pages` + `ai_parse_complexity` (set `ai_parse_calculation_method` = 'pages')

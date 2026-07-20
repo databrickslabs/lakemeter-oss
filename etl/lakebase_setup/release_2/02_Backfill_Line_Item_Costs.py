@@ -236,7 +236,6 @@ ENDPOINT_MAPPING = {
     ("FMAPI_PROPRIETARY", None, None): "/api/v1/calculate/fmapi-proprietary",
     ("LAKEBASE", None, None): "/api/v1/calculate/lakebase",
     ("DATABRICKS_APPS", None, None): "/api/v1/calculate/databricks-apps",
-    ("CLEAN_ROOM", None, None): "/api/v1/calculate/clean-room",
     ("AI_PARSE", None, None): "/api/v1/calculate/ai-parse",
 }
 
@@ -382,12 +381,6 @@ def build_payload(line_item: Dict[str, Any], estimate: Dict[str, Any]) -> Dict[s
             "hours_per_month": float(line_item.get("databricks_apps_hours_per_month", line_item.get("hours_per_month", 730))),
         })
     
-    elif workload_type == "CLEAN_ROOM":
-        payload.update({
-            "num_collaborators": line_item["clean_room_num_collaborators"],
-            "days_per_month": line_item.get("clean_room_days_per_month", line_item.get("days_per_month", 30)),
-        })
-    
     elif workload_type == "AI_PARSE":
         # AI Parse can use either dbu_quantity OR (num_pages + complexity)
         if line_item.get("ai_parse_dbu_quantity"):
@@ -437,8 +430,6 @@ def calculate_line_item_cost(
         # Direct handling for other new workload types
         elif workload_type == "DATABRICKS_APPS":
             endpoint = "/api/v1/calculate/databricks-apps"
-        elif workload_type == "CLEAN_ROOM":
-            endpoint = "/api/v1/calculate/clean-room"
         elif workload_type == "AI_PARSE":
             endpoint = "/api/v1/calculate/ai-parse"
         # Direct handling for LAKEBASE
@@ -607,8 +598,6 @@ fetch_sql = f"""
         li.lakebase_backup_retention_days,
         li.databricks_apps_size,
         li.databricks_apps_hours_per_month,
-        li.clean_room_num_collaborators,
-        li.clean_room_days_per_month,
         li.ai_parse_calculation_method,
         li.ai_parse_dbu_quantity,
         li.ai_parse_num_pages,

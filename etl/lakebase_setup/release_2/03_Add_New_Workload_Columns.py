@@ -6,11 +6,10 @@
 # MAGIC 
 # MAGIC **Target Table:** `lakemeter.line_items` (MAIN TABLE ONLY)
 # MAGIC 
-# MAGIC **New Workload Columns (25):**
+# MAGIC **New Workload Columns (23):**
 # MAGIC - Vector Search (storage enhancement)
 # MAGIC - Lakebase (storage enhancement)
 # MAGIC - Databricks Apps
-# MAGIC - Clean Room
 # MAGIC - AI Parse
 # MAGIC - Shutterstock ImageAI
 # MAGIC - Databricks Support
@@ -20,7 +19,7 @@
 # MAGIC - cost_calculation_response (JSONB) - Full API response
 # MAGIC - calculation_completed_at (TIMESTAMP) - When completed
 # MAGIC 
-# MAGIC **Total New Columns:** 27
+# MAGIC **Total New Columns:** 25
 
 # COMMAND ----------
 
@@ -203,35 +202,13 @@ CHECK (databricks_apps_hours_per_month >= 0);
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 7. Add New Columns - Clean Room
-
-# COMMAND ----------
-
-print("=" * 80)
-print("4. CLEAN ROOM")
-print("=" * 80)
-
-execute_sql("""
-ALTER TABLE lakemeter.line_items 
-ADD COLUMN IF NOT EXISTS clean_room_num_collaborators INT
-CHECK (clean_room_num_collaborators >= 1 AND clean_room_num_collaborators <= 10);
-""", "Added clean_room_num_collaborators column (1-10)")
-
-execute_sql("""
-ALTER TABLE lakemeter.line_items 
-ADD COLUMN IF NOT EXISTS clean_room_days_per_month INT
-CHECK (clean_room_days_per_month >= 1 AND clean_room_days_per_month <= 31);
-""", "Added clean_room_days_per_month column")
-
-# COMMAND ----------
-
 # MAGIC %md
-# MAGIC ## 8. Add New Columns - AI Parse
+# MAGIC ## 7. Add New Columns - AI Parse
 
 # COMMAND ----------
 
 print("=" * 80)
-print("5. AI PARSE")
+print("4. AI PARSE")
 print("=" * 80)
 
 execute_sql("""
@@ -468,7 +445,6 @@ WHERE table_name = 'line_items'
        column_name LIKE 'vector_search_%' 
     OR column_name LIKE 'lakebase_storage_%'
     OR column_name LIKE 'databricks_apps_%'
-    OR column_name LIKE 'clean_room_%'
     OR column_name LIKE 'ai_parse_%'
     OR column_name LIKE 'shutterstock_%'
     OR column_name LIKE 'databricks_support_%'

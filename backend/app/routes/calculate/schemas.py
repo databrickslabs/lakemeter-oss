@@ -246,15 +246,6 @@ class DatabricksAppsCalculationRequest(BaseModel):
     discount_config: Optional[DiscountConfig] = Field(None)
 
 
-class CleanRoomCalculationRequest(BaseModel):
-    cloud: str = Field(...)
-    region: str = Field(...)
-    tier: str = Field(...)
-    collaborators: int = Field(..., ge=1, le=10, description="Number of collaborators (1-10)")
-    days_per_month: Optional[int] = Field(None, ge=1, le=31)
-    discount_config: Optional[DiscountConfig] = Field(None)
-
-
 class AIParseCalculationRequest(BaseModel):
     cloud: str = Field(...)
     region: str = Field(...)

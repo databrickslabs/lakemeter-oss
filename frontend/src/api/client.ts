@@ -1017,17 +1017,6 @@ export const calculateDatabricksApps = async (request: DatabricksAppsRequest): P
   return data
 }
 
-// Clean Room
-export interface CleanRoomRequest extends BaseCalculationRequest {
-  collaborators: number
-  days_per_month?: number
-}
-
-export const calculateCleanRoom = async (request: CleanRoomRequest): Promise<CostCalculationResponse> => {
-  const { data } = await api.post('/calculate/clean-room', request)
-  return data
-}
-
 // AI Parse
 export interface AIParseRequest extends BaseCalculationRequest {
   mode?: string
@@ -1142,9 +1131,6 @@ export const calculateWorkloadCost = async (
 
     case 'DATABRICKS_APPS':
       return calculateDatabricksApps(params as unknown as DatabricksAppsRequest)
-
-    case 'CLEAN_ROOM':
-      return calculateCleanRoom(params as unknown as CleanRoomRequest)
 
     case 'AI_PARSE':
       return calculateAIParse(params as unknown as AIParseRequest)
