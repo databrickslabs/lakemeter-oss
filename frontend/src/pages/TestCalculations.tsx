@@ -1035,7 +1035,7 @@ export default function TestCalculations() {
       workload_type: workloadType
     }
     
-    // Pre-fetch VM prices for accurate local calculation (if not serverless)
+    // Pre-fetch VM prices for the local calculation (if not serverless)
     // This ensures vmPricingMap has the prices before local calculation runs
     const vmFetchPromises: Promise<number>[] = []
     

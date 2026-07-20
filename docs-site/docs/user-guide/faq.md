@@ -16,9 +16,9 @@ sidebar_position: 10
 
 Lakemeter is a cost estimation tool for the Databricks platform. It lets you model workloads across 12 Databricks product types (Jobs, DBSQL, DLT, Model Serving, Vector Search, FMAPI, Lakebase, Databricks Apps, AI Parse, Shutterstock ImageAI, and more), calculate monthly and annual costs based on real Databricks pricing data, and export professional Excel reports for procurement or planning.
 
-### How accurate are the cost estimates?
+### How should I interpret the cost estimates?
 
-Lakemeter uses DBU rates and instance pricing pulled directly from Databricks reference tables. The calculations match the formulas Databricks uses for billing. However, actual costs may differ due to committed-use discounts, spot pricing fluctuations, auto-scaling behavior, and usage patterns that deviate from your modeled assumptions. Always verify critical estimates against the [official Databricks pricing page](https://www.databricks.com/product/pricing).
+Lakemeter uses DBU rates and instance pricing pulled from Databricks reference tables and applies documented pricing formulas. The results are planning-grade estimates, not billing guarantees. Actual costs may differ due to committed-use discounts, spot pricing fluctuations, auto-scaling behavior, workload shape, and usage patterns that deviate from your modeled assumptions. Always verify critical estimates against the [official Databricks pricing page](https://www.databricks.com/product/pricing) and customer-specific commercial terms.
 
 ### Is Lakemeter an official Databricks product?
 

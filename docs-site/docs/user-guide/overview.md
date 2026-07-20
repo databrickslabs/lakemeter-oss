@@ -75,4 +75,4 @@ Each estimate uses a pricing tier that determines DBU rates:
 
 ## Quality Assurance
 
-Lakemeter includes a comprehensive test suite covering AI assistant proposals, cost calculation accuracy, and Excel export verification. See the [Testing Guide](/testing/overview) for details on running and extending the test suite.
+Lakemeter includes a comprehensive test suite covering AI assistant proposals, pricing formula consistency, and Excel export verification. See the [Testing Guide](/testing/overview) for details on running and extending the test suite.

@@ -122,7 +122,7 @@ For multi-workload proposals (like a full platform estimate), the assistant prop
 - History does not persist across browser sessions
 
 :::tip
-Be specific in your requests. Instead of "add a warehouse," say "add a DBSQL Serverless Medium warehouse running 8 hours per business day for our analytics team." The more detail you provide, the more accurate the proposed configuration will be.
+Be specific in your requests. Instead of "add a warehouse," say "add a DBSQL Serverless Medium warehouse running 8 hours per business day for our analytics team." The more detail you provide, the more complete the proposed configuration will be.
 :::
 
 :::caution

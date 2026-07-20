@@ -867,7 +867,7 @@ export default function Calculator() {
     
     // ========================================
     // Step 3: Calculate DBU per hour based on workload type
-    // Uses fetched instanceTypes for accurate DBU rates
+    // Uses fetched instanceTypes for current DBU rates
     // ========================================
     let dbuPerHour = 0
     let monthlyDBUs = 0

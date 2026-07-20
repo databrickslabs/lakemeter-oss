@@ -116,8 +116,8 @@ Total Cost   = DBU Cost
 
 ## Tips
 
-- **Estimate page counts accurately**: If you process 10,000 invoices with an average of 3 pages each, that's 30,000 pages = 30 thousands. Don't confuse document count with page count.
-- **Batch by complexity**: If you have a mix of simple and complex documents, create separate workload entries for each complexity level to get a more accurate estimate.
+- **Estimate page counts carefully**: If you process 10,000 invoices with an average of 3 pages each, that's 30,000 pages = 30 thousands. Don't confuse document count with page count.
+- **Batch by complexity**: If you have a mix of simple and complex documents, create separate workload entries for each complexity level to get a more useful estimate.
 - **Pages mode is usually clearer**: Unless you already know your DBU budget, Pages mode gives a more intuitive estimate based on actual document volumes.
 
 ## Common mistakes
