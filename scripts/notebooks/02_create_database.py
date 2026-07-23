@@ -193,6 +193,7 @@ table_stmts = [
         model_serving_gpu_type VARCHAR(50),
         model_serving_concurrency INT DEFAULT 4,
         model_serving_scale_out VARCHAR(20),
+        model_serving_number_endpoints INT,
         fmapi_provider VARCHAR(50),
         fmapi_model VARCHAR(100),
         fmapi_endpoint_type VARCHAR(20),

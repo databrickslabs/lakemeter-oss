@@ -49,7 +49,7 @@ class LineItem(Base):
     model_serving_gpu_type = Column(String(50))  # cpu, gpu_small_t4, gpu_medium_a10g_1x, etc.
     model_serving_concurrency = Column(Integer)   # Resolved concurrency value (multiples of 4)
     model_serving_scale_out = Column(String(20))  # small, medium, large, custom
-    model_servings_number_endpoints = Column(Integer)
+    model_serving_number_endpoints = Column(Integer)
 
     # Foundation Model API Configuration (Proprietary)
     fmapi_provider = Column(String(50))  # anthropic, openai, google
