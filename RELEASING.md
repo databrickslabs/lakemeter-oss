@@ -64,10 +64,6 @@ The changelog should still be reviewed and edited by hand for human-readable rel
      --notes-file <release-notes-file>
    ```
 
-## Current v0.1.0 Note
-
-The initial `v0.1.0` release tag is a clean snapshot tag because earlier repository history triggered secret scanning on tag push. Future release tags should point at normal `main` commits after the historical secret cleanup is complete.
-
 ## Version Bump Guidelines
 
 - Patch (`v0.1.1`): bug fixes, pricing data updates, documentation fixes.
