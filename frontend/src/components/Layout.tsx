@@ -21,6 +21,7 @@ import { useStore } from '../store/useStore'
 import { ChatPanel } from './ChatPanel'
 import toast from 'react-hot-toast'
 import { SESSION_EXPIRED_EVENT, resetSessionExpiredFlag } from '../api/client'
+import { APP_VERSION } from '../version'
 
 // Sparkles Icon for AI Assistant
 function SparklesIcon({ className }: { className?: string }) {
@@ -473,7 +474,7 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              <span className="text-lava-600">Databricks</span> Pricing Calculator • Powered by Apps & Lakebase
+              <span className="text-lava-600">Databricks</span> Pricing Calculator • Lakemeter OSS v{APP_VERSION} • Powered by Apps & Lakebase
             </p>
             <span className="hidden sm:inline text-[var(--text-muted)]">•</span>
             <div className="flex items-center gap-3 text-xs">

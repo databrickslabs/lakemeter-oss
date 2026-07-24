@@ -14,15 +14,15 @@ Lakemeter follows [Semantic Versioning](https://semver.org/):
 
 ## v0.1.0
 
-*2026-04-11*
+*2026-07-24*
 
-Initial open-source release.
+Initial public open-source release.
 
-- 16 workload types: Jobs, All-Purpose, DBSQL, DLT, Model Serving, FMAPI (Databricks + Proprietary), Vector Search, Lakebase, Databricks Apps, AI Parse, Shutterstock ImageAI
+- Workload coverage for Jobs, All-Purpose, DBSQL, DLT/Lakeflow, Model Serving, FMAPI (Databricks + Proprietary), Vector Search, Lakebase, Databricks Apps, AI Parse, and Shutterstock ImageAI
 - AI assistant with streaming chat, workload suggestions, and one-click accept
 - Excel export with full cost breakdowns, SKU details, and discount calculations
 - One-command installer (`scripts/install.sh`) using Databricks Asset Bundles
-- Lakebase backend with 19 stored cost calculation functions
+- Lakebase-backed estimate storage
 - Multi-cloud support: AWS, Azure, GCP
 - SSO authentication via Databricks Apps
 - Interactive API docs at `/api/docs` and `/api/redoc`
