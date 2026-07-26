@@ -4,10 +4,7 @@ sidebar_position: 1
 
 # Overview
 
-Lakemeter is a web-based cost estimation tool for the Databricks platform. It allows you to build detailed pricing estimates across all major Databricks workload types, with support for AWS, Azure, and GCP.
-
-![Overview documentation page](/img/guides/overview-page.png)
-*The Overview page — a summary of Lakemeter's capabilities, supported workloads, and cloud providers.*
+Lakemeter is a web-based sizing and cost-estimation tool for Databricks workloads. It helps you turn expected usage into a reviewable estimate without hiding the assumptions behind the total.
 
 ![Lakemeter home page showing estimates list](/img/home-page.png)
 *The Lakemeter home page — manage your estimates, filter by cloud provider, and access the AI assistant.*
@@ -23,7 +20,7 @@ Build cost estimates that include multiple workloads. Each estimate is scoped to
 
 ### Configure Workloads
 
-Add workloads to your estimate and configure compute resources, usage patterns, and pricing options. Lakemeter supports 14 workload types covering the full Databricks platform.
+Add supported workloads and configure the inputs that affect their estimated consumption. Use the [workload sizing catalog](./workloads) to find the canonical guide for each workload.
 
 ### Get AI Assistance
 
@@ -33,46 +30,22 @@ Use the built-in AI assistant to ask pricing questions, get help configuring wor
 
 Download professional Excel reports with full cost breakdowns, ready for RFP responses, procurement reviews, or internal planning.
 
-## Supported Workload Types
+### Inspect Pricing
 
-| Workload | Description |
-|----------|-------------|
-| **Jobs** | Batch processing and ETL workflows (classic and serverless) |
-| **All-Purpose** | Interactive notebooks and development clusters (classic and serverless) |
-| **DLT** | Delta Live Tables for declarative data pipelines |
-| **DBSQL** | Databricks SQL warehouses for analytics and BI |
-| **Model Serving** | Real-time model inference endpoints |
-| **Vector Search** | Vector database for similarity search |
-| **FMAPI (Databricks)** | Foundation Model APIs for open-source models |
-| **FMAPI (Proprietary)** | Foundation Model APIs for OpenAI, Anthropic, Google models |
-| **Lakebase** | Managed PostgreSQL-compatible transactional database |
-| **Databricks Apps** | Managed app hosting on Databricks |
-| **AI Parse (Document AI)** | Document parsing and extraction with AI |
-| **Shutterstock ImageAI** | AI image generation via Shutterstock |
+Use the [SKU Explorer](./pricing/sku-explorer) to inspect list rates by deployment context, or the [FMAPI Tokens](./pricing/fmapi-tokens) guide to understand the token-pricing view.
 
-Each workload type has a dedicated guide with real-world scenarios, worked cost examples, and configuration references. See [Which Workload Type Do I Need?](/user-guide/workloads) for a decision guide.
+## How the documentation is organized
 
-![Workloads overview page](/img/guides/workloads-overview-page.png)
-*The Workloads overview — decision guide for choosing between the 14 workload types.*
+- **Getting Started** explains the estimate-building workflow.
+- **Workload Sizing Guides** document the inputs and calculations for one workload at a time.
+- **Pricing** explains how to inspect the rate data available in Lakemeter.
+- **Features** covers cross-workload tools such as the AI assistant and Excel export.
+- **Reference** explains shared sizing and calculation concepts without duplicating workload formulas.
 
-## Supported Clouds and Regions
+This structure keeps product-specific sizing changes in one guide. A new workload can be documented without rewriting every tutorial and overview.
 
-Lakemeter supports all three major cloud providers:
+## Pricing and product information
 
-- **AWS** — US, EU, and AP regions
-- **Azure** — All Azure regions where Databricks is available
-- **GCP** — US and EU regions
+The cloud, region, tier, SKU, and rate options shown in Lakemeter determine what can be selected for an estimate. Availability can differ by workload and can change over time.
 
-Pricing is region-specific and reflects the latest Databricks pricing data.
-
-## Pricing Tiers
-
-Each estimate uses a pricing tier that determines DBU rates:
-
-- **Standard** — Base pricing tier
-- **Premium** — Includes advanced security and governance features
-- **Enterprise** — Full platform capabilities with enhanced SLAs
-
-## Quality Assurance
-
-Lakemeter includes a comprehensive test suite covering AI assistant proposals, pricing formula consistency, and Excel export verification. See the [Testing Guide](/testing/overview) for details on running and extending the test suite.
+Use Lakemeter for planning guidance, then verify current platform capabilities in the [official Databricks documentation](https://docs.databricks.com/) and current rates on the [Databricks pricing page](https://www.databricks.com/product/pricing).

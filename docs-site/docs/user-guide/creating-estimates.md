@@ -17,9 +17,9 @@ An estimate is the top-level container for your Databricks cost analysis. Each e
 | Field | Required | Description |
 |-------|----------|-------------|
 | **Estimate Name** | Yes | A descriptive name for your estimate |
-| **Cloud** | Yes | Cloud provider: `aws`, `azure`, or `gcp` |
+| **Cloud** | Yes | Deployment provider selected from the options shown |
 | **Region** | Yes | Deployment region (options depend on selected cloud) |
-| **Tier** | Yes | Pricing tier: Standard, Premium, or Enterprise |
+| **Tier** | Yes | Pricing tier selected from the available options |
 
 ## Creating a New Estimate
 

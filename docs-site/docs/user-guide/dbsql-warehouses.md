@@ -2,197 +2,167 @@
 sidebar_position: 11
 ---
 
-# Databricks SQL (DBSQL)
+# Databricks SQL Sizing
 
 > **Lakemeter UI name:** Databricks SQL
 
-DBSQL provides SQL analytics warehouses for business intelligence, reporting, and ad-hoc queries. It supports **Classic**, **Pro**, and **Serverless** warehouse types across 9 sizes, from 2X-Small to 4X-Large.
+Use this guide to model Databricks SQL warehouse consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not warehouse architecture, feature differences, performance tuning, or product limits.
 
-![DBSQL Warehouses documentation page](/img/guides/dbsql-warehouses-guide.png)
-*The DBSQL guide — real-world scenario, worked cost example, and configuration reference for Classic, Pro, and Serverless warehouses.*
+For current Databricks SQL guidance, start from the [official Databricks documentation](https://docs.databricks.com/). For current public rates, use the [Databricks pricing page](https://www.databricks.com/product/pricing) and the rates shown in Lakemeter.
 
-![DBSQL worked cost example](/img/guides/dbsql-worked-example.png)
-*Step-by-step cost calculation showing DBU rates, warehouse sizing, and monthly totals.*
+## What Lakemeter estimates
 
-## When to use DBSQL
+A Databricks SQL workload includes:
 
-Use DBSQL when you need a **SQL-first analytics environment** -- dashboards, scheduled reports, BI tool connections (Tableau, Power BI, dbt), or ad-hoc SQL queries. Unlike Jobs or All-Purpose Compute, DBSQL pricing is based on fixed **warehouse sizes** rather than individual instance types. If you need a general-purpose Spark cluster for notebooks or Python/Scala workloads, see [All-Purpose Compute](/user-guide/all-purpose-compute).
+- Databricks compute consumption for the selected warehouse type, size, cluster count, and monthly usage
+- VM infrastructure cost for non-serverless warehouse types
+- No separate VM infrastructure charge when **Serverless** is on
 
-## Real-world example
+The estimate-level cloud, region, and Databricks tier determine which choices, mappings, and rates Lakemeter loads.
 
-> **Scenario:** Your analytics team runs a BI dashboard platform on AWS us-east-1 (Premium tier). You need a Pro warehouse sized Medium for ~50 concurrent users, running 8 hours a day on business days. You also want a second cluster for peak-hour scaling.
+## Choose a warehouse configuration
 
-### Configuration
+### Serverless
 
-| Field | Value |
-|-------|-------|
-| Workload Type | DBSQL |
-| Warehouse Type | Pro |
-| Warehouse Size | Medium |
-| Number of Clusters | 2 |
-| Hours Per Month | 176 (= 8 hrs x 22 days) |
+Turn **Serverless** on when the estimate should use the serverless warehouse pricing context. Select:
 
-### Step-by-step calculation
+- **Size**
+- **Number of Clusters**
+- Monthly usage
 
-**1. DBU rate per hour**
+Lakemeter does not add a separate VM charge for this configuration.
 
-Each warehouse size has a fixed DBU/hour rate. Medium = 24 DBU/hr. With 2 clusters:
+### Non-serverless
 
-```
-DBU/Hour = Warehouse Size DBU x Number of Clusters
-         = 24 x 2
-         = 48 DBU/hour
-```
+Turn **Serverless** off, then select the **Type** offered by Lakemeter. Also select:
 
-**2. Monthly DBUs and cost**
+- **Size**
+- **Number of Clusters**
+- The driver and worker VM pricing assumptions shown by the form
+- A payment option when Lakemeter displays one
+- Monthly usage
 
-```
-Monthly DBUs = DBU/Hour x Hours/Month = 48 x 176 = 8,448 DBUs
-DBU Cost     = 8,448 x $0.55/DBU (Pro rate) = $4,646.40
-```
+For these configurations, Lakemeter displays the underlying driver and worker mapping loaded for the selected warehouse type and size. The user selects the VM purchasing assumptions; the form does not require manually choosing the mapped instance types or node counts.
 
-**3. VM infrastructure cost**
+Choose the warehouse type and size that match the scenario being estimated. Use observed warehouse settings, benchmark results, or current Databricks guidance rather than fixed sizing or concurrency advice from this guide.
 
-Classic and Pro warehouses also have VM costs based on the warehouse size's underlying instances. Lakemeter uses default estimates:
+## Size and cluster count
 
-```
-VM Cost = (Driver VMs x Driver $/hr + Worker VMs x Worker $/hr) x Clusters x Hours/Month
+**Size** selects a warehouse capacity and its current DBU-per-hour value. Use the choices and values displayed by Lakemeter rather than copying a size-to-rate table from this guide.
+
+**Number of Clusters** multiplies the selected size's DBU consumption:
+
+```text
+DBU per hour
+  = Selected size DBU per hour × Number of clusters
 ```
 
-The exact VM cost depends on the warehouse size. For illustration, a Medium warehouse might produce ~$200-400 in VM costs at 176 hours.
+Model the number of clusters expected to be billed during the entered usage window. If cluster count varies materially over time, use separate workload rows for the distinct usage periods or enter a documented representative assumption.
 
-**4. Total monthly cost**
+## Enter monthly usage
 
-```
-Total = DBU Cost + VM Cost ≈ $4,646.40 + VM estimate
-```
+Lakemeter offers two usage input methods.
 
-:::note
-These are example rates for illustration. Actual $/DBU and VM prices depend on your cloud, region, and pricing tier. Lakemeter loads real rates from the Databricks pricing bundle.
-:::
+### Direct Hours
 
-### What if you used Serverless instead?
+Enter **Hours/Month** when total monthly warehouse usage is known. Base this on observed active time, schedules, or another documented capacity plan.
 
-Serverless eliminates VM costs entirely but has a higher $/DBU rate:
+### Run-Based
 
-```
-Monthly DBUs = 48 x 176 = 8,448 DBUs (same)
-DBU Cost     = 8,448 x $0.70/DBU (Serverless rate) = $5,913.60
-VM Cost      = $0
-Total        = $5,913.60
-```
+Enter:
 
-Serverless costs more per DBU but eliminates VM overhead and provides instant startup. For intermittent or bursty BI workloads, the total cost may be lower because you only pay for active query time.
+- **Runs/Day**
+- **Avg Runtime (min)**
+- **Days/Month**
 
-## Warehouse sizes
+Lakemeter converts the entries to monthly usage hours:
 
-DBSQL uses a fixed mapping from warehouse size to DBU/hour. The DBU/hour is the same regardless of warehouse type (Classic, Pro, or Serverless) -- what changes is the $/DBU rate.
-
-| Size | DBU/Hour | Typical use case |
-|------|----------|-----------------|
-| **2X-Small** | 4 | Light dashboards, single-user queries |
-| **X-Small** | 6 | Small team dashboards |
-| **Small** | 12 | Team analytics, moderate concurrency |
-| **Medium** | 24 | Department-level BI |
-| **Large** | 40 | Heavy analytics, high concurrency |
-| **X-Large** | 80 | Enterprise BI platforms |
-| **2X-Large** | 144 | Large-scale data warehousing |
-| **3X-Large** | 272 | Very large queries, complex joins |
-| **4X-Large** | 528 | Maximum compute, extreme workloads |
-
-## Configuration reference
-
-| Field | Description | Default |
-|-------|-------------|---------|
-| **Warehouse Type** | Classic, Pro, or Serverless. Serverless requires **Premium** tier or above. | Serverless |
-| **Warehouse Size** | 2X-Small through 4X-Large. Determines the DBU/hour rate. | Small |
-| **Number of Clusters** | Concurrent cluster count for horizontal scaling. Multiplies DBU/hour linearly. | 1 |
-| **Hours Per Month** | Warehouse uptime hours. Use 730 for 24/7, 176 for business hours (8 x 22 days). | 730 |
-
-### Classic and Pro VM costs
-
-Classic and Pro warehouses have underlying VM infrastructure. Lakemeter estimates VM costs using default rates ($0.20/hr driver, $0.10/hr worker) scaled by the warehouse size's instance counts. These are approximations -- actual VM costs depend on your cloud provider's instance pricing.
-
-Serverless warehouses have **no VM costs**.
-
-### Run-based usage
-
-DBSQL also supports run-based usage if your warehouse has intermittent query patterns:
-
-```
-Hours/Month = (Runs Per Day x Avg Runtime Minutes / 60) x Days Per Month
+```text
+Hours per month
+  = Runs per day
+  × (Average runtime in minutes ÷ 60)
+  × Days per month
 ```
 
-## How costs are calculated
+Use run-based input only when a run and its average duration reasonably represent the warehouse's billed activity. Otherwise use Direct Hours.
+
+## How the estimate is calculated
+
+Lakemeter resolves the current size consumption value, selected SKU rate, warehouse VM mapping, and regional VM rates from the estimate context.
 
 ### DBU cost
 
-```
-DBU/Hour     = Warehouse Size DBU Map[size] x Number of Clusters
-Monthly DBUs = DBU/Hour x Hours/Month
-DBU Cost     = Monthly DBUs x $/DBU (from pricing tier)
-```
+```text
+DBU per hour
+  = Selected size DBU per hour × Number of clusters
 
-### VM cost (Classic and Pro only)
+Monthly DBUs
+  = DBU per hour × Hours per month
 
-```
-VM Cost = (Driver Instance Count x Driver $/hr + Worker Instance Count x Worker $/hr) x Clusters x Hours/Month
-```
-
-VM instance counts are determined by the warehouse size configuration. Serverless has no VM costs.
-
-### Total
-
-```
-Total = DBU Cost + VM Cost
+DBU cost
+  = Monthly DBUs × Regional price per DBU
 ```
 
-### SKU mapping
+The warehouse type determines the pricing context applied to the monthly DBUs. This guide intentionally does not reproduce current size mappings, SKU names, or rates. Open **Show Cost Calculation** for the workload to review the current values Lakemeter used.
 
-| Warehouse Type | SKU | Fallback $/DBU |
-|---------------|-----|----------------|
-| Classic | `SQL_COMPUTE` | $0.22 |
-| Pro | `SQL_PRO_COMPUTE` | $0.55 |
-| Serverless | `SERVERLESS_SQL_COMPUTE` | $0.70 |
+### VM infrastructure cost
 
-## Choosing a warehouse type
+For a non-serverless warehouse:
 
-| Factor | Classic | Pro | Serverless |
-|--------|---------|-----|------------|
-| **Startup time** | Minutes | Minutes | Seconds |
-| **Auto-scaling** | Manual config | Manual config | Automatic |
-| **VM costs** | Yes | Yes | No |
-| **$/DBU** | Lowest ($0.22) | Medium ($0.55) | Highest ($0.70) |
-| **Management** | User-managed | User-managed | Fully managed |
-| **Best for** | Cost-sensitive, predictable workloads | Advanced SQL features, materialized views | On-demand BI, variable or bursty workloads |
+```text
+VM cost per cluster-hour
+  = (Mapped driver count × Driver VM price per hour)
+  + (Mapped worker count × Worker VM price per hour)
 
-## Tips
+Monthly VM cost
+  = VM cost per cluster-hour
+  × Number of clusters
+  × Hours per month
 
-- **Start small, scale up**: Begin with a Small warehouse (12 DBU/hr) and increase the size based on query performance and concurrency needs. Over-provisioning wastes DBUs.
-- **Multi-cluster for concurrency, not speed**: Adding clusters helps when many users run queries simultaneously. It does not make individual queries faster -- increase warehouse size for that.
-- **Serverless for intermittent use**: If your BI tool only runs queries during business hours with idle periods between, Serverless auto-scaling means you only pay during active queries. Classic/Pro charge for the full uptime window.
-- **Pro vs Classic**: Pro adds features like materialized views and enhanced security. If you only need basic SQL analytics, Classic is significantly cheaper per DBU ($0.22 vs $0.55).
+Total workload cost
+  = DBU cost + Monthly VM cost
+```
 
-## Common mistakes
+For a serverless warehouse:
 
-- **Comparing warehouse types by $/DBU alone**: Serverless has the highest $/DBU but zero VM costs and zero startup time. Compare total monthly cost, including VM estimates for Classic/Pro.
-- **Setting too many clusters for low concurrency**: Each cluster multiplies the DBU rate. If you have fewer than 10 concurrent users, 1 cluster is usually sufficient.
-- **Using 730 hours for a weekday-only dashboard**: If your team only uses dashboards during business hours (8 hrs x 22 days = 176 hrs), don't set 730 hours. The cost difference is 4x.
-- **Ignoring VM costs on Classic/Pro**: The $/DBU rate is lower, but VM infrastructure adds significant cost. Always check the total, not just DBU cost.
+```text
+Total workload cost = DBU cost
+```
+
+## Symbolic sizing example
+
+For warehouse size `S`, `C` clusters, and `H` monthly hours:
+
+```text
+Monthly DBUs = DBU per hour for S × C × H
+
+DBU cost
+  = Monthly DBUs × Regional price per DBU
+```
+
+For a non-serverless configuration, Lakemeter also multiplies the mapped per-cluster VM cost by `C × H`. The expanded calculation supplies the current size consumption, rate, and resulting totals.
+
+## What to review before saving
+
+- Does Serverless match the warehouse scenario?
+- If Serverless is off, is the selected warehouse type intentional?
+- Does **Size** match the warehouse being modeled?
+- Does **Number of Clusters** represent the expected billed cluster count during the usage window?
+- For a non-serverless configuration, do the displayed node mapping and VM purchasing assumptions look correct?
+- Does the usage method represent actual warehouse activity?
+- If capacity or cluster count changes over the month, should the periods be modeled separately?
+- Does **Show Cost Calculation** use the expected hours, DBU per hour, VM treatment, and regional SKU price?
 
 ## Excel export
 
-Each DBSQL workload appears as one row in the exported spreadsheet:
+Each Databricks SQL workload is exported as one row. The row includes warehouse type, size, cluster count, selected SKU, monthly hours, DBU per hour, monthly DBUs, list and discounted DBU costs, VM cost when applicable, and total cost.
 
-| Column | What it shows |
-|--------|--------------|
-| Configuration | Warehouse size and cluster count |
-| Mode | Classic, Pro, or Serverless |
-| SKU | `SQL_COMPUTE`, `SQL_PRO_COMPUTE`, or `SERVERLESS_SQL_COMPUTE` |
-| DBU/Hour | Size DBU x clusters |
-| Hours/Month | Direct value or run-based calculation |
-| Monthly DBUs | DBU/Hour x Hours/Month |
-| DBU Cost (List) | At list price |
-| DBU Cost (Discounted) | At negotiated rate |
-| VM Cost | Classic/Pro: estimated infrastructure; Serverless: $0 |
-| Total Cost | DBU Cost + VM Cost |
+For non-serverless rows, the export also shows the mapped driver and worker configuration used for VM cost. The workbook keeps calculation cells as formulas so assumptions can be reviewed and adjusted. Serverless rows show no separate VM configuration or VM charge.
+
+## Related
+
+- [Calculation Reference](./calculation-reference)
+- [Exporting to Excel](./exporting)
+- [SKU Explorer](./pricing/sku-explorer)
+- [Official Databricks documentation](https://docs.databricks.com/)
+- [Databricks pricing](https://www.databricks.com/product/pricing)

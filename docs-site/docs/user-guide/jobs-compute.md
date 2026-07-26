@@ -2,197 +2,166 @@
 sidebar_position: 7
 ---
 
-# Jobs Compute
+# Lakeflow Jobs Sizing
 
 > **Lakemeter UI name:** Lakeflow Jobs
 
-Jobs is the workload type for batch processing, ETL workflows, and scheduled data pipelines. It supports both **Classic** (you manage the cluster) and **Serverless** (Databricks manages everything) modes.
+Use this guide to model Lakeflow Jobs compute consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not general job architecture, performance tuning, or product limits.
 
-![Calculator page showing workloads with cost breakdown](/img/calculator-overview.png)
-*The Calculator page with configured workloads — Jobs workloads appear in the list with their individual cost displayed.*
+For current Lakeflow Jobs guidance, start from the [official Databricks documentation](https://docs.databricks.com/). For current public rates, use the [Databricks pricing page](https://www.databricks.com/product/pricing) and the rates shown in Lakemeter.
 
-## When to use Jobs
+## What Lakemeter estimates
 
-Use Jobs when you have workloads that **start, run, and stop** on a schedule or trigger -- things like nightly data ingestion, hourly aggregation pipelines, or ML training runs. If you need an always-on interactive environment instead, see [All-Purpose Compute](/user-guide/all-purpose-compute).
+A Lakeflow Jobs workload includes:
 
-## Real-world example
+- Databricks compute consumption for the selected driver, workers, compute mode, and monthly usage
+- VM infrastructure cost when **Serverless** is off
+- No separate VM infrastructure charge when **Serverless** is on
 
-> **Scenario:** You are estimating cost for a nightly ETL pipeline on AWS us-east-1 (Premium tier). The pipeline runs twice a day, takes about 45 minutes per run, and uses a 4-worker cluster with Photon enabled for faster Spark processing. It runs every day of the month including weekends.
+The estimate-level cloud, region, and Databricks tier determine which choices and rates Lakemeter loads.
 
-Here is how to configure this in Lakemeter and what the numbers mean.
+## Choose a compute mode
 
-### Configuration
+### Serverless off
 
-| Field | Value |
-|-------|-------|
-| Workload Type | Jobs |
-| Serverless | Off |
-| Driver Instance Type | m5d.xlarge |
-| Worker Instance Type | m5d.xlarge |
-| Number of Workers | 4 |
-| Photon | On |
-| Driver Pricing Tier | On-Demand |
-| Worker Pricing Tier | Spot |
-| Runs Per Day | 2 |
-| Avg Runtime (minutes) | 45 |
-| Days Per Month | 30 |
+Use this mode to model a driver-and-worker configuration with separate Databricks and VM charges.
 
-### Step-by-step calculation
+Enter:
 
-**1. Compute hours per month**
+- **Driver Node → Instance Type**
+- **Worker Nodes → Instance Type**
+- Worker **Count**
+- **Photon**, if it is part of the scenario
+- The driver and worker **Pricing Tier**
+- A **Payment Option** when Lakemeter displays one
 
-```
-Hours/Month = (Runs Per Day x Avg Runtime / 60) x Days Per Month
-            = (2 x 45 / 60) x 30
-            = 1.5 x 30
-            = 45 hours/month
-```
+The driver count is one. The worker count multiplies both worker DBU consumption and worker VM cost.
 
-**2. DBU rate per hour**
+Choose the instance types and purchasing assumptions that match the workload being estimated. Use observed configurations, benchmark results, or current Databricks guidance rather than copying a hardware recommendation from this guide.
 
-Each m5d.xlarge has a DBU rate of approximately 1.0 DBU/hr. With 1 driver + 4 workers and Photon enabled:
+### Serverless on
 
-```
-DBU/Hour = (Driver DBU + Worker DBU x Workers) x Photon Multiplier
-         = (1.0 + 1.0 x 4) x 2.9
-         = 5.0 x 2.9
-         = 14.5 DBU/hour
-```
+When **Serverless** is on:
 
-:::info Photon multiplier varies by cloud
-The Photon multiplier for Jobs is **2.9x on AWS** and **2.5x on Azure/GCP**. This example uses the AWS rate. Lakemeter loads the correct multiplier automatically from the pricing bundle based on your cloud selection.
-:::
+- Choose the **Mode** offered by Lakemeter.
+- Select driver and worker instance types and a worker count as sizing proxies for the DBU estimate.
+- Lakemeter marks Photon as automatic.
+- Driver and worker VM pricing fields are not used, and no separate VM cost is added.
 
-**3. Monthly DBUs and cost**
+The node selections in this form are estimator assumptions; they do not represent a separately billed serverless VM configuration.
 
-```
-Monthly DBUs = DBU/Hour x Hours/Month = 14.5 x 45 = 652.5 DBUs
-DBU Cost     = 652.5 x $0.15/DBU (example Jobs Photon rate) = $97.88
-```
+## Enter monthly usage
 
-**4. VM infrastructure cost**
+Lakemeter offers two usage input methods.
 
-Classic workloads also have VM costs for the driver and worker instances:
+### Run-Based
 
-```
-VM Cost = (Driver $/hr + Worker $/hr x Workers) x Hours/Month
-        = ($0.192 on-demand + $0.069 spot x 4) x 45
-        = $0.468/hr x 45
-        = $21.06
+Enter:
+
+- **Runs/Day**
+- **Avg Runtime (min)**
+- **Days/Month**
+
+Lakemeter converts these assumptions to monthly compute hours:
+
+```text
+Hours per month
+  = Runs per day
+  × (Average runtime in minutes ÷ 60)
+  × Days per month
 ```
 
-**5. Total monthly cost**
+Include the full billed runtime expected for each run. If startup, retries, or overlapping runs materially affect the scenario, incorporate them into the average or model them as separate workloads.
 
-```
-Total = DBU Cost + VM Cost = $97.88 + $21.06 = $118.94/month
-```
+### Direct Hours
 
-:::note
-These are example rates for illustration. Actual $/DBU and VM prices depend on your cloud, region, and pricing tier. Lakemeter loads real rates from the Databricks pricing bundle.
-:::
+Enter **Hours/Month** when total monthly compute time is already known. This is useful when sizing from historical usage or when run frequency and duration are not the best representation of the workload.
 
-## Configuration reference
+## How the estimate is calculated
 
-### Compute mode
+Lakemeter resolves the current DBU consumption values, multipliers, SKU rate, and VM rates from the selected estimate context.
 
-| Field | Description | Default |
-|-------|-------------|---------|
-| **Serverless** | Toggle between Classic (off) and Serverless (on). Serverless requires **Premium** tier or above. | Off |
-| **Serverless Mode** | Standard (1x) or Performance (2x multiplier). Only shown for Jobs and DLT when Serverless is on. | Standard |
+### Base DBU consumption
 
-### Classic mode fields
-
-These fields appear when Serverless is **off**:
-
-| Field | Description | Default |
-|-------|-------------|---------|
-| **Driver Instance Type** | VM size for the Spark driver node | -- (select from list) |
-| **Worker Instance Type** | VM size for the Spark executor nodes | -- (select from list) |
-| **Number of Workers** | How many worker nodes in the cluster | 2 |
-| **Photon** | Enables the hardware-accelerated Spark engine. Increases the DBU rate (2.9x on AWS, 2.5x on Azure/GCP) but often halves runtime for compatible workloads. | Off |
-| **Driver Pricing Tier** | Spot Instances, On-Demand, 1-Year Reserved, or 3-Year Reserved | On-Demand |
-| **Worker Pricing Tier** | Spot Instances, On-Demand, 1-Year Reserved, or 3-Year Reserved | Spot |
-
-:::tip AWS Reserved Payment Options
-When you select a **1-Year Reserved** or **3-Year Reserved** tier on AWS, an additional **Payment Option** field appears with choices: No Upfront, Partial Upfront, or All Upfront. This field is not shown for Azure or GCP.
-:::
-
-### Serverless mode fields
-
-When Serverless is **on**, you still select driver and worker instance types -- these are used to **estimate DBU consumption** only. You do not pay VM costs for serverless workloads.
-
-Photon is always enabled automatically when Serverless is on (shown with an "Auto" badge in the UI).
-
-### Usage fields
-
-| Field | Description | Default |
-|-------|-------------|---------|
-| **Runs Per Day** | Number of job executions per day | 1 |
-| **Avg Runtime (minutes)** | Average duration of each run | 30 |
-| **Days Per Month** | How many days per month the job runs | 22 |
-| **Hours Per Month** | Alternative: set total hours directly (use the toggle to switch between Run-Based and Direct Hours input) | 0 |
-
-## How costs are calculated
-
-### Classic
-
-```
-DBU/Hour    = (Driver DBU Rate + Worker DBU Rate x Workers) x Photon Multiplier
-Hours/Month = (Runs Per Day x Runtime / 60) x Days Per Month
-DBU Cost    = DBU/Hour x Hours/Month x $/DBU
-VM Cost     = (Driver $/hr + Worker $/hr x Workers) x Hours/Month
-Total       = DBU Cost + VM Cost
+```text
+Base DBU per hour
+  = Driver DBU per hour
+  + (Worker DBU per hour × Number of workers)
 ```
 
-- **Photon Multiplier** depends on your cloud: **2.9x** on AWS, **2.5x** on Azure/GCP. When Photon is off, the multiplier is 1.0.
-- DBU rates come from the instance type (e.g., m5d.xlarge = ~1.0 DBU/hr)
-- If an instance type is not found in the pricing data, Lakemeter uses a fallback of 0.5 DBU/hr
+Lakemeter then applies the current acceleration and mode adjustments associated with the configuration:
 
-### Serverless
+```text
+Effective DBU per hour
+  = Base DBU per hour
+  × Applicable acceleration adjustment
+  × Applicable serverless mode adjustment
 
+Monthly DBUs
+  = Effective DBU per hour × Hours per month
+
+DBU cost
+  = Monthly DBUs × Regional price per DBU
 ```
-DBU/Hour    = (Driver DBU Rate + Worker DBU Rate x Workers) x Photon Multiplier x Serverless Multiplier
-Hours/Month = (Runs Per Day x Runtime / 60) x Days Per Month
-DBU Cost    = DBU/Hour x Hours/Month x $/DBU
-Total       = DBU Cost  (no VM costs)
+
+An adjustment equals one when it does not apply. This guide intentionally does not reproduce the current multiplier or rate values. Open **Show Cost Calculation** for the workload to review the values Lakemeter used.
+
+### VM infrastructure cost
+
+When Serverless is off:
+
+```text
+VM cost
+  = (Driver VM price per hour
+     + Worker VM price per hour × Number of workers)
+  × Hours per month
+
+Total workload cost
+  = DBU cost + VM cost
 ```
 
-- Photon is always applied for Serverless. The multiplier is cloud-specific: **2.9x** on AWS, **2.5x** on Azure/GCP.
-- **Serverless Multiplier**: 1.0 for Standard mode, 2.0 for Performance mode
-- The $/DBU rate comes from the `JOBS_SERVERLESS_COMPUTE` SKU
+When Serverless is on:
 
-### SKU mapping
+```text
+Total workload cost = DBU cost
+```
 
-| Configuration | SKU |
-|--------------|-----|
-| Classic, Photon off | `JOBS_COMPUTE` |
-| Classic, Photon on | `JOBS_COMPUTE_(PHOTON)` |
-| Serverless (any mode) | `JOBS_SERVERLESS_COMPUTE` |
+## Symbolic sizing example
 
-## Tips
+For a scheduled workload with one driver, `W` workers, `R` runs per day, average runtime `M` minutes, and `D` active days:
 
-- **Classic vs Serverless**: Classic gives you control over instance types and is usually cheaper for long-running, predictable workloads. Serverless eliminates startup time and management overhead -- good for short, frequent jobs or when you want zero infrastructure management.
-- **Photon**: Enable Photon for data-heavy Spark workloads (aggregations, joins, ETL). It increases the DBU rate by 2.9x (AWS) or 2.5x (Azure/GCP), but often cuts runtime by 50% or more, resulting in similar or lower total cost. It has less impact on simple Python/ML workloads.
-- **Spot pricing for workers**: The default worker tier is Spot, which is significantly cheaper than On-Demand. Spot is a good choice for batch jobs that can tolerate occasional interruptions. Use On-Demand for the driver to keep the job coordinator stable.
-- **Days Per Month**: The default is 22 (business days). Change this to 30 or 31 for jobs that run on weekends too.
+```text
+Hours per month = R × (M ÷ 60) × D
 
-## Common mistakes
+Monthly DBUs
+  = (Driver DBU/hour + Worker DBU/hour × W)
+  × Applicable adjustments
+  × Hours per month
+```
 
-- **Using only 1 worker**: With 1 worker, parallelism is limited. Most production workloads benefit from at least 2-4 workers. The minimum in Lakemeter is 1.
-- **Forgetting Photon increases DBUs**: If your cost estimate is nearly 3x what you expected (on AWS), check whether Photon is enabled. The higher DBU rate (2.9x on AWS) is intentional -- compare total cost (including shorter runtime) rather than just the DBU rate.
-- **Serverless with Performance mode for simple ETL**: Performance mode (2x multiplier) is for latency-sensitive workloads. Standard mode is usually sufficient and cheaper for batch ETL.
-- **Comparing Classic and Serverless by DBU rate alone**: Serverless has higher $/DBU but zero VM costs and zero startup time. Compare total monthly cost, not just the DBU price.
+For a non-serverless configuration, Lakemeter also adds the driver and worker VM cost for those hours. The expanded calculation supplies the current DBU values, adjustments, and prices.
+
+## What to review before saving
+
+- Does Serverless match the scenario being estimated?
+- Do the driver, worker, and worker-count assumptions describe the intended compute shape?
+- If Serverless is off, do the VM purchasing assumptions match the scenario?
+- If Serverless is on, is the selected mode intentional?
+- Does Photon reflect the configuration, or show as automatic for Serverless?
+- Does the usage method represent actual billed runtime?
+- Are retries, overlapping runs, and seasonal schedules represented where material?
+- Does **Show Cost Calculation** use the expected hours, DBU rate, VM treatment, and regional SKU price?
 
 ## Excel export
 
-Each Jobs workload appears as one row in the exported spreadsheet with these key columns:
+Each Lakeflow Jobs workload is exported as one row. The row includes the compute mode, configuration, selected SKU, monthly hours, DBU per hour, monthly DBUs, list and discounted DBU costs, VM cost when applicable, and total cost.
 
-| Column | What it shows |
-|--------|--------------|
-| Hours/Month | Calculated from runs, runtime, and days |
-| DBU/Hour | Based on instance types, workers, and multipliers |
-| Monthly DBUs | DBU/Hour x Hours/Month |
-| DBU Cost (List) | At list price before any discounts |
-| DBU Cost (Discounted) | At your negotiated rate (if applicable) |
-| VM Cost | Driver + worker infrastructure (Classic only; $0 for Serverless) |
-| Total Cost | DBU Cost + VM Cost |
+The workbook keeps calculation cells as formulas so assumptions can be reviewed and adjusted. Serverless rows show no separate VM configuration or VM charge.
+
+## Related
+
+- [Calculation Reference](./calculation-reference)
+- [Exporting to Excel](./exporting)
+- [SKU Explorer](./pricing/sku-explorer)
+- [Official Databricks documentation](https://docs.databricks.com/)
+- [Databricks pricing](https://www.databricks.com/product/pricing)

@@ -4,58 +4,39 @@ sidebar_position: 10
 
 # Frequently Asked Questions
 
-![FAQ documentation page](/img/guides/faq-guide.png)
-*The FAQ page — answers to the most common questions about Lakemeter, organized by topic.*
-
-![Workload decision table](/img/guides/faq-workload-table.png)
-*Quick reference table for choosing the right workload type.*
-
 ## General
 
 ### What is Lakemeter?
 
-Lakemeter is a cost estimation tool for the Databricks platform. It lets you model workloads across 12 Databricks product types (Jobs, DBSQL, DLT, Model Serving, Vector Search, FMAPI, Lakebase, Databricks Apps, AI Parse, Shutterstock ImageAI, and more), calculate monthly and annual costs based on real Databricks pricing data, and export professional Excel reports for procurement or planning.
+Lakemeter is a sizing and cost-estimation tool for supported Databricks workloads. It turns usage assumptions into monthly and annual planning costs and exports the supporting calculations to Excel.
 
 ### How should I interpret the cost estimates?
 
-Lakemeter uses DBU rates and instance pricing pulled from Databricks reference tables and applies documented pricing formulas. The results are planning-grade estimates, not billing guarantees. Actual costs may differ due to committed-use discounts, spot pricing fluctuations, auto-scaling behavior, workload shape, and usage patterns that deviate from your modeled assumptions. Always verify critical estimates against the [official Databricks pricing page](https://www.databricks.com/product/pricing) and customer-specific commercial terms.
+Lakemeter uses its loaded pricing data and the assumptions entered in each workload form. The results are planning-grade estimates, not billing guarantees. Actual costs may differ because of commercial terms and usage that does not match the modeled scenario. Verify important assumptions against the [official Databricks documentation](https://docs.databricks.com/), the [Databricks pricing page](https://www.databricks.com/product/pricing), and customer-specific terms.
 
 ### Is Lakemeter an official Databricks product?
 
-No. Lakemeter is an internal field engineering tool built on Databricks Apps. It is not an officially supported Databricks product.
+No. Lakemeter is an open-source Databricks Labs project built as a Databricks App. It is not an officially supported Databricks product.
 
 ## Configuration
 
 ### What do Cloud, Region, and Tier mean?
 
-- **Cloud** — The cloud provider (AWS, Azure, or GCP). Each has different instance types and VM pricing.
-- **Region** — The cloud region (e.g., `us-east-1`). DBU rates can vary by region for some SKUs.
-- **Tier** — The Databricks pricing tier: **Standard**, **Premium**, or **Enterprise**. Standard tier only supports Classic compute workloads. Premium and Enterprise unlock Serverless, SQL Pro, Vector Search, FMAPI, and other advanced features.
+- **Cloud** identifies the selected deployment provider.
+- **Region** identifies the pricing region used for rate lookup.
+- **Tier** identifies the pricing tier used for SKU availability and rate lookup.
 
-See the [Getting Started](./getting-started) guide for how to set these when creating an estimate.
+The options shown in Lakemeter determine what can be selected for an estimate. See [Getting Started](./getting-started) for the workflow and use the official Databricks documentation for current platform availability.
 
 ### Which workload type should I choose?
 
-| If you're estimating... | Use this workload type |
-|------------------------|----------------------|
-| Batch ETL, scheduled Spark jobs | [Jobs Compute](./jobs-compute) |
-| Interactive notebooks, development clusters | [All-Purpose Compute](./all-purpose-compute) |
-| Streaming or declarative ETL pipelines | [DLT Pipelines](./dlt-pipelines) |
-| BI dashboards, ad-hoc SQL queries | [DBSQL Warehouses](./dbsql-warehouses) |
-| Real-time ML inference with GPUs | [Model Serving](./model-serving) |
-| Similarity search, embeddings storage | [Vector Search](./vector-search) |
-| LLM inference (Llama, DBRX, etc.) | [FMAPI — Databricks](./fmapi-databricks) |
-| LLM inference (Claude, GPT, Gemini) | [FMAPI — Proprietary](./fmapi-proprietary) |
-| Managed PostgreSQL database | [Lakebase](./lakebase) |
-| Hosting a web app on Databricks | Databricks Apps |
-| Parsing documents with AI | AI Parse (Document AI) |
-| Generating images with AI | Shutterstock ImageAI |
+Use the [Workload Sizing Guides](./workloads). The catalog maps each sizing need to its canonical Lakemeter guide, including Databricks Apps, AI Parse, and Shutterstock ImageAI.
 
 ### What's the difference between Classic and Serverless?
 
-**Classic** compute means you specify the exact instance types (e.g., `i3.xlarge`) and pay for both DBU consumption and VM infrastructure separately. You have full control over cluster configuration.
+For a **Classic** calculation, Lakemeter asks for instance and scale-out assumptions and models DBU and VM costs separately.
 
-**Serverless** compute means Databricks manages the infrastructure. You pay only for DBUs at a higher per-DBU rate, but there are no separate VM costs and no cluster startup time. Whether Serverless is cheaper depends on the workload — it excels for burst or low-utilization patterns, but sustained high-utilization workloads may cost less on Classic. See the [Classic vs Serverless comparison](./calculation-reference#worked-example-4-classic-vs-serverless-comparison) for a detailed cost breakdown.
+For a **Serverless** calculation, Lakemeter does not add a separate VM component. Compare the expanded calculations using the usage assumptions appropriate for each mode. See the [Calculation Reference](./calculation-reference) for the shared cost structure and the official Databricks documentation for current product behavior.
 
 ## AI Assistant
 
@@ -77,25 +58,25 @@ Lakemeter exports to `.xlsx` (Excel) format. The file includes formula-based cel
 
 Yes. Each workload row in the Excel export has a **Discount %** column. Enter your negotiated discount rate and all cost cells recalculate automatically using Excel formulas. You can also set different discounts per workload.
 
-### Why do some workloads show two rows in the export?
+### Why do some workloads show multiple rows in the export?
 
-**Lakebase** and **Vector Search** can produce two rows — one for compute costs (DBU-based) and one for storage costs (direct dollar amount). Both rows are included in the totals. See the [Exporting guide](./exporting#3-multi-row-workloads) for details.
+Some workloads contain separately priced components. Vector Search can add a storage row. Lakebase can include compute, storage, PITR, and snapshot rows when those quantities are configured. All emitted rows are included in the totals. See the [Exporting guide](./exporting#3-multi-row-workloads).
 
 ### How are DBU rates determined?
 
-Lakemeter uses DBU rates from Databricks reference pricing tables, loaded at deployment time. The rate depends on three factors: the **SKU** (product type, like `JOBS_COMPUTE` or `SERVERLESS_SQL_COMPUTE`), the **cloud region**, and the **pricing tier**. See the [Calculation Reference](./calculation-reference) for the exact formulas and rate tables.
+Lakemeter resolves the list rate for the selected SKU and estimate context from its loaded pricing data. Use the [SKU Explorer](./pricing/sku-explorer) to inspect available rates and the [Calculation Reference](./calculation-reference) to understand how a rate is applied. Verify current public pricing on the [Databricks pricing page](https://www.databricks.com/product/pricing).
 
 ## Troubleshooting
 
 ### A workload type is grayed out — why?
 
-Some workload types are only available on **Premium** or **Enterprise** tiers. If you selected the Standard tier for your estimate, workloads like DBSQL Serverless, Vector Search, FMAPI, Model Serving, Databricks Apps, AI Parse, and Shutterstock ImageAI will be disabled. Change your estimate's tier to Premium or Enterprise to unlock them.
+Lakemeter only enables workload options compatible with the selected estimate context. If a workload is unavailable, review the cloud, region, and tier selections. Use the official Databricks documentation to confirm current product availability.
 
 ### The cost seems too high or too low — what should I check?
 
 Common things to verify:
 1. **Hours/Month** — 730 means 24/7 operation. For business-hours-only usage, ~176 hours (8 hrs × 22 days) is more realistic.
 2. **Number of workers** — Each worker multiplies both DBU and VM costs.
-3. **Photon** — Increases the DBU rate by a multiplier that depends on the workload type and cloud provider (2.9x for Jobs/DLT on AWS, 2.5x on Azure/GCP, 2.0x for All-Purpose). Make sure it's enabled only if you plan to use it.
+3. **Acceleration and mode options** — Enable them only when they match the planned workload, then inspect the resulting DBU quantity.
 4. **Serverless vs Classic** — Serverless has no VM costs but higher DBU rates. Classic has both.
 5. **Discount** — The export shows list prices by default. Apply your discount in the Excel file.

@@ -6,9 +6,6 @@ sidebar_position: 2
 
 This tutorial walks you through creating a real cost estimate from scratch. By the end, you will have a complete estimate for a data platform with two workloads on AWS, ready to export.
 
-![Getting Started tutorial page](/img/guides/getting-started-page.png)
-*The 5-Minute Tutorial — step-by-step guide to creating your first cost estimate with two workloads.*
-
 ## Video walkthrough
 
 <video controls width="100%" preload="metadata" aria-label="Getting Started tutorial video showing the end-to-end workflow: login, create estimate, add workloads, review costs, use AI assistant, and export to Excel">
@@ -16,7 +13,7 @@ This tutorial walks you through creating a real cost estimate from scratch. By t
   Your browser does not support the video tag. <a href="/lakemeter-oss/video/getting-started-tutorial.mp4">Download the tutorial video</a>.
 </video>
 
-*End-to-end tutorial: create an estimate, add Jobs and DBSQL workloads, review costs, ask the AI assistant, and export to Excel.*
+*End-to-end tutorial: create an estimate, add Lakeflow Jobs and Databricks SQL workloads, review costs, ask the AI assistant, and export to Excel.*
 
 ## What we are building
 
@@ -24,8 +21,8 @@ A cost estimate for a mid-size data platform running on **AWS us-east-1** with t
 
 | Workload | Purpose | Configuration |
 |----------|---------|---------------|
-| ETL Pipeline | Nightly batch ingestion | Jobs (Classic), 4 workers, runs 2x/day for 45 min |
-| Analytics Warehouse | Business intelligence queries | DBSQL Serverless, Small size, 10 hrs/day |
+| ETL Pipeline | Nightly batch ingestion | Lakeflow Jobs, 4 workers, runs 2x/day for 45 min |
+| Analytics Warehouse | Business intelligence queries | Databricks SQL Serverless, Small size, 10 hrs/day |
 
 ## Step 1: Create the estimate
 
@@ -43,13 +40,10 @@ You land on the **Calculator** page -- an empty estimate ready for workloads.
 ![Creating an estimate in Lakemeter — click New Estimate, fill the form, and submit](/img/gifs/creating-estimate.gif)
 *Animated: creating a new estimate — fill in name, cloud, region, and tier, then click Create.*
 
-![Lakemeter calculator page with workloads and cost summary](/img/calculator-overview.png)
-*The Calculator page showing configured workloads with live cost summary and AI assistant panel on the right.*
-
-## Step 2: Add the ETL Pipeline workload (Jobs)
+## Step 2: Add the ETL Pipeline workload (Lakeflow Jobs)
 
 1. Click **Add Workload**.
-2. Set **Workload Type** to **Jobs**.
+2. Set **Workload Type** to **Lakeflow Jobs**.
 3. Set **Workload Name** to `ETL Pipeline`.
 4. Leave **Serverless** toggled off (we want classic compute for this example).
 5. Configure compute (in the Driver Node and Worker Nodes cards):
@@ -67,22 +61,22 @@ You land on the **Calculator** page -- an empty estimate ready for workloads.
 
 8. Click **Save**.
 
-**What the numbers mean:** This job runs twice daily for 45 minutes, so it uses 1.5 hours/day x 30 days = **45 compute-hours/month**. Each hour consumes DBUs based on the instance type (driver + 4 workers), which Lakemeter multiplies by the $/DBU rate for Jobs on AWS Premium to calculate the monthly cost. You also see VM infrastructure costs for the driver (on-demand) and workers (spot pricing).
+**What the numbers mean:** This job runs twice daily for 45 minutes, so it uses 1.5 hours/day x 30 days = **45 compute-hours/month**. Lakemeter derives DBU consumption from the configured driver and workers, applies the rate for the estimate context, and adds the selected VM pricing assumptions.
 
-## Step 3: Add the Analytics Warehouse workload (DBSQL)
+## Step 3: Add the Analytics Warehouse workload (Databricks SQL)
 
 1. Click **Add Workload** again.
-2. Set **Workload Type** to **DBSQL**.
+2. Set **Workload Type** to **Databricks SQL**.
 3. Set **Workload Name** to `Analytics Warehouse`.
 4. Leave the **Serverless** checkbox checked (this is the default).
-5. Set **Size** to **Small** (12 DBU/hr).
+5. Set **Size** to **Small**.
 6. Set **Number of Clusters** to `1`.
 7. Configure usage:
    - **Hours Per Month:** `220` (roughly 10 hrs/day x 22 business days)
 
 8. Click **Save**.
 
-**What the numbers mean:** A Small Serverless warehouse consumes 12 DBU per hour. At 220 hours/month, that is 2,640 DBUs/month. Lakemeter multiplies this by the Serverless SQL $/DBU rate for your cloud, region, and tier. Serverless workloads have no separate VM costs -- infrastructure is included in the DBU price.
+**What the numbers mean:** Lakemeter uses the selected warehouse size, monthly hours, cluster count, and the list rate resolved for the estimate context. Expand the saved workload to review the DBU quantity and rate used in the calculation.
 
 ## Step 4: Review costs
 
@@ -114,7 +108,7 @@ This file is ready to attach to an RFP response, share in a planning meeting, or
 
 ## What to try next
 
-- **Add more workloads** -- try Model Serving or FMAPI to estimate AI/ML costs. See the [Quick Reference](/user-guide/quick-reference) for a summary of all 14 workload types.
-- **Use the AI Assistant** -- click the chat icon on the right side and describe what you need. For example: "Add a DLT pipeline for real-time streaming with Pro edition." The assistant proposes workload configurations you can accept or modify. See the [AI Assistant guide](/user-guide/ai-assistant).
+- **Add more workloads** -- use the [Workload Sizing Guides](/user-guide/workloads) to choose another supported workload.
+- **Use the AI Assistant** -- click the chat icon on the right side and describe what you need. For example: "Add a Lakeflow Spark Declarative Pipeline." The assistant proposes workload configurations you can accept or modify. See the [AI Assistant guide](/user-guide/ai-assistant).
 - **Duplicate and compare** -- duplicate your estimate, change the region or tier, and compare costs side by side.
 - **Follow the full workflow** -- see the [End-to-End Workflow](/user-guide/end-to-end-workflow) guide for a complete walkthrough from creation through export interpretation.

@@ -11,7 +11,6 @@ const sidebars: SidebarsConfig = {
         'user-guide/overview',
         'user-guide/getting-started',
         'user-guide/end-to-end-workflow',
-        'user-guide/quick-reference',
         'user-guide/creating-estimates',
       ],
     },
@@ -44,11 +43,28 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Pricing',
+      collapsed: false,
+      items: [
+        'user-guide/pricing/sku-explorer',
+        'user-guide/pricing/fmapi-tokens',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Features',
       collapsed: false,
       items: [
         'user-guide/ai-assistant',
         'user-guide/exporting',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Reference',
+      collapsed: false,
+      items: [
+        'user-guide/quick-reference',
         'user-guide/calculation-reference',
         'user-guide/faq',
       ],

@@ -2,172 +2,215 @@
 sidebar_position: 16
 ---
 
-# Lakebase
+# Lakebase Sizing
 
 > **Lakemeter UI name:** Lakebase
 
-Lakebase is Databricks' managed PostgreSQL-compatible transactional database. Unlike compute workloads, Lakebase has two independent cost components: **compute** (CU-based) and **storage** (DSU-based), which appear as separate rows in the Excel export.
+Use this guide to model Lakebase compute and storage-related consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not general Lakebase architecture or product limits.
 
-![Lakebase documentation page](/img/guides/lakebase-guide.png)
-*The Lakebase guide — compute units, storage pricing, and dual-row Excel export explained.*
+For current Lakebase capabilities and availability, start from the [official Databricks documentation](https://docs.databricks.com/). For current public rates, use the [Databricks pricing page](https://www.databricks.com/product/pricing) and the rate shown in Lakemeter.
 
-![Lakebase worked cost example](/img/guides/lakebase-worked-example.png)
-*Worked example showing separate compute and storage cost calculations.*
+## What Lakemeter estimates
 
-## When to use Lakebase
+A Lakebase workload can include:
 
-Use Lakebase when you need a **managed transactional database** for your Databricks application -- CRUD operations, user data, application state, or any workload that needs PostgreSQL compatibility. If you need analytics/BI queries over large datasets, see [DBSQL](/user-guide/dbsql-warehouses) instead.
+- Compute at the configured capacity and node count
+- Database storage
+- Point-in-time restore storage
+- Snapshot storage
 
-## Real-world example
+Compute is modeled through a Databricks compute SKU. Storage-related quantities are modeled separately and only appear when their input is greater than zero.
 
-> **Scenario:** You are deploying a web application backend on AWS us-east-1 (Premium tier). The database needs 4 Compute Units with a read replica for high availability (2 nodes total), 500 GB of storage, and runs 24/7.
+## Choose a compute type
 
-### Configuration
+Lakemeter presents two compute types.
 
-| Field | Value |
-|-------|-------|
-| Workload Type | Lakebase |
-| CU Size | 4 |
-| Number of Nodes | 2 (primary + 1 read replica) |
-| Storage (GB) | 500 |
-| Hours Per Month | 730 (24/7) |
+### Auto-scaling
 
-### Step-by-step calculation
+Use **Auto-scaling** when the estimate should include a minimum capacity and time spent at a higher capacity.
 
-**1. Compute cost**
+Enter:
 
-```
-DBU/Hour     = CU Size x Number of Nodes = 4 x 2 = 8 DBU/hour
-Monthly DBUs = DBU/Hour x Hours/Month = 8 x 730 = 5,840 DBUs
-Compute Cost = 5,840 x $0.40/DBU = $2,336.00
-```
+- **Minimum CU** — the baseline capacity
+- **Maximum CU** — the capacity modeled during scale-up hours
+- **Scale to Zero** — whether compute is billed only during active hours
+- **Active Hours / Month** — shown when scale-to-zero is enabled
+- **Scale-up Hours / Month** — the time modeled at maximum CU
 
-**2. Storage cost**
+Lakemeter restricts the maximum choices based on the selected minimum so the configured range is 16 CU or less. Use the values offered by the form rather than copying a capacity list from this guide.
 
-Lakebase storage is measured in Databricks Storage Units (DSU). Each GB equals 15 DSU:
+### Fixed size
 
-```
-Total DSU    = Storage GB x 15 = 500 x 15 = 7,500 DSU
-Storage Cost = 7,500 x $0.023/DSU = $172.50/month
-```
+Use **Fixed size** when the estimate should use one larger capacity without a separate autoscaling range.
 
-**3. Total monthly cost**
+Select one of the fixed sizes offered by Lakemeter. Fixed-size mode disables scale-to-zero and scale-up hours, so the selected capacity is treated as one always-on compute level.
 
-```
-Total = Compute Cost + Storage Cost = $2,336.00 + $172.50 = $2,508.50/month
-```
+## Size the compute range
 
-:::note
-These are example rates for illustration. The $0.40/DBU rate is the fallback for `DATABASE_SERVERLESS_COMPUTE` on AWS/us-east-1/Premium. Actual rates depend on your cloud, region, and pricing tier. Storage at $0.023/DSU is a fixed rate.
-:::
+For an auto-scaling estimate:
 
-### What about a smaller deployment?
+1. Choose the minimum CU expected during baseline operation.
+2. Choose the maximum CU expected during periods of higher demand.
+3. Estimate how many hours per month the workload spends at maximum CU.
+4. Decide whether the compute can scale to zero.
 
-For a development database with 1 CU, 1 node, 100 GB, business hours only:
+The **Scale-up Hours / Month** value represents hours at maximum CU, not hours for only the difference between minimum and maximum. Lakemeter therefore separates the month into two buckets:
 
-```
-Compute: 1 x 1 x 176 hrs = 176 DBUs x $0.40 = $70.40
-Storage: 100 x 15 x $0.023 = $34.50
-Total:   $104.90/month
+```text
+Baseline bucket = Minimum CU × Baseline hours
+Scale-up bucket = Maximum CU × Scale-up hours
 ```
 
-## Configuration reference
+This avoids billing the same scale-up hours once at minimum CU and again as incremental capacity.
 
-| Field | Description | Default |
-|-------|-------------|---------|
-| **CU Size** | Compute Units per node: 1, 2, 4, or 8. Determines the DBU/hour rate per node. | 1 |
-| **Number of Nodes** | 1 = primary only. 2 = primary + 1 read replica (HA). 3 = primary + 2 read replicas (max HA). | 1 |
-| **Storage (GB)** | Provisioned storage in gigabytes, 0 to 8,192. | 0 |
-| **Hours Per Month** | Compute uptime. Use 730 for always-on databases. | 730 |
+## Scale-to-zero behavior
 
-### Nodes and high availability
+### Scale to zero off
 
-| Nodes | Description | Use case |
-|-------|-------------|----------|
-| 1 | Primary node only | Development, non-critical workloads |
-| 2 | Primary + 1 read replica | Production with read scaling and failover |
-| 3 | Primary + 2 read replicas | Maximum HA, heavy read workloads |
+When scale-to-zero is off, Lakemeter treats the minimum capacity as always on:
 
-Each additional node multiplies the compute cost linearly.
-
-### Estimating hours for part-time usage
-
-Lakebase uses direct hours input only. If your database is not always-on (e.g., a development database used during work hours), calculate your hours manually:
-
-```
-Hours/Month = Sessions Per Day x Avg Duration Hours x Days Per Month
+```text
+Baseline hours = 730 − Scale-up hours
+Scale-up hours = Entered scale-up hours
 ```
 
-**Example**: 8 hours/day x 22 business days = 176 hours/month — enter **176** in the Hours/Month field.
+The always-on minimum bucket receives the Lakebase always-on adjustment used by Lakemeter, currently 25%. The scale-up bucket uses the normal DBU-per-CU-hour conversion.
 
-## How costs are calculated
+### Scale to zero on
 
-### Compute
+When scale-to-zero is on, enter the total active hours for the month:
 
-```
-DBU/Hour     = CU Size x Number of Nodes
-Monthly DBUs = DBU/Hour x Hours/Month
-Compute Cost = Monthly DBUs x $/DBU
-```
-
-**SKU**: `DATABASE_SERVERLESS_COMPUTE` (fallback: $0.40/DBU)
-
-### Storage
-
-```
-Total DSU     = Storage GB x 15
-Storage Cost  = Total DSU x $0.023/DSU
+```text
+Baseline hours = Active hours − Scale-up hours
+Scale-up hours = Entered scale-up hours
 ```
 
-**SKU**: `DATABRICKS_STORAGE`
+The always-on adjustment does not apply. Both active buckets use the normal DBU-per-CU-hour conversion.
 
-Storage cost is a **fixed monthly amount** independent of compute hours. You pay for provisioned storage capacity regardless of how many hours the compute runs.
+Make sure scale-up hours do not exceed active hours.
 
-### Total
+## Number of nodes
 
+**Number of Nodes** is the total number of nodes included in the estimate. Every selected node multiplies both baseline and scale-up compute consumption:
+
+```text
+Compute DBUs = CU × DBU per CU-hour × Nodes × Hours
 ```
-Total = Compute Cost + Storage Cost
+
+Choose the total node count required by the scenario from the options shown in Lakemeter. Use the official Databricks documentation to determine the appropriate production topology.
+
+## How compute cost is calculated
+
+Lakemeter resolves the DBU-per-CU-hour conversion and regional list price for the selected estimate context.
+
+### Always-on baseline
+
+When scale-to-zero is off, Lakemeter applies the always-on adjustment to the DBU-per-CU-hour conversion for the minimum bucket:
+
+```text
+Effective baseline DBU per CU-hour
+  = Standard DBU per CU-hour × (1 − Always-on adjustment)
+
+Baseline DBUs
+  = Minimum CU
+  × Effective baseline DBU per CU-hour
+  × Nodes
+  × Baseline hours
 ```
 
-### Edge cases
+The regional **price per DBU does not change** between the baseline and scale-up buckets. The adjustment is represented by lower DBU consumption per CU-hour.
 
-| Scenario | Behavior |
-|----------|----------|
-| Storage = 0 or not set | No storage sub-row emitted in Excel |
-| Maximum storage (8,192 GB) | Storage cost = 8,192 x 15 x $0.023 = $2,826.24/month |
+### Scale-up bucket
 
-## Tips
+```text
+Scale-up DBUs
+  = Maximum CU
+  × Standard DBU per CU-hour
+  × Nodes
+  × Scale-up hours
+```
 
-- **Start with 1 CU for development**: A single CU with 1 node is sufficient for development and testing. Scale to 2, 4, or 8 CU based on query load and concurrency.
-- **Use 2 nodes for production**: A read replica provides both read scaling and automatic failover. The 2x compute cost is worth it for production reliability.
-- **Storage is cheap relative to compute**: 500 GB costs ~$172/month, while even 1 CU at 730 hours costs ~$292. Optimize CU size first.
+### Convert DBUs to cost
 
-## Common mistakes
+```text
+Baseline $ per CU-hour
+  = Effective baseline DBU per CU-hour × Regional $ per DBU
 
-- **Expecting a single cost number**: Lakebase produces **two rows** in the Excel export -- one for compute, one for storage. The total is the sum of both.
-- **Setting storage to 0 for testing**: If storage is 0 or not set, no storage row appears. Remember to include realistic storage estimates for production sizing.
-- **Forgetting nodes multiply compute**: 2 nodes doubles the DBU/hour, 3 nodes triples it. A 4 CU database with 3 nodes uses 12 DBU/hour, not 4.
-- **Confusing CU with vCPU**: Compute Units (CU) are a Databricks-specific unit, not CPU cores. The available CU sizes (1, 2, 4, 8) map to DBU rates, not to hardware specifications.
+Scale-up $ per CU-hour
+  = Standard DBU per CU-hour × Regional $ per DBU
+
+Compute cost
+  = (Baseline DBUs + Scale-up DBUs) × Regional $ per DBU
+```
+
+Lakemeter displays the DBU-per-CU-hour and dollar-per-CU-hour chain in the expanded calculation so the values can be cross-checked against the pricing source.
+
+## Worked sizing example
+
+Assume an auto-scaling workload with:
+
+- Minimum capacity of 4 CU
+- Maximum capacity of 8 CU
+- One node
+- 50 scale-up hours per month
+- Scale-to-zero off
+
+Lakemeter models:
+
+```text
+Baseline:
+  4 CU × adjusted DBU/CU-hour × 1 node × (730 − 50) hours
+
+Scale-up:
+  8 CU × standard DBU/CU-hour × 1 node × 50 hours
+
+Compute total:
+  (Baseline DBUs + Scale-up DBUs) × regional $/DBU
+```
+
+If scale-to-zero is enabled with 200 active hours, the baseline changes to `200 − 50` hours and does not receive the always-on adjustment.
+
+The current conversion and price values are intentionally not reproduced here. Review them in the expanded Lakemeter calculation and verify important estimates against current Databricks pricing.
+
+## Storage-related inputs
+
+Enter monthly quantities for the components included in the scenario:
+
+| Field | Sizing guidance |
+|---|---|
+| **Storage (GB)** | Expected database storage billed for the month |
+| **Point-in-Time Restore (GB)** | Expected PITR storage quantity |
+| **Snapshot Storage (GB)** | Expected snapshot storage quantity |
+
+Lakemeter converts each configured quantity to its corresponding storage billing units and applies the loaded storage rate. The expanded calculation shows the multiplier and rate used. This guide does not duplicate those values because they can change.
+
+## What to review before saving
+
+- Is auto-scaling or fixed size the intended billing pattern?
+- Does minimum CU represent normal baseline demand?
+- Does maximum CU represent the capacity reached during the entered scale-up hours?
+- If scale-to-zero is enabled, are active hours realistic?
+- Is scale-up time a subset of active time?
+- Does the node count represent all billed nodes?
+- Are database, PITR, and snapshot storage entered separately?
 
 ## Excel export
 
-Lakebase workloads export as **two rows** per line item:
+Lakebase can emit these rows:
 
-| Row | Contents | SKU |
-|-----|----------|-----|
-| **Compute row** | CU-based DBU costs (CU x nodes x hours x $/DBU) | `DATABASE_SERVERLESS_COMPUTE` |
-| **Storage row** | GB-based storage costs (GB x 15 DSU x $0.023/DSU) | `DATABRICKS_STORAGE` |
+1. Compute
+2. Database storage, when configured
+3. Point-in-time restore, when configured
+4. Snapshot storage, when configured
 
-| Column (compute row) | What it shows |
-|--------|--------------|
-| Configuration | CU size and node count |
-| Mode | Serverless (always) |
-| SKU | `DATABASE_SERVERLESS_COMPUTE` |
-| DBU/Hour | CU x nodes |
-| Hours/Month | Direct hours value |
-| Monthly DBUs | DBU/Hour x Hours/Month |
-| DBU Cost | Monthly DBUs x $/DBU |
-| VM Cost | $0 (always serverless) |
-| Total Cost | Compute cost only (storage is in the second row) |
+The compute row includes the configured CU range, scale-to-zero setting, scale-up hours, node count, DBU quantity, and selected SKU rate. Storage-related rows remain separate so each quantity and charge can be reviewed independently.
 
-The bottom-line total in the spreadsheet sums across both compute and storage rows for the final Lakebase cost.
+The total Lakebase estimate is the sum of every emitted row.
+
+## Related
+
+- [Calculation Reference](./calculation-reference)
+- [Exporting to Excel](./exporting)
+- [SKU Explorer](./pricing/sku-explorer)
+- [Official Databricks documentation](https://docs.databricks.com/)
+- [Databricks pricing](https://www.databricks.com/product/pricing)

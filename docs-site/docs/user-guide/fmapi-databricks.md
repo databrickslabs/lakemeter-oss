@@ -2,206 +2,112 @@
 sidebar_position: 13
 ---
 
-# FMAPI — Databricks Models
+# FMAPI — Databricks Models Sizing
 
 > **Lakemeter UI name:** FMAPI - Databricks
 
-Foundation Model APIs (FMAPI) let you access open-source models hosted by Databricks -- such as Llama, DBRX, Gemma, and embedding models -- through pay-per-token or provisioned-throughput pricing. Unlike compute workloads, FMAPI pricing is based on **token volume** or **reserved throughput capacity**, not compute hours.
+Use this guide to model Databricks-hosted FMAPI consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not model capabilities, model selection, or serving architecture.
 
-![FMAPI Databricks documentation page](/img/guides/fmapi-databricks-guide.png)
-*The FMAPI Databricks guide — token-based and provisioned throughput pricing with worked cost examples.*
+For current FMAPI capabilities and availability, start from the [official Databricks documentation](https://docs.databricks.com/). For current public rates, use the [Databricks pricing page](https://www.databricks.com/product/pricing) and the rates shown in Lakemeter.
 
-![FMAPI Databricks worked cost example](/img/guides/fmapi-databricks-worked-example.png)
-*Worked example showing input/output token costs and provisioned throughput comparison.*
+## What Lakemeter estimates
 
-## When to use FMAPI Databricks
+Each FMAPI - Databricks workload represents one model and one rate type. Lakemeter supports two calculation units:
 
-Use FMAPI Databricks when you want to call **open-source models hosted on Databricks** without managing your own serving infrastructure. This includes LLMs (Llama, DBRX, Gemma, GPT-OSS) and embedding models (BGE, GTE). If you need commercial models from Anthropic, OpenAI, or Google, see [FMAPI — Proprietary Models](/user-guide/fmapi-proprietary) instead. If you are deploying your own custom model, see [Model Serving](/user-guide/model-serving).
+- Millions of tokens per month for token-based rate types
+- Hours per month for provisioned rate types
 
-## Real-world example
+Add separate workload entries for separate usage quantities. For example, input and output tokens are separate line items.
 
-> **Scenario:** You are building a customer support chatbot on AWS us-east-1 (Premium tier) using Llama 3.3 70B. Based on your projected traffic, you estimate 50 million input tokens and 10 million output tokens per month. You want to estimate the pay-per-token cost.
+## Configure the workload
 
-### Configuration (input tokens)
+### Model
 
-| Field | Value |
-|-------|-------|
-| Workload Type | FMAPI Databricks |
-| Model | Llama 3.3 70B |
-| Rate Type | Input Token |
-| Quantity (Millions) | 50 |
+Select the model used by the workload. The selected model, cloud, and rate type determine the usage conversion loaded by Lakemeter.
 
-### Configuration (output tokens)
+Use the model list shown in the app rather than relying on a static list in this guide.
 
-| Field | Value |
-|-------|-------|
-| Workload Type | FMAPI Databricks |
-| Model | Llama 3.3 70B |
-| Rate Type | Output Token |
-| Quantity (Millions) | 10 |
+### Rate Type
 
-:::info
-Each rate type (input token, output token) is a **separate line item** in Lakemeter. Add one workload entry for input tokens and another for output tokens.
-:::
+Select the rate type that matches the quantity being entered:
 
-### Step-by-step calculation
+- **Input Token** or **Output Token** uses millions of tokens per month
+- A **Provisioned** rate type uses hours per month
 
-**1. Input token cost**
+Only add rate types that apply to the workload. If multiple rate types apply, create one Lakemeter workload for each.
 
-```
-Monthly DBUs = Quantity (millions) x DBU per 1M Tokens
-             = 50 x 7.143
-             = 357.15 DBUs
-DBU Cost     = 357.15 x $0.07/DBU = $25.00
+### Quantity
+
+For a token-based rate type, enter monthly token volume in millions:
+
+```text
+Quantity = 1 means 1 million tokens per month
 ```
 
-**2. Output token cost**
+For a provisioned rate type, enter the number of provisioned hours in the month. The field label changes to **Hours/Month** when a provisioned rate type is selected.
 
-```
-Monthly DBUs = 10 x 21.429 = 214.29 DBUs
-DBU Cost     = 214.29 x $0.07/DBU = $15.00
-```
+## How token-based cost is calculated
 
-**3. Total monthly cost**
+```text
+Monthly DBUs
+  = Quantity in millions
+  × DBU per 1 million tokens
 
-```
-Total = Input Cost + Output Cost = $25.00 + $15.00 = $40.00/month
-```
-
-:::note
-These are example rates for illustration using Llama 3.3 70B on AWS. Actual rates depend on the model and cloud. Output tokens always cost more than input tokens because generation is more compute-intensive.
-:::
-
-### What about provisioned throughput?
-
-If you need guaranteed capacity for consistent high-throughput usage, you can reserve a provisioned endpoint. For Llama 3.3 70B with provisioned_scaling at 730 hours/month:
-
-```
-DBU/Hour     = 342.857 (provisioned_scaling rate)
-Monthly DBUs = 342.857 x 730 = 250,285.6 DBUs
-DBU Cost     = 250,285.6 x $0.07 = $17,520.00/month
+Monthly cost
+  = Monthly DBUs × Regional price per DBU
 ```
 
-Provisioned throughput is significantly more expensive but guarantees capacity. Use pay-per-token for variable workloads and provisioned for consistent, high-volume production traffic.
+## How provisioned cost is calculated
 
-## Supported models
+```text
+Monthly DBUs
+  = Provisioned hours × DBU per hour
 
-Lakemeter includes pricing data for all Databricks-hosted foundation models, loaded from the pricing bundle:
-
-| Category | Models |
-|----------|--------|
-| **Large Language Models** | Llama 4 Maverick, Llama 3.3 70B, Llama 3.1 8B, Llama 3.2 3B, Llama 3.2 1B, GPT-OSS 120B, GPT-OSS 20B, Gemma 3 12B |
-| **Embedding Models** | BGE Large, GTE |
-
-:::tip
-The model list updates with each pricing bundle release. If a model is missing, Lakemeter uses fallback rates so you can still generate estimates.
-:::
-
-## Rate types
-
-| Rate Type | Category | Unit | Description |
-|-----------|----------|------|-------------|
-| `input_token` | Pay-Per-Token | DBU per 1M tokens | Tokens sent to the model (prompts, context) |
-| `output_token` | Pay-Per-Token | DBU per 1M tokens | Tokens generated by the model (completions) |
-| `provisioned_scaling` | Provisioned | DBU per hour | Reserved throughput (scaling tier) |
-| `provisioned_entry` | Provisioned | DBU per hour | Reserved throughput (entry tier, lower cost) |
-
-### Pay-Per-Token vs Provisioned
-
-**Pay-Per-Token**: Best for variable or unpredictable workloads. You pay based on actual token volume processed.
-
-**Provisioned Throughput**: Best for consistent, high-throughput production workloads. You reserve fixed capacity and pay by the hour, regardless of actual token usage. Entry tier is cheaper; scaling tier provides higher throughput.
-
-:::info Key rate relationships
-- **Output tokens always cost more than input tokens** for all models (generation requires more compute)
-- **`provisioned_entry` is always cheaper than `provisioned_scaling`** (lower throughput tier)
-- **Rates are identical across clouds** for most models, with occasional exceptions (e.g., GCP Llama 3.1 8B provisioned rates differ)
-:::
-
-## Configuration reference
-
-| Field | Description | Default |
-|-------|-------------|---------|
-| **Model** | The Databricks-hosted model name | — (select from list) |
-| **Rate Type** | Token direction or provisioned tier | Input Token |
-| **Quantity** | Volume -- millions of tokens/month (token-based) or hours/month (provisioned) | — |
-
-### Rate type groups in the UI
-
-The UI groups rate types into two categories in the dropdown:
-
-| Group | Rate Types |
-|-------|------------|
-| **Token-based** | `input_token`, `output_token` |
-| **Provisioned** | `provisioned_scaling`, `provisioned_entry` |
-
-## How costs are calculated
-
-### Token-based pricing
-
-```
-Monthly DBUs = Quantity (millions) x DBU per 1M Tokens
-DBU Cost     = Monthly DBUs x $/DBU
-Total Cost   = DBU Cost (no VM costs — always serverless)
+Monthly cost
+  = Monthly DBUs × Regional price per DBU
 ```
 
-### Provisioned pricing
+Lakemeter resolves the usage conversion and DBU price for the selected model, rate type, cloud, region, and pricing tier. The expanded calculation shows whether the quantity is being interpreted as tokens or hours. No separate VM infrastructure cost is added.
 
-```
-Monthly DBUs = Hours x DBU per Hour
-DBU Cost     = Monthly DBUs x $/DBU
-Total Cost   = DBU Cost (no VM costs — always serverless)
-```
+## What to review before saving
 
-### Fallback behavior
+- Is the selected model the one used by the workload?
+- Is the rate type valid for that model?
+- For token-based usage, is quantity entered in millions rather than raw tokens?
+- For provisioned usage, is quantity entered as hours rather than tokens?
+- Are all applicable token directions represented as separate workload entries?
+- Does the expanded calculation show the expected DBU-per-token or DBU-per-hour conversion?
+- Is the cloud, region, and pricing tier correct for the estimate?
 
-When a model/rate_type is not found in the pricing bundle:
+## Common sizing errors
 
-| Component | Token fallback | Provisioned scaling fallback | Provisioned entry fallback |
-|-----------|---------------|-----------------------------|-----------------------------|
-| **Frontend** | 1.0 DBU/1M (input), 3.0 DBU/1M (output) | 200 DBU/hr | 50 DBU/hr |
-| **Backend** | 0 DBU | 0 DBU/hr | 0 DBU/hr |
-
-The frontend provides defaults so you always see a non-zero estimate. The backend returns 0 for unknown models to avoid incorrect Excel exports.
-
-### SKU mapping
-
-| Workload | SKU | Fallback $/DBU |
-|----------|-----|----------------|
-| FMAPI Databricks (all models, all rate types) | `SERVERLESS_REAL_TIME_INFERENCE` | $0.07 |
-
-## Tips
-
-- **Pay-per-token for prototyping**: Start with pay-per-token to understand your actual usage patterns. Switch to provisioned only when you have consistent, high-volume production traffic.
-- **Estimate both input and output**: Always add separate line items for input and output tokens. Output tokens cost 2-5x more than input, so underestimating output volume significantly understates cost.
-- **Embedding models are cheap**: BGE Large and GTE only use input tokens (no output). They are significantly cheaper than LLMs per million tokens.
-- **Compare open-source vs proprietary**: FMAPI Databricks models (Llama, DBRX) are much cheaper per token than proprietary models (Claude, GPT). Consider whether an open-source model meets your quality requirements.
-
-## Common mistakes
-
-- **Using provisioned for variable workloads**: Provisioned throughput charges by the hour regardless of usage. If your traffic is bursty (high during business hours, zero at night), pay-per-token is usually cheaper.
-- **Forgetting output tokens are more expensive**: If you expect 50M input tokens, your output volume might be 10-20M tokens -- but at 3x the rate, output can dominate total cost.
-- **Comparing $/DBU with compute workloads**: FMAPI uses the same `SERVERLESS_REAL_TIME_INFERENCE` SKU at $0.07/DBU as Model Serving. The cost difference is in how many DBUs each token or hour generates.
-- **Treating provisioned entry as "free tier"**: Provisioned entry is a paid tier with dedicated capacity -- it is not a free tier. It offers lower throughput at a lower per-hour rate than provisioned scaling.
+- Combining input and output token volumes into one line item
+- Entering raw token count in a field measured in millions
+- Entering token volume for a provisioned rate type
+- Entering provisioned hours for a token-based rate type
+- Assuming every model supports every rate type shown elsewhere
+- Reusing a conversion from another model or an older pricing reference
+- Expecting one line item to include all FMAPI usage automatically
 
 ## Excel export
 
-FMAPI Databricks workloads export as a single row per line item. The formula depends on rate type:
+Each FMAPI - Databricks workload emits one row.
 
-| Column | Token-based | Provisioned |
-|--------|-------------|-------------|
-| Configuration | Model name + rate type | Model name + rate type |
-| Mode | Serverless (always) | Serverless (always) |
-| SKU | `SERVERLESS_REAL_TIME_INFERENCE` | `SERVERLESS_REAL_TIME_INFERENCE` |
-| Token Type | Rate type label | Rate type label |
-| Tokens/Mo in Millions | Quantity | — |
-| DBU per 1M Tokens | DBU rate | — |
-| DBU/Hour | — | DBU rate |
-| Monthly DBUs | Quantity x DBU/1M | DBU/Hr x Hours |
-| DBU Cost | Monthly DBUs x $/DBU | Monthly DBUs x $/DBU |
-| VM Cost | $0 | $0 |
-| Total Cost | DBU Cost | DBU Cost |
+For token-based rows, the export records the model, rate type, token quantity in millions, DBU per million tokens, monthly DBUs, and DBU cost. For provisioned rows, it records hours, DBU per hour, monthly DBUs, and DBU cost instead.
 
-:::caution
-When auditing an exported spreadsheet, verify you are reading the correct formula for the rate type. Token-based rows multiply Tokens/Mo x DBU/1M. Provisioned rows multiply DBU/Hr x Hours/Mo. The columns are different.
-:::
+When reviewing the workbook, verify the row uses the formula for its selected rate type:
+
+```text
+Token-based row: Quantity in millions × DBU per million
+Provisioned row: Hours × DBU per hour
+```
+
+The VM cost remains zero. Add the rows for all applicable rate types to obtain the complete FMAPI estimate.
+
+## Related
+
+- [Calculation Reference](./calculation-reference)
+- [Exporting to Excel](./exporting)
+- [SKU Explorer](./pricing/sku-explorer)
+- [Official Databricks documentation](https://docs.databricks.com/)
+- [Databricks pricing](https://www.databricks.com/product/pricing)

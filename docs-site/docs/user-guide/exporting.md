@@ -6,12 +6,6 @@ sidebar_position: 6
 
 Lakemeter exports your estimates to professionally formatted Excel spreadsheets — ready for RFP responses, procurement reviews, internal planning, or vendor comparisons.
 
-![Export guide documentation page](/img/guides/export-guide.png)
-*The Export guide — single and bulk export workflows with file naming conventions.*
-
-![Excel spreadsheet structure](/img/guides/export-excel-structure.png)
-*Detailed breakdown of the Excel export: header, workload table, cost summary, legend, and assumptions.*
-
 ![Exporting an estimate to Excel — click Export, download completes](/img/gifs/export-excel.gif)
 *Animated: exporting an estimate — click the Export button and the Excel file downloads automatically.*
 
@@ -42,7 +36,7 @@ The top rows display your estimate metadata:
 
 ### 2. Workloads Table (30 Columns)
 
-Each workload in your estimate becomes one row (or two rows for workloads with separate storage costs). The columns are grouped by purpose:
+Each workload in your estimate produces a primary row. Workloads with separately priced components can add sub-rows. The columns are grouped by purpose:
 
 | Group | Columns | What's there |
 |-------|---------|-------------|
@@ -61,12 +55,12 @@ All cost cells use **Excel formulas**, not static values. If you change an input
 
 ### 3. Multi-Row Workloads
 
-Two workload types produce **two rows** in the export:
+Some workloads can produce additional rows:
 
-- **Lakebase** — Row 1: compute costs (DBU-based), Row 2: storage costs (DSU-based, direct dollar amount)
+- **Lakebase** — Compute, plus optional database storage, point-in-time restore, and snapshot rows
 - **Vector Search** — Row 1: compute costs, Row 2: storage costs (if storage GB > 0)
 
-The totals row at the bottom uses `SUM` formulas that include both compute and storage sub-rows.
+Only configured components are emitted. The totals row at the bottom uses `SUM` formulas that include every primary row and sub-row.
 
 ### 4. Cost Summary
 
@@ -123,4 +117,4 @@ Since all cells use formulas, you can build additional analysis on top of the ex
 - Export **after** finalizing your estimate — the file reflects the exact state at download time
 - The **discount percentage** column is editable in Excel. Set it to your negotiated rate and all costs recalculate
 - For FMAPI workloads, the token configuration columns show your volume assumptions — adjust these for different usage scenarios
-- Lakebase and Vector Search storage costs appear on separate rows. Make sure to include both rows when referencing total costs
+- Lakebase and Vector Search storage-related costs can appear on separate rows. Include every emitted sub-row when referencing total costs

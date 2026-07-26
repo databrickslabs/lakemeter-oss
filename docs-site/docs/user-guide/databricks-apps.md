@@ -2,138 +2,79 @@
 sidebar_position: 16
 ---
 
-# Databricks Apps
+# Databricks Apps Sizing
 
 > **Lakemeter UI name:** Databricks Apps
 
-Databricks Apps lets you deploy and run custom web applications (dashboards, data apps, internal tools) directly on Databricks infrastructure. Apps are fully serverless — you choose a size (Medium or Large) and Databricks handles provisioning. Costs are based on a fixed DBU/hour rate and app uptime.
+Use this guide to model monthly Databricks Apps consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not Databricks Apps capabilities, configuration, or limits.
 
-## When to use Databricks Apps
+For current product guidance, start from the [official Databricks documentation](https://docs.databricks.com/). For current public rates, use the [Databricks pricing page](https://www.databricks.com/product/pricing) and the rate shown in Lakemeter.
 
-Use Databricks Apps when you need to **host a custom web application** on Databricks — things like Streamlit dashboards, Gradio ML demos, FastAPI backends, or React frontends. If you need to run batch data processing, see [Jobs Compute](/user-guide/jobs-compute). If you need interactive notebook exploration, see [All-Purpose Compute](/user-guide/all-purpose-compute).
+## Form inputs
 
-## Real-world example
+### App Size
 
-> **Scenario:** You are deploying an internal cost estimation dashboard on AWS us-east-1 (Premium tier). The app runs during business hours — about 10 hours a day, 22 days a month. You need a Large app size to handle concurrent users.
+Select the app size that represents the workload. The selected size determines the DBU-per-hour conversion used by Lakemeter.
 
-### Configuration
+Use the options shown in Lakemeter rather than copying an option inventory or conversion values from this guide. Confirm the appropriate size using current Databricks guidance and your own workload testing.
 
-| Field | Value |
-|-------|-------|
-| Workload Type | Databricks Apps |
-| App Size | Large |
-| Hours Per Month | 220 (= 10 hrs × 22 days) |
+### Hours Per Month
 
-### Step-by-step calculation
+Enter the expected billed uptime for one app for one month.
 
-**1. DBU rate per hour**
+For a schedule-based estimate:
 
-Each app size has a fixed DBU/hour rate:
-
-```
-DBU/Hour = 1.0 (Large size)
+```text
+Hours per month
+  = Active hours per day
+  × Active days per month
 ```
 
-**2. Monthly DBUs and cost**
+A workload entry models one app. Create a separate workload entry for each additional app, including apps that share the same size or schedule.
 
-```
-Monthly DBUs = DBU/Hour × Hours/Month = 1.0 × 220 = 220 DBUs
-DBU Cost     = 220 × $0.07/DBU = $15.40
-Total Cost   = $15.40 (no VM costs — always serverless)
-```
+## Expected monthly quantity
 
-:::note
-These are example rates for illustration. Actual $/DBU depends on your cloud, region, and pricing tier. The $0.07 rate is the fallback for the `ALL_PURPOSE_SERVERLESS_COMPUTE` SKU on AWS/us-east-1/Premium.
-:::
+The monthly quantity is **app-hours for one app**. Base it on the expected operating schedule rather than request count or user count.
 
-### What about a Medium app?
+Include every period that should be represented as billed uptime. Estimate each app separately so its size and schedule remain reviewable.
 
-For lighter workloads with fewer concurrent users:
+## How Lakemeter calculates cost
 
-```
-DBU/Hour     = 0.5 (Medium size)
-Monthly DBUs = 0.5 × 220 = 110 DBUs
-Total Cost   = 110 × $0.07 = $7.70/month
-```
+Lakemeter resolves the DBU-per-hour conversion for the selected app size and the regional DBU price for the estimate context.
 
-### Always-on app (24/7)
+```text
+Monthly DBUs
+  = App hours per month
+  × DBU per app-hour for the selected size
 
-If your app needs to be available around the clock:
-
-```
-DBU/Hour     = 1.0 (Large)
-Monthly DBUs = 1.0 × 730 = 730 DBUs
-Total Cost   = 730 × $0.07 = $51.10/month
+Monthly cost
+  = Monthly DBUs
+  × Regional price per DBU
 ```
 
-## App sizes
+The conversion and price values are intentionally not reproduced here because they can change. Review the values shown in Lakemeter and verify important estimates against current Databricks pricing.
 
-| Size | DBU/Hour | Best for |
-|------|----------|----------|
-| **Medium** | 0.5 | Low-traffic dashboards, internal tools, dev/test apps |
-| **Large** | 1.0 | Production apps, concurrent users, ML demos, heavier workloads |
+This Lakemeter workload model does not add a separate VM infrastructure charge.
 
-Both sizes use the `ALL_PURPOSE_SERVERLESS_COMPUTE` SKU.
+## What to review before saving
 
-## Configuration reference
-
-| Field | Description | Default |
-|-------|-------------|---------|
-| **App Size** | Medium (0.5 DBU/hr) or Large (1.0 DBU/hr). Determines DBU consumption rate. | Medium |
-| **Hours Per Month** | App uptime. Use 730 for 24/7 apps. | 730 |
-
-### Estimating hours for intermittent usage
-
-If your app only serves traffic during specific hours:
-
-```
-Hours/Month = Hours Per Day × Days Per Month
-```
-
-**Example**: Dashboard used 8 hours/day, 22 weekdays = 176 hours/month.
-
-## How costs are calculated
-
-```
-DBU/Hour     = App Size Rate (0.5 for Medium, 1.0 for Large)
-Monthly DBUs = DBU/Hour × Hours/Month
-DBU Cost     = Monthly DBUs × $/DBU
-Total Cost   = DBU Cost (no VM costs — always serverless)
-```
-
-Databricks Apps are **always serverless**. There are no VM infrastructure costs to estimate.
-
-### SKU mapping
-
-| Workload | SKU | Fallback $/DBU |
-|----------|-----|----------------|
-| Databricks Apps (all sizes) | `ALL_PURPOSE_SERVERLESS_COMPUTE` | $0.07 |
-
-## Tips
-
-- **Start with Medium**: Most internal dashboards and tools run fine on Medium. Only upgrade to Large if you see performance issues with concurrent users.
-- **Right-size your hours**: If the app is only used during business hours, enter 176 (8 × 22) instead of 730. This cuts costs by ~76%.
-- **Cross-cloud comparison**: Like all serverless workloads, the $/DBU rate varies by cloud and region. Create estimates for each cloud to compare.
-
-## Common mistakes
-
-- **Using 730 hours for business-only apps**: An internal dashboard used 9-to-5 doesn't need 24/7 uptime. Calculate your actual usage hours.
-- **Choosing Large "just in case"**: Large costs exactly 2× Medium. Start with Medium and upgrade if needed.
-- **Expecting VM costs**: Databricks Apps are always serverless. $0 in the VM Cost column is correct.
+- Does the selected app size match the option intended for the workload?
+- Do monthly hours represent billed uptime rather than only periods of user activity?
+- Does this workload entry represent only one app?
+- Are additional apps and environments modeled as separate workload entries?
+- Does the estimate use the intended cloud, region, and pricing tier?
+- Do the conversion and DBU price shown in Lakemeter match the current pricing source?
 
 ## Excel export
 
-Each Databricks Apps workload appears as one row in the exported spreadsheet:
+Each Databricks Apps workload is exported as one row for one app. The row includes the selected size, monthly hours, DBU conversion, monthly DBUs, applicable DBU rates, and calculated list and discounted costs.
 
-| Column | What it shows |
-|--------|--------------|
-| Configuration | App size (Medium or Large) |
-| Mode | Serverless (always) |
-| SKU | `ALL_PURPOSE_SERVERLESS_COMPUTE` |
-| DBU/Hour | 0.5 (Medium) or 1.0 (Large) |
-| Hours/Month | Direct hours value |
-| Monthly DBUs | DBU/Hour × Hours/Month |
-| DBU Cost (List) | At list price |
-| DBU Cost (Discounted) | At negotiated rate |
-| VM Cost | $0 (always serverless) |
-| Total Cost | DBU Cost |
+Use the exported configuration and hours to trace the cost back to the workload assumptions. The VM cost fields remain zero because this Lakemeter workload model calculates the entry from DBU consumption only.
+
+## Related
+
+- [Calculation Reference](./calculation-reference)
+- [Exporting to Excel](./exporting)
+- [SKU Explorer](./pricing/sku-explorer)
+- [Official Databricks documentation](https://docs.databricks.com/)
+- [Databricks pricing](https://www.databricks.com/product/pricing)

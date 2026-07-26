@@ -2,206 +2,125 @@
 sidebar_position: 14
 ---
 
-# Vector Search
+# Vector Search Sizing
 
 > **Lakemeter UI name:** Vector Search
 
-Vector Search provides managed vector database endpoints for similarity search, powering RAG (Retrieval Augmented Generation) applications, recommendation systems, and semantic search. Lakemeter supports cost estimation for **Standard** and **Storage-Optimized** endpoint types.
+Use this guide to model Vector Search compute and storage consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not Vector Search architecture, endpoint limits, or workload design.
 
-![Vector Search documentation page](/img/guides/vector-search-guide.png)
-*The Vector Search guide — endpoint types, vector capacity calculation, and free storage tier explained.*
+For current Vector Search capabilities and availability, start from the [official Databricks documentation](https://docs.databricks.com/). For current public rates, use the [Databricks pricing page](https://www.databricks.com/product/pricing) and the rates shown in Lakemeter.
 
-![Vector Search worked cost example](/img/guides/vector-search-worked-example.png)
-*Worked example showing CEILING-based unit calculation, DBU costs, and storage tier breakdown.*
+## What Lakemeter estimates
 
-## When to use Vector Search
+A Vector Search workload can include:
 
-Use Vector Search when you need a **managed vector database** for storing and querying embeddings -- things like RAG chatbots, document retrieval, product recommendations, or image similarity search. If you need to call a language model directly (not store embeddings), see [FMAPI — Databricks Models](/user-guide/fmapi-databricks) instead.
+- Endpoint compute based on vector capacity units
+- Storage above the included allowance
 
-## Real-world example
+Compute is modeled through a Databricks serverless compute SKU. Storage is calculated separately from DBU consumption.
 
-> **Scenario:** You are building a RAG-powered knowledge base on AWS us-east-1 (Premium tier). Your document corpus produces 10 million embeddings and you estimate 50 GB of associated metadata storage. You want a Standard endpoint running 24/7.
+## Configure the workload
 
-### Configuration
+### Vector Search Type
 
-| Field | Value |
-|-------|-------|
-| Workload Type | Vector Search |
-| Endpoint Type | Standard |
-| Capacity (Millions) | 10 |
-| Storage (GB) | 50 |
-| Hours Per Month | 730 (24/7) |
+Select the type that matches the endpoint being sized. The selection determines both the number of vectors represented by one capacity unit and the DBU-per-hour rate for each unit.
 
-### Step-by-step calculation
+Use the values shown in Lakemeter rather than copying unit sizes or rates from this guide.
 
-**1. Compute units**
+### Capacity (M vectors)
 
-Vector Search divides your vector capacity into fixed-size units. For Standard mode, each unit holds 2 million vectors:
+Enter the expected vector capacity in millions:
 
-```
-Units = CEILING(Capacity in Vectors / Divisor)
-      = CEILING(10,000,000 / 2,000,000)
-      = CEILING(5)
-      = 5 units
+```text
+Entered capacity = 1 means 1 million vectors
 ```
 
-**2. DBU rate per hour**
+Lakemeter converts the value to vectors, divides by the loaded vectors-per-unit value, and rounds up to a whole capacity unit. Partial units are not used in the estimate.
 
-Each unit consumes 4.0 DBU/hour in Standard mode:
+### Storage (GB)
 
-```
-DBU/Hour = Units x DBU per Unit = 5 x 4.0 = 20.0 DBU/hour
-```
+Enter the total storage quantity to include in the scenario. Lakemeter calculates the included storage allowance from the number of capacity units, then charges only for storage above that allowance.
 
-**3. Monthly compute cost**
+Leave this field at zero when storage should not be included in the estimate.
 
-```
-Monthly DBUs = DBU/Hour x Hours/Month = 20.0 x 730 = 14,600 DBUs
-DBU Cost     = 14,600 x $0.07/DBU = $1,022.00
-```
+### Hours/Month
 
-**4. Storage cost**
+Enter the number of hours the endpoint is expected to be active during the month.
 
-Each unit includes 20 GB of free storage. Billing only applies to storage beyond this free tier:
+## How compute cost is calculated
 
-```
-Free Storage  = Units x 20 GB = 5 x 20 = 100 GB
-Billable      = MAX(0, 50 - 100) = 0 GB (within free tier)
-Storage Cost  = $0.00
-```
+```text
+Capacity units
+  = CEILING(
+      Capacity in millions × 1,000,000
+      ÷ Vectors per unit
+    )
 
-In this case, 50 GB is fully covered by the 100 GB free tier.
+DBU per hour
+  = Capacity units × DBU per unit-hour
 
-**5. Total monthly cost**
+Monthly DBUs
+  = DBU per hour × Hours per month
 
-```
-Total = DBU Cost + Storage Cost = $1,022.00 + $0.00 = $1,022.00/month
+Compute cost
+  = Monthly DBUs × Regional price per DBU
 ```
 
-:::note
-These are example rates for illustration. Actual $/DBU depends on your cloud, region, and pricing tier. Lakemeter loads real rates from the Databricks pricing bundle.
-:::
+Lakemeter loads the vectors-per-unit value, DBU-per-unit-hour rate, and regional DBU price for the selected estimate context. Review these values in the expanded calculation because they are not duplicated here.
 
-### What about Storage-Optimized?
+## How storage cost is calculated
 
-For the same 10 million vectors with Storage-Optimized:
+```text
+Included storage
+  = Capacity units × Included storage per unit
 
-```
-Units    = CEILING(10,000,000 / 64,000,000) = CEILING(0.15625) = 1 unit
-DBU/Hour = 1 x 18.29 = 18.29 DBU/hour
-Monthly  = 18.29 x 730 = 13,351.7 DBUs
-DBU Cost = 13,351.7 x $0.07 = $934.62
-```
+Billable storage
+  = MAX(0, Configured storage − Included storage)
 
-Storage-Optimized uses a much larger unit size (64M vectors vs 2M), so small deployments may actually cost more per unit but fewer units are needed. At 10M vectors, Standard and Storage-Optimized end up being close in cost.
+Storage cost
+  = Billable storage × Loaded storage rate
 
-:::tip When to choose Storage-Optimized
-Storage-Optimized becomes significantly cheaper at **100M+ vectors** where the 64M divisor means far fewer units. For smaller deployments under 50M vectors, Standard is usually the better choice.
-:::
-
-## Endpoint types
-
-| Type | Unit size | DBU/hr per unit | Best for |
-|------|-----------|----------------|----------|
-| **Standard** | 2 million vectors | 4.0 | General RAG, moderate vector counts (< 100M) |
-| **Storage-Optimized** | 64 million vectors | 18.29 | Large-scale search, 100M+ vectors, cost-sensitive storage |
-
-### How the CEILING function works
-
-The number of compute units is always **rounded up** to the nearest whole number. This means:
-- 1 vector → 1 unit (minimum)
-- 2,000,001 vectors (Standard) → 2 units (crossed the 2M boundary)
-- 63,999,999 vectors (Storage-Optimized) → 1 unit (still within 64M)
-
-This is important for cost planning -- there is no "partial unit" pricing.
-
-## Configuration reference
-
-| Field | Description | Default |
-|-------|-------------|---------|
-| **Endpoint Type** | Standard or Storage-Optimized. Determines unit size and DBU rate. | Standard |
-| **Capacity (Millions)** | Number of vectors to store, in millions. | 1 |
-| **Storage (GB)** | Metadata/additional storage in GB. Triggers a storage sub-row when it exceeds the free tier. | 0 |
-| **Hours Per Month** | Service uptime. Use 730 for always-on endpoints. | 730 |
-
-### Free storage tier
-
-Each compute unit includes free storage:
-
-| Endpoint Type | Free storage per unit |
-|--------------|----------------------|
-| Standard | 20 GB |
-| Storage-Optimized | 20 GB |
-
-Storage beyond the free tier is billed at **$0.023/GB/month** and appears as a separate sub-row in the Excel export.
-
-## How costs are calculated
-
-### Compute
-
-```
-Units        = CEILING(Capacity Millions x 1,000,000 / Divisor)
-DBU/Hour     = Units x Mode DBU Rate
-Monthly DBUs = DBU/Hour x Hours/Month
-Compute Cost = Monthly DBUs x $/DBU
+Total Vector Search cost
+  = Compute cost + Storage cost
 ```
 
-Where:
-- Standard: Divisor = 2,000,000, DBU Rate = 4.0/hr per unit
-- Storage-Optimized: Divisor = 64,000,000, DBU Rate = 18.29/hr per unit
+Configured storage can therefore produce a zero storage charge when it is within the included allowance.
 
-### Storage
+## What to review before saving
 
-```
-Free Storage GB = Units x 20
-Billable GB     = MAX(0, Storage GB - Free Storage GB)
-Storage Cost    = Billable GB x $0.023/month
-```
+- Is the selected Vector Search type the one being deployed?
+- Is capacity entered in millions rather than as a raw vector count?
+- Does capacity include expected growth and duplicated or retained vectors?
+- Does the rounded capacity-unit count match the expanded calculation?
+- Is the storage value the total configured quantity, not only the expected billable excess?
+- Do hours represent the endpoint-active schedule?
+- Is the cloud, region, and pricing tier correct for the estimate?
 
-### Total
+## Common sizing errors
 
-```
-Total = Compute Cost + Storage Cost
-```
-
-### SKU mapping
-
-| Component | SKU | Rate |
-|-----------|-----|------|
-| Compute (all modes) | `SERVERLESS_REAL_TIME_INFERENCE` | $0.07/DBU (fallback) |
-| Storage (over free tier) | Direct dollar amount | $0.023/GB/month |
-
-## Tips
-
-- **Right-size your capacity**: Estimate the actual number of embeddings you will store. A typical RAG application with 10,000 documents (chunked into ~10 chunks each) needs ~100K vectors, not 100M. Enter capacity in millions.
-- **Account for the CEILING function**: 2.1 million vectors costs the same as 4 million vectors in Standard mode (both need 2 units). Plan around unit boundaries to avoid paying for unused capacity.
-- **Storage-Optimized for large catalogs**: If you have 100M+ product embeddings for e-commerce search, Storage-Optimized is significantly cheaper because each unit holds 64M vectors instead of 2M.
-- **Free storage covers many use cases**: With 5 Standard units (10M vectors), you get 100 GB free storage. Most RAG metadata fits within the free tier.
-
-## Common mistakes
-
-- **Confusing millions with actual vector count**: The Capacity field is in **millions**. If you have 5 million vectors, enter 5, not 5,000,000.
-- **Ignoring the unit rounding**: Going from 2M to 2.1M vectors in Standard mode doubles your cost (1 unit → 2 units). Be aware of the unit boundaries.
-- **Choosing Storage-Optimized for small deployments**: At less than 10M vectors, Standard is almost always cheaper because the minimum is 1 unit either way, and Standard's per-unit DBU rate is lower.
-- **Expecting VM costs**: Vector Search is always serverless. $0 VM cost is correct.
+- Entering a raw vector count in a field measured in millions
+- Ignoring whole-unit rounding near a capacity boundary
+- Estimating document count without converting documents and chunks to vectors
+- Entering only storage above the included allowance instead of total storage
+- Assuming configured storage always produces a non-zero storage charge
+- Comparing endpoint types using a copied capacity table or old rate instead of the values loaded by Lakemeter
+- Expecting a separate VM charge for the serverless compute row
 
 ## Excel export
 
-Vector Search workloads may export as **one or two rows**:
+Vector Search emits:
 
-| Row | When | Contents |
-|-----|------|----------|
-| **Compute row** | Always | DBU-based cost for the endpoint units |
-| **Storage sub-row** | When storage exceeds free tier | Dollar-based storage cost ($0.023/GB/month for billable GB) |
+1. A compute row for endpoint DBU consumption
+2. A storage sub-row when **Storage (GB) is configured with a value greater than zero**
 
-| Column (compute row) | What it shows |
-|--------|--------------|
-| Configuration | Endpoint type and capacity |
-| Mode | Serverless (always) |
-| SKU | `SERVERLESS_REAL_TIME_INFERENCE` |
-| DBU/Hour | Units x mode DBU rate |
-| Hours/Month | Direct value |
-| Monthly DBUs | DBU/Hour x Hours/Month |
-| DBU Cost | Monthly DBUs x $/DBU |
-| VM Cost | $0 (always serverless) |
-| Total Cost | DBU Cost + Storage Cost |
+The storage sub-row is emitted whenever configured storage is greater than zero, even when the included allowance reduces billable storage and storage cost to zero. This matches the current export behavior.
+
+The compute row includes the selected type, capacity, hours, effective DBU per hour, monthly DBUs, and selected SKU rate. The storage row keeps configured, included, and billable storage separate from compute. The total Vector Search estimate is the sum of both emitted rows.
+
+## Related
+
+- [Calculation Reference](./calculation-reference)
+- [Exporting to Excel](./exporting)
+- [SKU Explorer](./pricing/sku-explorer)
+- [Official Databricks documentation](https://docs.databricks.com/)
+- [Databricks pricing](https://www.databricks.com/product/pricing)

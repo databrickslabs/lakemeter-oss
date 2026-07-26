@@ -7,7 +7,7 @@ slug: /
 
 **Build transparent Databricks cost estimates in minutes, not days.**
 
-Lakemeter is a web-based tool that calculates Databricks pricing across 14 workload types, 3 cloud providers, and all available regions. It turns vague "how much will this cost?" conversations into structured, exportable estimates backed by real pricing data and explicit assumptions.
+Lakemeter turns workload assumptions into structured, exportable Databricks cost estimates. Select the deployment context available in the app, configure how each workload is expected to run, and review the pricing assumptions behind the result.
 
 ## Who should use this?
 
@@ -19,7 +19,7 @@ You need cost estimates for customer proposals, RFPs, or proof-of-concept planni
 
 ### Data Engineers and Platform Teams
 
-You need to estimate costs for a new data platform, migration, or capacity expansion. Lakemeter covers Jobs, DLT, DBSQL, and more -- so you can model your full architecture in one estimate.
+You need to estimate costs for a new data platform, migration, or capacity expansion. Lakemeter lets you combine multiple supported workloads in one estimate and make the sizing assumptions visible.
 
 **Start here:** [Quick Reference](/user-guide/quick-reference) | [Workload Guides](/user-guide/workloads)
 
@@ -29,24 +29,18 @@ You are deploying Lakemeter for your team or integrating it with other systems.
 
 **Start here:** [Deployment Guide](/admin-guide/deployment) | [API Reference](/admin-guide/api-reference)
 
-## What Lakemeter covers
+## Choose what to size
 
-| Category | Workload Types | What it estimates |
-|----------|---------------|-------------------|
-| **Compute** | Jobs, All-Purpose, DLT | DBU costs + VM infrastructure for batch, interactive, and pipeline workloads |
-| **SQL Analytics** | DBSQL | Warehouse costs for Classic, Pro, and Serverless SQL |
-| **AI / ML** | Model Serving, Vector Search, FMAPI (Databricks), FMAPI (Proprietary), AI Parse, Shutterstock ImageAI | Inference endpoints, vector databases, foundation model token costs, document AI, image generation |
-| **Data Services** | Lakebase, Databricks Apps | Managed PostgreSQL compute and storage, hosted web applications |
+Each supported workload has a dedicated guide covering the inputs Lakemeter asks for, how those inputs affect the estimate, and what is included in the exported result.
 
-**Multi-cloud:** AWS, Azure, and GCP with region-specific pricing.
-
-**Pricing tiers:** Standard, Premium, and Enterprise -- each with different DBU rates and feature availability.
+Use the [workload sizing catalog](/user-guide/workloads) to choose a guide. For current Databricks product capabilities and availability, refer to the [official Databricks documentation](https://docs.databricks.com/).
 
 ## Key capabilities
 
 - **Real-time cost calculation** -- costs update instantly as you adjust workload parameters
 - **AI Assistant** -- describe what you need in plain English and get workload configurations suggested for you
 - **Excel export** -- download professional reports with full cost breakdowns, ready for customer handoff
+- **Pricing tools** -- inspect rates with the [SKU Explorer](/user-guide/pricing/sku-explorer) and [FMAPI Tokens](/user-guide/pricing/fmapi-tokens) views
 - **Estimate sharing** -- collaborate with team members on the same estimate
 - **Duplicate and compare** -- clone estimates to model alternative configurations side by side
 

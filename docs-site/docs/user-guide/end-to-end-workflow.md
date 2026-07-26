@@ -28,15 +28,11 @@ Create Estimate → Add Workloads → Configure Each Workload → Review Costs �
 
 Before opening Lakemeter, decide:
 
-- **Cloud provider** -- AWS, Azure, or GCP. This determines available regions, instance types, and pricing.
-- **Region** -- Where the Databricks workspace will run. Pricing varies by region.
-- **Pricing tier** -- Standard, Premium, or Enterprise. This affects DBU rates and which workload types are available.
+- **Cloud provider** -- the deployment context to model
+- **Region** -- the region used for pricing lookup
+- **Pricing tier** -- the tier used for SKU availability and pricing lookup
 
-| Tier | Available Workloads | Typical Use |
-|------|-------------------|-------------|
-| **Standard** | Jobs, All-Purpose, DLT, DBSQL (Classic, Pro) | Basic data engineering |
-| **Premium** | All Standard + DBSQL Serverless, Model Serving, Vector Search, FMAPI, Lakebase | Most production deployments |
-| **Enterprise** | Same as Premium with enhanced SLAs | Large-scale, regulated workloads |
+Use the options shown in Lakemeter. For current product availability and tier guidance, refer to the [official Databricks documentation](https://docs.databricks.com/).
 
 :::caution
 Once you add workloads to an estimate, you cannot change its cloud provider. Choose carefully, or create separate estimates for multi-cloud comparisons.
@@ -55,22 +51,17 @@ You are taken to the Calculator page.
 
 Click **Add Workload** for each Databricks service in your architecture. For each workload:
 
-1. **Choose the workload type.** See the [Quick Reference](/user-guide/quick-reference) if you are unsure which type to use.
+1. **Choose the workload type.** Use the [Workload Sizing Guides](/user-guide/workloads) if you are unsure which form matches the consumption being estimated.
 2. **Name it descriptively.** Use names like "Nightly ETL Pipeline" or "Analyst SQL Warehouse" -- not "Workload 1".
-3. **Configure compute.** For classic workloads (Jobs, All-Purpose, DLT), select instance types and worker count. For serverless or managed services (DBSQL Serverless, Model Serving, Vector Search), choose the size or capacity tier.
-4. **Set usage patterns.** Enter how much the workload runs:
-   - Jobs: runs per day, average runtime in minutes, days per month
-   - All-Purpose: hours per month
-   - DBSQL: hours per month
-   - Always-on services (Model Serving, Vector Search): default is 730 hrs/month (24/7)
-   - FMAPI: token quantity in millions
-5. **Choose pricing options.** For classic compute, pick between on-demand, spot, or reserved (1-year/3-year) pricing for driver and worker nodes.
+3. **Configure capacity.** Enter the compute shape, service size, endpoint capacity, database range, or other capacity requested by the form.
+4. **Set usage.** Enter representative runs, runtime, active hours, tokens, items, or storage in the units shown.
+5. **Review pricing inputs.** Confirm the mode, SKU, infrastructure assumptions, and any discount used for planning.
 6. **Add notes** (optional). Use the notes field to document why you chose a particular configuration -- useful when reviewing the estimate later or sharing with others.
 
 Costs update in real-time as you adjust parameters.
 
 :::tip
-**Use the AI Assistant** to speed up configuration. Open the chat panel and describe your workload: "I need a DLT pipeline processing 500GB daily with Pro edition." The assistant proposes a workload configuration you can accept, modify, or reject.
+**Use the AI Assistant** to speed up configuration. Open the chat panel and describe the workload you want to size. The assistant proposes a supported configuration you can accept, modify, or reject.
 :::
 
 ## 4. Review the cost breakdown
@@ -83,19 +74,14 @@ The Calculator page displays:
 
 **Understanding the cost components:**
 
-| Component | Applies to | What it is |
-|-----------|-----------|------------|
-| **DBU cost** | All workloads | Databricks Units consumed x $/DBU rate. The rate depends on your cloud, region, tier, and workload type. |
-| **VM cost** | Classic compute only (Jobs, All-Purpose, DLT, DBSQL Classic/Pro) | Cloud infrastructure cost for driver and worker VMs. Not applicable to serverless workloads. |
-| **Token cost** | FMAPI workloads | Cost per million input/output tokens for foundation model API calls. |
-| **Storage cost** | Lakebase, Vector Search | Storage capacity costs beyond the compute/DBU component. |
+| Component | What to verify |
+|-----------|----------------|
+| **DBU cost** | Monthly DBU quantity, selected SKU, and list rate |
+| **VM cost** | Instance choice, scale-out count, purchasing assumption, and active hours |
+| **Quantity-based cost** | Token, page, image, or other monthly billing quantity |
+| **Storage cost** | Storage quantity and any separately modeled protection or overflow component |
 
-### Quick cost optimization checks
-
-- **Spot pricing** on workers can reduce VM costs by 60-90% for fault-tolerant Jobs workloads.
-- **Reserved instances** (1yr or 3yr) lower VM costs for always-on workloads like DBSQL warehouses.
-- **Serverless** eliminates VM costs entirely -- the infrastructure cost is bundled into a higher DBU rate. Compare total cost, not just DBU rate.
-- **Photon** doubles the DBU rate but often halves the runtime for compatible workloads. Check whether the faster execution offsets the higher per-hour cost.
+Use each workload's sizing guide for its calculation details. Use the official Databricks documentation for product optimization guidance.
 
 ## 5. Export to Excel
 
@@ -114,29 +100,13 @@ The estimate name, cloud provider, region, pricing tier, status, version, and ti
 
 ### Workload table
 
-One row per workload with columns for:
+Each workload produces a primary row with its configuration, billing quantity, rate, and calculated cost. Workloads with separately priced components can add sub-rows.
 
-| Column | Description |
-|--------|-------------|
-| Workload Name | The name you assigned |
-| Type | Workload type (Jobs, DBSQL, etc.) |
-| Config | Key configuration summary (instance types, warehouse size, etc.) |
-| SKU | The specific Databricks SKU used for pricing |
-| Driver / Workers | Instance types and worker count |
-| Hours/Month | Total compute hours |
-| Token Type / Qty | For FMAPI: input/output tokens in millions |
-| DBU/hr | Databricks Units consumed per hour |
-| Total DBUs/Month | DBU/hr x hours/month |
-| $/DBU | Price per Databricks Unit |
-| VM $/hr | Combined VM cost per hour (driver + workers) |
-| Total Cost | Monthly cost for this workload |
-| Notes | Configuration notes and any pricing warnings |
+See [Exporting to Excel](./exporting) for the current column groups and multi-row behavior.
 
-### Summary section
+### Summary and assumptions
 
-- **Total monthly cost** across all workloads
-- **DBU breakdown** by SKU type (e.g., JOBS_COMPUTE, SERVERLESS_SQL_COMPUTE)
-- **Assumptions** explaining the pricing basis and disclaimers
+Below the workload table, the workbook presents the generated cost summaries, legend, and pricing assumptions. Use the [Exporting guide](./exporting) for the current section layout rather than relying on a duplicated column or section list here.
 
 ### How to use the report
 
