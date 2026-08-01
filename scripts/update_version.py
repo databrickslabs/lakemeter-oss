@@ -10,7 +10,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:[-.][0-9A-Za-z]+)?$")
+VERSION_PATTERN = re.compile(
+    r"^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$"
+)
 
 
 def _load_json(path: Path) -> dict:
@@ -41,11 +43,21 @@ def update_version(version: str) -> None:
 
     (ROOT / "VERSION").write_text(f"{version}\n")
     (ROOT / "frontend/src/version.ts").write_text(f"export const APP_VERSION = '{version}'\n")
+    (ROOT / "backend/app/version.py").write_text(
+        '"""Generated Lakemeter version metadata.\n\n'
+        'Update this file through scripts/update_version.py.\n'
+        '"""\n\n'
+        f'APP_VERSION = "{version}"\n'
+    )
 
     _update_package(ROOT / "frontend/package.json", version)
     _update_lockfile(ROOT / "frontend/package-lock.json", version)
     _update_package(ROOT / "docs-site/package.json", version)
     _update_lockfile(ROOT / "docs-site/package-lock.json", version)
+
+    release_manifest = _load_json(ROOT / "scripts/upgrades/release.json")
+    release_manifest["version"] = version
+    _write_json(ROOT / "scripts/upgrades/release.json", release_manifest)
 
     print(f"Updated Lakemeter version metadata to {version}")
 

@@ -36,7 +36,9 @@ cd lakemeter-oss
 ./scripts/install.sh --profile <your-cli-profile>
 ```
 
-The installer provisions everything automatically in **~15 minutes**: Lakebase instance, database schema, pricing data, app configuration, and deployment. See the [Installer Guide](./installer) for the full walkthrough.
+The installer provisions everything automatically: a direct Lakebase
+Autoscaling project, database schema, pricing data, app configuration, and
+deployment. See the [Installer Guide](./installer) for the full walkthrough.
 
 For a list of all resources created by the installer, see the [Deployment Inventory](./deployment-inventory).
 
@@ -52,11 +54,14 @@ Users access the app through their Databricks workspace — authentication is ha
 
 ## Updating
 
-To update Lakemeter after a new release:
+Use the version-aware upgrade utility after updating the repository:
 
 ```bash
-git pull
-./scripts/install.sh --profile <your-cli-profile>
+git pull --ff-only
+./scripts/upgrade.sh plan --profile <your-cli-profile>
+./scripts/upgrade.sh doctor --profile <your-cli-profile>
+./scripts/upgrade.sh apply --profile <your-cli-profile>
 ```
 
-The installer is idempotent — re-running it updates pricing data and redeploys the app without losing existing estimates.
+See the [Upgrade Guide](./upgrading) for release policy, database backups,
+idempotency, verification, and rollback.

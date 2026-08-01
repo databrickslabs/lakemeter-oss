@@ -6,9 +6,9 @@ sidebar_position: 99
 
 Lakemeter follows [Semantic Versioning](https://semver.org/):
 
-- **Major** (X.0.0) — Breaking changes, database migrations
-- **Minor** (0.X.0) — New features, new workload types
-- **Patch** (0.0.X) — Bug fixes, pricing data updates
+- **Major** (X.0.0) — Schema migrations and breaking database changes
+- **Minor** (0.X.0) — Data-only database updates
+- **Patch** (0.0.X) — Application-only fixes with no database changes
 
 ---
 

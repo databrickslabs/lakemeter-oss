@@ -72,22 +72,23 @@ class TestCommand:
 
 
 class TestValueFromReferences:
-    """Verify the 5 valueFrom resource references exist."""
+    """Verify direct Autoscaling and database resource references exist."""
 
     EXPECTED_VALUE_FROM = {
-        "DATABRICKS_SECRETS_SCOPE": "lakemeter-secrets-scope",
-        "LAKEBASE_INSTANCE_NAME": "lakemeter-lakebase-instance",
+        "LAKEBASE_PROJECT": "lakemeter-lakebase-project",
+        "LAKEBASE_BRANCH": "lakemeter-lakebase-branch",
+        "LAKEBASE_ENDPOINT": "lakemeter-lakebase-endpoint",
         "DB_HOST": "lakemeter-db-host",
         "DB_USER": "lakemeter-db-user",
         "DB_NAME": "lakemeter-db-name",
     }
 
-    def test_has_five_value_from_refs(self, env_vars):
+    def test_has_direct_autoscaling_value_from_refs(self, env_vars):
         value_from_count = sum(
             1 for v in env_vars.values() if "valueFrom" in v
         )
-        assert value_from_count >= 5, \
-            f"Expected >= 5 valueFrom refs, got {value_from_count}"
+        assert value_from_count >= 7, \
+            f"Expected >= 7 valueFrom refs, got {value_from_count}"
 
     @pytest.mark.parametrize(
         "env_name,resource_name",
@@ -115,24 +116,6 @@ class TestHardcodedValues:
     def test_db_sslmode(self, env_vars):
         assert "DB_SSLMODE" in env_vars
         assert env_vars["DB_SSLMODE"].get("value") == "require"
-
-    def test_databricks_host_template(self, env_vars):
-        assert "DATABRICKS_HOST" in env_vars
-        val = env_vars["DATABRICKS_HOST"].get("value", "")
-        assert "databricks_host" in val, \
-            f"DATABRICKS_HOST should use template, got: {val}"
-
-
-class TestSPCredentialConfig:
-    """Verify SP credential env vars are present."""
-
-    def test_sp_client_id_key(self, env_vars):
-        assert "SP_CLIENT_ID_KEY" in env_vars
-        assert env_vars["SP_CLIENT_ID_KEY"].get("value") == "sp_clientid"
-
-    def test_sp_secret_key(self, env_vars):
-        assert "SP_SECRET_KEY" in env_vars
-        assert env_vars["SP_SECRET_KEY"].get("value") == "sp_secret"
 
     def test_cors_origins_present(self, env_vars):
         assert "CORS_ORIGINS" in env_vars

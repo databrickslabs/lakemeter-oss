@@ -10,7 +10,9 @@ This page lists everything the Lakemeter installer creates in your Databricks wo
 
 | Resource | Name | Type |
 |----------|------|------|
-| Lakebase instance | `lakemeter-customer` | Managed PostgreSQL |
+| Lakebase project | `lakemeter-customer` | Lakebase Autoscaling |
+| Lakebase branch | `production` | Copy-on-write PostgreSQL branch |
+| Lakebase endpoint | `primary` | Read-write autoscaling compute |
 | Database | `lakemeter_pricing` | PostgreSQL database |
 | Schema | `lakemeter` | PostgreSQL schema |
 | Application tables | `users`, `estimates`, `line_items`, `templates`, `sharing`, `conversation_messages`, `decision_records`, `ref_cloud_tiers`, `ref_workload_types` | PostgreSQL tables |
@@ -19,23 +21,25 @@ This page lists everything the Lakemeter installer creates in your Databricks wo
 | Derived reference tables | `ref_fmapi_databricks_models`, `ref_fmapi_proprietary_models`, `ref_model_serving_gpu_types` | PostgreSQL tables |
 | SKU mapping | `ref_sku_discount_mapping` | PostgreSQL table |
 | Secret scope | `lakemeter-secrets` | Databricks secret scope |
-| Secrets | 5 key-value pairs | Databricks secrets |
+| Secrets | 7 key-value pairs | Databricks secrets |
 | Databricks App | `lakemeter` | Databricks App |
-| App resources | 5 environment variable bindings | App config |
+| App resources | 7 environment variable bindings | App config |
 | Lakebase role | App Service Principal | Database role |
 | PostgreSQL role | `lakemeter_sync_role` | Password-auth role |
 
 ---
 
-## Lakebase Instance
+## Lakebase Autoscaling Project
 
 | Property | Value |
 |----------|-------|
-| **Name** | `lakemeter-customer` (configurable via `--instance-name`) |
-| **Type** | Managed PostgreSQL (Lakebase) |
+| **Project ID** | `lakemeter-customer` (configurable via `--project-id`) |
+| **Branch** | `production` |
+| **Read-write endpoint** | `primary` |
+| **Type** | Lakebase Autoscaling |
 | **Autoscaling** | 1 CU – 16 CU |
-| **Scale-to-zero** | Enabled |
-| **pg_native_login** | Enabled (password auth fallback) |
+| **Scale-to-zero** | After 5 minutes of inactivity |
+| **Native login** | Enabled for password-auth fallback |
 
 ---
 
@@ -43,8 +47,10 @@ This page lists everything the Lakemeter installer creates in your Databricks wo
 
 | Secret Key | Description |
 |------------|-------------|
-| `lakebase-instance-name` | Lakebase instance name (e.g., `lakemeter-customer`) |
-| `lakebase-host` | Lakebase read-write DNS endpoint |
+| `lakebase-project` | Full project resource name |
+| `lakebase-branch` | Full production branch resource name |
+| `lakebase-endpoint` | Full primary endpoint resource name |
+| `lakebase-host` | Primary endpoint DNS host |
 | `lakebase-user` | PostgreSQL role name (`lakemeter_sync_role`) |
 | `lakebase-database` | Database name (`lakemeter_pricing`) |
 | `lakebase-password` | Auto-generated password for `lakemeter_sync_role` |
@@ -67,7 +73,9 @@ These environment variables are injected into the app container at runtime:
 
 | Resource Name | Environment Variable | Type | Source |
 |---------------|---------------------|------|--------|
-| `lm-lakebase-instance` | `LAKEBASE_INSTANCE_NAME` | Secret | `lakemeter-secrets:lakebase-instance-name` |
+| `lm-lakebase-project` | `LAKEBASE_PROJECT` | Secret | `lakemeter-secrets:lakebase-project` |
+| `lm-lakebase-branch` | `LAKEBASE_BRANCH` | Secret | `lakemeter-secrets:lakebase-branch` |
+| `lm-lakebase-endpoint` | `LAKEBASE_ENDPOINT` | Secret | `lakemeter-secrets:lakebase-endpoint` |
 | `lm-db-host` | `DB_HOST` | Secret | `lakemeter-secrets:lakebase-host` |
 | `lm-db-user` | `DB_USER` | Secret | `lakemeter-secrets:lakebase-user` |
 | `lm-db-name` | `DB_NAME` | Secret | `lakemeter-secrets:lakebase-database` |
@@ -79,7 +87,7 @@ The app gets an auto-created Service Principal with:
 
 | Permission | Target | Purpose |
 |-----------|--------|---------|
-| Lakebase role | `lakemeter-customer` instance | `DATABRICKS_SUPERUSER` — full database access |
+| Lakebase OAuth role | `production` branch | Authenticates the app Service Principal |
 | SQL grants | `lakemeter` schema | CONNECT, USAGE, ALL PRIVILEGES on tables/sequences/functions |
 | Secret READ | `lakemeter-secrets` scope | Read database credentials |
 | CAN_QUERY | `databricks-claude-opus-4-6` | Query the Claude model endpoint |
@@ -94,8 +102,8 @@ To completely remove Lakemeter from your workspace:
 # 1. Delete the Databricks App
 databricks apps delete lakemeter --profile <profile>
 
-# 2. Delete the Lakebase instance (destroys all data)
-databricks api delete /api/2.0/database/instances/lakemeter-customer --profile <profile>
+# 2. Delete the Lakebase project (destroys all branches and data)
+databricks postgres delete-project projects/lakemeter-customer --profile <profile>
 
 # 3. Delete the secrets scope
 databricks secrets delete-scope lakemeter-secrets --profile <profile>
@@ -107,4 +115,5 @@ databricks workspace delete -r /Workspace/Users/{user}/.bundle/lakemeter-install
 databricks workspace delete -r /Workspace/Users/{user}/apps/lakemeter --profile <profile>
 ```
 
-**Warning:** Deleting the Lakebase instance permanently destroys all databases, tables, and data within it. This cannot be undone.
+**Warning:** Deleting the Lakebase project permanently destroys all branches,
+databases, tables, and data within it. This cannot be undone.

@@ -7,6 +7,8 @@ import pytest
 # Add backend to path so we can import app modules
 BACKEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'backend')
 sys.path.insert(0, BACKEND_DIR)
+SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'scripts')
+sys.path.insert(0, SCRIPTS_DIR)
 
 PRICING_DIR = os.path.join(BACKEND_DIR, 'static', 'pricing')
 

@@ -55,3 +55,4 @@ env/
 
 scripts/app_source/backend/
 scripts/pricing_data/
+scripts/upgrade_payload/

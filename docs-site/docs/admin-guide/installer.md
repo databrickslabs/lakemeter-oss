@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Installer Guide
 
-Lakemeter includes a one-command installer (`scripts/install.sh`) that provisions a complete environment on Databricks — from Lakebase instance creation to app deployment and verification. All heavy lifting runs on Databricks serverless compute via a DABs (Databricks Asset Bundles) workflow. Total installation time is approximately **15-20 minutes**.
+Lakemeter includes a one-command installer (`scripts/install.sh`) that provisions a complete environment on Databricks — from direct Lakebase Autoscaling project creation to app deployment and verification. All heavy lifting runs on Databricks serverless compute via a DABs (Databricks Asset Bundles) workflow. Installation typically takes **5-15 minutes**.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ That's it — no Python packages, no Node.js, no other dependencies needed local
 All required permissions (Lakebase, secret scopes, Apps, serverless compute) are granted to all workspace users by default. No special admin setup is needed.
 
 The installer handles everything else automatically:
-- Lakebase instance provisioning (reuses existing if same name)
+- Lakebase Autoscaling project provisioning (reuses an existing project with the same ID)
 - Database creation, schema setup, and stored functions
 - Pricing data loading from pre-flattened CSV files included in the repository
 - App Service Principal creation and Lakebase access grants
@@ -51,7 +51,7 @@ cd lakemeter-oss
 |------|-------------|
 | `--profile` | Databricks CLI profile name (required if not using DEFAULT) |
 | `--non-interactive` | Use all defaults with no prompts (for CI/CD pipelines) |
-| `--instance-name` | Lakebase instance name (default: `lakemeter-customer`) |
+| `--project-id` | Lakebase Autoscaling project ID (default: `lakemeter-customer`) |
 | `--db-name` | Database name (default: `lakemeter_pricing`) |
 | `--app-name` | App name (default: `lakemeter`) |
 | `--secrets-scope` | Secret scope name (default: `lakemeter-secrets`) |
@@ -72,13 +72,13 @@ Connected as: admin@company.com
 
 Configuration (press Enter to accept defaults)
 
-  Lakebase instance name [lakemeter-customer]:
+  Lakebase Autoscaling project ID [lakemeter-customer]:
   Database name [lakemeter_pricing]:
   App name [lakemeter]:
   Secrets scope [lakemeter-secrets]:
 
 Configuration:
-  Instance name:  lakemeter-customer
+  Project ID:     lakemeter-customer
   Database:       lakemeter_pricing
   App name:       lakemeter
   Secrets scope:  lakemeter-secrets
@@ -104,7 +104,7 @@ Deployment complete!
 Bundle deployed
 ```
 
-### Phase 3: Workflow Execution (~15 minutes)
+### Phase 3: Workflow Execution
 
 The installer launches a DABs workflow with 9 tasks and shows live progress:
 
@@ -113,7 +113,7 @@ Running installer workflow on serverless compute...
   This will provision Lakebase, create tables, load pricing data,
   configure the app, and deploy it.
 
-Note: The full installation typically takes 15-20 minutes.
+Note: The full installation typically takes 5-15 minutes.
 
   Run URL: https://your-workspace.cloud.databricks.com/#job/.../run/...
 
@@ -127,7 +127,7 @@ Note: The full installation typically takes 15-20 minutes.
     [done] grant_app_access
     [ .. ] deploy_app             running
     [    ] verify_installation    waiting
-  Elapsed: 12m31s
+  Elapsed: 4m02s
 ```
 
 The progress display refreshes every 10 seconds with live task status:
@@ -165,7 +165,7 @@ funcs      data   grant_app_access
 
 | Task | Description |
 |------|-------------|
-| **provision_lakebase** | Creates or reuses a Lakebase instance with autoscaling and scale-to-zero |
+| **provision_lakebase** | Creates or reuses a direct Lakebase Autoscaling project, production branch, and primary endpoint |
 | **create_app** | Creates the Databricks App and configures secret references (runs in parallel with provisioning) |
 | **create_database** | Creates the database, schema, tables, reference data, and auth roles |
 | **create_functions** | Deploys 19 stored functions for cost calculations |
@@ -179,7 +179,7 @@ funcs      data   grant_app_access
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| Instance name | `lakemeter-customer` | Lakebase instance identifier |
+| Project ID | `lakemeter-customer` | Lakebase Autoscaling project identifier |
 | Database name | `lakemeter_pricing` | PostgreSQL database name |
 | App name | `lakemeter` | Databricks App name |
 | Secrets scope | `lakemeter-secrets` | Databricks secret scope name |
@@ -198,10 +198,10 @@ After a successful installation, your workspace will have:
 
 | Resource | Details |
 |----------|---------|
-| **Lakebase instance** | `lakemeter-customer` — 1-16 CU, scale-to-zero |
+| **Lakebase project** | `lakemeter-customer` with `production/primary` — 1-16 CU, scale-to-zero |
 | **Database** | `lakemeter_pricing` with `lakemeter` schema |
-| **Secret scope** | `lakemeter-secrets` with 5 secrets |
-| **Databricks App** | `lakemeter` with 5 resources |
+| **Secret scope** | `lakemeter-secrets` with 7 secrets |
+| **Databricks App** | `lakemeter` with 7 resources |
 | **App URL** | `https://lakemeter-<workspace-id>.<cloud>.databricksapps.com` |
 
 For a detailed breakdown of all resources created, see the [Deployment Inventory](./deployment-inventory).
@@ -210,14 +210,18 @@ For a detailed breakdown of all resources created, see the [Deployment Inventory
 
 The installer is **idempotent** — running it again on the same workspace will:
 
-- Reuse the existing Lakebase instance (no data loss)
-- Reuse the existing app (no downtime during reconfiguration)
+- Reuse the existing Lakebase project (no data loss)
+- Reuse the existing app
 - Re-create tables with `IF NOT EXISTS` (existing data preserved)
 - Reload pricing data via `TRUNCATE + INSERT` (refreshes to latest)
 - Re-grant SP access (harmless if already granted)
-- Redeploy the app (picks up code changes)
+- Redeploy the app
 
-This means you can safely re-run the installer to:
-- Update pricing data after a new release
+Re-run the installer to:
+
 - Fix a broken deployment
-- Add newly created stored functions
+- Bootstrap current Autoscaling secret bindings on an older installation
+- Reconcile missing installation resources
+
+For normal release updates, use the version-aware
+[Upgrade Guide](./upgrading) instead.
