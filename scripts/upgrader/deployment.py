@@ -190,8 +190,63 @@ def deploy_app(
     )
 
 
+def _exchange_app_audience_token(
+    workspace_client: Any,
+    app_name: str,
+    workspace_headers: dict[str, str],
+    timeout_seconds: int,
+) -> dict[str, str]:
+    """Exchange a notebook token for an OAuth token scoped to the app."""
+    authorization = workspace_headers.get("Authorization", "")
+    prefix = "Bearer "
+    if not authorization.startswith(prefix):
+        raise DeploymentError(
+            "Workspace authentication did not provide a Bearer token for "
+            "Databricks App token exchange."
+        )
+
+    app = workspace_client.apps.get(app_name)
+    app_client_id = str(getattr(app, "oauth2_app_client_id", "") or "")
+    if not app_client_id:
+        raise DeploymentError(
+            f"Databricks App '{app_name}' has no OAuth client ID."
+        )
+
+    host = workspace_client.config.host.rstrip("/")
+    response = requests.post(
+        f"{host}/oidc/v1/token",
+        data={
+            "grant_type": (
+                "urn:ietf:params:oauth:grant-type:token-exchange"
+            ),
+            "subject_token": authorization[len(prefix):],
+            "subject_token_type": (
+                "urn:databricks:params:oauth:token-type:personal-access-token"
+            ),
+            "requested_token_type": (
+                "urn:ietf:params:oauth:token-type:access_token"
+            ),
+            "scope": "all-apis",
+            "audience": app_client_id,
+        },
+        timeout=timeout_seconds,
+    )
+    if response.status_code != 200:
+        raise DeploymentError(
+            "Databricks App token exchange failed: "
+            f"HTTP {response.status_code} {response.text[:300]}"
+        )
+    access_token = str(response.json().get("access_token", "") or "")
+    if not access_token:
+        raise DeploymentError(
+            "Databricks App token exchange returned no access token."
+        )
+    return {"Authorization": f"Bearer {access_token}"}
+
+
 def verify_app(
     workspace_client: Any,
+    app_name: str,
     app_url: str,
     expected_version: str,
     timeout_seconds: int = 30,
@@ -203,6 +258,18 @@ def verify_app(
         headers=headers,
         timeout=timeout_seconds,
     )
+    if health.status_code == 401:
+        headers = _exchange_app_audience_token(
+            workspace_client,
+            app_name,
+            headers,
+            timeout_seconds,
+        )
+        health = requests.get(
+            f"{app_url.rstrip('/')}/api/v1/system/health",
+            headers=headers,
+            timeout=timeout_seconds,
+        )
     if health.status_code != 200:
         raise DeploymentError(
             f"Health check returned HTTP {health.status_code}."
