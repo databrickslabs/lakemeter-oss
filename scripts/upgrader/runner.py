@@ -318,6 +318,7 @@ def apply_upgrade(
 
         verification = verify_app(
             workspace_client,
+            installation.app_name,
             installation.app_url,
             str(plan.manifest.version),
         )

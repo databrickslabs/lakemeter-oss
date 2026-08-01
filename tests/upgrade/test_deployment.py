@@ -103,11 +103,139 @@ def test_verification_is_authenticated_and_checks_database(monkeypatch):
         },
     )()
 
-    verify_app(client, "https://meter.example", "0.1.1")
+    verify_app(client, "lakemeter", "https://meter.example", "0.1.1")
 
     assert calls[0][0].endswith("/api/v1/system/health")
     assert calls[1][0].endswith("/api/v1/system/version")
     assert all(call[1]["Authorization"] == "Bearer token" for call in calls)
+
+
+def test_verification_exchanges_notebook_token_after_401(monkeypatch):
+    calls = []
+    responses = iter(
+        [
+            (401, {"error": "unauthorized"}),
+            (200, {"status": "healthy", "database": "connected"}),
+            (200, {"app_version": "0.1.1"}),
+        ]
+    )
+
+    class Response:
+        def __init__(self, status_code, body, text=""):
+            self.status_code = status_code
+            self.body = body
+            self.text = text
+
+        def json(self):
+            return self.body
+
+    def fake_get(url, headers, timeout):
+        calls.append((url, headers, timeout))
+        status_code, body = next(responses)
+        return Response(status_code, body)
+
+    def fake_post(url, data, timeout):
+        assert url == "https://workspace.example/oidc/v1/token"
+        assert data == {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "subject_token": "notebook-token",
+            "subject_token_type": (
+                "urn:databricks:params:oauth:token-type:personal-access-token"
+            ),
+            "requested_token_type": (
+                "urn:ietf:params:oauth:token-type:access_token"
+            ),
+            "scope": "all-apis",
+            "audience": "app-client-id",
+        }
+        assert timeout == 30
+        return Response(200, {"access_token": "app-audience-token"})
+
+    monkeypatch.setattr("upgrader.deployment.requests.get", fake_get)
+    monkeypatch.setattr("upgrader.deployment.requests.post", fake_post)
+    client = type(
+        "Client",
+        (),
+        {
+            "config": type(
+                "Config",
+                (),
+                {
+                    "host": "https://workspace.example",
+                    "authenticate": lambda _self: {
+                        "Authorization": "Bearer notebook-token"
+                    },
+                },
+            )(),
+            "apps": SimpleNamespace(
+                get=lambda _name: SimpleNamespace(
+                    oauth2_app_client_id="app-client-id"
+                )
+            ),
+        },
+    )()
+
+    verify_app(client, "lakemeter", "https://meter.example", "0.1.1")
+
+    assert len(calls) == 3
+    assert calls[0][1]["Authorization"] == "Bearer notebook-token"
+    assert all(
+        call[1]["Authorization"] == "Bearer app-audience-token"
+        for call in calls[1:]
+    )
+
+
+def test_verification_reports_app_token_exchange_failure(monkeypatch):
+    class Response:
+        def __init__(self, status_code, body, text=""):
+            self.status_code = status_code
+            self.body = body
+            self.text = text
+
+        def json(self):
+            return self.body
+
+    monkeypatch.setattr(
+        "upgrader.deployment.requests.get",
+        lambda *_args, **_kwargs: Response(401, {}),
+    )
+    monkeypatch.setattr(
+        "upgrader.deployment.requests.post",
+        lambda *_args, **_kwargs: Response(
+            400,
+            {"error": "invalid_request"},
+            text="invalid token exchange",
+        ),
+    )
+    client = type(
+        "Client",
+        (),
+        {
+            "config": type(
+                "Config",
+                (),
+                {
+                    "host": "https://workspace.example",
+                    "authenticate": lambda _self: {
+                        "Authorization": "Bearer notebook-token"
+                    },
+                },
+            )(),
+            "apps": SimpleNamespace(
+                get=lambda _name: SimpleNamespace(
+                    oauth2_app_client_id="app-client-id"
+                )
+            ),
+        },
+    )()
+
+    with pytest.raises(DeploymentError, match="token exchange failed"):
+        verify_app(
+            client,
+            "lakemeter",
+            "https://meter.example",
+            "0.1.1",
+        )
 
 
 def test_versioned_release_path_rejects_different_runtime(tmp_path):
