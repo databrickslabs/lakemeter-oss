@@ -106,3 +106,23 @@ def test_unversioned_installation_uses_legacy_baseline(monkeypatch):
     assert installation.legacy_baseline
     assert installation.warnings
 
+
+def test_versioned_default_source_keeps_stable_management_root(monkeypatch):
+    client = make_client()
+    app = client.apps.get("custom-meter")
+    app.default_source_code_path = app.active_deployment.source_code_path
+    monkeypatch.setattr(
+        "upgrader.discovery._read_version_from_app",
+        lambda _client, _url: None,
+    )
+
+    installation = discover_installation(client, "custom-meter")
+
+    assert installation.source_path == (
+        "/Workspace/Users/owner/apps/custom-meter"
+    )
+    assert installation.active_source_path.endswith("/releases/v0.2.0")
+    assert installation.management_path.endswith(
+        "/apps/custom-meter/.lakemeter"
+    )
+

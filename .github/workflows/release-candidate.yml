@@ -1,0 +1,347 @@
+name: Release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_ref:
+        description: Commit SHA or branch to test
+        required: true
+        default: main
+        type: string
+      previous_tag:
+        description: Previous release tag used for upgrade testing
+        required: true
+        type: string
+      publish_tag:
+        description: Create the final tag after every gate passes
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lakemeter-release-candidate
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    name: Validate, integrate, and package
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: release-candidate
+    outputs:
+      artifact_name: ${{ steps.metadata.outputs.artifact_name }}
+      candidate_sha: ${{ steps.metadata.outputs.candidate_sha }}
+      version: ${{ steps.metadata.outputs.version }}
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_AUTH_TYPE: oauth-m2m
+      LAKEMETER_E2E_APP: lm-rc-${{ github.run_id }}
+      LAKEMETER_E2E_PROJECT: lm-rc-${{ github.run_id }}
+      LAKEMETER_E2E_SCOPE: lm-rc-${{ github.run_id }}
+      LAKEMETER_E2E_DB: lakemeter_pricing
+      LAKEMETER_E2E_STATE: ${{ runner.temp }}/lakemeter-release-state.json
+
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_ref }}
+          fetch-depth: 0
+          path: candidate
+
+      - name: Check out previous release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.previous_tag }}
+          fetch-depth: 0
+          path: baseline
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            candidate/frontend/package-lock.json
+            candidate/docs-site/package-lock.json
+
+      - name: Set up Databricks CLI
+        uses: databricks/setup-cli@8821c27b1fe57472264eeb6e50c1f31d69552f28
+
+      - name: Resolve immutable candidate metadata
+        id: metadata
+        working-directory: candidate
+        env:
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          CANDIDATE_SHA="$(git rev-parse HEAD)"
+          MAIN_SHA="$(git rev-parse origin/main)"
+          test "${CANDIDATE_SHA}" = "${MAIN_SHA}"
+          case "${PREVIOUS_TAG}" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *)
+              echo "previous_tag must use vMAJOR.MINOR.PATCH."
+              exit 1
+              ;;
+          esac
+          git rev-parse --verify "${PREVIOUS_TAG}^{commit}"
+          test "${PREVIOUS_TAG}" != "v${VERSION}"
+          git merge-base --is-ancestor "${PREVIOUS_TAG}" "${CANDIDATE_SHA}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "candidate_sha=${CANDIDATE_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "artifact_name=lakemeter-release-candidate-${VERSION}-${CANDIDATE_SHA}" \
+            >> "${GITHUB_OUTPUT}"
+
+      - name: Install candidate dependencies
+        working-directory: candidate
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            -r requirements.txt \
+            pytest \
+            pytest-timeout \
+            openpyxl \
+            pillow \
+            pyyaml
+          npm ci --prefix frontend
+          npm ci --prefix docs-site
+
+      - name: Validate release policy and payload
+        working-directory: candidate
+        env:
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+        run: |
+          python scripts/validate_release.py \
+            --previous-version "${PREVIOUS_TAG#v}" \
+            --base-ref "${PREVIOUS_TAG}"
+          python scripts/prepare_release.py --check
+
+      - name: Run release unit and policy suite
+        working-directory: candidate
+        run: |
+          python -m compileall -q backend/app scripts tests
+          python -m pytest \
+            tests/test_integration_validation/test_suite_completeness.py \
+            tests/docs_media/test_docs_build.py \
+            tests/upgrade \
+            tests/schema/test_line_item_schema_alignment.py \
+            -q
+
+      - name: Build frontend and documentation
+        working-directory: candidate
+        run: |
+          npm run build --prefix frontend
+          npm run build --prefix docs-site
+          test -z "$(git status --porcelain)"
+
+      - name: Assemble candidate release assets
+        working-directory: candidate
+        run: |
+          VERSION="${{ steps.metadata.outputs.version }}"
+          mkdir -p dist/runtime
+          python -c "from pathlib import Path; from scripts.upgrader.payload import build_runtime_payload; build_runtime_payload(Path('.').resolve(), Path('dist/runtime'))"
+          tar -czf "dist/lakemeter-runtime-${VERSION}.tar.gz" \
+            -C dist/runtime .
+          mkdir -p dist/upgrade/scripts
+          cp -R dist/runtime dist/upgrade/app_source
+          cp -R scripts/upgrades dist/upgrade/scripts/upgrades
+          cp VERSION dist/upgrade/VERSION
+          tar -czf "dist/lakemeter-upgrade-${VERSION}.tar.gz" \
+            -C dist/upgrade .
+          cp scripts/upgrades/release.json "dist/release-${VERSION}.json"
+          (
+            cd dist
+            sha256sum \
+              "lakemeter-runtime-${VERSION}.tar.gz" \
+              "lakemeter-upgrade-${VERSION}.tar.gz" \
+              "release-${VERSION}.json" \
+              > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+
+      - name: Install previous release in isolated resources
+        working-directory: baseline
+        run: |
+          ./scripts/install.sh \
+            --non-interactive \
+            --instance-name "${LAKEMETER_E2E_PROJECT}" \
+            --db-name "${LAKEMETER_E2E_DB}" \
+            --app-name "${LAKEMETER_E2E_APP}" \
+            --secrets-scope "${LAKEMETER_E2E_SCOPE}"
+
+      - name: Seed cross-version regression data
+        working-directory: candidate
+        run: |
+          python scripts/release_integration.py seed \
+            --app-name "${LAKEMETER_E2E_APP}" \
+            --state-file "${LAKEMETER_E2E_STATE}"
+
+      - name: Run standard upgrade workflow
+        working-directory: candidate
+        run: |
+          ./scripts/upgrade.sh status \
+            --app-name "${LAKEMETER_E2E_APP}"
+          ./scripts/upgrade.sh plan \
+            --app-name "${LAKEMETER_E2E_APP}"
+          ./scripts/upgrade.sh doctor \
+            --app-name "${LAKEMETER_E2E_APP}"
+          ./scripts/upgrade.sh apply \
+            --app-name "${LAKEMETER_E2E_APP}" \
+            --yes
+
+      - name: Export strict E2E database environment
+        working-directory: candidate
+        run: |
+          python - <<'PY'
+          import base64
+          import os
+          from databricks.sdk import WorkspaceClient
+
+          scope = os.environ["LAKEMETER_E2E_SCOPE"]
+          client = WorkspaceClient()
+
+          def secret(key):
+              raw = client.secrets.get_secret(scope=scope, key=key).value
+              if isinstance(raw, bytes):
+                  raw = raw.decode()
+              return base64.b64decode(raw).decode()
+
+          values = {
+              "DATABRICKS_CONFIG_PROFILE": "",
+              "LAKEMETER_E2E_REQUIRE_DB": "1",
+              "LAKEBASE_PROJECT": secret("lakebase-project"),
+              "LAKEBASE_BRANCH": secret("lakebase-branch"),
+              "LAKEBASE_ENDPOINT": secret("lakebase-endpoint"),
+              "DB_HOST": secret("lakebase-host"),
+              "DB_NAME": secret("lakebase-database"),
+              "DB_USER": client.current_user.me().user_name,
+              "DB_PORT": "5432",
+              "DB_SSLMODE": "require",
+          }
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              for key, value in values.items():
+                  output.write(f"{key}={value}\n")
+          PY
+
+      - name: Run complete Lakebase integration suite
+        working-directory: candidate
+        run: |
+          python -m pytest tests/e2e \
+            -v \
+            -rs \
+            --timeout=600
+
+      - name: Verify upgraded application and regression data
+        working-directory: candidate
+        run: |
+          python scripts/release_integration.py verify \
+            --app-name "${LAKEMETER_E2E_APP}" \
+            --expected-version "${{ steps.metadata.outputs.version }}" \
+            --state-file "${LAKEMETER_E2E_STATE}"
+
+      - name: Verify manual rollback
+        working-directory: candidate
+        run: |
+          ./scripts/upgrade.sh rollback \
+            --app-name "${LAKEMETER_E2E_APP}"
+          python scripts/release_integration.py rollback \
+            --app-name "${LAKEMETER_E2E_APP}" \
+            --state-file "${LAKEMETER_E2E_STATE}"
+
+      - name: Record successful candidate
+        working-directory: candidate
+        env:
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          metadata = {
+              "candidate_sha": "${{ steps.metadata.outputs.candidate_sha }}",
+              "integration_status": "passed",
+              "previous_tag": os.environ["PREVIOUS_TAG"],
+              "run_id": "${{ github.run_id }}",
+              "version": "${{ steps.metadata.outputs.version }}",
+          }
+          Path("dist/candidate.json").write_text(
+              json.dumps(metadata, indent=2, sort_keys=True)
+          )
+          PY
+
+      - name: Upload tested release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.metadata.outputs.artifact_name }}
+          path: |
+            candidate/dist/lakemeter-*.tar.gz
+            candidate/dist/release-*.json
+            candidate/dist/SHA256SUMS
+            candidate/dist/candidate.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Clean isolated Databricks resources
+        if: always()
+        working-directory: candidate
+        run: |
+          databricks bundle destroy \
+            --auto-approve \
+            --force-lock || true
+          databricks apps delete "${LAKEMETER_E2E_APP}" || true
+          databricks postgres delete-project \
+            "projects/${LAKEMETER_E2E_PROJECT}" \
+            --timeout 20m || true
+          databricks secrets delete-scope \
+            "${LAKEMETER_E2E_SCOPE}" || true
+          WORKSPACE_USER="$(
+            databricks current-user me --output json \
+              | python -c "import json,sys; print(json.load(sys.stdin)['userName'])"
+          )"
+          databricks workspace delete \
+            "/Workspace/Users/${WORKSPACE_USER}/apps/${LAKEMETER_E2E_APP}" \
+            --recursive || true
+
+  tag:
+    name: Approve and create final tag
+    needs: candidate
+    if: ${{ inputs.publish_tag }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.candidate.outputs.candidate_sha }}
+          fetch-depth: 0
+
+      - name: Create immutable release tag
+        env:
+          VERSION: ${{ needs.candidate.outputs.version }}
+        run: |
+          test "$(git rev-parse HEAD)" = \
+            "${{ needs.candidate.outputs.candidate_sha }}"
+          if git ls-remote --exit-code --tags origin \
+            "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists; refusing to replace it."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "Lakemeter OSS v${VERSION}"
+          git push origin "refs/tags/v${VERSION}"

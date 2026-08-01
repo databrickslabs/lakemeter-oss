@@ -4,7 +4,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from upgrader.deployment import DeploymentError, stage_runtime, verify_app
+from upgrader.deployment import (
+    DeploymentError,
+    set_app_running,
+    stage_runtime,
+    verify_app,
+)
 
 
 class FakeWorkspace:
@@ -260,4 +265,28 @@ def test_versioned_release_path_rejects_different_runtime(tmp_path):
             app_yaml_content=b"live: bindings",
             release_fingerprint="b" * 64,
         )
+
+
+@pytest.mark.parametrize(
+    ("running", "state"),
+    [
+        (True, "ACTIVE"),
+        (False, "STOPPED"),
+    ],
+)
+def test_set_app_running_is_idempotent(running, state):
+    operations = []
+    client = SimpleNamespace(
+        apps=SimpleNamespace(
+            get=lambda _name: SimpleNamespace(
+                compute_status=SimpleNamespace(state=state)
+            ),
+            start=lambda name: operations.append(("start", name)),
+            stop=lambda name: operations.append(("stop", name)),
+        )
+    )
+
+    set_app_running(client, "lakemeter", running=running)
+
+    assert operations == []
 

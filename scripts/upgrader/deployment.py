@@ -306,13 +306,18 @@ def set_app_running(
     running: bool,
 ) -> None:
     """Start or stop app compute for a consistent database-change window."""
+    desired = {"ACTIVE", "RUNNING"} if running else {"STOPPED", "INACTIVE"}
+    app = workspace_client.apps.get(app_name)
+    compute = _state_value(getattr(app.compute_status, "state", ""))
+    if compute in desired:
+        return
+
     operation = (
         workspace_client.apps.start
         if running
         else workspace_client.apps.stop
     )
     operation(app_name)
-    desired = {"ACTIVE", "RUNNING"} if running else {"STOPPED", "INACTIVE"}
     deadline = time.monotonic() + 600
     while time.monotonic() < deadline:
         app = workspace_client.apps.get(app_name)

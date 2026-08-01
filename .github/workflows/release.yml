@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
   id-token: write
   attestations: write
 
@@ -14,68 +15,110 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out tagged commit
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pytest pyyaml
-          npm ci --prefix frontend
-
-      - name: Verify tag and version
+      - name: Verify tag and resolve tested artifact
+        id: metadata
         run: |
           VERSION="$(tr -d '[:space:]' < VERSION)"
           test "${GITHUB_REF_NAME}" = "v${VERSION}"
-          PREVIOUS_TAG="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
-          if [ -z "${PREVIOUS_TAG}" ]; then
-            python scripts/validate_release.py --initial
-          else
-            python scripts/validate_release.py \
-              --previous-version "${PREVIOUS_TAG#v}" \
-              --base-ref "${PREVIOUS_TAG}"
+          CANDIDATE_SHA="$(git rev-parse HEAD)"
+          ARTIFACT_NAME="lakemeter-release-candidate-${VERSION}-${CANDIDATE_SHA}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "candidate_sha=${CANDIDATE_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "artifact_name=${ARTIFACT_NAME}" >> "${GITHUB_OUTPUT}"
+
+      - name: Download exact tested assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: ${{ steps.metadata.outputs.artifact_name }}
+          CANDIDATE_SHA: ${{ steps.metadata.outputs.candidate_sha }}
+        run: |
+          RUN_ID=""
+          for attempt in $(seq 1 30); do
+            RUN_ID="$(
+              gh api \
+                "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ARTIFACT_NAME}" \
+                --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .workflow_run.id // empty'
+            )"
+            if [ -n "${RUN_ID}" ]; then
+              RUN_NAME="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+                  --jq '.name'
+              )"
+              RUN_SHA="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+                  --jq '.head_sha'
+              )"
+              RUN_CONCLUSION="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+                  --jq '.conclusion // empty'
+              )"
+              if [ "${RUN_NAME}" = "Release candidate" ] \
+                && [ "${RUN_SHA}" = "${CANDIDATE_SHA}" ] \
+                && [ "${RUN_CONCLUSION}" = "success" ]; then
+                break
+              fi
+              RUN_ID=""
+            fi
+            echo "Waiting for tested candidate artifact (${attempt}/30)..."
+            sleep 10
+          done
+          if [ -z "${RUN_ID}" ]; then
+            echo "No successful release-candidate artifact exists for this tag."
+            exit 1
           fi
+          test "$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+              --jq '.name'
+          )" = "Release candidate"
+          test "$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+              --jq '.head_sha'
+          )" = "${CANDIDATE_SHA}"
+          test "$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+              --jq '.conclusion'
+          )" = "success"
+          mkdir -p dist
+          gh run download "${RUN_ID}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name "${ARTIFACT_NAME}" \
+            --dir dist
 
-      - name: Build frontend
-        run: npm run build --prefix frontend
-
-      - name: Verify release payload
+      - name: Verify candidate provenance and checksums
+        env:
+          EXPECTED_SHA: ${{ steps.metadata.outputs.candidate_sha }}
+          EXPECTED_VERSION: ${{ steps.metadata.outputs.version }}
         run: |
-          python scripts/prepare_release.py --check
-          python -m pytest \
-            tests/upgrade \
-            tests/schema/test_line_item_schema_alignment.py \
-            -q
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
 
-      - name: Assemble runtime artifact
-        run: |
-          mkdir -p dist/runtime
-          python -c "from pathlib import Path; from scripts.upgrader.payload import build_runtime_payload; build_runtime_payload(Path('.').resolve(), Path('dist/runtime'))"
-          VERSION="$(tr -d '[:space:]' < VERSION)"
-          tar -czf "dist/lakemeter-runtime-${VERSION}.tar.gz" -C dist/runtime .
-          mkdir -p dist/upgrade/scripts
-          cp -R dist/runtime dist/upgrade/app_source
-          cp -R scripts/upgrades dist/upgrade/scripts/upgrades
-          cp VERSION dist/upgrade/VERSION
-          tar -czf "dist/lakemeter-upgrade-${VERSION}.tar.gz" -C dist/upgrade .
-          cp scripts/upgrades/release.json "dist/release-${VERSION}.json"
-          cd dist
-          sha256sum \
-            "lakemeter-runtime-${VERSION}.tar.gz" \
-            "lakemeter-upgrade-${VERSION}.tar.gz" \
-            "release-${VERSION}.json" \
-            > SHA256SUMS
+          metadata = json.loads(Path("dist/candidate.json").read_text())
+          expected = {
+              "candidate_sha": os.environ["EXPECTED_SHA"],
+              "integration_status": "passed",
+              "version": os.environ["EXPECTED_VERSION"],
+          }
+          mismatches = {
+              key: {"expected": value, "actual": metadata.get(key)}
+              for key, value in expected.items()
+              if metadata.get(key) != value
+          }
+          if mismatches:
+              raise SystemExit(
+                  f"Candidate artifact does not match tag: {mismatches}"
+              )
+          PY
+          (
+            cd dist
+            sha256sum -c SHA256SUMS
+          )
 
       - name: Attest runtime artifact
         uses: actions/attest-build-provenance@v2

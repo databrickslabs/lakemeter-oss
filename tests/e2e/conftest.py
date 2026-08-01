@@ -51,12 +51,20 @@ def _db_reachable() -> bool:
 
 
 _DB_AVAILABLE = _db_reachable()
+_REQUIRE_DB = os.environ.get(
+    "LAKEMETER_E2E_REQUIRE_DB", ""
+).lower() in {"1", "true", "yes"}
 
 
 @pytest.fixture(autouse=True)
 def _skip_if_db_unreachable():
     """Auto-skip E2E tests when Lakebase is unreachable."""
     if not _DB_AVAILABLE:
+        if _REQUIRE_DB:
+            pytest.fail(
+                "Lakebase DB is unreachable and "
+                "LAKEMETER_E2E_REQUIRE_DB is enabled."
+            )
         pytest.skip("Lakebase DB unreachable — skipping E2E test")
 
 
