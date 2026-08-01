@@ -18,11 +18,19 @@ Lakemeter follows [Semantic Versioning](https://semver.org/):
 
 Patch release introducing safer upgrades and correcting AI Parse estimate persistence. No database schema or data migration is required.
 
+### New capabilities
+
 - Added a version-aware upgrade utility with `status`, `plan`, `doctor`, `apply`, and `rollback` commands
 - Added immutable runtime staging, authenticated health checks, concurrency locks, resumable execution, and automatic recovery
 - Added Lakebase backup branches for future minor data updates and major schema migrations; patch upgrades never modify Lakebase
 - Updated new installations to provision Lakebase Autoscaling projects, branches, and endpoints directly
+
+### Bug fixes
+
 - Fixed AI Parse fields so calculation method, complexity, DBU quantity, page count, mode, and page volume persist and clone correctly
+
+### Documentation updates
+
 - Added the [Upgrade Guide](./admin-guide/upgrading.md) and updated installer and deployment documentation
 
 ---
