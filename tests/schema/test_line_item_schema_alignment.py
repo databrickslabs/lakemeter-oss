@@ -1,6 +1,16 @@
 import ast
 import re
+from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4
+
+from app.schemas.line_item import (
+    LineItemCreate,
+    LineItemResponse,
+    LineItemUpdate,
+    map_ai_parse_api_fields,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -61,3 +71,62 @@ def test_install_script_has_all_line_item_orm_columns():
     missing = [column for column in orm_columns if column not in installer_columns]
 
     assert missing == []
+
+
+def test_ai_parse_create_fields_map_to_existing_storage_columns():
+    line_item = LineItemCreate.model_validate({
+        "estimate_id": uuid4(),
+        "workload_name": "Contract Scanner",
+        "workload_type": "AI_PARSE",
+        "ai_parse_mode": "pages",
+        "ai_parse_complexity": "high",
+        "ai_parse_pages_thousands": 200,
+    })
+
+    storage_data = map_ai_parse_api_fields(
+        line_item.model_dump(),
+        line_item.model_fields_set,
+    )
+
+    assert "ai_parse_mode" not in storage_data
+    assert "ai_parse_pages_thousands" not in storage_data
+    assert storage_data["ai_parse_calculation_method"] == "pages_based"
+    assert storage_data["ai_parse_num_pages"] == 200_000
+
+
+def test_ai_parse_update_can_clear_existing_page_configuration():
+    line_item = LineItemUpdate.model_validate({
+        "ai_parse_mode": None,
+        "ai_parse_pages_thousands": None,
+    })
+
+    storage_data = map_ai_parse_api_fields(
+        line_item.model_dump(exclude_unset=True),
+        line_item.model_fields_set,
+    )
+
+    assert storage_data["ai_parse_calculation_method"] is None
+    assert storage_data["ai_parse_num_pages"] is None
+
+
+def test_ai_parse_response_hydrates_frontend_fields_from_storage():
+    line_item_id = uuid4()
+    estimate_id = uuid4()
+    now = datetime.now()
+    stored_item = SimpleNamespace(
+        line_item_id=line_item_id,
+        estimate_id=estimate_id,
+        workload_name="Contract Scanner",
+        workload_type="AI_PARSE",
+        ai_parse_calculation_method="pages_based",
+        ai_parse_complexity="high",
+        ai_parse_num_pages=200_000,
+        created_at=now,
+        updated_at=now,
+    )
+
+    response = LineItemResponse.model_validate(stored_item)
+
+    assert response.ai_parse_mode == "pages"
+    assert response.ai_parse_pages_thousands == 200
+    assert response.ai_parse_num_pages == 200_000

@@ -7,6 +7,9 @@ sync:
     - "pricing_data/**"
     - "app_source/**"
     - "functions/**"
+    - "lakebase_autoscaling.py"
+    - "upgrader/**"
+    - "upgrade_payload/**"
   exclude:
     - "**/__pycache__/**"
     - "**/*.pyc"
@@ -16,7 +19,7 @@ resources:
     lakemeter_installer:
       name: "Lakemeter Installer"
       parameters:
-        - name: instance_name
+        - name: project_id
           default: "lakemeter-customer"
         - name: db_name
           default: "lakemeter_pricing"
@@ -46,7 +49,7 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/01_provision_lakebase.py
             base_parameters:
-              instance_name: "{{job.parameters.instance_name}}"
+              project_id: "{{job.parameters.project_id}}"
           environment_key: serverless_env
 
         - task_key: create_database
@@ -55,7 +58,7 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/02_create_database.py
             base_parameters:
-              instance_name: "{{job.parameters.instance_name}}"
+              project_id: "{{job.parameters.project_id}}"
               db_name: "{{job.parameters.db_name}}"
               secrets_scope: "{{job.parameters.secrets_scope}}"
           environment_key: serverless_env
@@ -66,7 +69,7 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/02b_create_functions.py
             base_parameters:
-              instance_name: "{{job.parameters.instance_name}}"
+              project_id: "{{job.parameters.project_id}}"
               db_name: "{{job.parameters.db_name}}"
           environment_key: serverless_env
 
@@ -76,7 +79,7 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/03_load_pricing_data.py
             base_parameters:
-              instance_name: "{{job.parameters.instance_name}}"
+              project_id: "{{job.parameters.project_id}}"
               db_name: "{{job.parameters.db_name}}"
               secrets_scope: "{{job.parameters.secrets_scope}}"
           environment_key: serverless_env
@@ -87,7 +90,7 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/04_create_sku_mapping.py
             base_parameters:
-              instance_name: "{{job.parameters.instance_name}}"
+              project_id: "{{job.parameters.project_id}}"
               db_name: "{{job.parameters.db_name}}"
           environment_key: serverless_env
 
@@ -96,7 +99,7 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/05a_create_app.py
             base_parameters:
-              instance_name: "{{job.parameters.instance_name}}"
+              project_id: "{{job.parameters.project_id}}"
               db_name: "{{job.parameters.db_name}}"
               app_name: "{{job.parameters.app_name}}"
               secrets_scope: "{{job.parameters.secrets_scope}}"
@@ -111,9 +114,11 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/05b_grant_app_access.py
             base_parameters:
-              instance_name: "{{job.parameters.instance_name}}"
+              project_id: "{{job.parameters.project_id}}"
               db_name: "{{job.parameters.db_name}}"
               app_name: "{{job.parameters.app_name}}"
+              secrets_scope: "{{job.parameters.secrets_scope}}"
+              claude_endpoint: "{{job.parameters.claude_endpoint}}"
           environment_key: serverless_env
 
         # ── Deploy (needs app configured + SP granted) ──────────────────
@@ -134,7 +139,7 @@ resources:
             notebook_path: ./notebooks/07_verify_installation.py
             base_parameters:
               app_name: "{{job.parameters.app_name}}"
-              instance_name: "{{job.parameters.instance_name}}"
+              project_id: "{{job.parameters.project_id}}"
               db_name: "{{job.parameters.db_name}}"
           environment_key: serverless_env
 
@@ -142,3 +147,31 @@ resources:
         - environment_key: serverless_env
           spec:
             environment_version: "5"
+            dependencies:
+              - "databricks-sdk>=0.123.0"
+              - "psycopg2-binary>=2.9.9"
+
+    lakemeter_upgrade:
+      name: "Lakemeter Upgrade"
+      max_concurrent_runs: 1
+      parameters:
+        - name: command
+          default: "plan"
+        - name: app_name
+          default: "lakemeter"
+      tasks:
+        - task_key: upgrade_lakemeter
+          notebook_task:
+            notebook_path: ./notebooks/08_upgrade_lakemeter.py
+            base_parameters:
+              command: "{{job.parameters.command}}"
+              app_name: "{{job.parameters.app_name}}"
+          environment_key: upgrade_env
+      environments:
+        - environment_key: upgrade_env
+          spec:
+            environment_version: "5"
+            dependencies:
+              - "databricks-sdk>=0.123.0"
+              - "psycopg2-binary>=2.9.9"
+              - "requests>=2.31.0"

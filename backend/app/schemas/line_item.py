@@ -3,7 +3,28 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Dict, Any
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
+
+
+def map_ai_parse_api_fields(data: dict, provided_fields: set[str]) -> dict:
+    """Map the public AI Parse fields onto existing database columns."""
+    if "ai_parse_mode" in provided_fields:
+        mode = data.get("ai_parse_mode")
+        if isinstance(mode, str):
+            mode = mode.lower()
+            if mode in {"dbu", "pages"}:
+                mode = f"{mode}_based"
+        data["ai_parse_calculation_method"] = mode
+    data.pop("ai_parse_mode", None)
+
+    if "ai_parse_pages_thousands" in provided_fields:
+        pages_thousands = data.get("ai_parse_pages_thousands")
+        data["ai_parse_num_pages"] = (
+            pages_thousands * 1000 if pages_thousands is not None else None
+        )
+    data.pop("ai_parse_pages_thousands", None)
+
+    return data
 
 
 class LineItemBase(BaseModel):
@@ -62,6 +83,8 @@ class LineItemBase(BaseModel):
     ai_parse_complexity: Optional[str] = None
     ai_parse_dbu_quantity: Optional[float] = None
     ai_parse_num_pages: Optional[float] = None
+    ai_parse_mode: Optional[str] = None
+    ai_parse_pages_thousands: Optional[float] = None
 
     # Shutterstock ImageAI Configuration
     shutterstock_imageai_num_images: Optional[int] = None
@@ -172,6 +195,8 @@ class LineItemUpdate(BaseModel):
     ai_parse_complexity: Optional[str] = None
     ai_parse_dbu_quantity: Optional[float] = None
     ai_parse_num_pages: Optional[float] = None
+    ai_parse_mode: Optional[str] = None
+    ai_parse_pages_thousands: Optional[float] = None
 
     # Shutterstock ImageAI Configuration
     shutterstock_imageai_num_images: Optional[int] = None
@@ -227,5 +252,29 @@ class LineItemResponse(LineItemBase):
     estimate_id: UUID
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_ai_parse_api_fields(cls, value):
+        """Expose the frontend AI Parse fields from the legacy storage columns."""
+        if isinstance(value, dict):
+            data = dict(value)
+        else:
+            data = {
+                field_name: getattr(value, field_name, None)
+                for field_name in cls.model_fields
+            }
+
+        if data.get("ai_parse_mode") is None:
+            storage_mode = data.get("ai_parse_calculation_method")
+            if isinstance(storage_mode, str):
+                data["ai_parse_mode"] = storage_mode.lower().removesuffix("_based")
+
+        if data.get("ai_parse_pages_thousands") is None:
+            num_pages = data.get("ai_parse_num_pages")
+            if num_pages is not None:
+                data["ai_parse_pages_thousands"] = float(num_pages) / 1000
+
+        return data
 
     model_config = ConfigDict(from_attributes=True)

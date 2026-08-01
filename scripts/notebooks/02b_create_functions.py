@@ -6,30 +6,35 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("instance_name", "lakemeter-customer")
+dbutils.widgets.text("project_id", "lakemeter-customer")
 dbutils.widgets.text("db_name", "lakemeter_pricing")
 
-instance_name = dbutils.widgets.get("instance_name")
+project_id = dbutils.widgets.get("project_id")
 db_name = dbutils.widgets.get("db_name")
 
-print(f"Instance: {instance_name}")
+print(f"Project: {project_id}")
 print(f"Database: {db_name}")
 
 # COMMAND ----------
 
 import os
 import re
-import uuid
 import psycopg2
 from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
 
-# Get Lakebase connection
-instance = w.database.get_database_instance(instance_name)
-instance_host = instance.read_write_dns
-cred = w.database.generate_database_credential(
-    request_id=str(uuid.uuid4()), instance_names=[instance_name]
+# Get the direct Autoscaling endpoint connection.
+instance_host = dbutils.jobs.taskValues.get(
+    taskKey="provision_lakebase",
+    key="host",
+)
+endpoint_name = dbutils.jobs.taskValues.get(
+    taskKey="provision_lakebase",
+    key="endpoint_name",
+)
+cred = w.postgres.generate_database_credential(
+    endpoint=endpoint_name,
 )
 owner_user = w.current_user.me().user_name
 

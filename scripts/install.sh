@@ -26,7 +26,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Defaults
 PROFILE=""
 NON_INTERACTIVE=false
-INSTANCE_NAME="lakemeter-customer"
+PROJECT_ID="lakemeter-customer"
 DB_NAME="lakemeter_pricing"
 APP_NAME="lakemeter"
 SECRETS_SCOPE="lakemeter-secrets"
@@ -43,8 +43,8 @@ while [[ $# -gt 0 ]]; do
             NON_INTERACTIVE=true
             shift
             ;;
-        --instance-name)
-            INSTANCE_NAME="$2"
+        --project-id|--instance-name)
+            PROJECT_ID="$2"
             shift 2
             ;;
         --db-name)
@@ -65,7 +65,7 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --profile NAME         Databricks CLI profile (required if not DEFAULT)"
             echo "  --non-interactive      Use all defaults, no prompts"
-            echo "  --instance-name NAME   Lakebase instance name (default: lakemeter-customer)"
+            echo "  --project-id ID        Lakebase Autoscaling project ID (default: lakemeter-customer)"
             echo "  --db-name NAME         Database name (default: lakemeter_pricing)"
             echo "  --app-name NAME        Databricks App name (default: lakemeter)"
             echo "  --secrets-scope NAME   Secret scope name (default: lakemeter-secrets)"
@@ -115,8 +115,8 @@ if [ "$NON_INTERACTIVE" = false ]; then
     echo -e "${BOLD}Configuration${NC} (press Enter to accept defaults)"
     echo ""
 
-    read -p "  Lakebase instance name [$INSTANCE_NAME]: " input
-    INSTANCE_NAME="${input:-$INSTANCE_NAME}"
+    read -p "  Lakebase Autoscaling project ID [$PROJECT_ID]: " input
+    PROJECT_ID="${input:-$PROJECT_ID}"
 
     read -p "  Database name [$DB_NAME]: " input
     DB_NAME="${input:-$DB_NAME}"
@@ -131,7 +131,7 @@ fi
 # Show configuration
 echo ""
 echo -e "${BOLD}Configuration:${NC}"
-echo -e "  Instance name:  ${CYAN}${INSTANCE_NAME}${NC}"
+echo -e "  Project ID:     ${CYAN}${PROJECT_ID}${NC}"
 echo -e "  Database:       ${CYAN}${DB_NAME}${NC}"
 echo -e "  App name:       ${CYAN}${APP_NAME}${NC}"
 echo -e "  Secrets scope:  ${CYAN}${SECRETS_SCOPE}${NC}"
@@ -189,7 +189,7 @@ echo -e "  ${GREEN}Pricing data: ${CSV_COUNT} CSV files${NC}"
 
 # App source (backend + static assets, excluding CSVs and unnecessary files)
 APP_SRC_DST="$SCRIPT_DIR/app_source"
-rm -rf "$APP_SRC_DST"
+rm -rf "$APP_SRC_DST/backend"
 mkdir -p "$APP_SRC_DST/backend"
 rsync -a --exclude='__pycache__' --exclude='.pytest_cache' \
     "$REPO_ROOT/backend/app/" "$APP_SRC_DST/backend/app/"
@@ -217,7 +217,7 @@ echo ""
 # Start the bundle run in background, capture output for run URL
 BUNDLE_RUN_OUTPUT=$(mktemp)
 databricks bundle run lakemeter_installer $PROFILE_FLAG \
-    --params "instance_name=$INSTANCE_NAME,db_name=$DB_NAME,app_name=$APP_NAME,secrets_scope=$SECRETS_SCOPE,claude_endpoint=$CLAUDE_ENDPOINT" \
+    --params "project_id=$PROJECT_ID,db_name=$DB_NAME,app_name=$APP_NAME,secrets_scope=$SECRETS_SCOPE,claude_endpoint=$CLAUDE_ENDPOINT" \
     --no-wait 2>&1 | tee "$BUNDLE_RUN_OUTPUT"
 
 # Extract run ID and URL from bundle run output
@@ -233,7 +233,7 @@ rm -f "$BUNDLE_RUN_OUTPUT"
 if [ -z "$RUN_ID" ]; then
     echo -e "${RED}Could not determine run ID. Check the Databricks UI for progress.${NC}"
     # Cleanup and exit
-    rm -rf "$PRICING_DST" "$APP_SRC_DST"
+    rm -rf "$PRICING_DST" "$APP_SRC_DST/backend"
     exit 1
 fi
 
@@ -355,7 +355,7 @@ done
 echo ""
 
 # Cleanup temporary directories
-rm -rf "$PRICING_DST" "$APP_SRC_DST"
+rm -rf "$PRICING_DST" "$APP_SRC_DST/backend"
 
 # Final status
 if [ "$RESULT_STATE" = "SUCCESS" ]; then

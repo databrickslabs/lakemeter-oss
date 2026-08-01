@@ -92,11 +92,8 @@ class TestCLIArguments:
     def test_profile_argument(self, script_content):
         assert "--profile" in script_content
 
-    def test_skip_provision_argument(self, script_content):
-        assert "--skip-provision" in script_content
-
-    def test_skip_deploy_argument(self, script_content):
-        assert "--skip-deploy" in script_content
+    def test_non_interactive_argument(self, script_content):
+        assert "--non-interactive" in script_content
 
 
 class TestCriticalCodePatterns:
@@ -120,23 +117,15 @@ class TestCriticalCodePatterns:
         for call in connect_calls:
             assert "sslmode" in call, f"DB connection missing sslmode: {call[:80]}"
 
-    def test_pricing_loader_truncates_before_insert(self, script_content):
-        assert "TRUNCATE TABLE" in script_content, \
-            "Pricing loader should TRUNCATE before batch insert"
-
     def test_error_handling_sys_exit(self, script_content):
         assert "sys.exit(1)" in script_content, \
             "Installer should sys.exit(1) on critical failures"
 
-    def test_roles_api_url_pattern(self, script_content):
-        assert "/api/2.0/database/instances/" in script_content, \
-            "Should use Lakebase Roles API endpoint"
-        assert "/roles" in script_content, \
-            "Should use /roles path for SP role management"
-
-    def test_membership_role_superuser(self, script_content):
-        assert "DATABRICKS_SUPERUSER" in script_content, \
-            "SP role should have DATABRICKS_SUPERUSER membership"
+    def test_direct_autoscaling_api_is_used(self, script_content):
+        assert "ensure_autoscaling_project" in script_content
+        assert "w.postgres.create_role" in script_content
+        assert "w.database.create_database_instance" not in script_content
+        assert "/api/2.0/database/instances/" not in script_content
 
 
 class TestHelperFunctions:
@@ -144,11 +133,9 @@ class TestHelperFunctions:
 
     EXPECTED_HELPERS = [
         "log_step", "log_ok", "log_warn", "log_err", "log_info",
-        "prompt_input", "prompt_choice",
+        "prompt_input",
         "get_owner_connection",
         "_create_sync_tables",
-        "_batch_insert",
-        "_extract_sql_from_notebook",
         "_create_tables_inline",
     ]
 
@@ -175,5 +162,5 @@ class TestConstants:
     def test_pricing_dir_reference(self, script_content):
         assert "static" in script_content and "pricing" in script_content
 
-    def test_total_steps_is_9(self, script_content):
-        assert "TOTAL_STEPS = 9" in script_content
+    def test_total_steps_is_8(self, script_content):
+        assert "TOTAL_STEPS = 8" in script_content

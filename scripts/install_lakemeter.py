@@ -24,7 +24,6 @@ import json
 import os
 import sys
 import time
-import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -38,7 +37,6 @@ PRICING_DIR = BACKEND_DIR / "static" / "pricing"
 
 DEFAULT_DB_NAME = "lakemeter_pricing"
 DEFAULT_SCHEMA = "lakemeter"
-DEFAULT_CU_SIZE = "CU_1"  # Start at 1 CU, autoscale to 16 CU
 DEFAULT_CLAUDE_ENDPOINT = "databricks-claude-opus-4-6"
 DEFAULT_NODE_COUNT = 1
 
@@ -159,15 +157,14 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
     if non_interactive:
         log_info("Non-interactive mode — using all defaults")
         return {
-            "instance_name": "lakemeter-customer",
+            "project_id": "lakemeter-customer",
             "db_name": DEFAULT_DB_NAME,
             "app_name": "lakemeter",
-            "cu_size": DEFAULT_CU_SIZE,
             "secrets_scope": "lakemeter-secrets",
             "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
         }
 
-    instance_name = prompt_input("Lakebase instance name", "lakemeter-customer")
+    project_id = prompt_input("Lakebase Autoscaling project ID", "lakemeter-customer")
     db_name = prompt_input("Database name", DEFAULT_DB_NAME)
     app_name = prompt_input("Databricks App name", "lakemeter")
     secrets_scope = prompt_input("Secrets scope name", "lakemeter-secrets")
@@ -177,131 +174,53 @@ def gather_config(ctx: dict, non_interactive: bool = False) -> dict:
     log_info(f"Claude AI endpoint: {DEFAULT_CLAUDE_ENDPOINT}")
 
     return {
-        "instance_name": instance_name,
+        "project_id": project_id,
         "db_name": db_name,
         "app_name": app_name,
-        "cu_size": DEFAULT_CU_SIZE,
         "secrets_scope": secrets_scope,
         "claude_endpoint": DEFAULT_CLAUDE_ENDPOINT,
     }
 
 
 # ===================================================================
-# Step 3: Provision Lakebase Instance
+# Step 3: Provision Lakebase Autoscaling Project
 # ===================================================================
 def provision_lakebase(ctx: dict, cfg: dict) -> dict:
-    """Create a new Lakebase instance and wait for it to be AVAILABLE."""
+    """Create or reuse a direct Autoscaling project and primary endpoint."""
+    from lakebase_autoscaling import ensure_autoscaling_project
+
     w = ctx["client"]
-    name = cfg["instance_name"]
-
-    # Check if instance already exists
-    try:
-        existing = w.database.get_database_instance(name)
-        log_warn(f"Instance '{name}' already exists (state={existing.state})")
-
-        # Ensure pg_native_login is enabled (password auth fallback)
-        if not existing.effective_enable_pg_native_login:
-            try:
-                from databricks.sdk.service.database import DatabaseInstance
-                w.database.update_database_instance(
-                    name=name,
-                    database_instance=DatabaseInstance(name=name, enable_pg_native_login=True),
-                    update_mask="enable_pg_native_login",
-                )
-                log_ok("pg_native_login enabled on existing instance")
-            except Exception as e:
-                log_warn(f"Could not enable pg_native_login: {e}")
-
-        return {
-            "host": existing.read_write_dns,
-            "uid": existing.uid,
-            "name": existing.name,
-        }
-    except Exception:
-        pass
-
-    log_info(f"Creating Lakebase instance '{name}' (autoscaling 1–16 CU, scale-to-zero)...")
-    from databricks.sdk.service.database import DatabaseInstance
-    waiter = w.database.create_database_instance(
-        database_instance=DatabaseInstance(
-            name=name,
-            capacity=cfg["cu_size"],
-            stopped=False,
-        ),
+    project_id = cfg["project_id"]
+    log_info(
+        f"Ensuring Lakebase Autoscaling project '{project_id}' "
+        "(1–16 CU, five-minute scale-to-zero)..."
     )
-    instance = waiter.response
-    log_ok(f"Instance created: {instance.name} (uid={instance.uid})")
-
-    # Enable auto-scaling with scale-to-zero via REST API
-    try:
-        import requests
-        headers = w.config.authenticate()
-        host = ctx["host"].rstrip("/")
-        resp = requests.patch(
-            f"{host}/api/2.0/database/instances/{name}",
-            headers=headers,
-            json={
-                "name": name,
-                "enable_serverless_compute": True,
-                "min_capacity": "CU_1",
-                "max_capacity": "CU_16",
-                "scale_to_zero": True,
-            },
-        )
-        if resp.status_code < 300:
-            log_ok("Auto-scaling enabled (0.5–16 CU, scale-to-zero)")
-        else:
-            log_warn(f"Could not enable auto-scaling: {resp.status_code} {resp.text[:200]}")
-    except Exception as e:
-        log_warn(f"Could not enable auto-scaling: {e}")
-
-    # Enable pg_native_login for password-based auth fallback
-    # This ensures the app can connect even without SP OAuth credentials
-    try:
-        from databricks.sdk.service.database import DatabaseInstance
-        w.database.update_database_instance(
-            name=name,
-            database_instance=DatabaseInstance(name=name, enable_pg_native_login=True),
-            update_mask="enable_pg_native_login",
-        )
-        log_ok("pg_native_login enabled (password auth fallback)")
-    except Exception as e:
-        log_warn(f"Could not enable pg_native_login: {e}")
-
-    # Wait for AVAILABLE
-    log_info("Waiting for instance to become AVAILABLE...")
-    for i in range(120):  # 10 minutes max
-        inst = w.database.get_database_instance(name)
-        state = str(inst.state)
-        if "AVAILABLE" in state:
-            log_ok(f"Instance is AVAILABLE at {inst.read_write_dns}")
-            return {
-                "host": inst.read_write_dns,
-                "uid": inst.uid,
-                "name": inst.name,
-            }
-        if "FAILED" in state or "DELETED" in state:
-            log_err(f"Instance entered {state} state")
-            sys.exit(1)
-        if i % 10 == 0:
-            log_info(f"  State: {state} (waiting...)")
-        time.sleep(5)
-
-    log_err("Timeout waiting for instance to become AVAILABLE")
-    sys.exit(1)
+    resources, created = ensure_autoscaling_project(
+        w,
+        project_id,
+        display_name=f"Lakemeter — {project_id}",
+        min_cu=1.0,
+        max_cu=16.0,
+        suspend_after_seconds=300,
+    )
+    action = "created" if created else "reused"
+    log_ok(
+        f"Autoscaling project {action}: {resources.project_name}; "
+        f"endpoint={resources.endpoint_name}"
+    )
+    return resources.as_dict()
 
 
 # ===================================================================
 # Step 4: Create Database, Schema, Tables
 # ===================================================================
 def get_owner_connection(ctx: dict, instance_info: dict, cfg: dict):
-    """Get a psycopg2 connection as the instance owner."""
+    """Get a psycopg2 connection as the Autoscaling project owner."""
     import psycopg2
 
     w = ctx["client"]
-    cred = w.database.generate_database_credential(
-        request_id=str(uuid.uuid4()),
-        instance_names=[instance_info["name"]],
+    cred = w.postgres.generate_database_credential(
+        endpoint=instance_info["endpoint_name"],
     )
     return psycopg2.connect(
         host=instance_info["host"],
@@ -318,16 +237,15 @@ def create_database_and_schema(ctx: dict, instance_info: dict, cfg: dict):
     import psycopg2
 
     w = ctx["client"]
-    cred = w.database.generate_database_credential(
-        request_id=str(uuid.uuid4()),
-        instance_names=[instance_info["name"]],
+    cred = w.postgres.generate_database_credential(
+        endpoint=instance_info["endpoint_name"],
     )
 
-    # Connect to default 'postgres' DB first to create our database
+    # Connect to the default database first to create the application database.
     conn = psycopg2.connect(
         host=instance_info["host"],
         port=5432,
-        database="postgres",
+        database="databricks_postgres",
         user=ctx["user"],
         password=cred.token,
         sslmode="require",
@@ -1219,7 +1137,10 @@ def configure_sp_access(ctx: dict, instance_info: dict, cfg: dict):
 
     # Step A: Grant CAN_MANAGE at workspace level
     headers = w.config.authenticate()
-    url = f"{host}/api/2.0/permissions/database-instances/{instance_info['name']}"
+    url = (
+        f"{host}/api/2.0/permissions/database-projects/"
+        f"{instance_info['project_uid']}"
+    )
     payload = {
         "access_control_list": [
             {
@@ -1236,28 +1157,39 @@ def configure_sp_access(ctx: dict, instance_info: dict, cfg: dict):
 
     # Step B: Create the SP role via the Lakebase Roles API
     # CRITICAL: Must use identity_type=SERVICE_PRINCIPAL, not CREATE ROLE in PG
-    roles_url = f"{host}/api/2.0/database/instances/{instance_info['name']}/roles"
+    roles_url = (
+        f"{host}/api/2.0/postgres/{instance_info['branch_name']}/roles"
+    )
 
     # Check if role already exists with correct identity_type
     resp = requests.get(roles_url, headers=headers)
     if resp.status_code == 200:
-        existing_roles = resp.json().get("database_instance_roles", [])
-        sp_role = next((r for r in existing_roles if r["name"] == sp_client_id), None)
+        existing_roles = resp.json().get("roles", [])
+        sp_role = next(
+            (
+                role
+                for role in existing_roles
+                if role.get("spec", {}).get("postgres_role") == sp_client_id
+            ),
+            None,
+        )
 
-        if sp_role and sp_role.get("identity_type") == "SERVICE_PRINCIPAL":
+        if sp_role and sp_role.get("spec", {}).get("identity_type") == "SERVICE_PRINCIPAL":
             log_ok("SP role already exists with correct identity_type")
         else:
             if sp_role:
                 # Delete the incorrect role first (PG_ONLY → SERVICE_PRINCIPAL)
-                del_url = f"{roles_url}/{sp_client_id}"
+                del_url = f"{host}/api/2.0/postgres/{sp_role['name']}"
                 requests.delete(del_url, headers=headers)
                 log_info("Removed existing PG_ONLY role")
 
             # Create with correct identity_type
             create_payload = {
-                "name": sp_client_id,
-                "identity_type": "SERVICE_PRINCIPAL",
-                "membership_role": "DATABRICKS_SUPERUSER",
+                "spec": {
+                    "auth_method": "LAKEBASE_OAUTH_V1",
+                    "identity_type": "SERVICE_PRINCIPAL",
+                    "postgres_role": sp_client_id,
+                }
             }
             resp = requests.post(roles_url, headers=headers, json=create_payload)
             if resp.status_code == 200:
@@ -1309,9 +1241,8 @@ def configure_sp_access(ctx: dict, instance_info: dict, cfg: dict):
             auth_type="oauth-m2m",
         )
         sp_client = WorkspaceClient(config=sp_config)
-        sp_cred = sp_client.database.generate_database_credential(
-            request_id=str(uuid.uuid4()),
-            instance_names=[instance_info["name"]],
+        sp_cred = sp_client.postgres.generate_database_credential(
+            endpoint=instance_info["endpoint_name"],
         )
 
         import psycopg2
@@ -1366,7 +1297,7 @@ def generate_app_config(ctx: dict, instance_info: dict, cfg: dict):
     app_yaml = APP_DIR / "app.yaml"
 
     content = f"""# Databricks App Configuration — generated by install_lakemeter.py
-# Instance: {instance_info['name']} | Generated: {datetime.now().isoformat()[:19]}
+# Project: {instance_info['project_name']} | Generated: {datetime.now().isoformat()[:19]}
 
 command:
   - "/bin/bash"
@@ -1386,9 +1317,13 @@ env:
   # auto-injected by the Databricks Apps platform. The app's built-in SP
   # handles all authentication (Lakebase OAuth, model serving, etc.).
 
-  # Lakebase database configuration
-  - name: "LAKEBASE_INSTANCE_NAME"
-    valueFrom: "{cfg['app_name']}-lakebase-instance"
+  # Lakebase Autoscaling database configuration
+  - name: "LAKEBASE_PROJECT"
+    valueFrom: "{cfg['app_name']}-lakebase-project"
+  - name: "LAKEBASE_BRANCH"
+    valueFrom: "{cfg['app_name']}-lakebase-branch"
+  - name: "LAKEBASE_ENDPOINT"
+    valueFrom: "{cfg['app_name']}-lakebase-endpoint"
   - name: "DB_HOST"
     valueFrom: "{cfg['app_name']}-db-host"
   - name: "DB_USER"
@@ -1425,7 +1360,9 @@ def configure_app_resources(ctx: dict, instance_info: dict, cfg: dict):
 
     # 1. Create workspace secrets for config values (idempotent — overwrites if exists)
     config_secrets = {
-        "lakebase-instance-name": instance_info["name"],
+        "lakebase-project": instance_info["project_name"],
+        "lakebase-branch": instance_info["branch_name"],
+        "lakebase-endpoint": instance_info["endpoint_name"],
     }
     # lakebase-host, lakebase-user, lakebase-database should already exist from earlier steps
     for key, value in config_secrets.items():
@@ -1437,7 +1374,9 @@ def configure_app_resources(ctx: dict, instance_info: dict, cfg: dict):
 
     # 2. Define resource mappings: valueFrom name -> scope:key
     resource_map = {
-        f"{app_name}-lakebase-instance": ("lakebase-instance-name", "Lakebase instance name"),
+        f"{app_name}-lakebase-project": ("lakebase-project", "Lakebase project"),
+        f"{app_name}-lakebase-branch": ("lakebase-branch", "Production branch"),
+        f"{app_name}-lakebase-endpoint": ("lakebase-endpoint", "Primary endpoint"),
         f"{app_name}-db-host": ("lakebase-host", "Database host"),
         f"{app_name}-db-user": ("lakebase-user", "Database user"),
         f"{app_name}-db-name": ("lakebase-database", "Database name"),
@@ -1504,7 +1443,13 @@ def grant_app_sp_lakebase_access(ctx: dict, instance_info: dict, cfg: dict):
     1. A Lakebase role with identity_type=SERVICE_PRINCIPAL
     2. SQL-level permissions on the lakemeter schema
     """
-    import requests
+    from databricks.sdk.service.postgres import (
+        Role,
+        RoleAuthMethod,
+        RoleIdentityType,
+        RoleRoleSpec,
+    )
+    from lakebase_autoscaling import normalize_project_id
 
     w = ctx["client"]
     log_info("Granting app service principal Lakebase access...")
@@ -1515,27 +1460,37 @@ def grant_app_sp_lakebase_access(ctx: dict, instance_info: dict, cfg: dict):
             log_warn("App has no service principal — Lakebase OAuth will not work")
             return
 
-        host = ctx["host"].rstrip("/")
-        headers = w.config.authenticate()
-        roles_url = f"{host}/api/2.0/database/instances/{instance_info['name']}/roles"
-
-        # Check if role exists with correct identity_type
-        resp = requests.get(roles_url, headers=headers)
-        existing_roles = resp.json().get("database_instance_roles", []) if resp.status_code == 200 else []
-        sp_role = next((r for r in existing_roles if r["name"] == app_sp_id), None)
-
-        if not sp_role or sp_role.get("identity_type") != "SERVICE_PRINCIPAL":
-            if sp_role:
-                requests.delete(f"{roles_url}/{app_sp_id}", headers=headers)
-            resp = requests.post(roles_url, headers=headers, json={
-                "name": app_sp_id,
-                "identity_type": "SERVICE_PRINCIPAL",
-                "membership_role": "DATABRICKS_SUPERUSER",
-            })
-            if resp.status_code == 200:
-                log_ok(f"App SP Lakebase role created ({app_sp_id[:12]}...)")
-            else:
-                log_warn(f"Could not create app SP role: {resp.status_code}")
+        existing_roles = list(
+            w.postgres.list_roles(parent=instance_info["branch_name"])
+        )
+        sp_role = next(
+            (
+                role
+                for role in existing_roles
+                if getattr(
+                    getattr(role, "spec", None)
+                    or getattr(role, "status", None),
+                    "postgres_role",
+                    None,
+                )
+                == app_sp_id
+            ),
+            None,
+        )
+        if not sp_role:
+            role_id = f"{normalize_project_id(cfg['app_name'])}-app"
+            w.postgres.create_role(
+                parent=instance_info["branch_name"],
+                role_id=role_id,
+                role=Role(
+                    spec=RoleRoleSpec(
+                        auth_method=RoleAuthMethod.LAKEBASE_OAUTH_V1,
+                        identity_type=RoleIdentityType.SERVICE_PRINCIPAL,
+                        postgres_role=app_sp_id,
+                    )
+                ),
+            ).wait()
+            log_ok(f"App SP Lakebase OAuth role created ({app_sp_id[:12]}...)")
         else:
             log_ok("App SP already has Lakebase role")
 
@@ -1548,6 +1503,14 @@ def grant_app_sp_lakebase_access(ctx: dict, instance_info: dict, cfg: dict):
         cur.execute(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
         cur.execute(f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
         cur.execute(f'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA {DEFAULT_SCHEMA} TO "{app_sp_id}"')
+        cur.execute(
+            f'ALTER DEFAULT PRIVILEGES IN SCHEMA {DEFAULT_SCHEMA} '
+            f'GRANT ALL PRIVILEGES ON TABLES TO "{app_sp_id}"'
+        )
+        cur.execute(
+            f'ALTER DEFAULT PRIVILEGES IN SCHEMA {DEFAULT_SCHEMA} '
+            f'GRANT EXECUTE ON FUNCTIONS TO "{app_sp_id}"'
+        )
         cur.close()
         conn.close()
         log_ok("App SP SQL permissions granted")
@@ -1769,8 +1732,8 @@ def main():
     log_step(2, TOTAL_STEPS, "Gathering configuration")
     cfg = gather_config(ctx, non_interactive=args.non_interactive)
 
-    # Step 3: Provision Lakebase (reuses if already exists)
-    log_step(3, TOTAL_STEPS, "Provisioning Lakebase instance")
+    # Step 3: Provision direct Lakebase Autoscaling resources.
+    log_step(3, TOTAL_STEPS, "Provisioning Lakebase Autoscaling project")
     instance_info = provision_lakebase(ctx, cfg)
 
     # Step 4: Create database, schema, tables, and auth role
@@ -1802,7 +1765,9 @@ def main():
     print(f"\n{BOLD}{'='*60}{NC}")
     print(f"{GREEN}{BOLD}  Installation Complete!{NC}")
     print(f"{BOLD}{'='*60}{NC}")
-    print(f"\n  Instance:  {CYAN}{instance_info['name']}{NC}")
+    print(f"\n  Project:   {CYAN}{instance_info['project_name']}{NC}")
+    print(f"  Branch:    {CYAN}{instance_info['branch_name']}{NC}")
+    print(f"  Endpoint:  {CYAN}{instance_info['endpoint_name']}{NC}")
     print(f"  Database:  {CYAN}{cfg['db_name']}{NC}")
     print(f"  DB Host:   {CYAN}{instance_info['host']}{NC}")
     print(f"  App Name:  {CYAN}{cfg['app_name']}{NC}")

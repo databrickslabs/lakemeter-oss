@@ -18,9 +18,13 @@ env:
   # auto-injected by the Databricks Apps platform. The app's built-in SP
   # handles all authentication (Lakebase OAuth, model serving, etc.).
 
-  # Lakebase database configuration
-  - name: "LAKEBASE_INSTANCE_NAME"
-    valueFrom: "lakemeter-lakebase-instance"
+  # Lakebase Autoscaling database configuration
+  - name: "LAKEBASE_PROJECT"
+    valueFrom: "lakemeter-lakebase-project"
+  - name: "LAKEBASE_BRANCH"
+    valueFrom: "lakemeter-lakebase-branch"
+  - name: "LAKEBASE_ENDPOINT"
+    valueFrom: "lakemeter-lakebase-endpoint"
   - name: "DB_HOST"
     valueFrom: "lakemeter-db-host"
   - name: "DB_USER"

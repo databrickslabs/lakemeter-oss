@@ -9,7 +9,6 @@ Supports fetching SP credentials from Databricks secrets for enhanced security.
 Reference: https://docs.databricks.com/aws/en/oltp/instances/authentication
 """
 import os
-import uuid
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
@@ -55,6 +54,9 @@ class LakebaseTokenManager:
         # Load settings from environment variables
         self.databricks_host = os.getenv("DATABRICKS_HOST")
         self.databricks_config_profile = os.getenv("DATABRICKS_CONFIG_PROFILE")
+        self.lakebase_project = os.getenv("LAKEBASE_PROJECT")
+        self.lakebase_branch = os.getenv("LAKEBASE_BRANCH")
+        self.lakebase_endpoint = os.getenv("LAKEBASE_ENDPOINT")
         self.lakebase_instance_name = os.getenv("LAKEBASE_INSTANCE_NAME")
         self.db_user = os.getenv("DB_USER")
         self.db_name = os.getenv("DB_NAME")
@@ -69,7 +71,9 @@ class LakebaseTokenManager:
 
         _log_info("LakebaseTokenManager initialized")
         _log_info(f"Workspace: {self.databricks_host}")
-        _log_info(f"Instance: {self.lakebase_instance_name}")
+        _log_info(
+            f"Endpoint: {self.lakebase_endpoint or self.lakebase_instance_name}"
+        )
     
     def _init_workspace_client(self):
         """Initialize Databricks WorkspaceClient using available auth."""
@@ -105,8 +109,11 @@ class LakebaseTokenManager:
     
     def _refresh_token(self):
         """Generate a new OAuth token using the app's built-in identity."""
-        if not self.lakebase_instance_name:
-            _log_warning("Cannot refresh token: LAKEBASE_INSTANCE_NAME not set.")
+        if not self.lakebase_endpoint and not self.lakebase_instance_name:
+            _log_warning(
+                "Cannot refresh token: LAKEBASE_ENDPOINT and "
+                "LAKEBASE_INSTANCE_NAME are not set."
+            )
             self._token = None
             self._expires_at = None
             return
@@ -119,13 +126,40 @@ class LakebaseTokenManager:
 
         _log_info("Refreshing Lakebase OAuth token...")
         try:
-            credential = self._workspace_client.database.generate_database_credential(
-                request_id=str(uuid.uuid4()),
-                instance_names=[self.lakebase_instance_name]
-            )
+            if self.lakebase_endpoint:
+                credential = (
+                    self._workspace_client.postgres.generate_database_credential(
+                        endpoint=self.lakebase_endpoint
+                    )
+                )
+            else:
+                import uuid
+
+                credential = (
+                    self._workspace_client.database.generate_database_credential(
+                        request_id=str(uuid.uuid4()),
+                        instance_names=[self.lakebase_instance_name],
+                    )
+                )
 
             self._token = credential.token
-            self._expires_at = datetime.fromisoformat(credential.expiration_time.replace('Z', '+00:00')) - timedelta(minutes=5)
+            expire_time = getattr(credential, "expire_time", None)
+            if expire_time is not None and hasattr(expire_time, "ToDatetime"):
+                expires_at = expire_time.ToDatetime(tzinfo=timezone.utc)
+            else:
+                expiration_time = getattr(
+                    credential,
+                    "expiration_time",
+                    None,
+                )
+                expires_at = (
+                    datetime.fromisoformat(
+                        expiration_time.replace("Z", "+00:00")
+                    )
+                    if expiration_time
+                    else datetime.now(timezone.utc) + timedelta(hours=1)
+                )
+            self._expires_at = expires_at - timedelta(minutes=5)
 
             # Update db_user to match the app's SP identity
             try:

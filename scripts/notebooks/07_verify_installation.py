@@ -10,15 +10,15 @@ import time
 _start = time.time()
 
 dbutils.widgets.text("app_name", "lakemeter")
-dbutils.widgets.text("instance_name", "lakemeter-customer")
+dbutils.widgets.text("project_id", "lakemeter-customer")
 dbutils.widgets.text("db_name", "lakemeter_pricing")
 
 app_name = dbutils.widgets.get("app_name")
-instance_name = dbutils.widgets.get("instance_name")
+project_id = dbutils.widgets.get("project_id")
 db_name = dbutils.widgets.get("db_name")
 
 print(f"App: {app_name}")
-print(f"Instance: {instance_name}")
+print(f"Project: {project_id}")
 print(f"Database: {db_name}")
 
 # COMMAND ----------

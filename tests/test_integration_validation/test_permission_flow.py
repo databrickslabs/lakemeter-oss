@@ -21,8 +21,12 @@ _ENV_DEFAULTS = {
     "DATABRICKS_SECRETS_SCOPE": "lakemeter-secrets",
     "SP_CLIENT_ID_KEY": "sp_clientid",
     "SP_SECRET_KEY": "sp_secret",
-    "LAKEBASE_INSTANCE_NAME": "lakemeter-customer",
-    "DB_HOST": "ep-silent-fire-d1kv74l0.database.us-west-2.cloud.databricks.com",
+    "LAKEBASE_PROJECT": "projects/lakemeter-customer",
+    "LAKEBASE_BRANCH": "projects/lakemeter-customer/branches/production",
+    "LAKEBASE_ENDPOINT": (
+        "projects/lakemeter-customer/branches/production/endpoints/primary"
+    ),
+    "DB_HOST": "ep-snowy-credit-d1wrian5.database.us-west-2.cloud.databricks.com",
     "DB_USER": "0a1a2461-5013-4110-94ff-f7157e7b8b8e",
     "DB_NAME": "lakemeter_pricing",
     "DB_PORT": "5432",

@@ -148,6 +148,8 @@ except Exception as e:
 
 # Wait for deployment to complete
 print("Waiting for deployment to complete...")
+deployment_result = None
+deployment_error = None
 for i in range(60):  # 10 min max
     time.sleep(10)
     try:
@@ -162,14 +164,21 @@ for i in range(60):  # 10 min max
             if state == "SUCCEEDED":
                 print(f"\nApp deployed successfully!")
                 print(f"URL: {app_info.url}")
-                dbutils.notebook.exit(f"Deployed: {app_info.url}")
+                deployment_result = f"Deployed: {app_info.url}"
+                break
             if state == "FAILED":
                 msg = deploy.status.message if hasattr(deploy.status, "message") else "Unknown"
                 print(f"\nDeploy failed: {msg}")
-                dbutils.notebook.exit(f"Deploy failed: {msg}")
+                deployment_error = f"Deploy failed: {msg}"
+                break
     except Exception as e:
         if i % 6 == 0:
             print(f"  Checking... ({e})")
+
+if deployment_result:
+    dbutils.notebook.exit(deployment_result)
+if deployment_error:
+    raise RuntimeError(deployment_error)
 
 print("Warning: Timed out waiting for deployment (10 minutes)")
 print("Check deployment status in the Databricks UI")

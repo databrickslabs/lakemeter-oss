@@ -6,38 +6,52 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("instance_name", "lakemeter-customer")
+dbutils.widgets.text("project_id", "lakemeter-customer")
 dbutils.widgets.text("db_name", "lakemeter_pricing")
 dbutils.widgets.text("secrets_scope", "lakemeter-secrets")
 
-instance_name = dbutils.widgets.get("instance_name")
+project_id = dbutils.widgets.get("project_id")
 db_name = dbutils.widgets.get("db_name")
 secrets_scope = dbutils.widgets.get("secrets_scope")
 
-print(f"Instance: {instance_name}")
+print(f"Project: {project_id}")
 print(f"Database: {db_name}")
 print(f"Secrets scope: {secrets_scope}")
 
 # COMMAND ----------
 
-import uuid
 import secrets as py_secrets
 import psycopg2
 from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
 
-# Get instance info from upstream task
-instance_host = dbutils.jobs.taskValues.get(taskKey="provision_lakebase", key="instance_host")
-print(f"Instance host: {instance_host}")
+# Get direct Autoscaling endpoint info from the upstream task.
+instance_host = dbutils.jobs.taskValues.get(
+    taskKey="provision_lakebase",
+    key="host",
+)
+endpoint_name = dbutils.jobs.taskValues.get(
+    taskKey="provision_lakebase",
+    key="endpoint_name",
+)
+project_name = dbutils.jobs.taskValues.get(
+    taskKey="provision_lakebase",
+    key="project_name",
+)
+branch_name = dbutils.jobs.taskValues.get(
+    taskKey="provision_lakebase",
+    key="branch_name",
+)
+print(f"Endpoint: {endpoint_name}")
+print(f"Host: {instance_host}")
 
 SCHEMA = "lakemeter"
 
 def get_owner_connection(database="postgres"):
-    """Get a psycopg2 connection as the instance owner."""
-    cred = w.database.generate_database_credential(
-        request_id=str(uuid.uuid4()),
-        instance_names=[instance_name],
+    """Get a psycopg2 connection as the project owner."""
+    cred = w.postgres.generate_database_credential(
+        endpoint=endpoint_name,
     )
     return psycopg2.connect(
         host=instance_host,
@@ -51,7 +65,7 @@ def get_owner_connection(database="postgres"):
 # COMMAND ----------
 
 # Create database if not exists
-conn = get_owner_connection("postgres")
+conn = get_owner_connection("databricks_postgres")
 conn.autocommit = True
 cur = conn.cursor()
 
@@ -563,6 +577,9 @@ w.secrets.put_secret(scope=secrets_scope, key="lakebase-user", string_value=role
 w.secrets.put_secret(scope=secrets_scope, key="lakebase-password", string_value=password)
 w.secrets.put_secret(scope=secrets_scope, key="lakebase-host", string_value=instance_host)
 w.secrets.put_secret(scope=secrets_scope, key="lakebase-database", string_value=db_name)
+w.secrets.put_secret(scope=secrets_scope, key="lakebase-project", string_value=project_name)
+w.secrets.put_secret(scope=secrets_scope, key="lakebase-branch", string_value=branch_name)
+w.secrets.put_secret(scope=secrets_scope, key="lakebase-endpoint", string_value=endpoint_name)
 print("Credentials stored in secrets scope")
 
 dbutils.notebook.exit("Database, schema, tables, and auth role created successfully")

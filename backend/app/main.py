@@ -1,11 +1,14 @@
 """FastAPI main application entry point."""
 from pathlib import Path
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from sqlalchemy import text
 
 from app.config import settings, setup_logging, log_info
+from app.database import get_db
+from app.version import APP_VERSION
 from app.routes import (
     estimates_router,
     line_items_router,
@@ -27,7 +30,7 @@ setup_logging()
 app = FastAPI(
     title="Lakemeter API",
     description="Databricks Pricing Calculator API - Estimate and manage Databricks workload costs",
-    version="1.0.0",
+    version=APP_VERSION,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     redirect_slashes=False
@@ -62,7 +65,7 @@ def api_root():
     """API root endpoint."""
     return {
         "name": "Lakemeter API",
-        "version": "1.0.0",
+        "version": APP_VERSION,
         "description": "Databricks Pricing Calculator API"
     }
 
@@ -70,7 +73,31 @@ def api_root():
 @app.get("/health")
 def health_check():
     """Health check endpoint."""
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": APP_VERSION}
+
+
+@app.get("/api/v1/system/version")
+def system_version():
+    """Return machine-readable version and upgrade policy metadata."""
+    return {
+        "app_version": APP_VERSION,
+        "upgrade_policy": {
+            "patch": "code_only",
+            "minor": "data_update",
+            "major": "schema_migration",
+        },
+    }
+
+
+@app.get("/api/v1/system/health")
+def system_health(db=Depends(get_db)):
+    """Verify both the running application and its database connection."""
+    db.execute(text("SELECT 1"))
+    return {
+        "status": "healthy",
+        "app_version": APP_VERSION,
+        "database": "connected",
+    }
 
 
 @app.get("/api/v1/debug/headers")
@@ -93,6 +120,9 @@ def debug_database():
         "environment_vars": {
             "DATABRICKS_HOST": os.getenv("DATABRICKS_HOST", "NOT SET"),
             "DATABRICKS_SECRETS_SCOPE": os.getenv("DATABRICKS_SECRETS_SCOPE", "NOT SET"),
+            "LAKEBASE_PROJECT": os.getenv("LAKEBASE_PROJECT", "NOT SET"),
+            "LAKEBASE_BRANCH": os.getenv("LAKEBASE_BRANCH", "NOT SET"),
+            "LAKEBASE_ENDPOINT": os.getenv("LAKEBASE_ENDPOINT", "NOT SET"),
             "LAKEBASE_INSTANCE_NAME": os.getenv("LAKEBASE_INSTANCE_NAME", "NOT SET"),
             "DB_HOST": os.getenv("DB_HOST", "NOT SET"),
             "DB_USER": os.getenv("DB_USER", "NOT SET"),
@@ -282,7 +312,7 @@ else:
         """Root endpoint (local dev only)."""
         return {
             "name": "Lakemeter API",
-            "version": "1.0.0",
+            "version": APP_VERSION,
             "description": "Databricks Pricing Calculator API",
             "mode": "API-only (frontend served separately)"
         }
