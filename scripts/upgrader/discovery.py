@@ -113,6 +113,14 @@ def _read_version_from_app(workspace_client: Any, app_url: str) -> str | None:
         return None
 
 
+def _installation_source_root(source_path: str) -> str:
+    """Return the stable app root when the API reports a versioned release."""
+    marker = "/releases/"
+    if marker in source_path:
+        return source_path.split(marker, 1)[0]
+    return source_path.rstrip("/")
+
+
 def _resolve_proxy_autoscaling_resources(
     workspace_client: Any,
     instance_name: str | None,
@@ -149,10 +157,11 @@ def discover_installation(
     """Discover live names and version without mutating workspace or database."""
     app = workspace_client.apps.get(app_name)
     workspace_user = str(workspace_client.current_user.me().user_name)
-    source_path = str(
+    reported_source_path = str(
         _get(app, "default_source_code_path")
         or f"/Workspace/Users/{workspace_user}/apps/{app_name}"
     )
+    source_path = _installation_source_root(reported_source_path)
     app_url = str(_get(app, "url", "") or "")
 
     active_deployment = _get(app, "active_deployment")
