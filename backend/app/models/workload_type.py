@@ -29,7 +29,9 @@ class RefWorkloadType(Base):
     show_usage_hours = Column(Boolean, default=False)
     show_usage_runs = Column(Boolean, default=False)
     show_usage_tokens = Column(Boolean, default=False)
-    
+    show_genie_config = Column(Boolean, default=False)
+    show_federation_config = Column(Boolean, default=False)
+
     # SKU product types
     sku_product_type_standard = Column(String(100))
     sku_product_type_photon = Column(String(100))

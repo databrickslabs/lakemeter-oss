@@ -7,6 +7,10 @@
 import type { LineItem, InstanceType, DBSQLSize, ModelServingGPUType } from '../types'
 import type { VectorSearchMode, PhotonMultiplier } from '../api/client'
 import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from './lakebasePricing'
+import {
+  resolveGenieConfig, calculateGenieLlmDbus, warehouseDbuPerHour,
+  resolveFederationConfig, federationWarehouseHours,
+} from './genieFederationSizing'
 
 // Fallback DBU rates if fetched data not available ($/DBU)
 // These should match the actual Databricks pricing (PREMIUM tier defaults)
@@ -226,6 +230,17 @@ export function calculateWorkloadCost(
     case 'AI_PARSE':
     case 'SHUTTERSTOCK_IMAGEAI':
       productType = 'SERVERLESS_REAL_TIME_INFERENCE'
+      break
+
+    case 'GENIE':
+    case 'GENIE_CODE':
+      // Genie LLM usage bills on the Serverless Realtime Inference (SRTI) SKU
+      productType = 'SERVERLESS_REAL_TIME_INFERENCE'
+      break
+
+    case 'LAKEHOUSE_FEDERATION':
+      // Federated queries bill via the Serverless SQL warehouse that runs them (no separate SKU)
+      productType = 'SERVERLESS_SQL_COMPUTE'
       break
 
     case 'LAKEFLOW_CONNECT':
@@ -598,6 +613,55 @@ export function calculateWorkloadCost(
     case 'SHUTTERSTOCK_IMAGEAI': {
       const ssImages = item.shutterstock_images || 0
       monthlyDBUs = ssImages * 0.857
+      break
+    }
+
+    case 'GENIE':
+    case 'GENIE_CODE': {
+      // Two additive components: LLM DBUs (SRTI) + the Serverless SQL warehouse underneath.
+      // The warehouse bills at a different $/DBU than the LLM, so its cost is computed here
+      // and carried in vmCost (a non-DBU cost bucket) to keep the blended total correct.
+      const gCfg = resolveGenieConfig({
+        size: item.genie_size,
+        numUsers: item.genie_num_users,
+        dbusPerUser: item.genie_dbus_per_user_per_month,
+        warehouseSize: item.genie_warehouse_size,
+        activeHours: item.genie_active_hours_per_month,
+      })
+      const gLlm = calculateGenieLlmDbus({
+        numUsers: gCfg.num_users,
+        dbusPerUser: gCfg.dbus_per_user,
+        numServicePrincipals: item.genie_num_service_principals ?? 0,
+        dbusPerSp: item.genie_dbus_per_sp_per_month ?? 0,
+        applyPromo: item.genie_apply_promo ?? true,
+        promoPct: item.genie_promo_pct ?? 25,
+      })
+      monthlyDBUs = gLlm.billable_dbus  // priced at the SRTI $/DBU (productType above)
+
+      if (!item.genie_reuse_existing_warehouse) {
+        const whDbus = warehouseDbuPerHour(gCfg.warehouse_size) * gCfg.active_hours
+        const whPrice = (getDBUPrice ? getDBUPrice('SERVERLESS_SQL_COMPUTE') : null)
+          ?? pricing['SERVERLESS_SQL_COMPUTE'] ?? 0.70
+        vmCost = whDbus * whPrice
+      }
+      break
+    }
+
+    case 'LAKEHOUSE_FEDERATION': {
+      // Query-volume driven Serverless SQL warehouse uptime (auto-stop aware).
+      const fCfg = resolveFederationConfig({
+        size: item.federation_size,
+        numUsers: item.federation_num_users,
+        queriesPerPeriod: item.federation_queries_per_period,
+        queryPeriod: item.federation_query_period,
+        warehouseSize: item.federation_warehouse_size,
+      })
+      const fUptime = federationWarehouseHours({
+        queriesPerDay: fCfg.queries_per_day,
+        avgQuerySeconds: item.federation_avg_query_seconds ?? 10,
+      })
+      dbuPerHour = warehouseDbuPerHour(fCfg.warehouse_size)
+      monthlyDBUs = dbuPerHour * fUptime.hours_per_month
       break
     }
 

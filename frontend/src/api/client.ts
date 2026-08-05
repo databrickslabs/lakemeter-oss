@@ -1080,6 +1080,45 @@ export const calculateLakebase = async (request: LakebaseRequest): Promise<CostC
   return data
 }
 
+// Genie / Genie Code: LLM usage (SRTI SKU) + the Serverless SQL warehouse underneath.
+// T-shirt size drives users, DBUs/user, active hours and warehouse size; fields override it.
+export interface GenieRequest extends BaseCalculationRequest {
+  product?: string  // genie, genie_code
+  size?: string     // S, M, L, XL, custom
+  num_users?: number
+  dbus_per_user_per_month?: number
+  num_service_principals?: number
+  dbus_per_sp_per_month?: number
+  warehouse_size?: string
+  active_hours_per_month?: number
+  reuse_existing_warehouse?: boolean
+  apply_promo?: boolean
+  promo_pct?: number
+}
+
+export const calculateGenie = async (request: GenieRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/genie', request)
+  return data
+}
+
+// Lakehouse Federation: query-volume driven Serverless SQL warehouse uptime.
+export interface LakehouseFederationRequest extends BaseCalculationRequest {
+  size?: string     // S, M, L, XL, custom
+  num_users?: number
+  queries_per_period?: number
+  query_period?: string  // day, week, month
+  avg_query_seconds?: number
+  warehouse_size?: string
+  auto_stop_minutes?: number
+  active_hours_per_day?: number
+  days_per_month?: number
+}
+
+export const calculateLakehouseFederation = async (request: LakehouseFederationRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/lakehouse-federation', request)
+  return data
+}
+
 // ============================================================================
 // Helper function to calculate cost based on workload type
 // ============================================================================
@@ -1140,6 +1179,13 @@ export const calculateWorkloadCost = async (
 
     case 'LAKEFLOW_CONNECT':
       return calculateLakeflowConnect(params as unknown as LakeflowConnectRequest)
+
+    case 'GENIE':
+    case 'GENIE_CODE':
+      return calculateGenie(params as unknown as GenieRequest)
+
+    case 'LAKEHOUSE_FEDERATION':
+      return calculateLakehouseFederation(params as unknown as LakehouseFederationRequest)
 
     default:
       throw new Error(`Unknown workload type: ${workloadType}`)

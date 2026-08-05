@@ -1517,6 +1517,39 @@ export const useStore = create<Store>((set, get) => ({
             images_per_month: lineItem.shutterstock_images || 100,
           })
           break
+
+        case 'GENIE':
+        case 'GENIE_CODE':
+          result = await api.calculateGenie({
+            ...baseParams,
+            product: lineItem.workload_type === 'GENIE_CODE' ? 'genie_code' : 'genie',
+            size: lineItem.genie_size || 'M',
+            ...(lineItem.genie_num_users != null ? { num_users: lineItem.genie_num_users } : {}),
+            ...(lineItem.genie_dbus_per_user_per_month != null
+              ? { dbus_per_user_per_month: lineItem.genie_dbus_per_user_per_month } : {}),
+            num_service_principals: lineItem.genie_num_service_principals ?? 0,
+            dbus_per_sp_per_month: lineItem.genie_dbus_per_sp_per_month ?? 0,
+            ...(lineItem.genie_warehouse_size ? { warehouse_size: lineItem.genie_warehouse_size } : {}),
+            ...(lineItem.genie_active_hours_per_month != null
+              ? { active_hours_per_month: lineItem.genie_active_hours_per_month } : {}),
+            reuse_existing_warehouse: lineItem.genie_reuse_existing_warehouse ?? false,
+            apply_promo: lineItem.genie_apply_promo ?? true,
+            promo_pct: lineItem.genie_promo_pct ?? 25,
+          })
+          break
+
+        case 'LAKEHOUSE_FEDERATION':
+          result = await api.calculateLakehouseFederation({
+            ...baseParams,
+            size: lineItem.federation_size || 'M',
+            ...(lineItem.federation_num_users != null ? { num_users: lineItem.federation_num_users } : {}),
+            ...(lineItem.federation_queries_per_period != null
+              ? { queries_per_period: lineItem.federation_queries_per_period } : {}),
+            query_period: lineItem.federation_query_period || 'day',
+            avg_query_seconds: lineItem.federation_avg_query_seconds ?? 10,
+            ...(lineItem.federation_warehouse_size ? { warehouse_size: lineItem.federation_warehouse_size } : {}),
+          })
+          break
       }
       
       if (result) {

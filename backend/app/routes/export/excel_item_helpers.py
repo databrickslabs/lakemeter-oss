@@ -1,6 +1,9 @@
 """Item-level calculation and storage sub-row helpers for Excel export."""
 from .pricing import _get_dbu_price, _get_fmapi_dbu_per_million, FMAPI_PROP_FALLBACK_RATES
 from .calculations import _calculate_hours_per_month
+from app.services.genie_federation_sizing import (
+    resolve_genie_config, calculate_genie_llm_dbus,
+)
 from .excel_row_writer import write_data_row
 
 
@@ -77,6 +80,26 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
             images = int(getattr(item, 'shutterstock_images', 0) or 0)
             total_dbus = images * 0.857
             return 0, 0, 0, total_dbus, ''
+        # Genie / Genie Code: LLM DBUs on the SRTI SKU (t-shirt sized). The Serverless SQL
+        # warehouse underneath is priced on a different SKU and is emitted as its own row.
+        if wt in ('GENIE', 'GENIE_CODE'):
+            cfg = resolve_genie_config(
+                getattr(item, 'genie_size', 'M') or 'M',
+                num_users=getattr(item, 'genie_num_users', None),
+                dbus_per_user_per_month=getattr(item, 'genie_dbus_per_user_per_month', None),
+                warehouse_size=getattr(item, 'genie_warehouse_size', None),
+                active_hours_per_month=getattr(item, 'genie_active_hours_per_month', None),
+            )
+            apply_promo = getattr(item, 'genie_apply_promo', True)
+            llm = calculate_genie_llm_dbus(
+                num_users=cfg['num_users'],
+                dbus_per_user=cfg['dbus_per_user'],
+                num_service_principals=int(getattr(item, 'genie_num_service_principals', 0) or 0),
+                dbus_per_sp=float(getattr(item, 'genie_dbus_per_sp_per_month', 0) or 0),
+                apply_promo=True if apply_promo is None else bool(apply_promo),
+                promo_pct=float(getattr(item, 'genie_promo_pct', 25) or 25),
+            )
+            return 0, 0, 0, llm['billable_dbus'], ''
         hours = _calculate_hours_per_month(item)
         return hours, 0, 0, dbu_per_hour * hours, ''
 

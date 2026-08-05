@@ -113,6 +113,27 @@ class LineItemBase(BaseModel):
     lakebase_ha_nodes: Optional[int] = None
     lakebase_backup_retention_days: Optional[int] = None
 
+    # Genie / Genie Code Configuration (LLM on SRTI + Serverless SQL warehouse underneath)
+    genie_product: Optional[str] = None  # genie, genie_code
+    genie_size: Optional[str] = None  # S, M, L, XL, custom
+    genie_num_users: Optional[int] = None  # users (Genie) or developers (Genie Code)
+    genie_dbus_per_user_per_month: Optional[float] = None
+    genie_num_service_principals: Optional[int] = None
+    genie_dbus_per_sp_per_month: Optional[float] = None
+    genie_warehouse_size: Optional[str] = None
+    genie_active_hours_per_month: Optional[float] = None
+    genie_reuse_existing_warehouse: Optional[bool] = None
+    genie_apply_promo: Optional[bool] = None
+    genie_promo_pct: Optional[float] = None
+
+    # Lakehouse Federation Configuration (query-volume driven)
+    federation_size: Optional[str] = None  # S, M, L, XL, custom
+    federation_num_users: Optional[int] = None
+    federation_queries_per_period: Optional[float] = None
+    federation_query_period: Optional[str] = None  # day, week, month
+    federation_avg_query_seconds: Optional[float] = None
+    federation_warehouse_size: Optional[str] = None
+
     # Usage Configuration
     runs_per_day: Optional[int] = None
     avg_runtime_minutes: Optional[int] = None
@@ -224,6 +245,27 @@ class LineItemUpdate(BaseModel):
     lakebase_storage_gb: Optional[int] = None
     lakebase_ha_nodes: Optional[int] = None
     lakebase_backup_retention_days: Optional[int] = None
+
+    # Genie / Genie Code Configuration (LLM on SRTI + Serverless SQL warehouse underneath)
+    genie_product: Optional[str] = None  # genie, genie_code
+    genie_size: Optional[str] = None  # S, M, L, XL, custom
+    genie_num_users: Optional[int] = None  # users (Genie) or developers (Genie Code)
+    genie_dbus_per_user_per_month: Optional[float] = None
+    genie_num_service_principals: Optional[int] = None
+    genie_dbus_per_sp_per_month: Optional[float] = None
+    genie_warehouse_size: Optional[str] = None
+    genie_active_hours_per_month: Optional[float] = None
+    genie_reuse_existing_warehouse: Optional[bool] = None
+    genie_apply_promo: Optional[bool] = None
+    genie_promo_pct: Optional[float] = None
+
+    # Lakehouse Federation Configuration (query-volume driven)
+    federation_size: Optional[str] = None  # S, M, L, XL, custom
+    federation_num_users: Optional[int] = None
+    federation_queries_per_period: Optional[float] = None
+    federation_query_period: Optional[str] = None  # day, week, month
+    federation_avg_query_seconds: Optional[float] = None
+    federation_warehouse_size: Optional[str] = None
 
     # Usage Configuration
     runs_per_day: Optional[int] = None

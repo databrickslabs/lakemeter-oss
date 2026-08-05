@@ -124,6 +124,10 @@ def _get_sku_type(item, cloud: str = 'aws') -> str:
         return 'SERVERLESS_REAL_TIME_INFERENCE'
     elif wt == 'SHUTTERSTOCK_IMAGEAI':
         return 'SERVERLESS_REAL_TIME_INFERENCE'
+    elif wt in ('GENIE', 'GENIE_CODE'):
+        return 'SERVERLESS_REAL_TIME_INFERENCE'
+    elif wt == 'LAKEHOUSE_FEDERATION':
+        return 'SERVERLESS_SQL_COMPUTE'
     return 'JOBS_COMPUTE'
 
 

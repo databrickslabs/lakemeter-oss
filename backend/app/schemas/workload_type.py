@@ -24,7 +24,9 @@ class WorkloadTypeResponse(BaseModel):
     show_usage_hours: bool = False
     show_usage_runs: bool = False
     show_usage_tokens: bool = False
-    
+    show_genie_config: bool = False
+    show_federation_config: bool = False
+
     # SKU product types
     sku_product_type_standard: Optional[str] = None
     sku_product_type_photon: Optional[str] = None

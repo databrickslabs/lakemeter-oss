@@ -284,6 +284,79 @@ class LakeflowConnectCalculationRequest(BaseModel):
     discount_config: Optional[DiscountConfig] = Field(None)
 
 
+class GenieCalculationRequest(BaseModel):
+    """Genie / Genie Code cost — LLM usage PLUS the Serverless SQL warehouse underneath.
+
+    Two additive components (per go/geniepricing):
+
+    1. LLM usage — billed in DBUs on the Serverless Realtime Inference (SRTI) SKU.
+       Each identified user gets 150 free DBUs/account/month (service principals get none).
+       A 25% intro promo applies to paid DBUs through Jan 31 2027.
+    2. Serverless SQL warehouse — Genie queries execute on a SQL warehouse. Serverless SQL
+       bills on warehouse UPTIME (auto-stop keeps it warm between queries), so cost is driven
+       by active hours and warehouse size, NOT by raw query count. The warehouse is SHARED
+       across all users, so per-user cost falls as adoption grows.
+
+    Sizing: pick a t-shirt size (S/M/L/XL) to auto-derive users, DBUs/user, active hours and
+    warehouse size; or set size="custom" and supply the fields explicitly.
+    """
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    product: str = Field(default="genie", description="genie (One/Spaces) or genie_code")
+    size: str = Field(default="M", description="T-shirt size: S, M, L, XL, or 'custom'")
+
+    # Custom overrides — used when size == 'custom', otherwise optional refinements.
+    num_users: Optional[int] = Field(None, ge=0, description="Identified users (Genie) or developers (Genie Code)")
+    dbus_per_user_per_month: Optional[float] = Field(None, ge=0, description="Avg LLM DBUs per user per month")
+    num_service_principals: int = Field(default=0, ge=0, description="Service principals (no free allowance)")
+    dbus_per_sp_per_month: float = Field(default=0, ge=0, description="Avg LLM DBUs per service principal per month")
+
+    # Warehouse (the compute underneath Genie)
+    warehouse_size: Optional[str] = Field(None, description="Serverless SQL warehouse size (e.g., 2X-Small)")
+    active_hours_per_month: Optional[float] = Field(None, ge=0, description="Warehouse active (warm) hours per month")
+    reuse_existing_warehouse: bool = Field(
+        default=False,
+        description="If the customer already runs a warm SQL warehouse, exclude warehouse cost to avoid double-counting",
+    )
+
+    # Promo (kept as-is; the 150 free allowance is a fixed program rule, not an input)
+    apply_promo: bool = Field(default=True, description="Apply the 25% intro promo to paid DBUs (through Jan 31 2027)")
+    promo_pct: float = Field(default=25.0, ge=0, le=100, description="Intro promo percentage applied to paid DBUs")
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+
+class LakehouseFederationCalculationRequest(BaseModel):
+    """Lakehouse Federation query cost.
+
+    Lakehouse Federation has NO separate SKU — federated queries bill entirely through the
+    Serverless SQL warehouse that runs them.
+
+    Usage is driven by QUERY VOLUME, not a raw hours figure. Serverless SQL bills on warehouse
+    uptime: auto-stop (default 10 min) keeps the warehouse warm between queries, so once queries
+    arrive more often than the auto-stop window the warehouse stays up continuously and uptime
+    saturates at active_hours_per_day x days_per_month. Below that threshold cost scales with
+    query count. Modeling it this way avoids the wildly inflated "always-on" estimate.
+
+    Remote source-system compute (e.g., Snowflake/BigQuery) and cloud egress are NOT included.
+    """
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    size: str = Field(default="M", description="T-shirt size: S, M, L, XL, or 'custom'")
+
+    # Custom overrides — used when size == 'custom', otherwise optional refinements.
+    num_users: Optional[int] = Field(None, ge=0, description="Number of users running federated queries")
+    queries_per_period: Optional[float] = Field(None, ge=0, description="Number of federated queries per period")
+    query_period: str = Field(default="day", description="Period for queries_per_period: day, week, or month")
+    avg_query_seconds: float = Field(default=10.0, gt=0, description="Average federated query duration in seconds")
+    warehouse_size: Optional[str] = Field(None, description="Serverless SQL warehouse size (e.g., 2X-Small)")
+    auto_stop_minutes: float = Field(default=10.0, gt=0, description="Warehouse auto-stop window (minutes)")
+    active_hours_per_day: float = Field(default=8.0, gt=0, le=24, description="Hours per day the workload is active")
+    days_per_month: int = Field(default=22, ge=1, le=31, description="Active days per month")
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+
 class LakebaseCalculationRequest(BaseModel):
     cloud: str = Field(...)
     region: str = Field(...)

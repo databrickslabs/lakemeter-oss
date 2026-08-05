@@ -41,6 +41,9 @@ def _get_workload_display_name(workload_type: str) -> str:
         'AI_PARSE': 'AI Parse (Document AI)',
         'SHUTTERSTOCK_IMAGEAI': 'Shutterstock ImageAI',
         'LAKEFLOW_CONNECT': 'Lakeflow Connect',
+        'GENIE': 'Genie',
+        'GENIE_CODE': 'Genie Code',
+        'LAKEHOUSE_FEDERATION': 'Lakehouse Federation',
     }
     return names.get(workload_type, workload_type)
 
@@ -76,8 +79,69 @@ def _get_workload_config_details(item) -> str:
         details.append(f"Images/mo: {images:,}")
     elif wt == 'LAKEFLOW_CONNECT':
         details.extend(_lakeflow_connect_details(item))
+    elif wt in ('GENIE', 'GENIE_CODE'):
+        details.extend(_genie_details(item))
+    elif wt == 'LAKEHOUSE_FEDERATION':
+        details.extend(_federation_details(item))
 
     return ' | '.join(details) if details else '-'
+
+
+def _genie_details(item) -> list:
+    """Config summary for Genie / Genie Code.
+
+    Resolves the t-shirt tier so tier-based rows show real users/DBUs rather than the raw
+    (null) override columns.
+    """
+    from app.services.genie_federation_sizing import resolve_genie_config, TIER_LABELS
+
+    size = (getattr(item, 'genie_size', None) or 'M')
+    cfg = resolve_genie_config(
+        size,
+        num_users=getattr(item, 'genie_num_users', None),
+        dbus_per_user_per_month=getattr(item, 'genie_dbus_per_user_per_month', None),
+        warehouse_size=getattr(item, 'genie_warehouse_size', None),
+        active_hours_per_month=getattr(item, 'genie_active_hours_per_month', None),
+    )
+    unit = 'Developers' if (item.workload_type or '').upper() == 'GENIE_CODE' else 'Users'
+    details = [
+        f"Size: {TIER_LABELS.get(size.upper(), 'Custom')}",
+        f"{unit}: {cfg['num_users']:,}",
+        f"DBUs/user: {cfg['dbus_per_user']:g}",
+    ]
+    if getattr(item, 'genie_reuse_existing_warehouse', False):
+        details.append("Warehouse: reuses existing")
+    else:
+        details.append(f"Warehouse: {cfg['warehouse_size']} @ {cfg['active_hours']:g}h")
+    sps = getattr(item, 'genie_num_service_principals', None) or 0
+    if sps:
+        details.append(f"SPs: {int(sps):,}")
+    if getattr(item, 'genie_apply_promo', True):
+        promo = getattr(item, 'genie_promo_pct', 25) or 25
+        details.append(f"Promo: {float(promo):g}%")
+    return details
+
+
+def _federation_details(item) -> list:
+    """Config summary for Lakehouse Federation (resolves the t-shirt tier)."""
+    from app.services.genie_federation_sizing import (
+        resolve_federation_config, TIER_LABELS,
+    )
+
+    size = (getattr(item, 'federation_size', None) or 'M')
+    cfg = resolve_federation_config(
+        size,
+        num_users=getattr(item, 'federation_num_users', None),
+        queries_per_period=getattr(item, 'federation_queries_per_period', None),
+        query_period=getattr(item, 'federation_query_period', 'day') or 'day',
+        warehouse_size=getattr(item, 'federation_warehouse_size', None),
+    )
+    return [
+        f"Size: {TIER_LABELS.get(size.upper(), 'Custom')}",
+        f"Users: {cfg['num_users']:,}",
+        f"Queries: {round(cfg['queries_per_day']):,}/day",
+        f"Serverless SQL: {cfg['warehouse_size']}",
+    ]
 
 
 def _dbsql_details(item) -> list:

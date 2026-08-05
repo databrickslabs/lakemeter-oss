@@ -59,6 +59,10 @@ import {
   getAvailableRegionsFromBundle
 } from '../utils/pricingBundle'
 import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from '../utils/lakebasePricing'
+import {
+  resolveGenieConfig, calculateGenieLlmDbus, warehouseDbuPerHour,
+  resolveFederationConfig, federationWarehouseHours, TIER_LABELS as GF_TIER_LABELS,
+} from '../utils/genieFederationSizing'
 
 // Error Boundary for catching render errors
 interface ErrorBoundaryState {
@@ -847,10 +851,19 @@ export default function Calculator() {
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
         break
 
+      case 'GENIE':
+      case 'GENIE_CODE':
+        productType = 'SERVERLESS_REAL_TIME_INFERENCE'
+        break
+
+      case 'LAKEHOUSE_FEDERATION':
+        productType = 'SERVERLESS_SQL_COMPUTE'
+        break
+
       default:
         productType = 'JOBS_COMPUTE'
     }
-    
+
     // Get DBU price for this product type
     // Try pricing bundle first (static data), then runtime dbuRatesMap, then hardcoded fallback
     let dbuPrice = 0.20
@@ -1332,10 +1345,66 @@ export default function Calculator() {
         break
       }
 
+      case 'GENIE':
+      case 'GENIE_CODE': {
+        // LLM DBUs (SRTI) + the Serverless SQL warehouse underneath. The warehouse bills at a
+        // different $/DBU, so its cost goes into vmCost to keep the blended total correct.
+        const gCfg = resolveGenieConfig({
+          size: effectiveItem.genie_size,
+          numUsers: effectiveItem.genie_num_users,
+          dbusPerUser: effectiveItem.genie_dbus_per_user_per_month,
+          warehouseSize: effectiveItem.genie_warehouse_size,
+          activeHours: effectiveItem.genie_active_hours_per_month,
+        })
+        const gLlm = calculateGenieLlmDbus({
+          numUsers: gCfg.num_users,
+          dbusPerUser: gCfg.dbus_per_user,
+          numServicePrincipals: effectiveItem.genie_num_service_principals ?? 0,
+          dbusPerSp: effectiveItem.genie_dbus_per_sp_per_month ?? 0,
+          applyPromo: effectiveItem.genie_apply_promo ?? true,
+          promoPct: effectiveItem.genie_promo_pct ?? 25,
+        })
+        monthlyDBUs = gLlm.billable_dbus
+
+        if (!effectiveItem.genie_reuse_existing_warehouse) {
+          const whDbus = warehouseDbuPerHour(gCfg.warehouse_size) * gCfg.active_hours
+          let whPrice = 0.70
+          if (isPricingBundleLoaded && formData.tier) {
+            const p = getBundleDBUPrice(pricingBundle, cloud, region, formData.tier, 'SERVERLESS_SQL_COMPUTE')
+            if (p > 0) whPrice = p
+          }
+          vmCost = whDbus * whPrice
+        }
+        break
+      }
+
+      case 'LAKEHOUSE_FEDERATION': {
+        // Query-volume driven Serverless SQL warehouse uptime (auto-stop aware).
+        const fCfg = resolveFederationConfig({
+          size: effectiveItem.federation_size,
+          numUsers: effectiveItem.federation_num_users,
+          queriesPerPeriod: effectiveItem.federation_queries_per_period,
+          queryPeriod: effectiveItem.federation_query_period,
+          warehouseSize: effectiveItem.federation_warehouse_size,
+        })
+        const fUptime = federationWarehouseHours({
+          queriesPerDay: fCfg.queries_per_day,
+          avgQuerySeconds: effectiveItem.federation_avg_query_seconds ?? 10,
+        })
+        let fedDBUs = DBSQL_DBU_RATES[fCfg.warehouse_size] || warehouseDbuPerHour(fCfg.warehouse_size)
+        if (isPricingBundleLoaded) {
+          const bundleFedRate = getBundleDBSQLRate(pricingBundle, cloud, 'SERVERLESS', fCfg.warehouse_size)
+          if (bundleFedRate && bundleFedRate.dbu_per_hour > 0) fedDBUs = bundleFedRate.dbu_per_hour
+        }
+        dbuPerHour = fedDBUs
+        monthlyDBUs = dbuPerHour * fUptime.hours_per_month
+        break
+      }
+
       default:
         monthlyDBUs = 0
     }
-    
+
     // ========================================
     // Step 4: Calculate final costs (with NaN guards)
     // ========================================
@@ -1671,7 +1740,7 @@ export default function Calculator() {
   const getUsageSummary = (item: LineItem) => {
     // Quantity-based workloads don't use run/hour usage
     const wt = item.workload_type || ''
-    if (['AI_PARSE', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
+    if (['AI_PARSE', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS', 'GENIE', 'GENIE_CODE'].includes(wt)) return null
     if (item.hours_per_month) {
       return `${item.hours_per_month}h/month`
     }
@@ -1809,6 +1878,49 @@ export default function Calculator() {
           details.push({ label: 'Images', value: `${item.shutterstock_images.toLocaleString()}/mo` })
         }
         break
+
+      case 'GENIE':
+      case 'GENIE_CODE': {
+        const gSize = (item.genie_size || 'M').toUpperCase()
+        const gCfg = resolveGenieConfig({
+          size: item.genie_size,
+          numUsers: item.genie_num_users,
+          dbusPerUser: item.genie_dbus_per_user_per_month,
+          warehouseSize: item.genie_warehouse_size,
+          activeHours: item.genie_active_hours_per_month,
+        })
+        const unit = item.workload_type === 'GENIE_CODE' ? 'Developers' : 'Users'
+        details.push({ label: 'Size', value: GF_TIER_LABELS[gSize] || 'Custom' })
+        details.push({ label: unit, value: gCfg.num_users.toLocaleString() })
+        details.push({ label: 'DBUs/user', value: `${gCfg.dbus_per_user}` })
+        details.push({
+          label: 'Warehouse',
+          value: item.genie_reuse_existing_warehouse ? 'Reuses existing' : gCfg.warehouse_size,
+        })
+        if (item.genie_num_service_principals) {
+          details.push({ label: 'SPs', value: `${item.genie_num_service_principals}` })
+        }
+        if (item.genie_apply_promo !== false) {
+          details.push({ label: 'Promo', value: `${item.genie_promo_pct ?? 25}%` })
+        }
+        break
+      }
+
+      case 'LAKEHOUSE_FEDERATION': {
+        const fSize = (item.federation_size || 'M').toUpperCase()
+        const fCfg = resolveFederationConfig({
+          size: item.federation_size,
+          numUsers: item.federation_num_users,
+          queriesPerPeriod: item.federation_queries_per_period,
+          queryPeriod: item.federation_query_period,
+          warehouseSize: item.federation_warehouse_size,
+        })
+        details.push({ label: 'Size', value: GF_TIER_LABELS[fSize] || 'Custom' })
+        details.push({ label: 'Users', value: fCfg.num_users.toLocaleString() })
+        details.push({ label: 'Queries', value: `${Math.round(fCfg.queries_per_day).toLocaleString()}/day` })
+        details.push({ label: 'Warehouse', value: fCfg.warehouse_size })
+        break
+      }
     }
 
     return details

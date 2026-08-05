@@ -28,6 +28,25 @@ def _calculate_hours_per_month(item) -> float:
         )
         return config.active_hours_per_month if config.scale_to_zero_enabled else 730
 
+    # Lakehouse Federation: warehouse uptime is ALWAYS derived from query volume (auto-stop
+    # aware), never from a stored hours figure — a legacy hours_per_month value would
+    # reintroduce the "always-on warehouse" overestimate this model exists to fix.
+    if wt == 'LAKEHOUSE_FEDERATION':
+        from app.services.genie_federation_sizing import (
+            resolve_federation_config, federation_warehouse_hours,
+        )
+        cfg = resolve_federation_config(
+            getattr(item, 'federation_size', 'M') or 'M',
+            num_users=getattr(item, 'federation_num_users', None),
+            queries_per_period=getattr(item, 'federation_queries_per_period', None),
+            query_period=getattr(item, 'federation_query_period', 'day') or 'day',
+            warehouse_size=getattr(item, 'federation_warehouse_size', None),
+        )
+        return federation_warehouse_hours(
+            queries_per_day=cfg['queries_per_day'],
+            avg_query_seconds=float(getattr(item, 'federation_avg_query_seconds', 10) or 10),
+        )['hours_per_month']
+
     if item.runs_per_day and item.avg_runtime_minutes:
         runs = float(item.runs_per_day)
         runtime = float(item.avg_runtime_minutes)
@@ -35,6 +54,7 @@ def _calculate_hours_per_month(item) -> float:
         return (runs * runtime / 60) * days
     if item.hours_per_month:
         return float(item.hours_per_month)
+
     # Always-on workloads default to 730 hours/month (24/7)
     if wt in ('VECTOR_SEARCH', 'MODEL_SERVING', 'LAKEBASE', 'DATABRICKS_APPS', 'LAKEFLOW_CONNECT'):
         return 730
@@ -89,6 +109,20 @@ def _calculate_dbu_per_hour(item, cloud: str = 'aws', tier: str = 'PREMIUM') -> 
     elif wt == 'SHUTTERSTOCK_IMAGEAI':
         # Shutterstock is per-image, not hour-based; return 0, handled separately
         return 0, warnings
+    elif wt in ('GENIE', 'GENIE_CODE'):
+        # Genie is per-user DBU (quantity-based), not hour-based; handled in calc_item_values
+        return 0, warnings
+    elif wt == 'LAKEHOUSE_FEDERATION':
+        # Federated queries run on a Serverless SQL warehouse; DBU/hr comes from the size.
+        from app.services.genie_federation_sizing import resolve_federation_config, warehouse_dbu_per_hour
+        cfg = resolve_federation_config(
+            getattr(item, 'federation_size', 'M') or 'M',
+            num_users=getattr(item, 'federation_num_users', None),
+            queries_per_period=getattr(item, 'federation_queries_per_period', None),
+            query_period=getattr(item, 'federation_query_period', 'day') or 'day',
+            warehouse_size=getattr(item, 'federation_warehouse_size', None),
+        )
+        return warehouse_dbu_per_hour(cfg['warehouse_size']), warnings
     elif wt == 'LAKEFLOW_CONNECT':
         # Pipeline: DLT Serverless (handled like DLT)
         return 0, warnings  # simplified; actual calc done at endpoint level
@@ -207,7 +241,7 @@ def _is_serverless_workload(item) -> bool:
     wt = (item.workload_type or '').upper()
     if wt in ('VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY',
               'LAKEBASE', 'DATABRICKS_APPS', 'AI_PARSE', 'SHUTTERSTOCK_IMAGEAI',
-              'LAKEFLOW_CONNECT'):
+              'LAKEFLOW_CONNECT', 'GENIE', 'GENIE_CODE', 'LAKEHOUSE_FEDERATION'):
         return True
     if wt in ('JOBS', 'ALL_PURPOSE', 'DLT') and item.serverless_enabled:
         return True

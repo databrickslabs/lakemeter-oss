@@ -130,7 +130,28 @@ export interface LineItem {
   fmapi_context_length?: string | null
   fmapi_rate_type?: string | null  // input_token, output_token, cache_read, cache_write
   fmapi_quantity?: number | null   // quantity in millions (M)
-  
+
+  // Genie Configuration (LLM on the SRTI SKU + Serverless SQL warehouse underneath)
+  genie_product?: string | null  // genie, genie_code
+  genie_size?: string | null  // S, M, L, XL, custom
+  genie_num_users?: number | null  // users (Genie) or developers (Genie Code)
+  genie_dbus_per_user_per_month?: number | null
+  genie_num_service_principals?: number | null
+  genie_dbus_per_sp_per_month?: number | null
+  genie_warehouse_size?: string | null
+  genie_active_hours_per_month?: number | null
+  genie_reuse_existing_warehouse?: boolean | null
+  genie_apply_promo?: boolean | null
+  genie_promo_pct?: number | null  // default 25
+
+  // Lakehouse Federation Configuration (query-volume driven)
+  federation_size?: string | null  // S, M, L, XL, custom
+  federation_num_users?: number | null
+  federation_queries_per_period?: number | null
+  federation_query_period?: string | null  // day, week, month
+  federation_avg_query_seconds?: number | null
+  federation_warehouse_size?: string | null
+
   // Usage Configuration
   runs_per_day?: number | null
   avg_runtime_minutes?: number | null
@@ -178,7 +199,9 @@ export interface WorkloadType {
   show_usage_hours?: boolean
   show_usage_runs?: boolean
   show_usage_tokens?: boolean
-  
+  show_genie_config?: boolean
+  show_federation_config?: boolean
+
   // SKU product types
   sku_product_type_standard?: string
   sku_product_type_photon?: string

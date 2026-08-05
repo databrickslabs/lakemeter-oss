@@ -97,6 +97,27 @@ class LineItem(Base):
     lakebase_ha_nodes = Column(Integer)
     lakebase_backup_retention_days = Column(Integer)
 
+    # Genie Configuration (LLM usage on the SRTI SKU — Paygo)
+    genie_product = Column(String(20))  # genie, genie_code
+    genie_size = Column(String(10))  # S, M, L, XL, custom
+    genie_num_users = Column(Integer)  # users (Genie) or developers (Genie Code)
+    genie_dbus_per_user_per_month = Column(Numeric(12, 2))
+    genie_num_service_principals = Column(Integer)
+    genie_dbus_per_sp_per_month = Column(Numeric(12, 2))
+    genie_warehouse_size = Column(String(20))
+    genie_active_hours_per_month = Column(Numeric(12, 2))
+    genie_reuse_existing_warehouse = Column(Boolean, default=False)
+    genie_apply_promo = Column(Boolean, default=True)
+    genie_promo_pct = Column(Numeric(5, 2))  # default 25
+
+    # Lakehouse Federation Configuration (query-volume driven Serverless SQL warehouse)
+    federation_size = Column(String(10))  # S, M, L, XL, custom
+    federation_num_users = Column(Integer)
+    federation_queries_per_period = Column(Numeric(14, 2))
+    federation_query_period = Column(String(10))  # day, week, month
+    federation_avg_query_seconds = Column(Numeric(10, 2))
+    federation_warehouse_size = Column(String(20))
+
     # Usage Configuration
     runs_per_day = Column(Integer)
     avg_runtime_minutes = Column(Integer)
