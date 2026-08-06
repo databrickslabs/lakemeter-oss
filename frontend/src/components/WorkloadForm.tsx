@@ -321,7 +321,10 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     { id: 'PRO', name: 'Pro' },
     { id: 'ADVANCED', name: 'Advanced' },
   ]
-  const dltEditionOptions = dltEditions.length > 0 ? dltEditions : defaultDltEditions
+  const hasValidDltEditions = dltEditions.length > 0 && dltEditions.every(
+    edition => edition && typeof edition.id === 'string' && typeof edition.name === 'string'
+  )
+  const dltEditionOptions = hasValidDltEditions ? dltEditions : defaultDltEditions
   
   // Fallback Serverless modes
   const serverlessModeOptions = [
@@ -1678,7 +1681,19 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                     )}
                     <select
                       value={form.dbsql_driver_pricing_tier}
-                      onChange={(e) => setForm(f => ({ ...f, dbsql_driver_pricing_tier: e.target.value }))}
+                      onChange={(e) => {
+                        const tier = e.target.value
+                        setForm(f => ({
+                          ...f,
+                          dbsql_driver_pricing_tier: tier,
+                          dbsql_driver_payment_option:
+                            selectedCloud === 'aws' &&
+                            tier.startsWith('reserved') &&
+                            (!f.dbsql_driver_payment_option || f.dbsql_driver_payment_option === 'NA')
+                              ? 'no_upfront'
+                              : f.dbsql_driver_payment_option,
+                        }))
+                      }}
                       className="w-full text-sm"
                     >
                       <option value="on_demand">On-Demand</option>
@@ -1725,7 +1740,19 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                     )}
                     <select
                       value={form.dbsql_worker_pricing_tier}
-                      onChange={(e) => setForm(f => ({ ...f, dbsql_worker_pricing_tier: e.target.value }))}
+                      onChange={(e) => {
+                        const tier = e.target.value
+                        setForm(f => ({
+                          ...f,
+                          dbsql_worker_pricing_tier: tier,
+                          dbsql_worker_payment_option:
+                            selectedCloud === 'aws' &&
+                            tier.startsWith('reserved') &&
+                            (!f.dbsql_worker_payment_option || f.dbsql_worker_payment_option === 'NA')
+                              ? 'no_upfront'
+                              : f.dbsql_worker_payment_option,
+                        }))
+                      }}
                       className="w-full text-sm"
                     >
                       <option value="spot">Spot Instances</option>

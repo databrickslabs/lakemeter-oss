@@ -19,6 +19,7 @@ from .helpers import (
 from .calculations import _calculate_dbu_per_hour, _is_serverless_workload
 from .excel_item_helpers import calc_item_values, write_storage_subrow
 from app.routes.vm_pricing import DEFAULT_VM_PRICING
+from app.services.vm_pricing_resolver import resolve_vm_hourly_rate
 
 
 def build_estimate_excel(estimate, line_items, cloud, region, tier, db=None):
@@ -59,35 +60,100 @@ def _get_val(obj, key, default=''):
     return val if val is not None else default
 
 
-# Reserved instance discount factors relative to on-demand
-_RESERVED_DISCOUNTS = {
-    '1yr_reserved': 0.72,   # ~28% discount
-    '3yr_reserved': 0.50,   # ~50% discount
-    'spot': 0.30,           # ~70% discount
-}
+def _first_nonempty(item, *keys, default):
+    """Return the first populated pricing field from newest to legacy."""
+    for key in keys:
+        value = _get_val(item, key, None)
+        if value not in (None, ''):
+            return value
+    return default
 
 
-def _get_vm_hourly_rate(instance_prices: dict, pricing_tier: str) -> float:
-    """Get VM hourly rate for a pricing tier. Uses direct lookup, falls back to discount."""
-    if pricing_tier in instance_prices:
-        return instance_prices[pricing_tier]
-    on_demand = instance_prices.get('on_demand', 0)
-    discount = _RESERVED_DISCOUNTS.get(pricing_tier, 1.0)
-    return round(on_demand * discount, 4)
+def _get_dbsql_vm_pricing(item):
+    """Resolve the driver/worker selections used by the DBSQL UI.
+
+    Separate DBSQL fields are preferred when present, followed by the generic
+    driver/worker fields persisted by the current UI. The legacy single-tier
+    fields remain as a compatibility fallback for older estimates.
+    """
+    driver_tier = _first_nonempty(
+        item,
+        'dbsql_driver_pricing_tier',
+        'driver_pricing_tier',
+        'dbsql_vm_pricing_tier',
+        default='on_demand',
+    )
+    worker_tier = _first_nonempty(
+        item,
+        'dbsql_worker_pricing_tier',
+        'worker_pricing_tier',
+        'dbsql_vm_pricing_tier',
+        default='spot',
+    )
+    driver_payment = _first_nonempty(
+        item,
+        'dbsql_driver_payment_option',
+        'driver_payment_option',
+        'dbsql_vm_payment_option',
+        default='NA',
+    )
+    worker_payment = _first_nonempty(
+        item,
+        'dbsql_worker_payment_option',
+        'worker_payment_option',
+        'dbsql_vm_payment_option',
+        default='NA',
+    )
+
+    if driver_tier in ('on_demand', 'spot'):
+        driver_payment = 'NA'
+    if worker_tier in ('on_demand', 'spot'):
+        worker_payment = 'NA'
+
+    return driver_tier, driver_payment, worker_tier, worker_payment
+
+
+def _resolve_vm_rate(
+    db,
+    *,
+    cloud,
+    region,
+    instance_type,
+    pricing_tier,
+    payment_option,
+    vm_prices,
+    component,
+    auto_notes,
+):
+    """Resolve one VM rate and attach any fallback warning to the export."""
+    resolution = resolve_vm_hourly_rate(
+        db,
+        cloud=cloud,
+        region=region,
+        instance_type=instance_type,
+        pricing_tier=pricing_tier,
+        payment_option=payment_option,
+        fallback_prices=vm_prices.get(instance_type, {}),
+    )
+    if resolution.warning:
+        auto_notes.append(f"{component}: {resolution.warning}")
+    return resolution.rate
 
 
 def _lookup_dbsql_vm_costs(item, cloud, region, vm_prices, db, auto_notes):
     """Look up VM costs for DBSQL Classic/Pro warehouses.
 
     Uses static dbsql-warehouse-config.json to find driver/worker instance types,
-    then looks up VM costs from DEFAULT_VM_PRICING. Falls back to DB if needed.
+    then resolves exact regional rates from sync_pricing_vm_costs.
     Returns (driver_vm_hr, worker_vm_hr, worker_count).
     """
     from .pricing import DBSQL_WAREHOUSE_CONFIG
 
     wh_type = (item.dbsql_warehouse_type or 'CLASSIC').upper()
     wh_size = item.dbsql_warehouse_size or 'Small'
-    driver_tier = _get_val(item, 'dbsql_vm_pricing_tier', 'on_demand') or 'on_demand'
+    driver_tier, driver_payment, worker_tier, worker_payment = (
+        _get_dbsql_vm_pricing(item)
+    )
     cloud_lc = (cloud or 'aws').lower()
 
     # Look up warehouse config from static JSON (key format: "aws:classic:Small")
@@ -105,19 +171,36 @@ def _lookup_dbsql_vm_costs(item, cloud, region, vm_prices, db, auto_notes):
     worker_inst = config.get('worker_instance_type', '') if isinstance(config, dict) else getattr(config, 'worker_instance_type', '')
     worker_count = (config.get('worker_count', 0) if isinstance(config, dict) else getattr(config, 'worker_count', 0)) or 0
 
-    driver_vm_hr = 0
-    worker_vm_hr = 0
-    if driver_inst and driver_inst in vm_prices:
-        driver_vm_hr = _get_vm_hourly_rate(vm_prices[driver_inst], driver_tier)
-    if worker_inst and worker_inst in vm_prices:
-        worker_vm_hr = _get_vm_hourly_rate(vm_prices[worker_inst], driver_tier)
-
-    # If not in static VM pricing, try the database
-    if (driver_vm_hr == 0 or worker_vm_hr == 0) and db:
-        _lookup_vm_costs_from_db(
-            cloud, region, driver_inst, worker_inst, driver_tier,
-            driver_vm_hr, worker_vm_hr, db, auto_notes
+    driver_vm_hr = (
+        _resolve_vm_rate(
+            db,
+            cloud=cloud,
+            region=region,
+            instance_type=driver_inst,
+            pricing_tier=driver_tier,
+            payment_option=driver_payment,
+            vm_prices=vm_prices,
+            component="DBSQL driver",
+            auto_notes=auto_notes,
         )
+        if driver_inst
+        else 0
+    )
+    worker_vm_hr = (
+        _resolve_vm_rate(
+            db,
+            cloud=cloud,
+            region=region,
+            instance_type=worker_inst,
+            pricing_tier=worker_tier,
+            payment_option=worker_payment,
+            vm_prices=vm_prices,
+            component="DBSQL worker",
+            auto_notes=auto_notes,
+        )
+        if worker_inst
+        else 0
+    )
 
     return driver_vm_hr, worker_vm_hr, worker_count
 
@@ -142,33 +225,6 @@ def _lookup_dbsql_config_from_db(cloud, wh_type, wh_size, db, auto_notes):
     except Exception as e:
         auto_notes.append(f"DBSQL config DB fallback: {e}")
     return None
-
-
-def _lookup_vm_costs_from_db(cloud, region, driver_inst, worker_inst, tier,
-                              driver_vm_hr, worker_vm_hr, db, auto_notes):
-    """Fallback: query VM costs from DB when not in static pricing."""
-    try:
-        from sqlalchemy import text as sa_text
-        if driver_vm_hr == 0 and driver_inst:
-            row = db.execute(sa_text("""
-                SELECT cost_per_hour FROM lakemeter.sync_pricing_vm_costs
-                WHERE UPPER(cloud) = UPPER(:cloud) AND region = :region
-                    AND instance_type = :inst AND pricing_tier = :tier
-                LIMIT 1
-            """), {"cloud": cloud, "region": region, "inst": driver_inst, "tier": tier}).fetchone()
-            if row:
-                driver_vm_hr = float(row.cost_per_hour or 0)
-        if worker_vm_hr == 0 and worker_inst:
-            row = db.execute(sa_text("""
-                SELECT cost_per_hour FROM lakemeter.sync_pricing_vm_costs
-                WHERE UPPER(cloud) = UPPER(:cloud) AND region = :region
-                    AND instance_type = :inst AND pricing_tier = :tier
-                LIMIT 1
-            """), {"cloud": cloud, "region": region, "inst": worker_inst, "tier": tier}).fetchone()
-            if row:
-                worker_vm_hr = float(row.cost_per_hour or 0)
-    except Exception as e:
-        auto_notes.append(f"VM cost DB lookup: {e}")
 
 
 def _write_header_section(sheet, fmt, estimate, cloud, region, tier, max_col):
@@ -277,10 +333,30 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
             worker_node = _get_val(item, 'worker_node_type', '')
             driver_tier = _get_val(item, 'driver_pricing_tier', 'on_demand') or 'on_demand'
             worker_tier = _get_val(item, 'worker_pricing_tier', 'on_demand') or 'on_demand'
-            if driver_node and driver_node in vm_prices:
-                driver_vm_hr = _get_vm_hourly_rate(vm_prices[driver_node], driver_tier)
-            if worker_node and worker_node in vm_prices:
-                worker_vm_hr = _get_vm_hourly_rate(vm_prices[worker_node], worker_tier)
+            if driver_node:
+                driver_vm_hr = _resolve_vm_rate(
+                    db,
+                    cloud=cloud,
+                    region=region,
+                    instance_type=driver_node,
+                    pricing_tier=driver_tier,
+                    payment_option=_get_val(item, 'driver_payment_option', 'NA'),
+                    vm_prices=vm_prices,
+                    component="Driver",
+                    auto_notes=auto_notes,
+                )
+            if worker_node:
+                worker_vm_hr = _resolve_vm_rate(
+                    db,
+                    cloud=cloud,
+                    region=region,
+                    instance_type=worker_node,
+                    pricing_tier=worker_tier,
+                    payment_option=_get_val(item, 'worker_payment_option', 'NA'),
+                    vm_prices=vm_prices,
+                    component="Worker",
+                    auto_notes=auto_notes,
+                )
 
     user_notes = _get_val(item, 'notes', '') or ''
     notes_parts = [user_notes] if user_notes else []
@@ -289,9 +365,9 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
 
     # For DBSQL Classic/Pro, show warehouse info instead of generic driver/worker
     if wt == 'DBSQL' and (item.dbsql_warehouse_type or '').upper() in ('CLASSIC', 'PRO'):
-        display_driver_tier = _get_pricing_tier_display(
-            item.dbsql_vm_pricing_tier) if item.dbsql_vm_pricing_tier else '-'
-        display_worker_tier = display_driver_tier
+        driver_tier, _, worker_tier, _ = _get_dbsql_vm_pricing(item)
+        display_driver_tier = _get_pricing_tier_display(driver_tier)
+        display_worker_tier = _get_pricing_tier_display(worker_tier)
     else:
         display_driver_tier = _get_pricing_tier_display(
             item.driver_pricing_tier) if hasattr(item, 'driver_pricing_tier') and item.driver_pricing_tier else '-'

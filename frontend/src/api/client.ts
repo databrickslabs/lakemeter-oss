@@ -238,7 +238,20 @@ export const fetchDBSQLSizes = async (): Promise<DBSQLSize[]> => {
 export const fetchDLTEditions = async (): Promise<DLTEdition[]> => {
   const { data } = await api.get('/dlt/editions')
   const result = unwrap<any>(data)
-  return Array.isArray(result) ? result : (result?.editions || [])
+  const editions = Array.isArray(result) ? result : (result?.editions || [])
+  return editions
+    .map((edition: string | DLTEdition) => {
+      if (typeof edition === 'string') {
+        return {
+          id: edition,
+          name: edition.charAt(0) + edition.slice(1).toLowerCase(),
+        }
+      }
+      const id = edition.id || edition.edition
+      const name = edition.name || edition.display_name || id
+      return id && name ? { ...edition, id, name } : null
+    })
+    .filter((edition: DLTEdition | null): edition is DLTEdition => edition !== null)
 }
 
 export const fetchFMAPIModels = async (): Promise<FMAPIProvider[]> => {
