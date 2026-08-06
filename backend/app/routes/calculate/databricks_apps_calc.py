@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services.validators import validate_cloud, validate_region, validate_tier, validate_sku_specific_discounts
-from app.services.lakebase_queries import get_product_type_for_pricing
 from app.routes.calculate.helpers import build_sku_breakdown_serverless
 from app.routes.calculate.discount import (
     apply_discount_to_sku_breakdown, calculate_total_discount_summary, enhance_total_cost_with_discount,
@@ -23,6 +22,7 @@ APPS_DBU_RATES = {
     "medium": 0.5,
     "large": 1.0,
 }
+DATABRICKS_APPS_SKU = "ALL_PURPOSE_SERVERLESS_COMPUTE"
 
 
 @router.post("/calculate/databricks-apps", tags=["Cost Calculation"])
@@ -49,7 +49,7 @@ def calculate_databricks_apps_cost(
         dbu_per_hour = APPS_DBU_RATES[size]
         dbu_per_month = dbu_per_hour * hours_per_month
 
-        sku_type = get_product_type_for_pricing(db, "DATABRICKS_APPS", True, False, None, None, None)
+        sku_type = DATABRICKS_APPS_SKU
         # Look up DBU price
         from sqlalchemy import text
         price_row = db.execute(text("""

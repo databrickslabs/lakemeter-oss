@@ -180,8 +180,10 @@ class TestDatabricksAppsSKU:
 class TestDefaultSKU:
     def test_empty_workload_type(self):
         item = make_line_item(workload_type='')
-        assert _get_sku_type(item, 'aws') == 'JOBS_COMPUTE'
+        with pytest.raises(ValueError, match="Unsupported workload type"):
+            _get_sku_type(item, 'aws')
 
     def test_none_workload_type(self):
         item = make_line_item(workload_type=None)
-        assert _get_sku_type(item, 'aws') == 'JOBS_COMPUTE'
+        with pytest.raises(ValueError, match="Unsupported workload type"):
+            _get_sku_type(item, 'aws')

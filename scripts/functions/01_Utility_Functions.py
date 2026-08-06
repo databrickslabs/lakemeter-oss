@@ -239,10 +239,22 @@ BEGIN
         
         WHEN 'LAKEBASE' THEN
             v_product_type := 'DATABASE_SERVERLESS_COMPUTE';
+
+        WHEN 'DATABRICKS_APPS' THEN
+            v_product_type := 'ALL_PURPOSE_SERVERLESS_COMPUTE';
+
+        WHEN 'AI_PARSE' THEN
+            v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
+
+        WHEN 'SHUTTERSTOCK_IMAGEAI' THEN
+            v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
+
+        WHEN 'LAKEFLOW_CONNECT' THEN
+            v_product_type := 'JOBS_SERVERLESS_COMPUTE';
         
-        -- Default
         ELSE
-            v_product_type := 'JOBS_COMPUTE';
+            RAISE EXCEPTION 'Unsupported workload type: %', p_workload_type
+                USING ERRCODE = '22023';
     END CASE;
     
     RETURN v_product_type;
