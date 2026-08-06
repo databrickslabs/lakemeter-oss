@@ -124,7 +124,9 @@ def _get_sku_type(item, cloud: str = 'aws') -> str:
         return 'SERVERLESS_REAL_TIME_INFERENCE'
     elif wt == 'SHUTTERSTOCK_IMAGEAI':
         return 'SERVERLESS_REAL_TIME_INFERENCE'
-    return 'JOBS_COMPUTE'
+    elif wt == 'LAKEFLOW_CONNECT':
+        return 'JOBS_SERVERLESS_COMPUTE'
+    raise ValueError(f"Unsupported workload type: {item.workload_type!r}")
 
 
 def _get_fmapi_sku(item, cloud: str) -> str:

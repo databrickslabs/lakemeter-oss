@@ -171,4 +171,11 @@ def get_sku_type(
     if wt == "LAKEBASE":
         return "DATABASE_SERVERLESS_COMPUTE"
 
-    return "JOBS_COMPUTE"
+    if wt == "DATABRICKS_APPS":
+        return "ALL_PURPOSE_SERVERLESS_COMPUTE"
+    if wt in ("AI_PARSE", "SHUTTERSTOCK_IMAGEAI"):
+        return "SERVERLESS_REAL_TIME_INFERENCE"
+    if wt == "LAKEFLOW_CONNECT":
+        return "JOBS_SERVERLESS_COMPUTE"
+
+    raise ValueError(f"Unsupported workload type: {workload_type!r}")
