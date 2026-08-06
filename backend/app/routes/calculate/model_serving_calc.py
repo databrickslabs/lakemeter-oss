@@ -12,7 +12,7 @@ from app.routes.calculate.helpers import build_sku_breakdown_serverless
 from app.routes.calculate.discount import (
     apply_discount_to_sku_breakdown, calculate_total_discount_summary, enhance_total_cost_with_discount,
 )
-from app.routes.calculate.jobs import _validate_usage_params
+from app.routes.calculate.jobs import normalize_usage_params
 from app.routes.calculate.schemas import ModelServingCalculationRequest
 
 logger = logging.getLogger(__name__)
@@ -26,9 +26,7 @@ def calculate_model_serving_cost(
     request: ModelServingCalculationRequest,
     db: Session = Depends(get_db),
 ):
-    has_run_params, has_hours = _validate_usage_params(request, require_runs=False)
-    if has_run_params and request.days_per_month is None:
-        request.days_per_month = 30
+    usage = normalize_usage_params(request, mode="daily_or_monthly")
 
     error = validate_cloud(request.cloud)
     if error:
@@ -68,13 +66,7 @@ def calculate_model_serving_cost(
 
         gpu_dbu_rate = float(gpu_row.dbu_rate)
 
-        # Calculate hours
-        if has_hours:
-            hours_per_month = request.hours_per_month
-        else:
-            hours_per_day = getattr(request, 'hours_per_day', None) or 0
-            days_per_month = request.days_per_month or 30
-            hours_per_month = hours_per_day * days_per_month
+        hours_per_month = usage.hours_per_month or 0
 
         # DBU calculation
         dbu_per_hour = gpu_dbu_rate * concurrency

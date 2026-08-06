@@ -15,7 +15,7 @@ from app.routes.calculate.helpers import build_sku_breakdown_classic, build_sku_
 from app.routes.calculate.discount import (
     apply_discount_to_sku_breakdown, calculate_total_discount_summary, enhance_total_cost_with_discount,
 )
-from app.routes.calculate.jobs import _validate_usage_params
+from app.routes.calculate.jobs import normalize_usage_params
 from app.routes.calculate.schemas import DBSQLClassicProCalculationRequest, DBSQLServerlessCalculationRequest
 
 logger = logging.getLogger(__name__)
@@ -27,9 +27,7 @@ def calculate_dbsql_classic_pro_cost(
     request: DBSQLClassicProCalculationRequest,
     db: Session = Depends(get_db),
 ):
-    has_run_params, has_hours = _validate_usage_params(request, require_runs=False)
-    if has_run_params and request.days_per_month is None:
-        request.days_per_month = 30
+    usage = normalize_usage_params(request, mode="daily_or_monthly")
 
     error = validate_cloud(request.cloud)
     if error:
@@ -54,8 +52,8 @@ def calculate_dbsql_classic_pro_cost(
             "p8": None, "p9": None, "p10": 0,
             "p11": request.driver_pricing_tier, "p12": request.worker_pricing_tier,
             "p13": 0, "p14": 0,
-            "p15": request.days_per_month or 30,
-            "p16": int(request.hours_per_month) if has_hours and request.hours_per_month is not None else None,
+            "p15": usage.days_per_month,
+            "p16": usage.hours_per_month,
             "p17": "standard",
             "p18": request.warehouse_type.upper(),
             "p19": request.warehouse_size, "p20": 1,
@@ -140,9 +138,7 @@ def calculate_dbsql_serverless_cost(
     request: DBSQLServerlessCalculationRequest,
     db: Session = Depends(get_db),
 ):
-    has_run_params, has_hours = _validate_usage_params(request, require_runs=False)
-    if has_run_params and request.days_per_month is None:
-        request.days_per_month = 30
+    usage = normalize_usage_params(request, mode="daily_or_monthly")
 
     error = validate_cloud(request.cloud)
     if error:
@@ -159,8 +155,8 @@ def calculate_dbsql_serverless_cost(
             "p1": "DBSQL", "p2": request.cloud.upper(), "p3": request.region, "p4": request.tier.upper(),
             "p5": True, "p6": False, "p7": None, "p8": None, "p9": None, "p10": 0,
             "p11": "on_demand", "p12": "on_demand",
-            "p13": 0, "p14": 0, "p15": request.days_per_month or 30,
-            "p16": int(request.hours_per_month) if has_hours and request.hours_per_month is not None else None,
+            "p13": 0, "p14": 0, "p15": usage.days_per_month,
+            "p16": usage.hours_per_month,
             "p17": "standard", "p18": "SERVERLESS", "p19": request.warehouse_size, "p20": 1,
             "p21": "on_demand", "p22": request.warehouse_size,
             "p23": 0, "p24": None, "p25": None, "p26": None,

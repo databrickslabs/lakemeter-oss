@@ -19,7 +19,7 @@ from app.routes.calculate.helpers import build_sku_breakdown_serverless, build_s
 from app.routes.calculate.discount import (
     apply_discount_to_sku_breakdown, calculate_total_discount_summary, enhance_total_cost_with_discount,
 )
-from app.routes.calculate.jobs import _validate_usage_params
+from app.routes.calculate.jobs import normalize_usage_params
 from app.routes.calculate.schemas import LakeflowConnectCalculationRequest
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,8 @@ def calculate_lakeflow_connect_cost(
     request: LakeflowConnectCalculationRequest,
     db: Session = Depends(get_db),
 ):
+    usage = normalize_usage_params(request, mode="runs_or_monthly")
+
     error = validate_cloud(request.cloud)
     if error:
         raise HTTPException(status_code=400, detail=error["error"])
@@ -53,19 +55,15 @@ def calculate_lakeflow_connect_cost(
         tier_upper = request.tier.upper()
 
         # ── Pipeline (DLT Serverless) ─────────────────────────────────
-        has_run_params, has_hours = _validate_usage_params(request, require_runs=False)
-        if has_run_params and request.days_per_month is None:
-            request.days_per_month = 30
-
         params = {
             "p1": "DLT", "p2": cloud_upper, "p3": request.region, "p4": tier_upper,
             "p5": True, "p6": False, "p7": None,
             "p8": None, "p9": None, "p10": 0,
             "p11": "on_demand", "p12": "on_demand",
-            "p13": request.runs_per_day or 0,
-            "p14": request.avg_runtime_minutes or 0,
-            "p15": request.days_per_month or 30,
-            "p16": int(request.hours_per_month) if has_hours and request.hours_per_month is not None else None,
+            "p13": usage.runs_per_day,
+            "p14": usage.avg_runtime_minutes,
+            "p15": usage.days_per_month,
+            "p16": usage.hours_per_month,
             "p17": "standard", "p18": (request.dlt_edition or "ADVANCED").upper(),
             "p19": None, "p20": 1,
             "p21": "on_demand", "p22": None,
