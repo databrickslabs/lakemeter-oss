@@ -14,7 +14,7 @@ from app.routes.calculate.helpers import build_sku_breakdown_serverless
 from app.routes.calculate.discount import (
     apply_discount_to_sku_breakdown, calculate_total_discount_summary, enhance_total_cost_with_discount,
 )
-from app.routes.calculate.jobs import _validate_usage_params
+from app.routes.calculate.jobs import normalize_usage_params
 from app.routes.calculate.schemas import VectorSearchCalculationRequest
 
 logger = logging.getLogger(__name__)
@@ -26,9 +26,7 @@ def calculate_vector_search_cost(
     request: VectorSearchCalculationRequest,
     db: Session = Depends(get_db),
 ):
-    has_run_params, has_hours = _validate_usage_params(request, require_runs=False)
-    if has_run_params and request.days_per_month is None:
-        request.days_per_month = 30
+    usage = normalize_usage_params(request, mode="daily_or_monthly")
 
     error = validate_cloud(request.cloud)
     if error:
@@ -47,8 +45,8 @@ def calculate_vector_search_cost(
             "p8": None, "p9": None, "p10": 0,
             "p11": "on_demand", "p12": "on_demand",
             "p13": 0, "p14": 0,
-            "p15": request.days_per_month or 30,
-            "p16": int(request.hours_per_month) if has_hours and request.hours_per_month is not None else None,
+            "p15": usage.days_per_month,
+            "p16": usage.hours_per_month,
             "p17": "standard", "p18": None, "p19": None, "p20": 1,
             "p21": "on_demand", "p22": request.mode,
             "p23": request.num_vectors_millions,
