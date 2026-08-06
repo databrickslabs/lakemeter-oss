@@ -243,6 +243,65 @@ interface WorkloadCostDisplayProps {
   className?: string
 }
 
+interface VMCalculationLineProps {
+  driverType: string
+  driverRate: number
+  workerType: string
+  workerRate: number
+  workerCount: number
+  hours: number
+  total: number
+  clusters?: number
+  status?: string
+}
+
+const VMCalculationLine: React.FC<VMCalculationLineProps> = React.memo(({
+  driverType,
+  driverRate,
+  workerType,
+  workerRate,
+  workerCount,
+  hours,
+  total,
+  clusters,
+  status,
+}) => (
+  <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+    <span className="text-teal-600 font-semibold">VM:</span>
+    {status ? (
+      <span className="font-medium text-amber-700 dark:text-amber-300">{status}</span>
+    ) : (
+      <>
+        <span>(</span>
+        <span className="font-medium text-[var(--text-primary)]">Driver</span>
+        <span>{driverType}</span>
+        <span className="text-[var(--text-muted)]">(${driverRate.toFixed(4)}/hr)</span>
+        <span>+</span>
+        <span className="font-medium text-[var(--text-primary)]">
+          {workerCount} worker{workerCount !== 1 ? 's' : ''}
+        </span>
+        <span>{workerType}</span>
+        <span className="text-[var(--text-muted)]">(${workerRate.toFixed(4)}/hr each)</span>
+        <span>)</span>
+        {clusters !== undefined && (
+          <>
+            <span>×</span>
+            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">
+              {clusters} cluster{clusters !== 1 ? 's' : ''}
+            </span>
+          </>
+        )}
+        <span>×</span>
+        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">
+          {hours}h
+        </span>
+        <span>=</span>
+        <span className="text-teal-600 font-semibold">{formatCurrency(total)}</span>
+      </>
+    )}
+  </div>
+))
+
 const WorkloadCostDisplay: React.FC<WorkloadCostDisplayProps> = React.memo(({ 
   costs, 
   size = 'md', 
@@ -544,44 +603,48 @@ export default function Calculator() {
     // Collect all unique (instanceType, pricingTier) combinations from line items
     const fetchConfigs = new Set<string>()
     lineItems.forEach(item => {
+      const effectiveItem = pendingFormEdits[item.line_item_id]
+        ? { ...item, ...pendingFormEdits[item.line_item_id] }
+        : item
+
       // Skip serverless workloads (no VM costs)
-      if (item.serverless_enabled) return
+      if (effectiveItem.serverless_enabled) return
       
       // Handle DBSQL Classic/Pro warehouses - get instance types from warehouse config
-      if (item.workload_type === 'DBSQL' && (item.dbsql_warehouse_type || '').toUpperCase() !== 'SERVERLESS') {
+      if (effectiveItem.workload_type === 'DBSQL' && (effectiveItem.dbsql_warehouse_type || '').toUpperCase() !== 'SERVERLESS') {
         const warehouseConfig = getBundleDBSQLWarehouseConfig(
           pricingBundle,
           formData.cloud,
-          (item.dbsql_warehouse_type || 'PRO').toUpperCase(),
-          item.dbsql_warehouse_size || 'Small'
+          (effectiveItem.dbsql_warehouse_type || 'PRO').toUpperCase(),
+          effectiveItem.dbsql_warehouse_size || 'Small'
         )
         
         if (warehouseConfig) {
           // Fetch driver instance type VM cost
-          const driverTier = item.dbsql_driver_pricing_tier || item.driver_pricing_tier || 'on_demand'
-          const driverPayment = item.dbsql_driver_payment_option || item.driver_payment_option || 'NA'
+          const driverTier = effectiveItem.dbsql_driver_pricing_tier || effectiveItem.driver_pricing_tier || 'on_demand'
+          const driverPayment = effectiveItem.dbsql_driver_payment_option || effectiveItem.driver_payment_option || 'NA'
           fetchConfigs.add(`${warehouseConfig.driver_instance_type}:${driverTier}:${driverPayment}`)
           
           // Fetch worker instance type VM cost
-          const workerTier = item.dbsql_worker_pricing_tier || item.worker_pricing_tier || 'on_demand'
-          const workerPayment = item.dbsql_worker_payment_option || item.worker_payment_option || 'NA'
+          const workerTier = effectiveItem.dbsql_worker_pricing_tier || effectiveItem.worker_pricing_tier || 'on_demand'
+          const workerPayment = effectiveItem.dbsql_worker_payment_option || effectiveItem.worker_payment_option || 'NA'
           fetchConfigs.add(`${warehouseConfig.worker_instance_type}:${workerTier}:${workerPayment}`)
         }
         return // Don't process driver_node_type/worker_node_type for DBSQL
       }
       
       // Driver pricing (for non-DBSQL workloads)
-      if (item.driver_node_type) {
-        const driverTier = item.driver_pricing_tier || 'on_demand'
-        const driverPayment = item.driver_payment_option || 'NA'
-        fetchConfigs.add(`${item.driver_node_type}:${driverTier}:${driverPayment}`)
+      if (effectiveItem.driver_node_type) {
+        const driverTier = effectiveItem.driver_pricing_tier || 'on_demand'
+        const driverPayment = effectiveItem.driver_payment_option || 'NA'
+        fetchConfigs.add(`${effectiveItem.driver_node_type}:${driverTier}:${driverPayment}`)
       }
       
       // Worker pricing (for non-DBSQL workloads)
-      if (item.worker_node_type) {
-        const workerTier = item.worker_pricing_tier || 'spot'
-        const workerPayment = item.worker_payment_option || 'NA'
-        fetchConfigs.add(`${item.worker_node_type}:${workerTier}:${workerPayment}`)
+      if (effectiveItem.worker_node_type) {
+        const workerTier = effectiveItem.worker_pricing_tier || 'spot'
+        const workerPayment = effectiveItem.worker_payment_option || 'NA'
+        fetchConfigs.add(`${effectiveItem.worker_node_type}:${workerTier}:${workerPayment}`)
       }
     })
     
@@ -601,7 +664,7 @@ export default function Calculator() {
         .catch(() => {})
         .finally(() => setIsLoadingVMCosts(false))
     }
-  }, [formData.cloud, formData.region, lineItems, lineItemsLoaded, fetchVMCostForInstance, pricingBundle])
+  }, [formData.cloud, formData.region, lineItems, pendingFormEdits, lineItemsLoaded, fetchVMCostForInstance, pricingBundle])
   
   // Use cached regions from store (pre-loaded for all clouds)
   // Filter to only show regions that have actual Databricks control planes (i.e., regions in pricing bundle)
@@ -2580,10 +2643,12 @@ export default function Calculator() {
                                 costs={costs} 
                                 size="sm"
                                 isLoading={(() => {
-                                  const needsVMCosts = !effectiveItem.serverless_enabled && 
-                                    ['JOBS', 'ALL_PURPOSE', 'DLT'].includes(wType) ||
+                                  const needsVMCosts = (
+                                    !effectiveItem.serverless_enabled &&
+                                    ['JOBS', 'ALL_PURPOSE', 'DLT'].includes(wType)
+                                  ) ||
                                     (wType === 'DBSQL' && (effectiveItem.dbsql_warehouse_type || '').toUpperCase() !== 'SERVERLESS')
-                                  return isLoadingVMCosts && needsVMCosts && costs.vmCost === 0
+                                  return isLoadingVMCosts && needsVMCosts
                                 })()}
                               />
                               
@@ -3087,6 +3152,42 @@ export default function Calculator() {
                                     const warehouseType = (effectiveItem.dbsql_warehouse_type || 'SERVERLESS').toUpperCase()
                                     const dbuPerWarehouse = costs.dbuPerHour ? costs.dbuPerHour / numClusters : 12
                                     const hasVMCost = costs.vmCost > 0
+                                    const dbsqlCloud = formData.cloud || 'aws'
+                                    const dbsqlRegion = formData.region || ''
+                                    const warehouseConfig = isPricingBundleLoaded
+                                      ? getBundleDBSQLWarehouseConfig(
+                                          pricingBundle,
+                                          dbsqlCloud,
+                                          warehouseType,
+                                          warehouseSize,
+                                        )
+                                      : null
+                                    const driverPricingTier = effectiveItem.dbsql_driver_pricing_tier || effectiveItem.driver_pricing_tier || 'on_demand'
+                                    const driverPaymentOption = effectiveItem.dbsql_driver_payment_option || effectiveItem.driver_payment_option || 'NA'
+                                    const workerPricingTier = effectiveItem.dbsql_worker_pricing_tier || effectiveItem.worker_pricing_tier || 'spot'
+                                    const workerPaymentOption = effectiveItem.dbsql_worker_payment_option || effectiveItem.worker_payment_option || 'NA'
+                                    const driverVMRate = warehouseConfig
+                                      ? getVMPrice(
+                                          dbsqlCloud,
+                                          dbsqlRegion,
+                                          warehouseConfig.driver_instance_type,
+                                          driverPricingTier,
+                                          driverPaymentOption,
+                                        )
+                                      : 0
+                                    const workerVMRate = warehouseConfig
+                                      ? getVMPrice(
+                                          dbsqlCloud,
+                                          dbsqlRegion,
+                                          warehouseConfig.worker_instance_type,
+                                          workerPricingTier,
+                                          workerPaymentOption,
+                                        )
+                                      : 0
+                                    const hasMissingVMRate = Boolean(
+                                      warehouseConfig && (driverVMRate <= 0 || workerVMRate <= 0)
+                                    )
+                                    const isVMRatePending = hasMissingVMRate && isLoadingVMCosts
                                     
                                     return (
                                       <div className="space-y-1.5">
@@ -3127,30 +3228,47 @@ export default function Calculator() {
                                           <span className="text-blue-600 font-semibold">{formatCurrency(costs.dbuCost)}</span>
                                         </div>
                                         
-                                        {/* VM Cost Line (only for PRO/Classic) */}
-                                        {hasVMCost && (
-                                          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
-                                            <span className="text-teal-600 font-semibold">VM:</span>
-                                            <span>{warehouseType} warehouse VM costs</span>
-                                            <span>×</span>
-                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(isRunBased ? 1 : 0)}h</span>
-                                            <span>=</span>
-                                            <span className="text-teal-600 font-semibold">{formatCurrency(costs.vmCost)}</span>
-                                          </div>
+                                        {/* VM Cost Breakdown (only for PRO/Classic) */}
+                                        {warehouseType !== 'SERVERLESS' && (
+                                          <VMCalculationLine
+                                            driverType={warehouseConfig?.driver_instance_type || ''}
+                                            driverRate={driverVMRate}
+                                            workerType={warehouseConfig?.worker_instance_type || ''}
+                                            workerRate={workerVMRate}
+                                            workerCount={warehouseConfig?.worker_count || 0}
+                                            clusters={numClusters}
+                                            hours={Number(hoursPerMonth.toFixed(isRunBased ? 1 : 0))}
+                                            total={costs.vmCost}
+                                            status={
+                                              !warehouseConfig
+                                                ? 'Warehouse VM configuration unavailable'
+                                                : hasMissingVMRate
+                                                  ? (isVMRatePending ? 'Calculating VM rates…' : 'VM rate unavailable')
+                                                  : undefined
+                                            }
+                                          />
                                         )}
                                         
                                         {/* Total Line */}
                                         <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap pt-1 border-t border-dashed border-[var(--border-primary)]">
                                           <span className="font-semibold">Total:</span>
-                                          <span className="text-blue-600">{formatCurrency(costs.dbuCost)}</span>
-                                          {hasVMCost && (
+                                          {hasMissingVMRate ? (
+                                            <span className="font-medium text-amber-700 dark:text-amber-300">
+                                              {isVMRatePending ? 'Calculating VM rates…' : 'VM rate unavailable'}
+                                            </span>
+                                          ) : (
                                             <>
-                                              <span>+</span>
-                                              <span className="text-teal-600">{formatCurrency(costs.vmCost)}</span>
+                                              <span className="text-blue-600">{formatCurrency(costs.dbuCost)}</span>
+                                              {hasVMCost && (
+                                                <>
+                                                  <span>+</span>
+                                                  <span className="text-teal-600">{formatCurrency(costs.vmCost)}</span>
+                                                </>
+                                              )}
+                                              <span>=</span>
+                                              <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
                                             </>
                                           )}
-                                          <span>=</span>
-                                          <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
                                         </div>
                                       </div>
                                     )
@@ -3284,11 +3402,15 @@ export default function Calculator() {
                                         ) : (
                                           <>
                                             <span>(</span>
-                                            <span title={driverNode}>{driverDBURate.toFixed(2)}</span>
+                                            <span className="font-medium text-[var(--text-primary)]">Driver</span>
+                                            <span>{driverNode}</span>
+                                            <span className="text-[var(--text-muted)]">({driverDBURate.toFixed(2)} DBU/hr)</span>
                                             <span>+</span>
-                                            <span title={workerNode}>{workerDBURate.toFixed(2)}</span>
-                                            <span>×</span>
-                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{numWorkers}</span>
+                                            <span className="font-medium text-[var(--text-primary)]">
+                                              {numWorkers} worker{numWorkers !== 1 ? 's' : ''}
+                                            </span>
+                                            <span>{workerNode}</span>
+                                            <span className="text-[var(--text-muted)]">({workerDBURate.toFixed(2)} DBU/hr each)</span>
                                             <span>)</span>
                                             {photonEnabled && (
                                               <>
@@ -3306,26 +3428,26 @@ export default function Calculator() {
                                         <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
                                         <span>×</span>
                                         <span>${dbuPriceDisplay}/DBU</span>
+                                        {wType === 'DLT' && (
+                                          <span className="text-[var(--text-muted)]">
+                                            ({effectiveItem.dlt_edition || 'CORE'} edition)
+                                          </span>
+                                        )}
                                         <span>=</span>
                                         <span className="text-blue-600 font-semibold">{formatCurrency(costs.dbuCost)}</span>
                                       </div>
                                       
                                       {/* VM Cost Line (only for classic compute) */}
                                       {hasVMCost && (
-                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
-                                          <span className="text-teal-600 font-semibold">VM:</span>
-                                          <span>(</span>
-                                          <span title={driverNode}>${driverVMCost?.toFixed(4) || '0'}</span>
-                                          <span>+</span>
-                                          <span title={workerNode}>${workerVMCost?.toFixed(4) || '0'}</span>
-                                          <span>×</span>
-                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{numWorkers}</span>
-                                          <span>)</span>
-                                          <span>×</span>
-                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(isRunBased ? 1 : 0)}h</span>
-                                          <span>=</span>
-                                          <span className="text-teal-600 font-semibold">{formatCurrency(costs.vmCost)}</span>
-                                        </div>
+                                        <VMCalculationLine
+                                          driverType={driverNode}
+                                          driverRate={driverVMCost || 0}
+                                          workerType={workerNode}
+                                          workerRate={workerVMCost || 0}
+                                          workerCount={numWorkers}
+                                          hours={Number(hoursPerMonth.toFixed(isRunBased ? 1 : 0))}
+                                          total={costs.vmCost}
+                                        />
                                       )}
                                       
                                       {/* Total Line */}
@@ -3479,11 +3601,13 @@ export default function Calculator() {
                             costs={costs}
                             size={workloadsViewMode === 'cards' && !isExpanded ? 'md' : 'lg'}
                             isLoading={(() => {
-                              const wType = item.workload_type || ''
-                              const needsVMCosts = !item.serverless_enabled && 
-                                ['JOBS', 'ALL_PURPOSE', 'DLT'].includes(wType) ||
-                                (wType === 'DBSQL' && (item.dbsql_warehouse_type || '').toUpperCase() !== 'SERVERLESS')
-                              return isLoadingVMCosts && needsVMCosts && costs.vmCost === 0
+                              const wType = effectiveItem.workload_type || ''
+                              const needsVMCosts = (
+                                !effectiveItem.serverless_enabled &&
+                                ['JOBS', 'ALL_PURPOSE', 'DLT'].includes(wType)
+                              ) ||
+                                (wType === 'DBSQL' && (effectiveItem.dbsql_warehouse_type || '').toUpperCase() !== 'SERVERLESS')
+                              return isLoadingVMCosts && needsVMCosts
                             })()}
                             className="min-w-[100px]"
                           />
@@ -3716,6 +3840,126 @@ export default function Calculator() {
                                   )
                                 }
                                 
+                                if (wType === 'DBSQL') {
+                                  const warehouseSize = effectiveItem.dbsql_warehouse_size || 'Small'
+                                  const numClusters = effectiveItem.dbsql_num_clusters || 1
+                                  const warehouseType = (effectiveItem.dbsql_warehouse_type || 'SERVERLESS').toUpperCase()
+                                  const dbuPerWarehouse = costs.dbuPerHour ? costs.dbuPerHour / numClusters : 12
+                                  const dbsqlCloud = formData.cloud || 'aws'
+                                  const dbsqlRegion = formData.region || ''
+                                  const warehouseConfig = isPricingBundleLoaded
+                                    ? getBundleDBSQLWarehouseConfig(
+                                        pricingBundle,
+                                        dbsqlCloud,
+                                        warehouseType,
+                                        warehouseSize,
+                                      )
+                                    : null
+                                  const driverPricingTier = effectiveItem.dbsql_driver_pricing_tier || effectiveItem.driver_pricing_tier || 'on_demand'
+                                  const driverPaymentOption = effectiveItem.dbsql_driver_payment_option || effectiveItem.driver_payment_option || 'NA'
+                                  const workerPricingTier = effectiveItem.dbsql_worker_pricing_tier || effectiveItem.worker_pricing_tier || 'spot'
+                                  const workerPaymentOption = effectiveItem.dbsql_worker_payment_option || effectiveItem.worker_payment_option || 'NA'
+                                  const driverVMRate = warehouseConfig
+                                    ? getVMPrice(
+                                        dbsqlCloud,
+                                        dbsqlRegion,
+                                        warehouseConfig.driver_instance_type,
+                                        driverPricingTier,
+                                        driverPaymentOption,
+                                      )
+                                    : 0
+                                  const workerVMRate = warehouseConfig
+                                    ? getVMPrice(
+                                        dbsqlCloud,
+                                        dbsqlRegion,
+                                        warehouseConfig.worker_instance_type,
+                                        workerPricingTier,
+                                        workerPaymentOption,
+                                      )
+                                    : 0
+                                  const hasMissingVMRate = Boolean(
+                                    warehouseConfig && (driverVMRate <= 0 || workerVMRate <= 0)
+                                  )
+                                  const isVMRatePending = hasMissingVMRate && isLoadingVMCosts
+
+                                  return (
+                                    <div className="space-y-1.5">
+                                      {isRunBased && (
+                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                          <span className="font-semibold">Hours:</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{runsPerDay} runs/day</span>
+                                          <span>×</span>
+                                          <span>(<span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{avgRuntimeMin}min</span> ÷ 60)</span>
+                                          <span>×</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{daysPerMonth} days/mo</span>
+                                          <span>=</span>
+                                          <span className="font-semibold">{hoursPerMonth.toFixed(1)}h/mo</span>
+                                        </div>
+                                      )}
+                                      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                        <span className="text-blue-600 font-semibold">DBU:</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{warehouseSize}</span>
+                                        <span className="text-[var(--text-muted)]">({dbuPerWarehouse.toFixed(1)} DBU/hr)</span>
+                                        {numClusters > 1 && (
+                                          <>
+                                            <span>×</span>
+                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{numClusters} clusters</span>
+                                          </>
+                                        )}
+                                        <span>×</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">
+                                          {hoursPerMonth.toFixed(isRunBased ? 1 : 0)}h
+                                        </span>
+                                        <span>=</span>
+                                        <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                        <span>×</span>
+                                        <span>${dbuPriceDisplay}/DBU</span>
+                                        <span>=</span>
+                                        <span className="text-blue-600 font-semibold">{formatCurrency(costs.dbuCost)}</span>
+                                      </div>
+                                      {warehouseType !== 'SERVERLESS' && (
+                                        <VMCalculationLine
+                                          driverType={warehouseConfig?.driver_instance_type || ''}
+                                          driverRate={driverVMRate}
+                                          workerType={warehouseConfig?.worker_instance_type || ''}
+                                          workerRate={workerVMRate}
+                                          workerCount={warehouseConfig?.worker_count || 0}
+                                          clusters={numClusters}
+                                          hours={Number(hoursPerMonth.toFixed(isRunBased ? 1 : 0))}
+                                          total={costs.vmCost}
+                                          status={
+                                            !warehouseConfig
+                                              ? 'Warehouse VM configuration unavailable'
+                                              : hasMissingVMRate
+                                                ? (isVMRatePending ? 'Calculating VM rates…' : 'VM rate unavailable')
+                                                : undefined
+                                          }
+                                        />
+                                      )}
+                                      <div className="flex items-center gap-1 text-[10px] font-mono flex-wrap pt-1 border-t border-dashed border-[var(--border-primary)]">
+                                        <span className="text-[var(--text-secondary)] font-semibold">Total:</span>
+                                        {hasMissingVMRate ? (
+                                          <span className="font-medium text-amber-700 dark:text-amber-300">
+                                            {isVMRatePending ? 'Calculating VM rates…' : 'VM rate unavailable'}
+                                          </span>
+                                        ) : (
+                                          <>
+                                            <span className="text-blue-500">{formatCurrency(costs.dbuCost)}</span>
+                                            {costs.vmCost > 0 && (
+                                              <>
+                                                <span>+</span>
+                                                <span className="text-teal-500">{formatCurrency(costs.vmCost)}</span>
+                                              </>
+                                            )}
+                                            <span>=</span>
+                                            <span className="text-[var(--text-primary)] font-medium">{formatCurrency(costs.totalCost)}</span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                }
+
                                 if (wType === 'LAKEBASE') {
                                   const nodes = effectiveItem.lakebase_ha_nodes || 1
                                   const storageGB = effectiveItem.lakebase_storage_gb || 0
@@ -4007,11 +4251,15 @@ export default function Calculator() {
                                       ) : (
                                         <>
                                           <span>(</span>
-                                          <span title={driverNode}>{driverDBURate.toFixed(2)}</span>
+                                          <span className="font-medium text-[var(--text-primary)]">Driver</span>
+                                          <span>{driverNode}</span>
+                                          <span className="text-[var(--text-muted)]">({driverDBURate.toFixed(2)} DBU/hr)</span>
                                           <span>+</span>
-                                          <span title={workerNode}>{workerDBURate.toFixed(2)}</span>
-                                          <span>×</span>
-                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{numWorkers}</span>
+                                          <span className="font-medium text-[var(--text-primary)]">
+                                            {numWorkers} worker{numWorkers !== 1 ? 's' : ''}
+                                          </span>
+                                          <span>{workerNode}</span>
+                                          <span className="text-[var(--text-muted)]">({workerDBURate.toFixed(2)} DBU/hr each)</span>
                                           <span>)</span>
                                           {photonEnabled && (
                                             <>
@@ -4029,26 +4277,26 @@ export default function Calculator() {
                                       <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
                                       <span>×</span>
                                       <span>${dbuPriceDisplay}/DBU</span>
+                                      {wType === 'DLT' && (
+                                        <span className="text-[var(--text-muted)]">
+                                          ({effectiveItem.dlt_edition || 'CORE'} edition)
+                                        </span>
+                                      )}
                                       <span>=</span>
                                       <span className="text-blue-600 font-semibold">{formatCurrency(costs.dbuCost)}</span>
                                     </div>
                                     
                                     {/* VM Cost Line (only for classic compute) */}
                                     {hasVMCost && (
-                                      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
-                                        <span className="text-teal-600 font-semibold">VM:</span>
-                                        <span>(</span>
-                                        <span title={driverNode}>${driverVMCost?.toFixed(4) || '0'}</span>
-                                        <span>+</span>
-                                        <span title={workerNode}>${workerVMCost?.toFixed(4) || '0'}</span>
-                                        <span>×</span>
-                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{numWorkers}</span>
-                                        <span>)</span>
-                                        <span>×</span>
-                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(isRunBased ? 1 : 0)}h</span>
-                                        <span>=</span>
-                                        <span className="text-teal-600 font-semibold">{formatCurrency(costs.vmCost)}</span>
-                                      </div>
+                                      <VMCalculationLine
+                                        driverType={driverNode}
+                                        driverRate={driverVMCost || 0}
+                                        workerType={workerNode}
+                                        workerRate={workerVMCost || 0}
+                                        workerCount={numWorkers}
+                                        hours={Number(hoursPerMonth.toFixed(isRunBased ? 1 : 0))}
+                                        total={costs.vmCost}
+                                      />
                                     )}
                                     
                                     {/* Total Line */}
