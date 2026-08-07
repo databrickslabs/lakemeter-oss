@@ -1093,6 +1093,25 @@ export const calculateLakebase = async (request: LakebaseRequest): Promise<CostC
   return data
 }
 
+
+// Lakehouse Federation: query-volume driven Serverless SQL warehouse uptime.
+export interface LakehouseFederationRequest extends BaseCalculationRequest {
+  size?: string     // S, M, L, XL, custom
+  num_users?: number
+  queries_per_period?: number
+  query_period?: string  // day, week, month
+  avg_query_seconds?: number
+  warehouse_size?: string
+  auto_stop_minutes?: number
+  active_hours_per_day?: number
+  days_per_month?: number
+}
+
+export const calculateLakehouseFederation = async (request: LakehouseFederationRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/lakehouse-federation', request)
+  return data
+}
+
 // ============================================================================
 // Helper function to calculate cost based on workload type
 // ============================================================================
@@ -1153,6 +1172,9 @@ export const calculateWorkloadCost = async (
 
     case 'LAKEFLOW_CONNECT':
       return calculateLakeflowConnect(params as unknown as LakeflowConnectRequest)
+
+    case 'LAKEHOUSE_FEDERATION':
+      return calculateLakehouseFederation(params as unknown as LakehouseFederationRequest)
 
     default:
       throw new Error(`Unknown workload type: ${workloadType}`)

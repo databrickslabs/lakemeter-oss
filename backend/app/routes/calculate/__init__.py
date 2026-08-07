@@ -13,6 +13,7 @@ from app.routes.calculate.databricks_apps_calc import router as databricks_apps_
 from app.routes.calculate.ai_parse_calc import router as ai_parse_router
 from app.routes.calculate.shutterstock_calc import router as shutterstock_router
 from app.routes.calculate.lakeflow_connect_calc import router as lakeflow_connect_router
+from app.routes.calculate.lakehouse_federation_calc import router as lakehouse_federation_router
 
 router = APIRouter(tags=["Cost Calculation"])
 router.include_router(jobs_router)
@@ -27,3 +28,4 @@ router.include_router(databricks_apps_router)
 router.include_router(ai_parse_router)
 router.include_router(shutterstock_router)
 router.include_router(lakeflow_connect_router)
+router.include_router(lakehouse_federation_router)

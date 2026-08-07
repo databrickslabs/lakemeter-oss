@@ -153,6 +153,7 @@ table_stmts = [
         show_usage_hours BOOLEAN DEFAULT false,
         show_usage_runs BOOLEAN DEFAULT false,
         show_usage_tokens BOOLEAN DEFAULT false,
+        show_federation_config BOOLEAN DEFAULT false,
         sku_product_type_standard VARCHAR(100),
         sku_product_type_photon VARCHAR(100),
         sku_product_type_serverless VARCHAR(100),
@@ -248,6 +249,12 @@ table_stmts = [
         lakebase_backup_retention_days INT DEFAULT 7,
         lakebase_pitr_gb INT,
         lakebase_snapshot_gb INT,
+        federation_size VARCHAR(10),
+        federation_num_users INT,
+        federation_queries_per_period NUMERIC(14,2),
+        federation_query_period VARCHAR(10),
+        federation_avg_query_seconds NUMERIC(10,2),
+        federation_warehouse_size VARCHAR(20),
         runs_per_day INT,
         avg_runtime_minutes INT,
         days_per_month INT DEFAULT 30,
@@ -449,6 +456,12 @@ migration_columns = [
     ("lakebase_backup_retention_days", "INT DEFAULT 7"),
     ("lakebase_pitr_gb", "INT"),
     ("lakebase_snapshot_gb", "INT"),
+    ("federation_size", "VARCHAR(10)"),
+    ("federation_num_users", "INT"),
+    ("federation_queries_per_period", "NUMERIC(14,2)"),
+    ("federation_query_period", "VARCHAR(10)"),
+    ("federation_avg_query_seconds", "NUMERIC(10,2)"),
+    ("federation_warehouse_size", "VARCHAR(20)"),
     ("runs_per_day", "INT"),
     ("avg_runtime_minutes", "INT"),
     ("days_per_month", "INT DEFAULT 30"),
@@ -467,6 +480,12 @@ for col_name, col_type in migration_columns:
         cur.execute(f"ALTER TABLE {SCHEMA}.line_items ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
     except Exception:
         pass
+
+# New workload-type config flag (for existing installs)
+try:
+    cur.execute(f"ALTER TABLE {SCHEMA}.ref_workload_types ADD COLUMN IF NOT EXISTS show_federation_config BOOLEAN DEFAULT false")
+except Exception:
+    pass
 
 # discount_config on estimates
 cur.execute(f"ALTER TABLE {SCHEMA}.estimates ADD COLUMN IF NOT EXISTS discount_config JSONB")

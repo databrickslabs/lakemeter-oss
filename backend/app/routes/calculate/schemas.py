@@ -284,6 +284,37 @@ class LakeflowConnectCalculationRequest(BaseModel):
     discount_config: Optional[DiscountConfig] = Field(None)
 
 
+class LakehouseFederationCalculationRequest(BaseModel):
+    """Lakehouse Federation query cost.
+
+    Lakehouse Federation has NO separate SKU — federated queries bill entirely through the
+    Serverless SQL warehouse that runs them.
+
+    Usage is driven by QUERY VOLUME, not a raw hours figure. Serverless SQL bills on warehouse
+    uptime: auto-stop (default 10 min) keeps the warehouse warm between queries, so once queries
+    arrive more often than the auto-stop window the warehouse stays up continuously and uptime
+    saturates at active_hours_per_day x days_per_month. Below that threshold cost scales with
+    query count. Modeling it this way avoids the wildly inflated "always-on" estimate.
+
+    Remote source-system compute (e.g., Snowflake/BigQuery) and cloud egress are NOT included.
+    """
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    size: str = Field(default="M", description="T-shirt size: S, M, L, XL, or 'custom'")
+
+    # Custom overrides — used when size == 'custom', otherwise optional refinements.
+    num_users: Optional[int] = Field(None, ge=0, description="Number of users running federated queries")
+    queries_per_period: Optional[float] = Field(None, ge=0, description="Number of federated queries per period")
+    query_period: str = Field(default="day", description="Period for queries_per_period: day, week, or month")
+    avg_query_seconds: float = Field(default=10.0, gt=0, description="Average federated query duration in seconds")
+    warehouse_size: Optional[str] = Field(None, description="Serverless SQL warehouse size (e.g., 2X-Small)")
+    auto_stop_minutes: float = Field(default=10.0, gt=0, description="Warehouse auto-stop window (minutes)")
+    active_hours_per_day: float = Field(default=8.0, gt=0, le=24, description="Hours per day the workload is active")
+    days_per_month: int = Field(default=22, ge=1, le=31, description="Active days per month")
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+
 class LakebaseCalculationRequest(BaseModel):
     cloud: str = Field(...)
     region: str = Field(...)

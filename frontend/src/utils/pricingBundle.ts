@@ -453,7 +453,8 @@ const SKU_TO_WORKLOAD_MAP: Record<string, string> = {
 const ALL_WORKLOAD_TYPES = [
   'JOBS', 'ALL_PURPOSE', 'DLT', 'DBSQL',
   'VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE',
-  'DATABRICKS_APPS', 'AI_PARSE', 'SHUTTERSTOCK_IMAGEAI'
+  'DATABRICKS_APPS', 'AI_PARSE', 'SHUTTERSTOCK_IMAGEAI',
+  'LAKEHOUSE_FEDERATION'
 ]
 
 /**
@@ -548,6 +549,11 @@ export function getAvailableWorkloadTypesForRegion(
   if (availableWorkloads.has('MODEL_SERVING') || productTypes['SERVERLESS_REAL_TIME_INFERENCE']) {
     availableWorkloads.add('AI_PARSE')
     availableWorkloads.add('SHUTTERSTOCK_IMAGEAI')
+  }
+
+  // Lakehouse Federation: bills via Serverless SQL warehouse compute — available wherever DBSQL is
+  if (availableWorkloads.has('DBSQL') || productTypes['SERVERLESS_SQL_COMPUTE']) {
+    availableWorkloads.add('LAKEHOUSE_FEDERATION')
   }
 
   return Array.from(availableWorkloads).sort()

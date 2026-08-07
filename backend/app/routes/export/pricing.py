@@ -126,6 +126,8 @@ def _get_sku_type(item, cloud: str = 'aws') -> str:
         return 'SERVERLESS_REAL_TIME_INFERENCE'
     elif wt == 'LAKEFLOW_CONNECT':
         return 'JOBS_SERVERLESS_COMPUTE'
+    elif wt == 'LAKEHOUSE_FEDERATION':
+        return 'SERVERLESS_SQL_COMPUTE'
     raise ValueError(f"Unsupported workload type: {item.workload_type!r}")
 
 

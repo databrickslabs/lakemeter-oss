@@ -7,6 +7,9 @@
 import type { LineItem, InstanceType, DBSQLSize, ModelServingGPUType } from '../types'
 import type { VectorSearchMode, PhotonMultiplier } from '../api/client'
 import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from './lakebasePricing'
+import {
+  warehouseDbuPerHour, resolveFederationConfig, federationWarehouseHours,
+} from './lakehouseFederationSizing'
 
 // Fallback DBU rates if fetched data not available ($/DBU)
 // These should match the actual Databricks pricing (PREMIUM tier defaults)
@@ -226,6 +229,11 @@ export function calculateWorkloadCost(
     case 'AI_PARSE':
     case 'SHUTTERSTOCK_IMAGEAI':
       productType = 'SERVERLESS_REAL_TIME_INFERENCE'
+      break
+
+    case 'LAKEHOUSE_FEDERATION':
+      // Federated queries bill via the Serverless SQL warehouse that runs them (no separate SKU)
+      productType = 'SERVERLESS_SQL_COMPUTE'
       break
 
     case 'LAKEFLOW_CONNECT':
@@ -598,6 +606,24 @@ export function calculateWorkloadCost(
     case 'SHUTTERSTOCK_IMAGEAI': {
       const ssImages = item.shutterstock_images || 0
       monthlyDBUs = ssImages * 0.857
+      break
+    }
+
+    case 'LAKEHOUSE_FEDERATION': {
+      // Query-volume driven Serverless SQL warehouse uptime (auto-stop aware).
+      const fCfg = resolveFederationConfig({
+        size: item.federation_size,
+        numUsers: item.federation_num_users,
+        queriesPerPeriod: item.federation_queries_per_period,
+        queryPeriod: item.federation_query_period,
+        warehouseSize: item.federation_warehouse_size,
+      })
+      const fUptime = federationWarehouseHours({
+        queriesPerDay: fCfg.queries_per_day,
+        avgQuerySeconds: item.federation_avg_query_seconds ?? 10,
+      })
+      dbuPerHour = warehouseDbuPerHour(fCfg.warehouse_size)
+      monthlyDBUs = dbuPerHour * fUptime.hours_per_month
       break
     }
 

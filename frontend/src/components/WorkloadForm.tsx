@@ -85,6 +85,7 @@ const PREMIUM_ONLY_WORKLOAD_TYPES = new Set([
   'DATABRICKS_APPS',
   'AI_PARSE',
   'SHUTTERSTOCK_IMAGEAI',
+  'LAKEHOUSE_FEDERATION',
 ])
 
 import {
@@ -92,6 +93,9 @@ import {
   LAKEBASE_MAX_AUTOSCALE_SPREAD_CU,
   capMaxCu,
 } from '../utils/lakebasePricing'
+import {
+  warehouseDbuPerHour, resolveFederationConfig, federationWarehouseHours,
+} from '../utils/lakehouseFederationSizing'
 
 const LAKEBASE_FIXED_CU_OPTIONS = [80, 96, 112]
 
@@ -497,6 +501,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         fmapi_context_length: lineItem.fmapi_context_length || 'long',
         fmapi_rate_type: lineItem.fmapi_rate_type || 'input_token',
         fmapi_quantity: lineItem.fmapi_quantity || 0,
+        federation_size: lineItem.federation_size || 'M',
+        federation_num_users: lineItem.federation_num_users ?? null,
+        federation_queries_per_period: lineItem.federation_queries_per_period ?? null,
+        federation_query_period: lineItem.federation_query_period || 'day',
+        federation_avg_query_seconds: lineItem.federation_avg_query_seconds ?? 10,
+        federation_warehouse_size: lineItem.federation_warehouse_size || null,
         runs_per_day: lineItem.runs_per_day || 1,
         avg_runtime_minutes: lineItem.avg_runtime_minutes || 30,
         days_per_month: lineItem.days_per_month || 22,
@@ -551,6 +561,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       fmapi_context_length: 'long',
       fmapi_rate_type: 'input_token',
       fmapi_quantity: 0,
+      federation_size: 'M',
+      federation_num_users: null,
+      federation_queries_per_period: null,
+      federation_query_period: 'day',
+      federation_avg_query_seconds: 10,
+      federation_warehouse_size: null,
       runs_per_day: 1,
       avg_runtime_minutes: 30,
       days_per_month: 22,
@@ -615,6 +631,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     fmapi_context_length: 'long',  // 'long' is more commonly available
     fmapi_rate_type: 'input_token',
     fmapi_quantity: 0,
+    federation_size: 'M',
+    federation_num_users: null,
+    federation_queries_per_period: null,
+    federation_query_period: 'day',
+    federation_avg_query_seconds: 10,
+    federation_warehouse_size: null,
     runs_per_day: 1,
     avg_runtime_minutes: 30,
     days_per_month: 22,
@@ -680,6 +702,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         fmapi_context_length: lineItem.fmapi_context_length || 'long',
         fmapi_rate_type: lineItem.fmapi_rate_type || 'input_token',
         fmapi_quantity: lineItem.fmapi_quantity || 0,
+        federation_size: lineItem.federation_size || 'M',
+        federation_num_users: lineItem.federation_num_users ?? null,
+        federation_queries_per_period: lineItem.federation_queries_per_period ?? null,
+        federation_query_period: lineItem.federation_query_period || 'day',
+        federation_avg_query_seconds: lineItem.federation_avg_query_seconds ?? 10,
+        federation_warehouse_size: lineItem.federation_warehouse_size || null,
         runs_per_day: lineItem.runs_per_day || 1,
         avg_runtime_minutes: lineItem.avg_runtime_minutes || 30,
         days_per_month: lineItem.days_per_month || 22,
@@ -874,6 +902,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       fmapi_context_length: form.fmapi_context_length,
       fmapi_rate_type: form.fmapi_rate_type,
       fmapi_quantity: form.fmapi_quantity,
+      federation_size: form.federation_size,
+      federation_num_users: form.federation_num_users,
+      federation_queries_per_period: form.federation_queries_per_period,
+      federation_query_period: form.federation_query_period,
+      federation_avg_query_seconds: form.federation_avg_query_seconds,
+      federation_warehouse_size: form.federation_warehouse_size,
       runs_per_day: form.runs_per_day,
       avg_runtime_minutes: form.avg_runtime_minutes,
       days_per_month: form.days_per_month,
@@ -1076,6 +1110,24 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.fmapi_quantity = null
       }
       
+      // Lakehouse Federation config (query-volume driven)
+      if (selectedWorkloadType?.show_federation_config) {
+        data.federation_size = form.federation_size || 'M'
+        const fedCustom = (form.federation_size || 'M') === 'custom'
+        data.federation_num_users = fedCustom ? form.federation_num_users : null
+        data.federation_queries_per_period = fedCustom ? form.federation_queries_per_period : null
+        data.federation_query_period = form.federation_query_period || 'day'
+        data.federation_avg_query_seconds = form.federation_avg_query_seconds ?? 10
+        data.federation_warehouse_size = fedCustom ? form.federation_warehouse_size : null
+      } else {
+        data.federation_size = null
+        data.federation_num_users = null
+        data.federation_queries_per_period = null
+        data.federation_query_period = null
+        data.federation_avg_query_seconds = null
+        data.federation_warehouse_size = null
+      }
+
       // Hours per month vs Run-based usage
       // For compute workloads, check if using direct hours
       const isComputeWorkload = selectedWorkloadType?.show_compute_config || selectedWorkloadType?.show_dlt_config || selectedWorkloadType?.show_dbsql_config
@@ -1100,7 +1152,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.runs_per_day = null
         data.avg_runtime_minutes = null
         data.days_per_month = null
-      } else if (form.workload_type === 'AI_PARSE' || form.workload_type === 'SHUTTERSTOCK_IMAGEAI') {
+      } else if (form.workload_type === 'AI_PARSE' || form.workload_type === 'SHUTTERSTOCK_IMAGEAI' || selectedWorkloadType?.show_federation_config) {
         // Quantity-based workloads - no hours, runs, or days needed
         data.hours_per_month = null
         data.runs_per_day = null
@@ -1823,6 +1875,108 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           </>
         )}
         
+        {/* Lakehouse Federation Config — query-volume driven, t-shirt sizing + custom */}
+        {selectedWorkloadType?.show_federation_config && (() => {
+          const isCustom = (form.federation_size || 'M') === 'custom'
+          const cfg = resolveFederationConfig({
+            size: form.federation_size,
+            numUsers: isCustom ? form.federation_num_users : null,
+            queriesPerPeriod: isCustom ? form.federation_queries_per_period : null,
+            queryPeriod: form.federation_query_period,
+            warehouseSize: isCustom ? form.federation_warehouse_size : null,
+          })
+          const uptime = federationWarehouseHours({
+            queriesPerDay: cfg.queries_per_day,
+            avgQuerySeconds: Number(form.federation_avg_query_seconds) || 10,
+          })
+          const est = warehouseDbuPerHour(cfg.warehouse_size) * uptime.hours_per_month * 0.70
+          return (
+            <>
+              <div className="md:col-span-2 rounded-md bg-[var(--surface-muted,#f6f6f7)] px-3 py-2 text-xs text-[var(--text-muted)]">
+                Federation has no separate SKU — cost is the Serverless SQL warehouse running the queries.
+                Billing follows warehouse <strong>uptime</strong> (auto-stop keeps it warm between queries), so cost
+                tracks query volume, not a fixed hours figure. Not included: the remote source's own compute and cloud egress.
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Size</label>
+                <select
+                  value={form.federation_size || 'M'}
+                  onChange={(e) => setForm(f => ({ ...f, federation_size: e.target.value }))}
+                  className="w-full text-sm"
+                >
+                  <option value="S">Small — ~10 users, ~20 queries/day</option>
+                  <option value="M">Medium — ~50 users, ~100 queries/day</option>
+                  <option value="L">Large — ~150 users, ~500 queries/day</option>
+                  <option value="XL">Extra Large — ~500 users, ~2,000 queries/day</option>
+                  <option value="custom">Custom…</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Avg query duration (sec)</label>
+                <input
+                  type="number" min={1} step={1}
+                  value={form.federation_avg_query_seconds ?? 10}
+                  onChange={(e) => setForm(f => ({ ...f, federation_avg_query_seconds: parseFloat(e.target.value) || 10 }))}
+                  className="w-full text-sm"
+                />
+              </div>
+
+              {isCustom && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Users</label>
+                    <input
+                      type="number" min={0} step={1}
+                      value={form.federation_num_users ?? cfg.num_users}
+                      onChange={(e) => setForm(f => ({ ...f, federation_num_users: parseInt(e.target.value) || 0 }))}
+                      className="w-full text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Queries</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number" min={0} step={1}
+                        value={form.federation_queries_per_period ?? Math.round(cfg.queries_per_day)}
+                        onChange={(e) => setForm(f => ({ ...f, federation_queries_per_period: parseFloat(e.target.value) || 0 }))}
+                        className="w-full text-sm"
+                      />
+                      <select
+                        value={form.federation_query_period || 'day'}
+                        onChange={(e) => setForm(f => ({ ...f, federation_query_period: e.target.value }))}
+                        className="text-sm"
+                      >
+                        <option value="day">per day</option>
+                        <option value="week">per week</option>
+                        <option value="month">per month</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Warehouse size</label>
+                    <select
+                      value={form.federation_warehouse_size || cfg.warehouse_size}
+                      onChange={(e) => setForm(f => ({ ...f, federation_warehouse_size: e.target.value }))}
+                      className="w-full text-sm"
+                    >
+                      {dbsqlSizes.map(size => (
+                        <option key={size.id} value={size.id}>{size.name} ({size.dbu_per_hour} DBU/hr)</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              <div className="md:col-span-2 text-xs text-[var(--text-muted)]">
+                {Math.round(cfg.queries_per_day).toLocaleString()} queries/day · {cfg.warehouse_size} ·{' '}
+                {uptime.hours_per_month.toFixed(1)} warehouse hrs/mo
+                {' '}(vs {uptime.execution_hours_per_month.toFixed(1)}h actual query time)
+                {' — '}est. ≈ <strong>${est.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</strong>
+              </div>
+            </>
+          )
+        })()}
+
         {/* Model Serving Config */}
         {form.workload_type === 'MODEL_SERVING' && (
           <>
@@ -2457,7 +2611,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
             )}
             
             {/* Days per month - hide for FMAPI, Vector Search, Model Serving, Lakebase, Databricks Apps, AI Parse, Shutterstock (they use hours or quantity directly) */}
-            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
+            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && !selectedWorkloadType?.show_federation_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
               <div>
                 <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Days/Month</label>
                 <input
