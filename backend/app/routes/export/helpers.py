@@ -41,6 +41,7 @@ def _get_workload_display_name(workload_type: str) -> str:
         'AI_PARSE': 'AI Parse (Document AI)',
         'SHUTTERSTOCK_IMAGEAI': 'Shutterstock ImageAI',
         'LAKEFLOW_CONNECT': 'Lakeflow Connect',
+        'LAKEHOUSE_FEDERATION': 'Lakehouse Federation',
     }
     return names.get(workload_type, workload_type)
 
@@ -76,8 +77,32 @@ def _get_workload_config_details(item) -> str:
         details.append(f"Images/mo: {images:,}")
     elif wt == 'LAKEFLOW_CONNECT':
         details.extend(_lakeflow_connect_details(item))
+    elif wt == 'LAKEHOUSE_FEDERATION':
+        details.extend(_federation_details(item))
 
     return ' | '.join(details) if details else '-'
+
+
+def _federation_details(item) -> list:
+    """Config summary for Lakehouse Federation (resolves the t-shirt tier)."""
+    from app.services.lakehouse_federation_sizing import (
+        resolve_federation_config, TIER_LABELS,
+    )
+
+    size = (getattr(item, 'federation_size', None) or 'M')
+    cfg = resolve_federation_config(
+        size,
+        num_users=getattr(item, 'federation_num_users', None),
+        queries_per_period=getattr(item, 'federation_queries_per_period', None),
+        query_period=getattr(item, 'federation_query_period', 'day') or 'day',
+        warehouse_size=getattr(item, 'federation_warehouse_size', None),
+    )
+    return [
+        f"Size: {TIER_LABELS.get(size.upper(), 'Custom')}",
+        f"Users: {cfg['num_users']:,}",
+        f"Queries: {round(cfg['queries_per_day']):,}/day",
+        f"Serverless SQL: {cfg['warehouse_size']}",
+    ]
 
 
 def _dbsql_details(item) -> list:

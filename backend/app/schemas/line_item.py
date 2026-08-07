@@ -113,6 +113,14 @@ class LineItemBase(BaseModel):
     lakebase_ha_nodes: Optional[int] = None
     lakebase_backup_retention_days: Optional[int] = None
 
+    # Lakehouse Federation Configuration (query-volume driven)
+    federation_size: Optional[str] = None  # S, M, L, XL, custom
+    federation_num_users: Optional[int] = None
+    federation_queries_per_period: Optional[float] = None
+    federation_query_period: Optional[str] = None  # day, week, month
+    federation_avg_query_seconds: Optional[float] = None
+    federation_warehouse_size: Optional[str] = None
+
     # Usage Configuration
     runs_per_day: Optional[int] = None
     avg_runtime_minutes: Optional[int] = None
@@ -224,6 +232,14 @@ class LineItemUpdate(BaseModel):
     lakebase_storage_gb: Optional[int] = None
     lakebase_ha_nodes: Optional[int] = None
     lakebase_backup_retention_days: Optional[int] = None
+
+    # Lakehouse Federation Configuration (query-volume driven)
+    federation_size: Optional[str] = None  # S, M, L, XL, custom
+    federation_num_users: Optional[int] = None
+    federation_queries_per_period: Optional[float] = None
+    federation_query_period: Optional[str] = None  # day, week, month
+    federation_avg_query_seconds: Optional[float] = None
+    federation_warehouse_size: Optional[str] = None
 
     # Usage Configuration
     runs_per_day: Optional[int] = None

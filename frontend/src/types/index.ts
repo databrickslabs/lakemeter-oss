@@ -131,6 +131,15 @@ export interface LineItem {
   fmapi_rate_type?: string | null  // input_token, output_token, cache_read, cache_write
   fmapi_quantity?: number | null   // quantity in millions (M)
   
+
+  // Lakehouse Federation Configuration (query-volume driven)
+  federation_size?: string | null  // S, M, L, XL, custom
+  federation_num_users?: number | null
+  federation_queries_per_period?: number | null
+  federation_query_period?: string | null  // day, week, month
+  federation_avg_query_seconds?: number | null
+  federation_warehouse_size?: string | null
+
   // Usage Configuration
   runs_per_day?: number | null
   avg_runtime_minutes?: number | null
@@ -178,6 +187,7 @@ export interface WorkloadType {
   show_usage_hours?: boolean
   show_usage_runs?: boolean
   show_usage_tokens?: boolean
+  show_federation_config?: boolean
   
   // SKU product types
   sku_product_type_standard?: string

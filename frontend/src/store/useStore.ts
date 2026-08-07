@@ -1535,6 +1535,19 @@ export const useStore = create<Store>((set, get) => ({
             images_per_month: lineItem.shutterstock_images || 100,
           })
           break
+
+        case 'LAKEHOUSE_FEDERATION':
+          result = await api.calculateLakehouseFederation({
+            ...baseParams,
+            size: lineItem.federation_size || 'M',
+            ...(lineItem.federation_num_users != null ? { num_users: lineItem.federation_num_users } : {}),
+            ...(lineItem.federation_queries_per_period != null
+              ? { queries_per_period: lineItem.federation_queries_per_period } : {}),
+            query_period: lineItem.federation_query_period || 'day',
+            avg_query_seconds: lineItem.federation_avg_query_seconds ?? 10,
+            ...(lineItem.federation_warehouse_size ? { warehouse_size: lineItem.federation_warehouse_size } : {}),
+          })
+          break
       }
       
       if (result) {

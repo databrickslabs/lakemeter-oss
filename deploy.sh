@@ -126,8 +126,14 @@ if [ "$WORKSPACE_DEPLOY" = true ]; then
         databricks workspace import-dir ${PROFILE_FLAG} "$PRICING_STAGING" "${WS_PATH}/backend/static/pricing" --overwrite
         rm -rf "$PRICING_STAGING"
         databricks workspace import-dir ${PROFILE_FLAG} "backend/static/assets" "${WS_PATH}/backend/static/assets" --overwrite
+        # --format AUTO is required: without it the CLI treats .html as a notebook
+        # source file and the --overwrite silently fails, leaving a stale index.html
+        # that still references the previous build's asset hashes.
         for f in backend/static/index.html backend/static/databricks-icon.svg; do
-            [ -f "$f" ] && databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --overwrite 2>/dev/null || true
+            if [ -f "$f" ]; then
+                databricks workspace import ${PROFILE_FLAG} --file "$f" "${WS_PATH}/$f" --format AUTO --overwrite \
+                    || echo -e "${RED}  Warning: failed to import $f — deployed app may serve a stale bundle${NC}"
+            fi
         done
     ) &
     PID_STATIC=$!
@@ -145,6 +151,48 @@ if [ "$WORKSPACE_DEPLOY" = true ]; then
     step_end "parallel sync"
 
     echo -e "${GREEN}OK Files synced to workspace${NC}"
+
+    # ── Schema migration (before deploying new code) ──
+    # Additive migrations must land BEFORE the new code runs, otherwise inserts reference
+    # columns the database does not have yet and the API 500s on every save. Idempotent, so
+    # it is a no-op when the schema is already current. Skip with SKIP_SCHEMA_MIGRATION=1.
+    if [ "${SKIP_SCHEMA_MIGRATION:-0}" != "1" ]; then
+        echo -e "\n${YELLOW}  Applying schema migrations...${NC}"
+        step_start
+        MIGRATE_ARGS=""
+        [ -n "$DATABRICKS_PROFILE" ] && MIGRATE_ARGS="--profile $DATABRICKS_PROFILE"
+        [ -n "${LAKEBASE_INSTANCE_NAME:-}" ] && MIGRATE_ARGS="$MIGRATE_ARGS --instance $LAKEBASE_INSTANCE_NAME"
+        [ -n "${LAKEMETER_DB_NAME:-}" ] && MIGRATE_ARGS="$MIGRATE_ARGS --db $LAKEMETER_DB_NAME"
+
+        # Pick an interpreter that actually has databricks-sdk + psycopg2. The repo venv is
+        # preferred; fall back to system python3, and to `uv run` which installs on demand.
+        MIGRATE_PY=""
+        for candidate in "./.venv/bin/python" "python3"; do
+            if $candidate -c "import databricks.sdk, psycopg2" >/dev/null 2>&1; then
+                MIGRATE_PY="$candidate"
+                break
+            fi
+        done
+        if [ -z "$MIGRATE_PY" ] && command -v uv &> /dev/null; then
+            MIGRATE_PY="uv run --with databricks-sdk --with psycopg2-binary python"
+        fi
+
+        if [ -z "$MIGRATE_PY" ]; then
+            echo -e "${YELLOW}  ⚠ Cannot run migrations: no interpreter with databricks-sdk + psycopg2.${NC}"
+            echo -e "${YELLOW}    Install them (pip install databricks-sdk psycopg2-binary) and re-run,${NC}"
+            echo -e "${YELLOW}    or run scripts/migrate_schema.py manually. Continuing with deploy —${NC}"
+            echo -e "${YELLOW}    saves may fail if the schema is behind the code.${NC}"
+        elif $MIGRATE_PY scripts/migrate_schema.py $MIGRATE_ARGS; then
+            step_end "schema migration"
+        else
+            echo -e "${RED}Error: Schema migration failed — aborting before deploy.${NC}"
+            echo -e "${YELLOW}  The running app is untouched. Fix the migration, or set${NC}"
+            echo -e "${YELLOW}  SKIP_SCHEMA_MIGRATION=1 to deploy code anyway (may break saves).${NC}"
+            exit 1
+        fi
+    else
+        echo -e "\n${YELLOW}  Skipping schema migration (SKIP_SCHEMA_MIGRATION=1)${NC}"
+    fi
 
     # ── Deploy from workspace ──
     echo -e "\n${YELLOW}  Deploying app '${APP_NAME}'...${NC}"

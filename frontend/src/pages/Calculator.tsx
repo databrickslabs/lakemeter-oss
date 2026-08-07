@@ -59,6 +59,10 @@ import {
   getAvailableRegionsFromBundle
 } from '../utils/pricingBundle'
 import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from '../utils/lakebasePricing'
+import {
+  warehouseDbuPerHour, resolveFederationConfig, federationWarehouseHours,
+  TIER_LABELS as FED_TIER_LABELS,
+} from '../utils/lakehouseFederationSizing'
 
 // Error Boundary for catching render errors
 interface ErrorBoundaryState {
@@ -910,6 +914,10 @@ export default function Calculator() {
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
         break
 
+      case 'LAKEHOUSE_FEDERATION':
+        productType = 'SERVERLESS_SQL_COMPUTE'
+        break
+
       default:
         productType = 'JOBS_COMPUTE'
     }
@@ -1395,6 +1403,29 @@ export default function Calculator() {
         break
       }
 
+      case 'LAKEHOUSE_FEDERATION': {
+        // Query-volume driven Serverless SQL warehouse uptime (auto-stop aware).
+        const fCfg = resolveFederationConfig({
+          size: effectiveItem.federation_size,
+          numUsers: effectiveItem.federation_num_users,
+          queriesPerPeriod: effectiveItem.federation_queries_per_period,
+          queryPeriod: effectiveItem.federation_query_period,
+          warehouseSize: effectiveItem.federation_warehouse_size,
+        })
+        const fUptime = federationWarehouseHours({
+          queriesPerDay: fCfg.queries_per_day,
+          avgQuerySeconds: effectiveItem.federation_avg_query_seconds ?? 10,
+        })
+        let fedDBUs = DBSQL_DBU_RATES[fCfg.warehouse_size] || warehouseDbuPerHour(fCfg.warehouse_size)
+        if (isPricingBundleLoaded) {
+          const bundleFedRate = getBundleDBSQLRate(pricingBundle, cloud, 'SERVERLESS', fCfg.warehouse_size)
+          if (bundleFedRate && bundleFedRate.dbu_per_hour > 0) fedDBUs = bundleFedRate.dbu_per_hour
+        }
+        dbuPerHour = fedDBUs
+        monthlyDBUs = dbuPerHour * fUptime.hours_per_month
+        break
+      }
+
       default:
         monthlyDBUs = 0
     }
@@ -1872,6 +1903,21 @@ export default function Calculator() {
           details.push({ label: 'Images', value: `${item.shutterstock_images.toLocaleString()}/mo` })
         }
         break
+      case 'LAKEHOUSE_FEDERATION': {
+        const fSize = (item.federation_size || 'M').toUpperCase()
+        const fCfg = resolveFederationConfig({
+          size: item.federation_size,
+          numUsers: item.federation_num_users,
+          queriesPerPeriod: item.federation_queries_per_period,
+          queryPeriod: item.federation_query_period,
+          warehouseSize: item.federation_warehouse_size,
+        })
+        details.push({ label: 'Size', value: FED_TIER_LABELS[fSize] || 'Custom' })
+        details.push({ label: 'Users', value: fCfg.num_users.toLocaleString() })
+        details.push({ label: 'Queries', value: `${Math.round(fCfg.queries_per_day).toLocaleString()}/day` })
+        details.push({ label: 'Warehouse', value: fCfg.warehouse_size })
+        break
+      }
     }
 
     return details

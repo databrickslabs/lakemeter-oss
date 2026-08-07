@@ -97,6 +97,14 @@ class LineItem(Base):
     lakebase_ha_nodes = Column(Integer)
     lakebase_backup_retention_days = Column(Integer)
 
+    # Lakehouse Federation Configuration (query-volume driven Serverless SQL warehouse)
+    federation_size = Column(String(10))  # S, M, L, XL, custom
+    federation_num_users = Column(Integer)
+    federation_queries_per_period = Column(Numeric(14, 2))
+    federation_query_period = Column(String(10))  # day, week, month
+    federation_avg_query_seconds = Column(Numeric(10, 2))
+    federation_warehouse_size = Column(String(20))
+
     # Usage Configuration
     runs_per_day = Column(Integer)
     avg_runtime_minutes = Column(Integer)
