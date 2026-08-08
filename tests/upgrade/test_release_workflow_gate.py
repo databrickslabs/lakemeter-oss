@@ -30,6 +30,14 @@ def test_candidate_runs_cross_version_integration_before_tagging():
     assert artifact_position < tag_position
 
 
+def test_candidate_uses_context_available_at_job_initialization():
+    assert "${{ runner.temp }}" not in CANDIDATE_WORKFLOW
+    assert (
+        "LAKEMETER_E2E_STATE: "
+        "${{ github.workspace }}/lakemeter-release-state.json"
+    ) in CANDIDATE_WORKFLOW
+
+
 def test_final_release_only_publishes_matching_tested_artifacts():
     assert "gh run download" in RELEASE_WORKFLOW
     assert "dist/candidate.json" in RELEASE_WORKFLOW

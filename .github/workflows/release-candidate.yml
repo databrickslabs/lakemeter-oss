@@ -44,7 +44,7 @@ jobs:
       LAKEMETER_E2E_PROJECT: lm-rc-${{ github.run_id }}
       LAKEMETER_E2E_SCOPE: lm-rc-${{ github.run_id }}
       LAKEMETER_E2E_DB: lakemeter_pricing
-      LAKEMETER_E2E_STATE: ${{ runner.temp }}/lakemeter-release-state.json
+      LAKEMETER_E2E_STATE: ${{ github.workspace }}/lakemeter-release-state.json
 
     steps:
       - name: Check out candidate
