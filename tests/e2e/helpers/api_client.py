@@ -5,6 +5,8 @@ import uuid
 from io import BytesIO
 from typing import Optional
 
+from tests.e2e.helpers.test_data import serverless_proxy_config
+
 AUTH_EMAIL = "e2e-test@databricks.com"
 AUTH_HEADERS = {"X-Forwarded-Email": AUTH_EMAIL}
 
@@ -90,6 +92,7 @@ class E2EClient:
         payload = {
             "cloud": cloud, "region": region, "tier": tier,
             "serverless_mode": mode,
+            **serverless_proxy_config(cloud),
         }
         if usage:
             payload.update(usage)
@@ -152,6 +155,7 @@ class E2EClient:
         payload = {
             "cloud": cloud, "region": region, "tier": tier,
             "serverless_mode": mode,
+            **serverless_proxy_config(cloud),
         }
         if usage:
             payload.update(usage)
@@ -185,6 +189,7 @@ class E2EClient:
         payload = {
             "cloud": cloud, "region": region, "tier": tier,
             "dlt_edition": edition, "serverless_mode": mode,
+            **serverless_proxy_config(cloud),
         }
         if usage:
             payload.update(usage)

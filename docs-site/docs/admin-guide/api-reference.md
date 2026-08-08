@@ -788,10 +788,48 @@ GET /api/v1/pricing/product-types?cloud=AWS&region=us-east-1&tier=PREMIUM
 
 ---
 
-## Health Check
+## Health and Version
 
 ```
 GET /health
 ```
 
-**Response:** `{"status": "healthy"}`
+Basic process health check:
+
+```json
+{
+  "status": "healthy",
+  "version": "0.1.2"
+}
+```
+
+The upgrade utility uses the system endpoints below to verify the deployed
+version and the Lakebase connection:
+
+```
+GET /api/v1/system/version
+GET /api/v1/system/health
+```
+
+Version response:
+
+```json
+{
+  "app_version": "0.1.2",
+  "upgrade_policy": {
+    "patch": "code_only",
+    "minor": "data_update",
+    "major": "schema_migration"
+  }
+}
+```
+
+System health response:
+
+```json
+{
+  "status": "healthy",
+  "app_version": "0.1.2",
+  "database": "connected"
+}
+```

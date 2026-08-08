@@ -8,7 +8,6 @@ import pytest
 from tests.docs_media.conftest import DOCS_SITE_DIR
 
 
-@pytest.mark.slow
 class TestDocsSiteBuild:
     """Docs site must build without broken link or image errors."""
 

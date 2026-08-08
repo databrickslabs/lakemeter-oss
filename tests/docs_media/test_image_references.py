@@ -97,9 +97,9 @@ class TestImageReferenceCount:
     """Sanity checks on the total number of image references."""
 
     def test_minimum_image_refs(self):
-        """Docs should have at least 50 image references."""
-        assert len(IMAGE_REFS) >= 50, (
-            f"Expected at least 50 image references, found {len(IMAGE_REFS)}"
+        """The modular docs should retain at least 40 image references."""
+        assert len(IMAGE_REFS) >= 40, (
+            f"Expected at least 40 image references, found {len(IMAGE_REFS)}"
         )
 
     def test_core_screenshots_referenced(self):

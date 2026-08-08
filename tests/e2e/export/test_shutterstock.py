@@ -98,7 +98,8 @@ class TestShutterstockExcelExport:
             calc_results.append(api_result)
 
         excel_buf = e2e_client.export_excel(eid)
-        rows = parse_estimate_excel(excel_buf)
+        parsed = parse_estimate_excel(excel_buf)
+        rows = parsed["rows"]
 
         assert len(rows) >= len(SHUTTERSTOCK_IMAGE_COUNTS), \
             f"Expected at least {len(SHUTTERSTOCK_IMAGE_COUNTS)} rows, got {len(rows)}"

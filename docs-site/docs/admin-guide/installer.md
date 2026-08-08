@@ -168,12 +168,12 @@ funcs      data   grant_app_access
 | **provision_lakebase** | Creates or reuses a direct Lakebase Autoscaling project, production branch, and primary endpoint |
 | **create_app** | Creates the Databricks App and configures secret references (runs in parallel with provisioning) |
 | **create_database** | Creates the database, schema, tables, reference data, and auth roles |
-| **create_functions** | Deploys 19 stored functions for cost calculations |
+| **create_functions** | Deploys 15 stored functions for cost calculations |
 | **load_pricing_data** | Bulk-loads pricing reference data from CSV files |
 | **create_sku_mapping** | Populates SKU discount mapping table |
 | **grant_app_access** | Grants the app's Service Principal access to Lakebase |
 | **deploy_app** | Uploads app source and deploys (this is the longest step — mostly Databricks Apps infrastructure time) |
-| **verify_installation** | Runs ~80 smoke tests covering all APIs, reference data, cost calculations, AI assistant, and Excel export |
+| **verify_installation** | Runs a comprehensive smoke-test suite covering APIs, reference data, cost calculations, AI assistant, and Excel export |
 
 ## Configuration
 

@@ -89,6 +89,12 @@ def test_api_splits_always_on_minimum_and_normal_scale_up_skus():
     assert compute_lines[1]["unit_price_before_discount"] == pytest.approx(normal_price)
 
 
+def test_api_reports_billable_hours_for_always_on_compute():
+    data = _calculate(hours_per_month=100)
+
+    assert data["usage"]["hours_per_month"] == 730
+
+
 def test_api_does_not_discount_minimum_when_scale_to_zero_is_on():
     data = _calculate(
         scale_to_zero_enabled=True,
@@ -100,6 +106,7 @@ def test_api_does_not_discount_minimum_when_scale_to_zero_is_on():
     max_dbu = 16 * 0.230 * 50
 
     calc = data["dbu_calculation"]
+    assert data["usage"]["hours_per_month"] == 200
     assert calc["baseline_discount_pct"] == 0
     assert calc["baseline_sku_price"] == pytest.approx(0.63)
     assert calc["scale_up_sku_price"] == pytest.approx(0.63)
