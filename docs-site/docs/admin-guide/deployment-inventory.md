@@ -16,7 +16,7 @@ This page lists everything the Lakemeter installer creates in your Databricks wo
 | Database | `lakemeter_pricing` | PostgreSQL database |
 | Schema | `lakemeter` | PostgreSQL schema |
 | Application tables | `users`, `estimates`, `line_items`, `templates`, `sharing`, `conversation_messages`, `decision_records`, `ref_cloud_tiers`, `ref_workload_types` | PostgreSQL tables |
-| Stored functions | 19 cost calculation functions | PostgreSQL functions |
+| Stored functions | 15 cost calculation functions | PostgreSQL functions |
 | Pricing sync tables | 10 tables with DBU rates, VM costs, model pricing | PostgreSQL tables |
 | Derived reference tables | `ref_fmapi_databricks_models`, `ref_fmapi_proprietary_models`, `ref_model_serving_gpu_types` | PostgreSQL tables |
 | SKU mapping | `ref_sku_discount_mapping` | PostgreSQL table |

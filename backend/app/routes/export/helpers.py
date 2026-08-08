@@ -72,7 +72,10 @@ def _get_workload_config_details(item) -> str:
     elif wt == 'AI_PARSE':
         details.extend(_ai_parse_details(item))
     elif wt == 'SHUTTERSTOCK_IMAGEAI':
-        images = getattr(item, 'shutterstock_images', None) or 0
+        images = getattr(item, 'shutterstock_images', None)
+        if images is None:
+            images = getattr(item, 'shutterstock_imageai_num_images', 0)
+        images = int(images or 0)
         details.append(f"Images/mo: {images:,}")
     elif wt == 'LAKEFLOW_CONNECT':
         details.extend(_lakeflow_connect_details(item))
@@ -188,7 +191,11 @@ def _dlt_details(item) -> list:
 
 def _ai_parse_details(item) -> list:
     details = []
-    mode = getattr(item, 'ai_parse_mode', None) or 'pages'
+    mode = getattr(item, 'ai_parse_mode', None)
+    if mode is None:
+        mode = (
+            getattr(item, 'ai_parse_calculation_method', None) or 'pages'
+        ).removesuffix('_based')
     if mode == 'dbu':
         details.append("Mode: Direct DBU")
     else:
@@ -200,7 +207,9 @@ def _ai_parse_details(item) -> list:
         }
         complexity = getattr(item, 'ai_parse_complexity', None) or 'medium'
         details.append(f"Complexity: {complexity_labels.get(complexity, complexity)}")
-        pages = getattr(item, 'ai_parse_pages_thousands', None) or 0
+        pages = getattr(item, 'ai_parse_pages_thousands', None)
+        if pages is None:
+            pages = float(getattr(item, 'ai_parse_num_pages', 0) or 0) / 1000
         details.append(f"Pages: {float(pages):.0f}K")
     return details
 

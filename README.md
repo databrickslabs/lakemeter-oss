@@ -17,6 +17,11 @@ Create, manage, and export transparent sizing estimates for supported Databricks
 
 ## Quick Start
 
+> **Hosting requirement:** Install Lakemeter in an AWS or Azure Databricks
+> workspace in a
+> [Lakebase-supported region](https://docs.databricks.com/en/oltp/projects/manage-projects.html).
+> The installed app can still create workload estimates for AWS, Azure, and GCP.
+
 ```bash
 git clone https://github.com/databrickslabs/lakemeter-oss.git
 cd lakemeter-oss
@@ -25,6 +30,10 @@ cd lakemeter-oss
 ```
 
 The installer provisions everything in ~15 minutes. You only need a [Databricks CLI](https://docs.databricks.com/aws/en/dev-tools/cli/profiles.html) configured with a workspace profile.
+
+Already running Lakemeter? Check out the desired release tag and follow the
+[Upgrade Guide](https://databrickslabs.github.io/lakemeter-oss/admin-guide/upgrading)
+instead of re-running the initial installation flow.
 
 ## Documentation
 

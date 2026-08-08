@@ -62,6 +62,16 @@ USAGE_HOURS_DIRECT = {"hours_per_month": 176}
 # Serverless modes
 SERVERLESS_MODES = ["standard", "performance"]
 
+
+def serverless_proxy_config(cloud: str, num_workers: int = 2) -> dict:
+    """Return representative compute sizing required by serverless estimates."""
+    cloud_key = cloud.upper()
+    return {
+        "driver_node_type": INSTANCE_TYPES[cloud_key]["driver"][0],
+        "worker_node_type": INSTANCE_TYPES[cloud_key]["worker"][0],
+        "num_workers": num_workers,
+    }
+
 # Pricing tiers
 PRICING_TIERS = ["on_demand", "1yr_reserved", "3yr_reserved"]
 

@@ -1,19 +1,13 @@
-"""Validate the screenshot audit report and media directory structure."""
-
-from pathlib import Path
+"""Validate the documentation screenshot inventory and media directories."""
 
 import pytest
 
 from tests.docs_media.conftest import (
-    DOCS_SITE_DIR,
     GIFS_DIR,
     GUIDES_IMG_DIR,
     STATIC_IMG_DIR,
     VIDEO_DIR,
-    REPO_ROOT,
 )
-
-AUDIT_REPORT = REPO_ROOT / "harness" / "audit" / "screenshot-audit-report.md"
 
 EXPECTED_CORE_SCREENSHOTS = [
     "home-page.png",
@@ -59,33 +53,6 @@ EXPECTED_GUIDE_SCREENSHOTS = [
     "getting-started-page.png",
     "workloads-overview-page.png",
 ]
-
-
-class TestAuditReportExists:
-    """The screenshot audit report must exist and be complete."""
-
-    def test_audit_report_exists(self):
-        assert AUDIT_REPORT.exists(), (
-            f"Audit report not found at {AUDIT_REPORT}"
-        )
-
-    def test_audit_report_not_empty(self):
-        content = AUDIT_REPORT.read_text(encoding="utf-8")
-        assert len(content) > 500, "Audit report is too short to be complete"
-
-    def test_audit_report_covers_all_core_screenshots(self):
-        content = AUDIT_REPORT.read_text(encoding="utf-8")
-        for screenshot in EXPECTED_CORE_SCREENSHOTS:
-            assert screenshot in content, (
-                f"Audit report does not mention core screenshot: {screenshot}"
-            )
-
-    def test_audit_report_has_summary_table(self):
-        content = AUDIT_REPORT.read_text(encoding="utf-8")
-        assert "| Category" in content, "Audit report missing summary table"
-        assert "Customer Name Violation" in content, (
-            "Audit report missing customer name violation tracking"
-        )
 
 
 class TestCoreScreenshotsExist:

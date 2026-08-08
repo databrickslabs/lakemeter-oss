@@ -1,10 +1,11 @@
 """E2E tests: Lakebase — API calculation vs Excel export verification.
 
 Tests every combination of:
-  - 6 cloud/region configs
+  - 4 supported AWS/Azure cloud/region configs
   - 7 CU sizes (0.5, 1, 2, 4, 8, 16, 32)
   - hourly usage (100 hours/month)
-  = ~42 test cases
+  - explicit GCP unsupported checks
+  = ~30 test cases
 
 Run: pytest tests/e2e/export/test_lakebase.py -v
 """
@@ -16,9 +17,17 @@ from tests.e2e.helpers.assertions import assert_costs_match, save_test_results
 from tests.e2e.helpers.excel_parser import parse_estimate_excel
 
 
+LAKEBASE_CONFIGS = [
+    config for config in ESTIMATE_CONFIGS if config["cloud"] != "GCP"
+]
+GCP_CONFIGS = [
+    config for config in ESTIMATE_CONFIGS if config["cloud"] == "GCP"
+]
+
+
 def _generate_params():
     params = []
-    for cfg in ESTIMATE_CONFIGS:
+    for cfg in LAKEBASE_CONFIGS:
         for cu_size in LAKEBASE_CU_SIZES:
             test_id = f"{config_id(cfg)}-{cu_size}CU"
             params.append(pytest.param(cfg, cu_size, id=test_id))
@@ -53,11 +62,33 @@ class TestLakebaseCalculation:
             "status": "PASS",
         })
 
+    @pytest.mark.parametrize(
+        "cfg",
+        GCP_CONFIGS,
+        ids=[config_id(config) for config in GCP_CONFIGS],
+    )
+    def test_gcp_returns_explicit_unavailable_error(self, http_client, cfg):
+        response = http_client.post("/api/v1/calculate/lakebase", json={
+            "cloud": cfg["cloud"],
+            "region": cfg["region"],
+            "tier": cfg["tier"],
+            "cu_size": 1,
+            "read_replicas": 0,
+            **USAGE_HOURLY,
+        })
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Lakebase is not available on GCP yet"
+
 
 class TestLakebaseExcelExport:
     """Create estimates with Lakebase workloads, export, verify."""
 
-    @pytest.mark.parametrize("cfg", ESTIMATE_CONFIGS, ids=[config_id(c) for c in ESTIMATE_CONFIGS])
+    @pytest.mark.parametrize(
+        "cfg",
+        LAKEBASE_CONFIGS,
+        ids=[config_id(config) for config in LAKEBASE_CONFIGS],
+    )
     def test_export_all_cu_sizes(self, e2e_client, cfg):
         cloud, region, tier = cfg["cloud"], cfg["region"], cfg["tier"]
 

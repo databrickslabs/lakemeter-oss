@@ -69,12 +69,18 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
                 'low_text': 12.5, 'low_images': 22.5, 'medium': 62.5, 'high': 87.5
             }
             complexity = (getattr(item, 'ai_parse_complexity', None) or 'medium').lower()
-            pages_k = float(getattr(item, 'ai_parse_pages_thousands', 0) or 0)
+            pages_k = getattr(item, 'ai_parse_pages_thousands', None)
+            if pages_k is None:
+                pages_k = float(getattr(item, 'ai_parse_num_pages', 0) or 0) / 1000
+            pages_k = float(pages_k or 0)
             total_dbus = pages_k * complexity_rates.get(complexity, 62.5)
             return 0, 0, 0, total_dbus, ''
         # Shutterstock ImageAI: quantity-based (images × 0.857 DBU)
         if wt == 'SHUTTERSTOCK_IMAGEAI':
-            images = int(getattr(item, 'shutterstock_images', 0) or 0)
+            images = getattr(item, 'shutterstock_images', None)
+            if images is None:
+                images = getattr(item, 'shutterstock_imageai_num_images', 0)
+            images = int(images or 0)
             total_dbus = images * 0.857
             return 0, 0, 0, total_dbus, ''
         hours = _calculate_hours_per_month(item)

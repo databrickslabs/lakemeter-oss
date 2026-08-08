@@ -12,7 +12,7 @@ Run: pytest tests/e2e/export/test_dlt_serverless.py -v --timeout=600
 import pytest
 from tests.e2e.helpers.test_data import (
     ESTIMATE_CONFIGS, DLT_EDITIONS, SERVERLESS_MODES,
-    USAGE_RUN_BASED, USAGE_HOURLY, config_id,
+    USAGE_RUN_BASED, USAGE_HOURLY, config_id, serverless_proxy_config,
 )
 from tests.e2e.helpers.assertions import assert_costs_match, save_test_results
 from tests.e2e.helpers.excel_parser import parse_estimate_excel
@@ -91,6 +91,7 @@ class TestDLTServerlessExcelExport:
                         "serverless_enabled": True,
                         "dlt_edition": edition,
                         "serverless_mode": mode,
+                        **serverless_proxy_config(cloud),
                     }
                     if usage_label == "run_based":
                         line_item_payload["runs_per_day"] = usage["runs_per_day"]

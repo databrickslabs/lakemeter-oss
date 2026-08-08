@@ -98,7 +98,8 @@ class TestDatabricksAppsExcelExport:
 
         # Export and verify
         excel_buf = e2e_client.export_excel(eid)
-        rows = parse_estimate_excel(excel_buf)
+        parsed = parse_estimate_excel(excel_buf)
+        rows = parsed["rows"]
 
         assert len(rows) >= len(DATABRICKS_APPS_SIZES), \
             f"Expected at least {len(DATABRICKS_APPS_SIZES)} rows, got {len(rows)}"

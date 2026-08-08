@@ -162,6 +162,11 @@ def calculate_lakebase_cost(
             dbu_per_cu_hour=dbu_per_cu_hour,
             nodes=num_nodes,
         )
+        effective_hours_per_month = (
+            autoscale_config.active_hours_per_month
+            if autoscale_config.scale_to_zero_enabled
+            else 730
+        )
         total_dbu_per_hour = compute_usage.equivalent_dbu_per_hour
         dbu_per_month = compute_usage.total_billable_dbu
 
@@ -283,7 +288,7 @@ def calculate_lakebase_cost(
                     "read_replicas": read_replicas, "total_nodes": num_nodes,
                 },
                 "usage": {
-                    "hours_per_month": hours_per_month,
+                    "hours_per_month": effective_hours_per_month,
                     "active_hours_per_month": autoscale_config.active_hours_per_month,
                     "scale_up_hours_per_month": autoscale_config.scale_up_hours_per_month,
                 },

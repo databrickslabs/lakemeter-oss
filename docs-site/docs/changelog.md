@@ -12,6 +12,50 @@ Lakemeter follows [Semantic Versioning](https://semver.org/):
 
 ---
 
+## v0.1.2
+
+*2026-08-08*
+
+Code-only patch release focused on calculation accuracy, estimate persistence,
+and safer release validation. No Lakebase schema change, data migration, or
+pricing refresh is required.
+
+### Bug fixes
+
+- [Issue #10](https://github.com/databrickslabs/lakemeter-oss/issues/10):
+  Fixed AI-generated estimate application so authenticated requests persist
+  supported workload configuration and roll back cleanly on failure
+- [Issue #11](https://github.com/databrickslabs/lakemeter-oss/issues/11):
+  Fixed regional VM pricing parity across the UI and Excel exports for Jobs,
+  All-Purpose, DLT/Lakeflow, and DBSQL workloads
+- [Issue #9](https://github.com/databrickslabs/lakemeter-oss/issues/9):
+  Fixed daily, monthly, and run-based usage normalization across calculation
+  APIs
+- [Issue #7](https://github.com/databrickslabs/lakemeter-oss/issues/7):
+  Fixed Databricks Apps estimates to use the correct serverless compute SKU
+  and reject unsupported workload types instead of silently falling back
+- Fixed AI Parse and Shutterstock ImageAI quantity fields so saved estimates,
+  cloned estimates, and Excel exports retain the entered values
+- Fixed Lakebase responses to report the effective billable hours used by the
+  calculation
+
+### Security and release reliability
+
+- Updated frontend and documentation dependencies to address known security
+  alerts
+- Added a tested release-candidate gate that validates installation, upgrade,
+  end-to-end behavior, and rollback before release assets can be published
+
+### Upgrade notes
+
+- Supports code-only upgrades from `v0.1.0` and `v0.1.1`
+- Leaves Lakebase online and does not modify existing estimates, database
+  schema, or pricing data
+- Use the [Upgrade Guide](./admin-guide/upgrading.md) to run `plan`, `doctor`,
+  `apply`, and rollback validation from a clean `v0.1.2` checkout
+
+---
+
 ## v0.1.1
 
 *2026-08-01*

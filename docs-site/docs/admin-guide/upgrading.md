@@ -19,7 +19,7 @@ desired release tag, or download a fresh release archive before upgrading.
 
 Lakemeter uses the following release policy:
 
-- **Patch release** (`0.1.0` to `0.1.1`): application code only. The upgrader
+- **Patch release** (`0.1.1` to `0.1.2`): application code only. The upgrader
   does not stop, back up, or modify Lakebase.
 - **Minor release** (`0.1.1` to `0.2.0`): data-only database updates. The
   upgrader creates a Lakebase backup branch before applying them.
@@ -29,6 +29,9 @@ Lakemeter uses the following release policy:
 
 Database release lines cannot be skipped. For example, upgrade through a
 required `0.2.x` data release before moving to `0.3.0`.
+
+The `v0.1.2` release supports direct code-only upgrades from both `v0.1.0` and
+`v0.1.1`.
 
 ## Prerequisites
 
@@ -116,6 +119,10 @@ The command asks for confirmation. For unattended automation:
 
 Use `--allow-dirty` only when developing the upgrade utility. It should not be
 used for production upgrades.
+
+Release tags and archives include pre-built frontend assets. Developers
+testing a source checkout can pass `--build-frontend` to rebuild those assets
+before staging; this option requires npm.
 
 ## What happens during an upgrade
 

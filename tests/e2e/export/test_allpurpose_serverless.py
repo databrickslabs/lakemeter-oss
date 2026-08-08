@@ -11,7 +11,7 @@ Run: pytest tests/e2e/export/test_allpurpose_serverless.py -v --timeout=600
 import pytest
 from tests.e2e.helpers.test_data import (
     ESTIMATE_CONFIGS, SERVERLESS_MODES,
-    USAGE_HOURLY, config_id,
+    USAGE_HOURLY, config_id, serverless_proxy_config,
 )
 from tests.e2e.helpers.assertions import assert_costs_match, save_test_results
 from tests.e2e.helpers.excel_parser import parse_estimate_excel
@@ -83,6 +83,7 @@ class TestAllPurposeServerlessExcelExport:
                     "serverless_enabled": True,
                     "serverless_mode": mode,
                     "hours_per_month": usage["hours_per_month"],
+                    **serverless_proxy_config(cloud),
                 })
 
         excel_bytes = e2e_client.export_excel(eid)

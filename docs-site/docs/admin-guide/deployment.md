@@ -8,7 +8,18 @@ Lakemeter is a **Databricks App** — a managed web application with built-in SS
 
 ## Prerequisites
 
-You need a **Databricks CLI** configured with a [workspace profile](https://docs.databricks.com/aws/en/dev-tools/cli/profiles.html). All other permissions (Lakebase, secret scopes, Apps, serverless compute) are granted to workspace users by default.
+You need:
+
+- An **AWS or Azure Databricks workspace** in a
+  [Lakebase-supported region](https://docs.databricks.com/en/oltp/projects/manage-projects.html)
+- A **Databricks CLI** configured with a
+  [workspace profile](https://docs.databricks.com/aws/en/dev-tools/cli/profiles.html)
+
+Lakemeter must be hosted on AWS or Azure because Lakebase Autoscaling is not
+available for this installer on GCP. Once installed, the app can still create
+workload estimates for AWS, Azure, and GCP. All other permissions (Lakebase,
+secret scopes, Apps, serverless compute) are granted to workspace users by
+default.
 
 :::tip No local CLI? Use the notebook terminal
 If you can't install the Databricks CLI locally, you can run the installer directly from your workspace. Create any notebook on a serverless cluster, click the **terminal button** (bottom-right corner), and use the pre-installed CLI — no profile needed since it's already authenticated.
@@ -54,10 +65,14 @@ Users access the app through their Databricks workspace — authentication is ha
 
 ## Updating
 
-Use the version-aware upgrade utility after updating the repository:
+Use the version-aware upgrade utility from a clean checkout of the release you
+want to install:
 
 ```bash
-git pull --ff-only
+git fetch --tags
+git checkout <release-tag>
+git status --short  # should return no output
+
 ./scripts/upgrade.sh plan --profile <your-cli-profile>
 ./scripts/upgrade.sh doctor --profile <your-cli-profile>
 ./scripts/upgrade.sh apply --profile <your-cli-profile>

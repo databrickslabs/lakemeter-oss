@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 
 def map_ai_parse_api_fields(data: dict, provided_fields: set[str]) -> dict:
-    """Map the public AI Parse fields onto existing database columns."""
+    """Map public frontend fields onto existing database columns."""
     if "ai_parse_mode" in provided_fields:
         mode = data.get("ai_parse_mode")
         if isinstance(mode, str):
@@ -23,6 +23,12 @@ def map_ai_parse_api_fields(data: dict, provided_fields: set[str]) -> dict:
             pages_thousands * 1000 if pages_thousands is not None else None
         )
     data.pop("ai_parse_pages_thousands", None)
+
+    if "shutterstock_images" in provided_fields:
+        data["shutterstock_imageai_num_images"] = data.get(
+            "shutterstock_images"
+        )
+    data.pop("shutterstock_images", None)
 
     return data
 
@@ -88,6 +94,7 @@ class LineItemBase(BaseModel):
 
     # Shutterstock ImageAI Configuration
     shutterstock_imageai_num_images: Optional[int] = None
+    shutterstock_images: Optional[int] = None
 
     # Databricks Support Configuration
     databricks_support_tier: Optional[str] = None
@@ -200,6 +207,7 @@ class LineItemUpdate(BaseModel):
 
     # Shutterstock ImageAI Configuration
     shutterstock_imageai_num_images: Optional[int] = None
+    shutterstock_images: Optional[int] = None
 
     # Databricks Support Configuration
     databricks_support_tier: Optional[str] = None
@@ -255,8 +263,8 @@ class LineItemResponse(LineItemBase):
 
     @model_validator(mode="before")
     @classmethod
-    def populate_ai_parse_api_fields(cls, value):
-        """Expose the frontend AI Parse fields from the legacy storage columns."""
+    def populate_frontend_api_fields(cls, value):
+        """Expose frontend fields from their legacy storage columns."""
         if isinstance(value, dict):
             data = dict(value)
         else:
@@ -274,6 +282,11 @@ class LineItemResponse(LineItemBase):
             num_pages = data.get("ai_parse_num_pages")
             if num_pages is not None:
                 data["ai_parse_pages_thousands"] = float(num_pages) / 1000
+
+        if data.get("shutterstock_images") is None:
+            data["shutterstock_images"] = data.get(
+                "shutterstock_imageai_num_images"
+            )
 
         return data
 
