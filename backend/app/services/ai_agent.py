@@ -44,6 +44,8 @@ When presenting workload types to users, ALWAYS use these names:
 - **LAKEBASE**: PostgreSQL-compatible database
 - **DATABRICKS_APPS**: Managed app hosting (small/medium/large sizes)
 - **AI_PARSE**: Document AI parsing (DBU-based or per-page pricing, complexity levels)
+- **AI_EXTRACT**: Structured field extraction from parsed documents (per 1,000 inputs; requires AI Parse output)
+- **AI_CLASSIFY**: Document classification on parsed documents (per 1,000 documents; requires AI Parse output)
 - **SHUTTERSTOCK_IMAGEAI**: AI image generation (per-image pricing)
 
 ## Key Questions to Ask Users
@@ -727,7 +729,7 @@ The user will review and confirm before it's added to the estimate.""",
                 # === Common Fields ===
                 "workload_type": {
                     "type": "string",
-                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "SHUTTERSTOCK_IMAGEAI"],
+                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "SHUTTERSTOCK_IMAGEAI"],
                     "description": "Type of Databricks workload. Note: Use DLT for SDP (Spark Declarative Pipelines) workloads - present as 'SDP' to users but use 'DLT' as the enum value."
                 },
                 "workload_name": {
@@ -2925,6 +2927,14 @@ Each workload needs to be confirmed individually. Review the configurations and 
             workload.setdefault("ai_parse_mode", "dbu")
             workload.setdefault("ai_parse_complexity", "medium")
             workload.setdefault("ai_parse_pages_thousands", 100)
+
+        if wtype == "AI_EXTRACT":
+            workload.setdefault("ai_extract_document_type", "invoice")
+            workload.setdefault("ai_extract_num_inputs", 1000)
+
+        if wtype == "AI_CLASSIFY":
+            workload.setdefault("ai_classify_document_type", "short_text")
+            workload.setdefault("ai_classify_num_docs", 1000)
 
         if wtype == "SHUTTERSTOCK_IMAGEAI":
             workload.setdefault("shutterstock_images", 1000)

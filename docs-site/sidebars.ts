@@ -38,6 +38,8 @@ const sidebars: SidebarsConfig = {
         'user-guide/lakebase',
         'user-guide/databricks-apps',
         'user-guide/ai-parse',
+        'user-guide/ai-extract',
+        'user-guide/ai-classify',
         'user-guide/shutterstock-imageai',
       ],
     },

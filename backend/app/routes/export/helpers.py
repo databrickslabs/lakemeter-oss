@@ -40,6 +40,8 @@ def _get_workload_display_name(workload_type: str) -> str:
         'DATABRICKS_APPS': 'Databricks Apps',
         'AI_PARSE': 'AI Parse (Document AI)',
         'SHUTTERSTOCK_IMAGEAI': 'Shutterstock ImageAI',
+        'AI_EXTRACT': 'AI Extract',
+        'AI_CLASSIFY': 'AI Classify',
         'LAKEFLOW_CONNECT': 'Lakeflow Connect',
     }
     return names.get(workload_type, workload_type)
@@ -77,6 +79,18 @@ def _get_workload_config_details(item) -> str:
             images = getattr(item, 'shutterstock_imageai_num_images', 0)
         images = int(images or 0)
         details.append(f"Images/mo: {images:,}")
+    elif wt == 'AI_EXTRACT':
+        doc_type = getattr(item, 'ai_extract_document_type', None) or 'invoice'
+        inputs = float(getattr(item, 'ai_extract_num_inputs', 0) or 0)
+        details.append(f"Type: {doc_type}")
+        details.append(f"Inputs/mo: {inputs:,.0f}")
+        details.append("Requires AI Parse output")
+    elif wt == 'AI_CLASSIFY':
+        doc_type = getattr(item, 'ai_classify_document_type', None) or 'short_text'
+        docs = float(getattr(item, 'ai_classify_num_docs', 0) or 0)
+        details.append(f"Type: {doc_type}")
+        details.append(f"Docs/mo: {docs:,.0f}")
+        details.append("Requires AI Parse output")
     elif wt == 'LAKEFLOW_CONNECT':
         details.extend(_lakeflow_connect_details(item))
 

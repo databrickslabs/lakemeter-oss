@@ -906,6 +906,11 @@ export default function Calculator() {
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
         break
 
+      case 'AI_EXTRACT':
+      case 'AI_CLASSIFY':
+        productType = 'SERVERLESS_REAL_TIME_INFERENCE'
+        break
+
       case 'SHUTTERSTOCK_IMAGEAI':
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
         break
@@ -1388,6 +1393,28 @@ export default function Calculator() {
         break
       }
 
+      case 'AI_EXTRACT': {
+        // inputs(K) x document-type rate
+        const extractRates: Record<string, number> = { invoice: 45, financial_report: 67.5 }
+        const docType = (effectiveItem.ai_extract_document_type || 'invoice').toLowerCase()
+        const rate = docType === 'custom'
+          ? (effectiveItem.ai_extract_dbus_per_thousand || 0)
+          : (extractRates[docType] || 45)
+        monthlyDBUs = ((effectiveItem.ai_extract_num_inputs || 0) / 1000) * rate
+        break
+      }
+
+      case 'AI_CLASSIFY': {
+        // docs(K) x document-type rate
+        const classifyRates: Record<string, number> = { short_text: 4.5, contract: 50 }
+        const docType = (effectiveItem.ai_classify_document_type || 'short_text').toLowerCase()
+        const rate = docType === 'custom'
+          ? (effectiveItem.ai_classify_dbus_per_thousand || 0)
+          : (classifyRates[docType] || 4.5)
+        monthlyDBUs = ((effectiveItem.ai_classify_num_docs || 0) / 1000) * rate
+        break
+      }
+
       case 'SHUTTERSTOCK_IMAGEAI': {
         // 0.857 DBU per image
         const imageCount = effectiveItem.shutterstock_images || 0
@@ -1734,7 +1761,7 @@ export default function Calculator() {
   const getUsageSummary = (item: LineItem) => {
     // Quantity-based workloads don't use run/hour usage
     const wt = item.workload_type || ''
-    if (['AI_PARSE', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
+    if (['AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
     if (item.hours_per_month) {
       return `${item.hours_per_month}h/month`
     }
@@ -1864,6 +1891,20 @@ export default function Calculator() {
         details.push({ label: 'Complexity', value: item.ai_parse_complexity || 'medium' })
         if (item.ai_parse_pages_thousands) {
           details.push({ label: 'Pages', value: `${item.ai_parse_pages_thousands}K/mo` })
+        }
+        break
+
+      case 'AI_EXTRACT':
+        details.push({ label: 'Type', value: item.ai_extract_document_type || 'invoice' })
+        if (item.ai_extract_num_inputs) {
+          details.push({ label: 'Inputs', value: `${item.ai_extract_num_inputs.toLocaleString()}/mo` })
+        }
+        break
+
+      case 'AI_CLASSIFY':
+        details.push({ label: 'Type', value: item.ai_classify_document_type || 'short_text' })
+        if (item.ai_classify_num_docs) {
+          details.push({ label: 'Docs', value: `${item.ai_classify_num_docs.toLocaleString()}/mo` })
         }
         break
 
@@ -3297,6 +3338,32 @@ export default function Calculator() {
                                     )
                                   }
 
+                                  // AI Extract / AI Classify formula
+                                  if (wType === 'AI_EXTRACT' || wType === 'AI_CLASSIFY') {
+                                    const isExtract = wType === 'AI_EXTRACT'
+                                    const presetRates: Record<string, number> = isExtract
+                                      ? { invoice: 45, financial_report: 67.5 }
+                                      : { short_text: 4.5, contract: 50 }
+                                    const docType = ((isExtract ? effectiveItem.ai_extract_document_type : effectiveItem.ai_classify_document_type) || (isExtract ? 'invoice' : 'short_text')).toLowerCase()
+                                    const customRate = isExtract ? effectiveItem.ai_extract_dbus_per_thousand : effectiveItem.ai_classify_dbus_per_thousand
+                                    const unitRate = docType === 'custom' ? (customRate || 0) : (presetRates[docType] || 0)
+                                    const quantity = (isExtract ? effectiveItem.ai_extract_num_inputs : effectiveItem.ai_classify_num_docs) || 0
+                                    const totalDbus = (quantity / 1000) * unitRate
+                                    return (
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                          <span className="text-blue-600 font-semibold">DBU:</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{quantity.toLocaleString()} {isExtract ? 'inputs' : 'docs'}</span>
+                                          <span>/1K ×</span>
+                                          <span>{unitRate} DBU</span>
+                                          <span className="text-[var(--text-muted)]">({docType})</span>
+                                          <span>=</span>
+                                          <span className="font-semibold">{totalDbus.toLocaleString(undefined, { maximumFractionDigits: 1 })} DBU/mo</span>
+                                        </div>
+                                      </div>
+                                    )
+                                  }
+
                                   // AI Parse formula
                                   if (wType === 'AI_PARSE') {
                                     const aiComplexity = (effectiveItem.ai_parse_complexity || 'medium').toLowerCase()
@@ -4143,6 +4210,32 @@ export default function Calculator() {
                                         <span>${dbuPriceDisplay}/DBU</span>
                                         <span>=</span>
                                         <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
+                                      </div>
+                                    </div>
+                                  )
+                                }
+
+                                // AI Extract / AI Classify formula
+                                if (wType === 'AI_EXTRACT' || wType === 'AI_CLASSIFY') {
+                                  const isExtract = wType === 'AI_EXTRACT'
+                                  const presetRates: Record<string, number> = isExtract
+                                    ? { invoice: 45, financial_report: 67.5 }
+                                    : { short_text: 4.5, contract: 50 }
+                                  const docType = ((isExtract ? effectiveItem.ai_extract_document_type : effectiveItem.ai_classify_document_type) || (isExtract ? 'invoice' : 'short_text')).toLowerCase()
+                                  const customRate = isExtract ? effectiveItem.ai_extract_dbus_per_thousand : effectiveItem.ai_classify_dbus_per_thousand
+                                  const unitRate = docType === 'custom' ? (customRate || 0) : (presetRates[docType] || 0)
+                                  const quantity = (isExtract ? effectiveItem.ai_extract_num_inputs : effectiveItem.ai_classify_num_docs) || 0
+                                  const totalDbus = (quantity / 1000) * unitRate
+                                  return (
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                        <span className="text-blue-600 font-semibold">DBU:</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{quantity.toLocaleString()} {isExtract ? 'inputs' : 'docs'}</span>
+                                        <span>/1K ×</span>
+                                        <span>{unitRate} DBU</span>
+                                        <span className="text-[var(--text-muted)]">({docType})</span>
+                                        <span>=</span>
+                                        <span className="font-semibold">{totalDbus.toLocaleString(undefined, { maximumFractionDigits: 1 })} DBU/mo</span>
                                       </div>
                                     </div>
                                   )

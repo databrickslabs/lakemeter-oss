@@ -70,6 +70,16 @@ class LineItem(Base):
     ai_parse_dbu_quantity = Column(Numeric(12, 2))
     ai_parse_num_pages = Column(Numeric(12, 2))  # pages
 
+    # AI Extract configuration (inputs are ai_parse_document outputs)
+    ai_extract_document_type = Column(String(30))  # invoice, financial_report, custom
+    ai_extract_num_inputs = Column(Numeric(14, 2))
+    ai_extract_dbus_per_thousand = Column(Numeric(10, 2))  # custom only
+
+    # AI Classify configuration (inputs are ai_parse_document outputs)
+    ai_classify_document_type = Column(String(30))  # short_text, contract, custom
+    ai_classify_num_docs = Column(Numeric(14, 2))
+    ai_classify_dbus_per_thousand = Column(Numeric(10, 2))  # custom only
+
     # Shutterstock ImageAI Configuration
     shutterstock_imageai_num_images = Column(Integer)  # number of images per month
 

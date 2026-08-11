@@ -11,6 +11,8 @@ from app.routes.calculate.vector_search_calc import router as vector_search_rout
 from app.routes.calculate.lakebase_calc import router as lakebase_router
 from app.routes.calculate.databricks_apps_calc import router as databricks_apps_router
 from app.routes.calculate.ai_parse_calc import router as ai_parse_router
+from app.routes.calculate.ai_extract_calc import router as ai_extract_router
+from app.routes.calculate.ai_classify_calc import router as ai_classify_router
 from app.routes.calculate.shutterstock_calc import router as shutterstock_router
 from app.routes.calculate.lakeflow_connect_calc import router as lakeflow_connect_router
 
@@ -25,5 +27,7 @@ router.include_router(vector_search_router)
 router.include_router(lakebase_router)
 router.include_router(databricks_apps_router)
 router.include_router(ai_parse_router)
+router.include_router(ai_extract_router)
+router.include_router(ai_classify_router)
 router.include_router(shutterstock_router)
 router.include_router(lakeflow_connect_router)

@@ -1043,6 +1043,30 @@ export const calculateAIParse = async (request: AIParseRequest): Promise<CostCal
   return data
 }
 
+// AI Extract
+export interface AIExtractRequest extends BaseCalculationRequest {
+  document_type?: string
+  num_inputs?: number
+  dbus_per_thousand?: number
+}
+
+export const calculateAIExtract = async (request: AIExtractRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/ai-extract', request)
+  return data
+}
+
+// AI Classify
+export interface AIClassifyRequest extends BaseCalculationRequest {
+  document_type?: string
+  num_docs?: number
+  dbus_per_thousand?: number
+}
+
+export const calculateAIClassify = async (request: AIClassifyRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/ai-classify', request)
+  return data
+}
+
 // Shutterstock ImageAI
 export interface ShutterstockImageAIRequest extends BaseCalculationRequest {
   images_per_month: number
@@ -1147,6 +1171,12 @@ export const calculateWorkloadCost = async (
 
     case 'AI_PARSE':
       return calculateAIParse(params as unknown as AIParseRequest)
+
+    case 'AI_EXTRACT':
+      return calculateAIExtract(params as unknown as AIExtractRequest)
+
+    case 'AI_CLASSIFY':
+      return calculateAIClassify(params as unknown as AIClassifyRequest)
 
     case 'SHUTTERSTOCK_IMAGEAI':
       return calculateShutterstockImageAI(params as unknown as ShutterstockImageAIRequest)

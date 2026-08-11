@@ -96,6 +96,26 @@ class LineItemBase(BaseModel):
     shutterstock_imageai_num_images: Optional[int] = None
     shutterstock_images: Optional[int] = None
 
+    # AI Extract Configuration
+    ai_extract_document_type: Optional[str] = None
+    ai_extract_num_inputs: Optional[float] = None
+    ai_extract_dbus_per_thousand: Optional[float] = None
+
+    # AI Classify Configuration
+    ai_classify_document_type: Optional[str] = None
+    ai_classify_num_docs: Optional[float] = None
+    ai_classify_dbus_per_thousand: Optional[float] = None
+
+    # AI Extract Configuration
+    ai_extract_document_type: Optional[str] = None
+    ai_extract_num_inputs: Optional[float] = None
+    ai_extract_dbus_per_thousand: Optional[float] = None
+
+    # AI Classify Configuration
+    ai_classify_document_type: Optional[str] = None
+    ai_classify_num_docs: Optional[float] = None
+    ai_classify_dbus_per_thousand: Optional[float] = None
+
     # Databricks Support Configuration
     databricks_support_tier: Optional[str] = None
     databricks_support_annual_commit: Optional[float] = None

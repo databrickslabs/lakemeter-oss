@@ -75,6 +75,26 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
             pages_k = float(pages_k or 0)
             total_dbus = pages_k * complexity_rates.get(complexity, 62.5)
             return 0, 0, 0, total_dbus, ''
+        # AI Extract / AI Classify: quantity-based (documents per 1,000 × preset rate)
+        if wt in ('AI_EXTRACT', 'AI_CLASSIFY'):
+            from app.routes.calculate.ai_extract_calc import EXTRACT_DOCUMENT_RATES
+            from app.routes.calculate.ai_classify_calc import CLASSIFY_DOCUMENT_RATES
+            if wt == 'AI_EXTRACT':
+                rates = EXTRACT_DOCUMENT_RATES
+                doc_type = (getattr(item, 'ai_extract_document_type', None) or 'invoice').lower()
+                quantity = float(getattr(item, 'ai_extract_num_inputs', 0) or 0)
+                custom_rate = getattr(item, 'ai_extract_dbus_per_thousand', None)
+            else:
+                rates = CLASSIFY_DOCUMENT_RATES
+                doc_type = (getattr(item, 'ai_classify_document_type', None) or 'short_text').lower()
+                quantity = float(getattr(item, 'ai_classify_num_docs', 0) or 0)
+                custom_rate = getattr(item, 'ai_classify_dbus_per_thousand', None)
+            if doc_type == 'custom' and custom_rate:
+                rate = float(custom_rate)
+            else:
+                rate = rates.get(doc_type, next(iter(rates.values())))
+            total_dbus = (quantity / 1000.0) * rate
+            return 0, 0, 0, total_dbus, ''
         # Shutterstock ImageAI: quantity-based (images × 0.857 DBU)
         if wt == 'SHUTTERSTOCK_IMAGEAI':
             images = getattr(item, 'shutterstock_images', None)

@@ -173,7 +173,7 @@ def get_sku_type(
 
     if wt == "DATABRICKS_APPS":
         return "ALL_PURPOSE_SERVERLESS_COMPUTE"
-    if wt in ("AI_PARSE", "SHUTTERSTOCK_IMAGEAI"):
+    if wt in ("AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "SHUTTERSTOCK_IMAGEAI"):
         return "SERVERLESS_REAL_TIME_INFERENCE"
     if wt == "LAKEFLOW_CONNECT":
         return "JOBS_SERVERLESS_COMPUTE"

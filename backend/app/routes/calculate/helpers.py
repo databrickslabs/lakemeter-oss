@@ -65,7 +65,7 @@ def get_sku_type(
     elif workload_upper == "DATABRICKS_APPS":
         return "ALL_PURPOSE_SERVERLESS_COMPUTE"
 
-    elif workload_upper in ("AI_PARSE", "SHUTTERSTOCK_IMAGEAI"):
+    elif workload_upper in ("AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "SHUTTERSTOCK_IMAGEAI"):
         return "SERVERLESS_REAL_TIME_INFERENCE"
 
     elif workload_upper == "LAKEFLOW_CONNECT":
