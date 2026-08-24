@@ -83,18 +83,16 @@ def _write_dbu_costs(sheet, row, r, row_data, is_fmapi_token, is_storage_row, fm
     dbu_rate = row_data['dbu_rate']
     discount_pct = row_data['discount_pct']
 
-    # Col 16: DBUs/Mo — FORMULA, except for quantity-based workloads
+    # Col 16: DBUs/Mo
     if is_storage_row:
         sheet.write(row, 16, 0, fmt['number'])
+    elif row_data.get('is_quantity_based', False):
+        # Quantity workloads have no Hours/Mo × DBU/Hr basis. Writing their
+        # computed DBUs as a value keeps downstream formulas recalculation-safe.
+        sheet.write(row, 16, total_dbus_month, fmt['number'])
     elif is_fmapi_token:
         formula = f'={_col(13)}{r}*{_col(14)}{r}'
         sheet.write_formula(row, 16, formula, fmt['number'], total_dbus_month)
-    elif not row_data.get('hours_per_month') or not row_data.get('dbu_per_hour'):
-        # Quantity-based workloads (AI Parse, AI Extract, AI Classify,
-        # Shutterstock ImageAI) derive DBUs from a quantity, so DBU/Hr and
-        # Hours are both zero. A '=Hours * DBU/Hr' formula would recalculate
-        # to zero and discard the correct cached total, so write the value.
-        sheet.write(row, 16, total_dbus_month, fmt['number'])
     else:
         formula = f'={_col(15)}{r}*{_col(11)}{r}'
         sheet.write_formula(row, 16, formula, fmt['number'], total_dbus_month)

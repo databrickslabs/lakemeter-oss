@@ -298,6 +298,12 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         'cache_read', 'cache_write', 'batch_inference')
     is_fmapi_provisioned = is_fmapi and item.fmapi_rate_type in (
         'provisioned_scaling', 'provisioned_entry')
+    is_quantity_based = wt in (
+        'AI_PARSE',
+        'AI_EXTRACT',
+        'AI_CLASSIFY',
+        'SHUTTERSTOCK_IMAGEAI',
+    )
 
     auto_notes = list(dbu_warnings)
     if not dbu_rate_found:
@@ -391,6 +397,7 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         'dbu_per_million': dbu_per_m,
         'dbu_per_hour': dbu_per_hour,
         'total_dbus_month': total_dbus,
+        'is_quantity_based': is_quantity_based,
         'dbu_rate': dbu_rate,
         'discount_pct': 0.0,
         'driver_vm_cost_per_hour': driver_vm_hr,
