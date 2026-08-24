@@ -1905,14 +1905,14 @@ export default function Calculator() {
       case 'AI_EXTRACT':
         details.push({ label: 'Type', value: item.ai_extract_document_type || 'invoice' })
         if (item.ai_extract_num_inputs) {
-          details.push({ label: 'Inputs', value: `${item.ai_extract_num_inputs.toLocaleString()}/mo` })
+          details.push({ label: 'Inputs', value: `${formatNumber(item.ai_extract_num_inputs / 1000)}K/mo` })
         }
         break
 
       case 'AI_CLASSIFY':
         details.push({ label: 'Type', value: item.ai_classify_document_type || 'short_text' })
         if (item.ai_classify_num_docs) {
-          details.push({ label: 'Docs', value: `${item.ai_classify_num_docs.toLocaleString()}/mo` })
+          details.push({ label: 'Docs', value: `${formatNumber(item.ai_classify_num_docs / 1000)}K/mo` })
         }
         break
 
@@ -3361,17 +3361,21 @@ export default function Calculator() {
                                     const customRate = isExtract ? effectiveItem.ai_extract_dbus_per_thousand : effectiveItem.ai_classify_dbus_per_thousand
                                     const unitRate = docType === 'custom' ? (customRate || 0) : (presetRates[docType] || 0)
                                     const quantity = (isExtract ? effectiveItem.ai_extract_num_inputs : effectiveItem.ai_classify_num_docs) || 0
-                                    const totalDbus = (quantity / 1000) * unitRate
+                                    const quantityThousands = quantity / 1000
                                     return (
                                       <div className="space-y-1">
                                         <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                           <span className="text-blue-600 font-semibold">DBU:</span>
-                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{quantity.toLocaleString()} {isExtract ? 'inputs' : 'docs'}</span>
-                                          <span>/1K ×</span>
-                                          <span>{unitRate} DBU</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{formatNumber(quantityThousands)}K {isExtract ? 'inputs' : 'documents'}</span>
+                                          <span>×</span>
+                                          <span>{unitRate} DBU/1K</span>
                                           <span className="text-[var(--text-muted)]">({docType})</span>
                                           <span>=</span>
-                                          <span className="font-semibold">{totalDbus.toLocaleString(undefined, { maximumFractionDigits: 1 })} DBU/mo</span>
+                                          <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                          <span>×</span>
+                                          <span>${dbuPriceDisplay}/DBU</span>
+                                          <span>=</span>
+                                          <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
                                         </div>
                                       </div>
                                     )
@@ -4243,17 +4247,21 @@ export default function Calculator() {
                                   const customRate = isExtract ? effectiveItem.ai_extract_dbus_per_thousand : effectiveItem.ai_classify_dbus_per_thousand
                                   const unitRate = docType === 'custom' ? (customRate || 0) : (presetRates[docType] || 0)
                                   const quantity = (isExtract ? effectiveItem.ai_extract_num_inputs : effectiveItem.ai_classify_num_docs) || 0
-                                  const totalDbus = (quantity / 1000) * unitRate
+                                  const quantityThousands = quantity / 1000
                                   return (
                                     <div className="space-y-1">
                                       <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                         <span className="text-blue-600 font-semibold">DBU:</span>
-                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{quantity.toLocaleString()} {isExtract ? 'inputs' : 'docs'}</span>
-                                        <span>/1K ×</span>
-                                        <span>{unitRate} DBU</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{formatNumber(quantityThousands)}K {isExtract ? 'inputs' : 'documents'}</span>
+                                        <span>×</span>
+                                        <span>{unitRate} DBU/1K</span>
                                         <span className="text-[var(--text-muted)]">({docType})</span>
                                         <span>=</span>
-                                        <span className="font-semibold">{totalDbus.toLocaleString(undefined, { maximumFractionDigits: 1 })} DBU/mo</span>
+                                        <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
+                                        <span>×</span>
+                                        <span>${dbuPriceDisplay}/DBU</span>
+                                        <span>=</span>
+                                        <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
                                       </div>
                                     </div>
                                   )

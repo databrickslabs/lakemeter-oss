@@ -26,13 +26,13 @@ Select the option that best represents the inputs in this workload entry. Lakeme
 
 If the monthly volume spans materially different input shapes, create separate workload entries so each quantity uses the appropriate conversion.
 
-### Document Inputs/Month
+### Document Inputs/Month (thousands)
 
-Enter the expected number of documents processed per month as a raw count:
+Enter the expected monthly input volume in thousands. For example, enter `100` for 100,000 inputs:
 
 ```text
 Document Inputs/Month
-  = Documents extracted per month
+  = Inputs extracted per month ÷ 1,000
 ```
 
 ## How Lakemeter calculates cost
@@ -41,7 +41,7 @@ Lakemeter resolves the DBU-per-thousand-inputs conversion for the selected docum
 
 ```text
 Monthly DBUs
-  = Document Inputs/Month ÷ 1,000
+  = Document Inputs/Month (thousands)
   × DBU per thousand inputs for the selected document type
 
 Monthly cost

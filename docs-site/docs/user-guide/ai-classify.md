@@ -24,13 +24,13 @@ Select the option that best represents the inputs in this workload entry. Lakeme
 
 If the monthly volume spans materially different input shapes, create separate workload entries so each quantity uses the appropriate conversion.
 
-### Documents/Month
+### Documents/Month (thousands)
 
-Enter the expected number of documents classified per month as a raw count:
+Enter the expected monthly input volume in thousands. For example, enter `50` for 50,000 documents:
 
 ```text
 Documents/Month
-  = Documents classified per month
+  = Documents classified per month ÷ 1,000
 ```
 
 ## How Lakemeter calculates cost
@@ -39,7 +39,7 @@ Lakemeter resolves the DBU-per-thousand-documents conversion for the selected do
 
 ```text
 Monthly DBUs
-  = Documents/Month ÷ 1,000
+  = Documents/Month (thousands)
   × DBU per thousand documents for the selected document type
 
 Monthly cost

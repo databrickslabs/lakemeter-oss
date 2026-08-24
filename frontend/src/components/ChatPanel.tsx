@@ -934,7 +934,7 @@ I can assist you with:
                               <span>Extract: {proposal.ai_extract_document_type.replace(/_/g, ' ')}</span>
                             )}
                             {proposal.ai_extract_num_inputs != null && (
-                              <span>{proposal.ai_extract_num_inputs.toLocaleString()} inputs/mo</span>
+                              <span>{(proposal.ai_extract_num_inputs / 1000).toLocaleString()}K inputs/mo</span>
                             )}
                             {proposal.ai_extract_dbus_per_thousand != null && (
                               <span>{proposal.ai_extract_dbus_per_thousand} DBU/1K inputs</span>
@@ -943,7 +943,7 @@ I can assist you with:
                               <span>Classify: {proposal.ai_classify_document_type.replace(/_/g, ' ')}</span>
                             )}
                             {proposal.ai_classify_num_docs != null && (
-                              <span>{proposal.ai_classify_num_docs.toLocaleString()} docs/mo</span>
+                              <span>{(proposal.ai_classify_num_docs / 1000).toLocaleString()}K docs/mo</span>
                             )}
                             {proposal.ai_classify_dbus_per_thousand != null && (
                               <span>{proposal.ai_classify_dbus_per_thousand} DBU/1K docs</span>
