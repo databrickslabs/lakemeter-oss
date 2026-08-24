@@ -26,6 +26,15 @@ FMAPI_DB_PROVISIONED_FALLBACK = {
 }
 
 
+def _get_json_backed_value(item, field, default=None):
+    """Read a public field from an attribute or workload_config."""
+    value = getattr(item, field, None)
+    if value is not None:
+        return value
+    workload_config = getattr(item, 'workload_config', None) or {}
+    return workload_config.get(field, default)
+
+
 def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
                      dbu_per_hour, cloud, auto_notes):
     """Calculate hours, tokens, DBUs for a line item.
@@ -74,6 +83,46 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
                 pages_k = float(getattr(item, 'ai_parse_num_pages', 0) or 0) / 1000
             pages_k = float(pages_k or 0)
             total_dbus = pages_k * complexity_rates.get(complexity, 62.5)
+            return 0, 0, 0, total_dbus, ''
+        # AI Extract / AI Classify: quantity-based (documents per 1,000 × preset rate)
+        if wt in ('AI_EXTRACT', 'AI_CLASSIFY'):
+            from app.routes.calculate.ai_extract_calc import EXTRACT_DOCUMENT_RATES
+            from app.routes.calculate.ai_classify_calc import CLASSIFY_DOCUMENT_RATES
+            if wt == 'AI_EXTRACT':
+                rates = EXTRACT_DOCUMENT_RATES
+                doc_type = (_get_json_backed_value(
+                    item, 'ai_extract_document_type', 'invoice'
+                ) or 'invoice').lower()
+                quantity = float(_get_json_backed_value(
+                    item, 'ai_extract_num_inputs', 0
+                ) or 0)
+                custom_rate = _get_json_backed_value(
+                    item, 'ai_extract_dbus_per_thousand'
+                )
+            else:
+                rates = CLASSIFY_DOCUMENT_RATES
+                doc_type = (_get_json_backed_value(
+                    item, 'ai_classify_document_type', 'short_text'
+                ) or 'short_text').lower()
+                quantity = float(_get_json_backed_value(
+                    item, 'ai_classify_num_docs', 0
+                ) or 0)
+                custom_rate = _get_json_backed_value(
+                    item, 'ai_classify_dbus_per_thousand'
+                )
+            if doc_type == 'custom':
+                if custom_rate is None or float(custom_rate) <= 0:
+                    raise ValueError(
+                        f"{wt} custom rate must be greater than 0"
+                    )
+                rate = float(custom_rate)
+            else:
+                if doc_type not in rates:
+                    raise ValueError(
+                        f"Unsupported {wt} document type: {doc_type}"
+                    )
+                rate = rates[doc_type]
+            total_dbus = (quantity / 1000.0) * rate
             return 0, 0, 0, total_dbus, ''
         # Shutterstock ImageAI: quantity-based (images × 0.857 DBU)
         if wt == 'SHUTTERSTOCK_IMAGEAI':

@@ -1,9 +1,15 @@
 {
-  "version": "0.1.2",
+  "version": "0.2.0",
   "minimum_version": "0.1.0",
-  "operation": "code_only",
+  "operation": "data_update",
   "pricing_refresh": false,
-  "data_updates": [],
+  "data_updates": [
+    {
+      "id": "020-ai-functions",
+      "path": "scripts/upgrades/data_updates/020_ai_functions.sql",
+      "sha256": "afc39bd1079d43eb3c4ba00f6282cc23fbf9fb985d97a5affb17e951a0eed9b2"
+    }
+  ],
   "migrations": [],
-  "runtime_sha256": "5448423a04eaf720f0c429ee7d24fd32ac4d29ba94bde9d74c287aadf626b53c"
+  "runtime_sha256": "9991e17bd67c6c8ef4e34836ab9368c3d82b38a232531fd1be2fb8b844e219ee"
 }

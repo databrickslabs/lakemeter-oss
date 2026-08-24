@@ -776,6 +776,12 @@ def _create_tables_inline(cur):
         ("LAKEBASE", "Lakebase", "Managed PostgreSQL database for operational workloads",
          False, False, False, False, False, False, False, False, True, False, False, True, True, False,
          None, None, "DATABASE_SERVERLESS_COMPUTE", 9),
+        ("AI_EXTRACT", "AI Extract", "Structured extraction from raw text or parsed document input",
+         False, False, False, False, False, False, False, False, False, False, False, False, False, False,
+         "SERVERLESS_REAL_TIME_INFERENCE", None, None, 13),
+        ("AI_CLASSIFY", "AI Classify", "Classification of raw text or parsed document input",
+         False, False, False, False, False, False, False, False, False, False, False, False, False, False,
+         "SERVERLESS_REAL_TIME_INFERENCE", None, None, 14),
     ]
     for wt in workload_seeds:
         cur.execute(

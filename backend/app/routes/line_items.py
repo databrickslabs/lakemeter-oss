@@ -1,17 +1,21 @@
 """Line Item API routes."""
+from copy import deepcopy
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import inspect as sa_inspect, or_
 from pydantic import BaseModel
 
 from app.database import get_db
 from app.models import LineItem, Estimate, User
 from app.models.sharing import Sharing
 from app.schemas import LineItemCreate, LineItemUpdate, LineItemResponse
-from app.schemas.line_item import map_ai_parse_api_fields
+from app.schemas.line_item import (
+    map_ai_parse_api_fields,
+    validate_ai_function_workload_config,
+)
 from app.auth import get_current_user
 
 # ---- Case normalization for enum-like string fields ----
@@ -35,6 +39,14 @@ def _normalize_case(data: dict) -> dict:
     return data
 
 
+def _validate_ai_config_or_422(workload_type: str, workload_config: dict) -> None:
+    """Translate JSON configuration validation failures into API errors."""
+    try:
+        validate_ai_function_workload_config(workload_type, workload_config)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 def _touch_estimate(estimate_id: UUID, db: Session):
     """Update the estimate's updated_at timestamp."""
     estimate = db.query(Estimate).filter(Estimate.estimate_id == estimate_id).first()
@@ -45,6 +57,25 @@ def _touch_estimate(estimate_id: UUID, db: Session):
 
 class CloneRequest(BaseModel):
     new_name: Optional[str] = None
+
+
+def _copy_line_item_for_clone(
+    original: LineItem,
+    display_order: int,
+    workload_name: str,
+) -> LineItem:
+    """Copy every mapped line-item column for an individual clone."""
+    copied_values = {
+        column.key: deepcopy(getattr(original, column.key))
+        for column in sa_inspect(LineItem).mapper.column_attrs
+        if column.key not in {"line_item_id", "created_at", "updated_at"}
+    }
+    copied_values.update(
+        display_order=display_order,
+        workload_name=workload_name,
+    )
+    return LineItem(**copied_values)
+
 
 router = APIRouter(prefix="/line-items", tags=["line-items"])
 
@@ -133,6 +164,10 @@ def create_line_item(
         _normalize_case(line_item.model_dump()),
         line_item.model_fields_set,
     )
+    _validate_ai_config_or_422(
+        item_data.get("workload_type"),
+        item_data.get("workload_config"),
+    )
     db_item = LineItem(**item_data)
     if db_item.display_order == 0:
         db_item.display_order = max_order
@@ -183,6 +218,11 @@ def update_line_item(
     update_data = map_ai_parse_api_fields(
         _normalize_case(line_item_update.model_dump(exclude_unset=True)),
         line_item_update.model_fields_set,
+        existing_workload_config=item.workload_config,
+    )
+    _validate_ai_config_or_422(
+        update_data.get("workload_type", item.workload_type),
+        update_data.get("workload_config", item.workload_config),
     )
     for field, value in update_data.items():
         setattr(item, field, value)
@@ -270,66 +310,7 @@ def clone_line_item(
         LineItem.estimate_id == original.estimate_id
     ).count()
     
-    # Create the cloned line item - only copy fields that exist in the model
-    cloned = LineItem(
-        estimate_id=original.estimate_id,
-        display_order=max_order,
-        workload_name=new_name,
-        workload_type=original.workload_type,
-        cloud=original.cloud,
-        # Serverless
-        serverless_enabled=original.serverless_enabled,
-        serverless_mode=original.serverless_mode,
-        # Classic Compute
-        photon_enabled=original.photon_enabled,
-        driver_node_type=original.driver_node_type,
-        worker_node_type=original.worker_node_type,
-        num_workers=original.num_workers,
-        # DLT
-        dlt_edition=original.dlt_edition,
-        # DBSQL
-        dbsql_warehouse_type=original.dbsql_warehouse_type,
-        dbsql_warehouse_size=original.dbsql_warehouse_size,
-        dbsql_num_clusters=original.dbsql_num_clusters,
-        dbsql_vm_pricing_tier=original.dbsql_vm_pricing_tier,
-        dbsql_vm_payment_option=original.dbsql_vm_payment_option,
-        # Vector Search
-        vector_search_mode=original.vector_search_mode,
-        vector_capacity_millions=original.vector_capacity_millions,
-        vector_search_storage_gb=original.vector_search_storage_gb,
-        # Model Serving
-        model_serving_gpu_type=original.model_serving_gpu_type,
-        # FMAPI
-        fmapi_provider=original.fmapi_provider,
-        fmapi_model=original.fmapi_model,
-        fmapi_endpoint_type=original.fmapi_endpoint_type,
-        fmapi_context_length=original.fmapi_context_length,
-        fmapi_rate_type=original.fmapi_rate_type,
-        fmapi_quantity=original.fmapi_quantity,
-        # AI Parse
-        ai_parse_calculation_method=original.ai_parse_calculation_method,
-        ai_parse_complexity=original.ai_parse_complexity,
-        ai_parse_dbu_quantity=original.ai_parse_dbu_quantity,
-        ai_parse_num_pages=original.ai_parse_num_pages,
-        # Lakebase
-        lakebase_cu=original.lakebase_cu,
-        lakebase_storage_gb=original.lakebase_storage_gb,
-        lakebase_ha_nodes=original.lakebase_ha_nodes,
-        lakebase_backup_retention_days=original.lakebase_backup_retention_days,
-        # Usage
-        runs_per_day=original.runs_per_day,
-        avg_runtime_minutes=original.avg_runtime_minutes,
-        days_per_month=original.days_per_month,
-        hours_per_month=original.hours_per_month,
-        # Pricing
-        driver_pricing_tier=original.driver_pricing_tier,
-        worker_pricing_tier=original.worker_pricing_tier,
-        driver_payment_option=original.driver_payment_option,
-        worker_payment_option=original.worker_payment_option,
-        # Additional
-        workload_config=original.workload_config,
-        notes=original.notes
-    )
+    cloned = _copy_line_item_for_clone(original, max_order, new_name)
     
     db.add(cloned)
     _touch_estimate(original.estimate_id, db)  # Update estimate timestamp

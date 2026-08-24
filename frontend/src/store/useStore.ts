@@ -63,7 +63,7 @@ function normalizeVMPaymentOption(
 // =============================================================================
 // LOCAL STORAGE CACHE UTILITIES
 // =============================================================================
-const CACHE_VERSION = 'v7'  // Bumped - added DATABRICKS_APPS, AI_PARSE, SHUTTERSTOCK_IMAGEAI; removed LAKEFLOW_CONNECT
+const CACHE_VERSION = 'v9'  // Bumped - updated AI Function presets and availability
 const CACHE_KEY = `lakemeter_reference_data_${CACHE_VERSION}`
 const CACHE_TTL = 4 * 60 * 60 * 1000 // 4 hours in milliseconds (reduced from 24h)
 
@@ -380,6 +380,8 @@ export const useStore = create<Store>((set, get) => ({
     { workload_type: 'LAKEBASE', display_name: 'Lakebase', description: 'Database workloads', sku_product_type_standard: 'DATABASE_SERVERLESS_COMPUTE', show_lakebase_config: true },
     { workload_type: 'DATABRICKS_APPS', display_name: 'Databricks Apps', description: 'Managed app hosting', sku_product_type_standard: 'ALL_PURPOSE_SERVERLESS_COMPUTE', show_usage_hours: true },
     { workload_type: 'AI_PARSE', display_name: 'AI Parse (Document AI)', description: 'Document parsing and extraction', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
+    { workload_type: 'AI_EXTRACT', display_name: 'AI Extract', description: 'Structured extraction from raw text or parsed document input', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
+    { workload_type: 'AI_CLASSIFY', display_name: 'AI Classify', description: 'Classification of raw text or parsed document input', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
     { workload_type: 'SHUTTERSTOCK_IMAGEAI', display_name: 'Shutterstock ImageAI', description: 'AI image generation', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
   ] as WorkloadType[],
   // Use static data as defaults - instant display, no waiting for API
@@ -1526,6 +1528,24 @@ export const useStore = create<Store>((set, get) => ({
             mode: 'pages',
             complexity: lineItem.ai_parse_complexity || 'medium',
             pages_thousands: lineItem.ai_parse_pages_thousands || 1,
+          })
+          break
+
+        case 'AI_EXTRACT':
+          result = await api.calculateAIExtract({
+            ...baseParams,
+            document_type: lineItem.ai_extract_document_type || 'invoice',
+            num_inputs: lineItem.ai_extract_num_inputs || 0,
+            dbus_per_thousand: lineItem.ai_extract_dbus_per_thousand || undefined,
+          })
+          break
+
+        case 'AI_CLASSIFY':
+          result = await api.calculateAIClassify({
+            ...baseParams,
+            document_type: lineItem.ai_classify_document_type || 'short_text',
+            num_docs: lineItem.ai_classify_num_docs || 0,
+            dbus_per_thousand: lineItem.ai_classify_dbus_per_thousand || undefined,
           })
           break
 

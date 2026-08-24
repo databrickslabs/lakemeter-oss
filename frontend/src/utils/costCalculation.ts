@@ -224,6 +224,8 @@ export function calculateWorkloadCost(
       break
 
     case 'AI_PARSE':
+    case 'AI_EXTRACT':
+    case 'AI_CLASSIFY':
     case 'SHUTTERSTOCK_IMAGEAI':
       productType = 'SERVERLESS_REAL_TIME_INFERENCE'
       break
@@ -592,6 +594,34 @@ export function calculateWorkloadCost(
       const aiComplexity = (item.ai_parse_complexity || 'medium').toLowerCase()
       const pagesK = item.ai_parse_pages_thousands || 0
       monthlyDBUs = pagesK * (complexityRates[aiComplexity] || 62.5)
+      break
+    }
+
+    case 'AI_EXTRACT': {
+      const extractRates: Record<string, number> = {
+        short_text: 45,
+        invoice: 45,
+        complex_reasoning: 562.5,
+        deep_nesting: 537.5,
+      }
+      const docType = (item.ai_extract_document_type || 'invoice').toLowerCase()
+      const rate = docType === 'custom'
+        ? (item.ai_extract_dbus_per_thousand || 0)
+        : (extractRates[docType] || 45)
+      monthlyDBUs = ((item.ai_extract_num_inputs || 0) / 1000) * rate
+      break
+    }
+
+    case 'AI_CLASSIFY': {
+      const classifyRates: Record<string, number> = {
+        short_text: 4.5,
+        rental_contract: 50,
+      }
+      const docType = (item.ai_classify_document_type || 'short_text').toLowerCase()
+      const rate = docType === 'custom'
+        ? (item.ai_classify_dbus_per_thousand || 0)
+        : (classifyRates[docType] || 4.5)
+      monthlyDBUs = ((item.ai_classify_num_docs || 0) / 1000) * rate
       break
     }
 

@@ -44,17 +44,24 @@ FALLBACK_DBU_PRICES = {
 }
 
 
-def _get_dbu_price(cloud: str, region: str, tier: str, sku: str) -> tuple:
+def _get_dbu_price(
+    cloud: str,
+    region: str,
+    tier: str,
+    sku: str,
+    allow_cross_region: bool = True,
+) -> tuple:
     """Look up $/DBU from pricing JSON. Returns (price, found) tuple."""
     key = f"{cloud}:{region}:{tier.upper()}"
     region_rates = DBU_RATES_BY_REGION.get(key, {})
     if sku in region_rates:
         return region_rates[sku], True
     # Try without region specificity - find any matching cloud:*:tier
-    for k, v in DBU_RATES_BY_REGION.items():
-        parts = k.split(':')
-        if len(parts) == 3 and parts[0] == cloud and parts[2] == tier.upper() and sku in v:
-            return v[sku], True
+    if allow_cross_region:
+        for k, v in DBU_RATES_BY_REGION.items():
+            parts = k.split(':')
+            if len(parts) == 3 and parts[0] == cloud and parts[2] == tier.upper() and sku in v:
+                return v[sku], True
     # Fallback — mark as not found so notes can warn
     fallback = FALLBACK_DBU_PRICES.get(sku, 0)
     return fallback, False
@@ -123,6 +130,8 @@ def _get_sku_type(item, cloud: str = 'aws') -> str:
     elif wt == 'AI_PARSE':
         return 'SERVERLESS_REAL_TIME_INFERENCE'
     elif wt == 'SHUTTERSTOCK_IMAGEAI':
+        return 'SERVERLESS_REAL_TIME_INFERENCE'
+    elif wt in ('AI_EXTRACT', 'AI_CLASSIFY'):
         return 'SERVERLESS_REAL_TIME_INFERENCE'
     elif wt == 'LAKEFLOW_CONNECT':
         return 'JOBS_SERVERLESS_COMPUTE'

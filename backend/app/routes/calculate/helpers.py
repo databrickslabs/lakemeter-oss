@@ -1,4 +1,6 @@
 """Shared helper functions for calculation endpoints."""
+from fastapi import HTTPException
+from sqlalchemy import text
 
 
 def get_sku_type(
@@ -65,13 +67,53 @@ def get_sku_type(
     elif workload_upper == "DATABRICKS_APPS":
         return "ALL_PURPOSE_SERVERLESS_COMPUTE"
 
-    elif workload_upper in ("AI_PARSE", "SHUTTERSTOCK_IMAGEAI"):
+    elif workload_upper in ("AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "SHUTTERSTOCK_IMAGEAI"):
         return "SERVERLESS_REAL_TIME_INFERENCE"
 
     elif workload_upper == "LAKEFLOW_CONNECT":
         return "JOBS_SERVERLESS_COMPUTE"
 
     raise ValueError(f"Unsupported workload type: {workload_type!r}")
+
+
+def get_required_regional_dbu_price(
+    db,
+    cloud: str,
+    region: str,
+    tier: str,
+    sku_type: str,
+) -> float:
+    """Return an exact regional DBU price or reject the calculation."""
+    price_row = db.execute(text("""
+        SELECT price_per_dbu FROM lakemeter.sync_pricing_dbu_rates
+        WHERE UPPER(cloud) = UPPER(:cloud) AND UPPER(region) = UPPER(:region)
+          AND UPPER(tier) = UPPER(:tier)
+          AND (UPPER(product_type) = UPPER(:pt) OR UPPER(sku_name) = UPPER(:pt))
+        LIMIT 1
+    """), {
+        "cloud": cloud,
+        "region": region,
+        "tier": tier,
+        "pt": sku_type,
+    }).fetchone()
+    if price_row is None or price_row.price_per_dbu is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{sku_type} pricing is not available for "
+                f"{cloud.upper()} {region} {tier.upper()}"
+            ),
+        )
+    price = float(price_row.price_per_dbu)
+    if price <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{sku_type} pricing is invalid for "
+                f"{cloud.upper()} {region} {tier.upper()}"
+            ),
+        )
+    return price
 
 
 def build_sku_breakdown_classic(

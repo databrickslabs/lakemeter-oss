@@ -1,13 +1,27 @@
 """Line Item schemas."""
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-def map_ai_parse_api_fields(data: dict, provided_fields: set[str]) -> dict:
-    """Map public frontend fields onto existing database columns."""
+AI_FUNCTION_CONFIG_FIELDS = (
+    "ai_extract_document_type",
+    "ai_extract_num_inputs",
+    "ai_extract_dbus_per_thousand",
+    "ai_classify_document_type",
+    "ai_classify_num_docs",
+    "ai_classify_dbus_per_thousand",
+)
+
+
+def map_ai_parse_api_fields(
+    data: dict,
+    provided_fields: set[str],
+    existing_workload_config: Optional[Dict[str, Any]] = None,
+) -> dict:
+    """Map public API fields onto existing storage columns and workload_config."""
     if "ai_parse_mode" in provided_fields:
         mode = data.get("ai_parse_mode")
         if isinstance(mode, str):
@@ -30,7 +44,102 @@ def map_ai_parse_api_fields(data: dict, provided_fields: set[str]) -> dict:
         )
     data.pop("shutterstock_images", None)
 
+    ai_fields_provided = any(
+        field in provided_fields for field in AI_FUNCTION_CONFIG_FIELDS
+    )
+    if ai_fields_provided:
+        config = dict(existing_workload_config or {})
+        if "workload_config" in provided_fields:
+            config = dict(data.get("workload_config") or {})
+        for field in AI_FUNCTION_CONFIG_FIELDS:
+            if field not in provided_fields:
+                continue
+            value = data.get(field)
+            if value is None:
+                config.pop(field, None)
+            else:
+                config[field] = value
+        data["workload_config"] = config or None
+
+    if "workload_type" in provided_fields:
+        workload_type = (data.get("workload_type") or "").upper()
+        config_source = (
+            data.get("workload_config")
+            if "workload_config" in data
+            else existing_workload_config
+        )
+        config = dict(config_source or {})
+        fields_to_remove = []
+        if workload_type != "AI_EXTRACT":
+            fields_to_remove.extend(AI_FUNCTION_CONFIG_FIELDS[:3])
+        if workload_type != "AI_CLASSIFY":
+            fields_to_remove.extend(AI_FUNCTION_CONFIG_FIELDS[3:])
+        original_config = dict(config)
+        for field in fields_to_remove:
+            config.pop(field, None)
+        if config != original_config:
+            data["workload_config"] = config or None
+
+    for field in AI_FUNCTION_CONFIG_FIELDS:
+        data.pop(field, None)
+
     return data
+
+
+def validate_ai_function_workload_config(
+    workload_type: Optional[str],
+    workload_config: Optional[Dict[str, Any]],
+) -> None:
+    """Validate the JSON-backed configuration for AI Functions workloads."""
+    workload_type = (workload_type or "").upper()
+    config = workload_config or {}
+    if workload_type == "AI_EXTRACT":
+        prefix = "ai_extract"
+        allowed_types = {
+            "short_text",
+            "invoice",
+            "complex_reasoning",
+            "deep_nesting",
+            "custom",
+        }
+        quantity_field = "ai_extract_num_inputs"
+    elif workload_type == "AI_CLASSIFY":
+        prefix = "ai_classify"
+        allowed_types = {"short_text", "rental_contract", "custom"}
+        quantity_field = "ai_classify_num_docs"
+    else:
+        return
+
+    document_type_field = f"{prefix}_document_type"
+    custom_rate_field = f"{prefix}_dbus_per_thousand"
+    document_type = config.get(document_type_field)
+    if document_type is not None and document_type not in allowed_types:
+        raise ValueError(
+            f"{document_type_field} must be one of: "
+            f"{', '.join(sorted(allowed_types))}"
+        )
+
+    quantity = config.get(quantity_field)
+    if quantity is not None:
+        try:
+            quantity_value = float(quantity)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{quantity_field} must be a number") from exc
+        if quantity_value < 0:
+            raise ValueError(f"{quantity_field} must be greater than or equal to 0")
+
+    custom_rate = config.get(custom_rate_field)
+    if custom_rate is not None:
+        try:
+            custom_rate_value = float(custom_rate)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{custom_rate_field} must be a number") from exc
+        if custom_rate_value <= 0:
+            raise ValueError(f"{custom_rate_field} must be greater than 0")
+    if document_type == "custom" and custom_rate is None:
+        raise ValueError(
+            f"{custom_rate_field} is required when {document_type_field} is custom"
+        )
 
 
 class LineItemBase(BaseModel):
@@ -95,6 +204,32 @@ class LineItemBase(BaseModel):
     # Shutterstock ImageAI Configuration
     shutterstock_imageai_num_images: Optional[int] = None
     shutterstock_images: Optional[int] = None
+
+    # AI Extract Configuration
+    ai_extract_document_type: Optional[
+        Literal[
+            "short_text",
+            "invoice",
+            "complex_reasoning",
+            "deep_nesting",
+            "custom",
+        ]
+    ] = None
+    ai_extract_num_inputs: Optional[float] = Field(default=None, ge=0)
+    ai_extract_dbus_per_thousand: Optional[float] = Field(
+        default=None,
+        gt=0,
+    )
+
+    # AI Classify Configuration
+    ai_classify_document_type: Optional[
+        Literal["short_text", "rental_contract", "custom"]
+    ] = None
+    ai_classify_num_docs: Optional[float] = Field(default=None, ge=0)
+    ai_classify_dbus_per_thousand: Optional[float] = Field(
+        default=None,
+        gt=0,
+    )
 
     # Databricks Support Configuration
     databricks_support_tier: Optional[str] = None
@@ -209,6 +344,32 @@ class LineItemUpdate(BaseModel):
     shutterstock_imageai_num_images: Optional[int] = None
     shutterstock_images: Optional[int] = None
 
+    # AI Extract Configuration (stored in workload_config)
+    ai_extract_document_type: Optional[
+        Literal[
+            "short_text",
+            "invoice",
+            "complex_reasoning",
+            "deep_nesting",
+            "custom",
+        ]
+    ] = None
+    ai_extract_num_inputs: Optional[float] = Field(default=None, ge=0)
+    ai_extract_dbus_per_thousand: Optional[float] = Field(
+        default=None,
+        gt=0,
+    )
+
+    # AI Classify Configuration (stored in workload_config)
+    ai_classify_document_type: Optional[
+        Literal["short_text", "rental_contract", "custom"]
+    ] = None
+    ai_classify_num_docs: Optional[float] = Field(default=None, ge=0)
+    ai_classify_dbus_per_thousand: Optional[float] = Field(
+        default=None,
+        gt=0,
+    )
+
     # Databricks Support Configuration
     databricks_support_tier: Optional[str] = None
     databricks_support_annual_commit: Optional[float] = None
@@ -287,6 +448,11 @@ class LineItemResponse(LineItemBase):
             data["shutterstock_images"] = data.get(
                 "shutterstock_imageai_num_images"
             )
+
+        workload_config = data.get("workload_config") or {}
+        for field in AI_FUNCTION_CONFIG_FIELDS:
+            if data.get(field) is None:
+                data[field] = workload_config.get(field)
 
         return data
 

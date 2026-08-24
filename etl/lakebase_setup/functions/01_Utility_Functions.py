@@ -247,6 +247,12 @@ BEGIN
         WHEN 'AI_PARSE' THEN
             v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
 
+        WHEN 'AI_EXTRACT' THEN
+            v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
+
+        WHEN 'AI_CLASSIFY' THEN
+            v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
+
         WHEN 'SHUTTERSTOCK_IMAGEAI' THEN
             v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
 

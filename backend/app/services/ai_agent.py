@@ -44,6 +44,8 @@ When presenting workload types to users, ALWAYS use these names:
 - **LAKEBASE**: PostgreSQL-compatible database
 - **DATABRICKS_APPS**: Managed app hosting (small/medium/large sizes)
 - **AI_PARSE**: Document AI parsing (DBU-based or per-page pricing, complexity levels)
+- **AI_EXTRACT**: Structured field extraction (per 1,000 inputs; raw STRING input is accepted, while document files require AI Parse first)
+- **AI_CLASSIFY**: Classification (per 1,000 inputs; raw STRING input is accepted, while document files require AI Parse first)
 - **SHUTTERSTOCK_IMAGEAI**: AI image generation (per-image pricing)
 
 ## Key Questions to Ask Users
@@ -727,7 +729,7 @@ The user will review and confirm before it's added to the estimate.""",
                 # === Common Fields ===
                 "workload_type": {
                     "type": "string",
-                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "SHUTTERSTOCK_IMAGEAI"],
+                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "SHUTTERSTOCK_IMAGEAI"],
                     "description": "Type of Databricks workload. Note: Use DLT for SDP (Spark Declarative Pipelines) workloads - present as 'SDP' to users but use 'DLT' as the enum value."
                 },
                 "workload_name": {
@@ -972,6 +974,55 @@ The user will review and confirm before it's added to the estimate.""",
                 "ai_parse_pages_thousands": {
                     "type": "number",
                     "description": "Number of pages to parse in thousands (e.g., 100 = 100,000 pages)"
+                },
+
+                # === AI Extract Specific ===
+                "ai_extract_document_type": {
+                    "type": "string",
+                    "enum": [
+                        "short_text",
+                        "invoice",
+                        "complex_reasoning",
+                        "deep_nesting",
+                        "custom",
+                    ],
+                    "description": (
+                        "AI Extract preset. complex_reasoning and deep_nesting "
+                        "use Precision Mode."
+                    ),
+                },
+                "ai_extract_num_inputs": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Number of AI Extract inputs per month",
+                },
+                "ai_extract_dbus_per_thousand": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": (
+                        "Positive DBU rate per 1,000 inputs; required only when "
+                        "ai_extract_document_type is custom"
+                    ),
+                },
+
+                # === AI Classify Specific ===
+                "ai_classify_document_type": {
+                    "type": "string",
+                    "enum": ["short_text", "rental_contract", "custom"],
+                    "description": "AI Classify preset",
+                },
+                "ai_classify_num_docs": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Number of AI Classify inputs per month",
+                },
+                "ai_classify_dbus_per_thousand": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": (
+                        "Positive DBU rate per 1,000 inputs; required only when "
+                        "ai_classify_document_type is custom"
+                    ),
                 },
 
                 # === Shutterstock ImageAI Specific ===
@@ -2925,6 +2976,14 @@ Each workload needs to be confirmed individually. Review the configurations and 
             workload.setdefault("ai_parse_mode", "dbu")
             workload.setdefault("ai_parse_complexity", "medium")
             workload.setdefault("ai_parse_pages_thousands", 100)
+
+        if wtype == "AI_EXTRACT":
+            workload.setdefault("ai_extract_document_type", "invoice")
+            workload.setdefault("ai_extract_num_inputs", 1000)
+
+        if wtype == "AI_CLASSIFY":
+            workload.setdefault("ai_classify_document_type", "short_text")
+            workload.setdefault("ai_classify_num_docs", 1000)
 
         if wtype == "SHUTTERSTOCK_IMAGEAI":
             workload.setdefault("shutterstock_images", 1000)

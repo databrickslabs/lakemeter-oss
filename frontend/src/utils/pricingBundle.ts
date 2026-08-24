@@ -453,7 +453,7 @@ const SKU_TO_WORKLOAD_MAP: Record<string, string> = {
 const ALL_WORKLOAD_TYPES = [
   'JOBS', 'ALL_PURPOSE', 'DLT', 'DBSQL',
   'VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE',
-  'DATABRICKS_APPS', 'AI_PARSE', 'SHUTTERSTOCK_IMAGEAI'
+  'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'SHUTTERSTOCK_IMAGEAI'
 ]
 
 /**
@@ -467,7 +467,7 @@ const ALL_WORKLOAD_TYPES = [
  * @param cloud - Cloud provider (aws, azure, gcp)
  * @param region - Region code (e.g., us-east-1, eastus, us-central1)
  * @param tier - Pricing tier (PREMIUM, ENTERPRISE)
- * @returns Array of available workload types, or all types if region not found (graceful fallback)
+ * @returns Array of workload types with pricing for the selected region and tier
  */
 export function getAvailableWorkloadTypesForRegion(
   bundle: PricingBundle,
@@ -485,9 +485,8 @@ export function getAvailableWorkloadTypesForRegion(
   const productTypes = bundle.dbuRates[key]
   
   if (!productTypes || Object.keys(productTypes).length === 0) {
-    // Region not found in bundle - could be a new region or typo
-    // Return all types as fallback (don't block users)
-    return ALL_WORKLOAD_TYPES
+    // The bundle is loaded, so an absent key means pricing is unavailable.
+    return []
   }
   
   // Map SKU product types to workload types from dbuRates
@@ -544,9 +543,11 @@ export function getAvailableWorkloadTypesForRegion(
     availableWorkloads.add('DATABRICKS_APPS')
   }
 
-  // AI Parse: uses SERVERLESS_REAL_TIME_INFERENCE — available wherever Model Serving is
-  if (availableWorkloads.has('MODEL_SERVING') || productTypes['SERVERLESS_REAL_TIME_INFERENCE']) {
+  // AI Functions require an exact regional SERVERLESS_REAL_TIME_INFERENCE price.
+  if (productTypes['SERVERLESS_REAL_TIME_INFERENCE']) {
     availableWorkloads.add('AI_PARSE')
+    availableWorkloads.add('AI_EXTRACT')
+    availableWorkloads.add('AI_CLASSIFY')
     availableWorkloads.add('SHUTTERSTOCK_IMAGEAI')
   }
 

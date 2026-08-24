@@ -289,7 +289,19 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
     """Write one line item (and its storage sub-row if applicable)."""
     wt = (item.workload_type or 'JOBS').upper()
     sku = _get_sku_type(item, cloud)
-    dbu_rate, dbu_rate_found = _get_dbu_price(cloud, region, tier, sku)
+    requires_exact_regional_price = wt in ('AI_EXTRACT', 'AI_CLASSIFY')
+    dbu_rate, dbu_rate_found = _get_dbu_price(
+        cloud,
+        region,
+        tier,
+        sku,
+        allow_cross_region=not requires_exact_regional_price,
+    )
+    if requires_exact_regional_price and not dbu_rate_found:
+        raise ValueError(
+            f"{sku} pricing is not available for "
+            f"{cloud.upper()} {region} {tier.upper()}"
+        )
     dbu_per_hour, dbu_warnings = _calculate_dbu_per_hour(item, cloud, tier)
     is_serverless = _is_serverless_workload(item)
     is_fmapi = wt in ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY')
@@ -298,7 +310,12 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         'cache_read', 'cache_write', 'batch_inference')
     is_fmapi_provisioned = is_fmapi and item.fmapi_rate_type in (
         'provisioned_scaling', 'provisioned_entry')
-    is_quantity_based = wt in ('AI_PARSE', 'SHUTTERSTOCK_IMAGEAI')
+    is_quantity_based = wt in (
+        'AI_PARSE',
+        'AI_EXTRACT',
+        'AI_CLASSIFY',
+        'SHUTTERSTOCK_IMAGEAI',
+    )
 
     auto_notes = list(dbu_warnings)
     if not dbu_rate_found:

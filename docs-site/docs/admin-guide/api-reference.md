@@ -256,6 +256,8 @@ All calculation endpoints accept workload parameters and return cost breakdowns.
 | `POST /api/v1/calculate/lakebase` | Lakebase |
 | `POST /api/v1/calculate/databricks-apps` | Databricks Apps |
 | `POST /api/v1/calculate/ai-parse` | AI Parse (Document AI) |
+| `POST /api/v1/calculate/ai-extract` | AI Extract (raw `STRING` or parsed document input) |
+| `POST /api/v1/calculate/ai-classify` | AI Classify (raw `STRING` or parsed document input) |
 | `POST /api/v1/calculate/shutterstock-imageai` | Shutterstock ImageAI |
 
 ### Example: Jobs Classic

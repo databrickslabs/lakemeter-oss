@@ -84,6 +84,8 @@ const PREMIUM_ONLY_WORKLOAD_TYPES = new Set([
   'LAKEBASE',
   'DATABRICKS_APPS',
   'AI_PARSE',
+  'AI_EXTRACT',
+  'AI_CLASSIFY',
   'SHUTTERSTOCK_IMAGEAI',
 ])
 
@@ -474,6 +476,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         ai_parse_mode: lineItem.ai_parse_mode || 'pages',
         ai_parse_complexity: lineItem.ai_parse_complexity || 'medium',
         ai_parse_pages_thousands: lineItem.ai_parse_pages_thousands || 0,
+        ai_extract_document_type: lineItem.ai_extract_document_type || 'invoice',
+        ai_extract_num_inputs: (lineItem.ai_extract_num_inputs || 0) / 1000,
+        ai_extract_dbus_per_thousand: lineItem.ai_extract_dbus_per_thousand || 0,
+        ai_classify_document_type: lineItem.ai_classify_document_type || 'short_text',
+        ai_classify_num_docs: (lineItem.ai_classify_num_docs || 0) / 1000,
+        ai_classify_dbus_per_thousand: lineItem.ai_classify_dbus_per_thousand || 0,
         shutterstock_images: lineItem.shutterstock_images || 0,
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
@@ -592,6 +600,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     ai_parse_mode: 'pages',
     ai_parse_complexity: 'medium',
     ai_parse_pages_thousands: 0,
+    ai_extract_document_type: 'invoice',
+    ai_extract_num_inputs: 0,
+    ai_extract_dbus_per_thousand: 0,
+    ai_classify_document_type: 'short_text',
+    ai_classify_num_docs: 0,
+    ai_classify_dbus_per_thousand: 0,
     shutterstock_images: 0,
     lakeflow_connect_pipeline_mode: 'serverless',
     lakeflow_connect_gateway_enabled: false,
@@ -657,6 +671,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         ai_parse_mode: lineItem.ai_parse_mode || 'pages',
         ai_parse_complexity: lineItem.ai_parse_complexity || 'medium',
         ai_parse_pages_thousands: lineItem.ai_parse_pages_thousands || 0,
+        ai_extract_document_type: lineItem.ai_extract_document_type || 'invoice',
+        ai_extract_num_inputs: (lineItem.ai_extract_num_inputs || 0) / 1000,
+        ai_extract_dbus_per_thousand: lineItem.ai_extract_dbus_per_thousand || 0,
+        ai_classify_document_type: lineItem.ai_classify_document_type || 'short_text',
+        ai_classify_num_docs: (lineItem.ai_classify_num_docs || 0) / 1000,
+        ai_classify_dbus_per_thousand: lineItem.ai_classify_dbus_per_thousand || 0,
         shutterstock_images: lineItem.shutterstock_images || 0,
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
@@ -782,7 +802,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     if (!tierAvailability.available) return false
     
     // Then check regional availability (if data is loaded)
-    if (availableWorkloadTypesForRegion && availableWorkloadTypesForRegion.length > 0) {
+    if (availableWorkloadTypesForRegion !== null) {
       return availableWorkloadTypesForRegion.includes(wt.workload_type)
     }
     
@@ -791,8 +811,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
   })
   
   // Check if some workload types are hidden due to regional restrictions
-  const hasRegionalRestrictions = availableWorkloadTypesForRegion && 
-    availableWorkloadTypesForRegion.length > 0 && 
+  const hasRegionalRestrictions = availableWorkloadTypesForRegion !== null &&
     workloadTypes.some(wt => {
       const tierAvailable = isWorkloadAvailableForTier(wt.workload_type, selectedTier, false).available
       return tierAvailable && !availableWorkloadTypesForRegion.includes(wt.workload_type)
@@ -801,7 +820,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
   // Auto-switch workload type if current selection is not available in the region
   // Only for new workloads - don't change existing workloads (they may need to be migrated)
   useEffect(() => {
-    if (!lineItem && availableWorkloadTypesForRegion && availableWorkloadTypesForRegion.length > 0) {
+    if (!lineItem && availableWorkloadTypesForRegion !== null) {
       if (!availableWorkloadTypesForRegion.includes(form.workload_type)) {
         // Switch to first available workload type
         const firstAvailable = filteredWorkloadTypes[0]
@@ -814,8 +833,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
   
   // Check if this is an existing workload with a type that's not available in the current region
   const isExistingWithUnavailableType = lineItem && 
-    availableWorkloadTypesForRegion && 
-    availableWorkloadTypesForRegion.length > 0 && 
+    availableWorkloadTypesForRegion !== null &&
     !availableWorkloadTypesForRegion.includes(form.workload_type)
   
   // Call onFormChange whenever form values change (for real-time cost preview in parent)
@@ -852,6 +870,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       ai_parse_mode: form.ai_parse_mode,
       ai_parse_complexity: form.ai_parse_complexity,
       ai_parse_pages_thousands: form.ai_parse_pages_thousands,
+      ai_extract_document_type: form.ai_extract_document_type,
+      ai_extract_num_inputs: form.ai_extract_num_inputs * 1000,
+      ai_extract_dbus_per_thousand: form.ai_extract_dbus_per_thousand,
+      ai_classify_document_type: form.ai_classify_document_type,
+      ai_classify_num_docs: form.ai_classify_num_docs * 1000,
+      ai_classify_dbus_per_thousand: form.ai_classify_dbus_per_thousand,
       shutterstock_images: form.shutterstock_images,
       lakeflow_connect_pipeline_mode: form.lakeflow_connect_pipeline_mode,
       lakeflow_connect_gateway_enabled: form.lakeflow_connect_gateway_enabled,
@@ -897,6 +921,31 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     
     if (!form.workload_name.trim()) {
       toast.error('Enter a workload name')
+      return
+    }
+    if (
+      availableWorkloadTypesForRegion !== null &&
+      !availableWorkloadTypesForRegion.includes(form.workload_type)
+    ) {
+      toast.error('Pricing is not available for this workload in the selected region')
+      return
+    }
+    if (
+      form.workload_type === 'AI_EXTRACT' &&
+      form.ai_extract_document_type === 'custom' &&
+      (!Number.isFinite(form.ai_extract_dbus_per_thousand) ||
+        form.ai_extract_dbus_per_thousand <= 0)
+    ) {
+      toast.error('AI Extract custom rate must be greater than 0')
+      return
+    }
+    if (
+      form.workload_type === 'AI_CLASSIFY' &&
+      form.ai_classify_document_type === 'custom' &&
+      (!Number.isFinite(form.ai_classify_dbus_per_thousand) ||
+        form.ai_classify_dbus_per_thousand <= 0)
+    ) {
+      toast.error('AI Classify custom rate must be greater than 0')
       return
     }
     
@@ -1018,6 +1067,30 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.ai_parse_pages_thousands = null
       }
 
+      // AI Extract config
+      if (form.workload_type === 'AI_EXTRACT') {
+        data.ai_extract_document_type = form.ai_extract_document_type
+        data.ai_extract_num_inputs = form.ai_extract_num_inputs * 1000
+        data.ai_extract_dbus_per_thousand =
+          form.ai_extract_document_type === 'custom' ? form.ai_extract_dbus_per_thousand : null
+      } else {
+        data.ai_extract_document_type = null
+        data.ai_extract_num_inputs = null
+        data.ai_extract_dbus_per_thousand = null
+      }
+
+      // AI Classify config
+      if (form.workload_type === 'AI_CLASSIFY') {
+        data.ai_classify_document_type = form.ai_classify_document_type
+        data.ai_classify_num_docs = form.ai_classify_num_docs * 1000
+        data.ai_classify_dbus_per_thousand =
+          form.ai_classify_document_type === 'custom' ? form.ai_classify_dbus_per_thousand : null
+      } else {
+        data.ai_classify_document_type = null
+        data.ai_classify_num_docs = null
+        data.ai_classify_dbus_per_thousand = null
+      }
+
       // Shutterstock ImageAI config
       if (form.workload_type === 'SHUTTERSTOCK_IMAGEAI') {
         data.shutterstock_images = form.shutterstock_images
@@ -1100,7 +1173,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.runs_per_day = null
         data.avg_runtime_minutes = null
         data.days_per_month = null
-      } else if (form.workload_type === 'AI_PARSE' || form.workload_type === 'SHUTTERSTOCK_IMAGEAI') {
+      } else if (
+        form.workload_type === 'AI_PARSE' ||
+        form.workload_type === 'AI_EXTRACT' ||
+        form.workload_type === 'AI_CLASSIFY' ||
+        form.workload_type === 'SHUTTERSTOCK_IMAGEAI'
+      ) {
         // Quantity-based workloads - no hours, runs, or days needed
         data.hours_per_month = null
         data.runs_per_day = null
@@ -2373,6 +2451,104 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           </>
         )}
 
+        {/* AI Extract Config */}
+        {form.workload_type === 'AI_EXTRACT' && (
+          <>
+            <div className={clsx(form.ai_extract_document_type !== 'custom' && 'lg:col-span-2')}>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Document Type</label>
+              <select
+                value={form.ai_extract_document_type || 'invoice'}
+                onChange={(e) => setForm(f => ({ ...f, ai_extract_document_type: e.target.value }))}
+                className="w-full text-sm"
+              >
+                <option value="short_text">Short text / receipt with a few fields (30–60 DBU/1K; uses 45)</option>
+                <option value="invoice">Invoice / PO, ~1 page (30–60 DBU/1K; uses 45)</option>
+                <optgroup label="Precision Mode">
+                  <option value="complex_reasoning">Complex reasoning / dense text (400–725 DBU/1K; uses 562.5)</option>
+                  <option value="deep_nesting">Deeply nested schemas (375–700 DBU/1K; uses 537.5)</option>
+                </optgroup>
+                <option value="custom">Custom rate</option>
+              </select>
+            </div>
+            {form.ai_extract_document_type === 'custom' && (
+              <div>
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">DBU per 1K Inputs</label>
+                <input
+                  type="number"
+                  min={0.01}
+                  step="any"
+                  value={form.ai_extract_dbus_per_thousand || 0}
+                  onChange={(e) => setForm(f => ({ ...f, ai_extract_dbus_per_thousand: parseFloat(e.target.value) || 0 }))}
+                  className="w-full text-sm"
+                  placeholder="e.g., 60"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Document Inputs/Month (thousands)</label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={form.ai_extract_num_inputs || 0}
+                onChange={(e) => setForm(f => ({ ...f, ai_extract_num_inputs: parseFloat(e.target.value) || 0 }))}
+                className="w-full text-sm"
+                placeholder="e.g., 100 (= 100K inputs)"
+              />
+              <p className="text-[10px] mt-1 text-[var(--text-muted)]">
+                Raw STRING inputs can be used directly. For document files, add AI Parse first and pass the ai_parse_document output.
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* AI Classify Config */}
+        {form.workload_type === 'AI_CLASSIFY' && (
+          <>
+            <div className={clsx(form.ai_classify_document_type !== 'custom' && 'lg:col-span-2')}>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Document Type</label>
+              <select
+                value={form.ai_classify_document_type || 'short_text'}
+                onChange={(e) => setForm(f => ({ ...f, ai_classify_document_type: e.target.value }))}
+                className="w-full text-sm"
+              >
+                <option value="short_text">Short text / news brief (4.5 DBU/1K docs)</option>
+                <option value="rental_contract">Rental contract, 7–10 pages (40–60 DBU/1K; uses 50)</option>
+                <option value="custom">Custom rate</option>
+              </select>
+            </div>
+            {form.ai_classify_document_type === 'custom' && (
+              <div>
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">DBU per 1K Documents</label>
+                <input
+                  type="number"
+                  min={0.01}
+                  step="any"
+                  value={form.ai_classify_dbus_per_thousand || 0}
+                  onChange={(e) => setForm(f => ({ ...f, ai_classify_dbus_per_thousand: parseFloat(e.target.value) || 0 }))}
+                  className="w-full text-sm"
+                  placeholder="e.g., 30"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Documents/Month (thousands)</label>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={form.ai_classify_num_docs || 0}
+                onChange={(e) => setForm(f => ({ ...f, ai_classify_num_docs: parseFloat(e.target.value) || 0 }))}
+                className="w-full text-sm"
+                placeholder="e.g., 50 (= 50K documents)"
+              />
+              <p className="text-[10px] mt-1 text-[var(--text-muted)]">
+                Raw STRING inputs can be used directly. For document files, add AI Parse first and pass the ai_parse_document output.
+              </p>
+            </div>
+          </>
+        )}
+
         {/* Shutterstock ImageAI Config */}
         {form.workload_type === 'SHUTTERSTOCK_IMAGEAI' && (
           <div>
@@ -2456,8 +2632,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
               </div>
             )}
             
-            {/* Days per month - hide for FMAPI, Vector Search, Model Serving, Lakebase, Databricks Apps, AI Parse, Shutterstock (they use hours or quantity directly) */}
-            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
+            {/* Days per month - hide for workloads that use hours or quantity directly */}
+            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'AI_EXTRACT' && form.workload_type !== 'AI_CLASSIFY' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
               <div>
                 <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Days/Month</label>
                 <input

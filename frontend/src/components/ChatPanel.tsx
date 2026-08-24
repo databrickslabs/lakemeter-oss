@@ -930,6 +930,24 @@ I can assist you with:
                               <span>{proposal.runs_per_day}×{proposal.avg_runtime_minutes}min</span>
                             )}
                             {proposal.dlt_edition && <span>{proposal.dlt_edition}</span>}
+                            {proposal.ai_extract_document_type && (
+                              <span>Extract: {proposal.ai_extract_document_type.replace(/_/g, ' ')}</span>
+                            )}
+                            {proposal.ai_extract_num_inputs != null && (
+                              <span>{(proposal.ai_extract_num_inputs / 1000).toLocaleString()}K inputs/mo</span>
+                            )}
+                            {proposal.ai_extract_dbus_per_thousand != null && (
+                              <span>{proposal.ai_extract_dbus_per_thousand} DBU/1K inputs</span>
+                            )}
+                            {proposal.ai_classify_document_type && (
+                              <span>Classify: {proposal.ai_classify_document_type.replace(/_/g, ' ')}</span>
+                            )}
+                            {proposal.ai_classify_num_docs != null && (
+                              <span>{(proposal.ai_classify_num_docs / 1000).toLocaleString()}K docs/mo</span>
+                            )}
+                            {proposal.ai_classify_dbus_per_thousand != null && (
+                              <span>{proposal.ai_classify_dbus_per_thousand} DBU/1K docs</span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">

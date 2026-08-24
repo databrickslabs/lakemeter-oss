@@ -257,6 +257,34 @@ class AIParseCalculationRequest(BaseModel):
     discount_config: Optional[DiscountConfig] = Field(None)
 
 
+class AIExtractCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    document_type: str = Field(
+        default="invoice",
+        description=(
+            "short_text, invoice, complex_reasoning, deep_nesting, or custom"
+        ),
+    )
+    num_inputs: Optional[float] = Field(None, ge=0, description="Document inputs per month")
+    dbus_per_thousand: Optional[float] = Field(None, gt=0, description="DBU per 1,000 inputs (custom document_type only)")
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+
+class AIClassifyCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    document_type: str = Field(
+        default="short_text",
+        description="short_text, rental_contract, or custom",
+    )
+    num_docs: Optional[float] = Field(None, ge=0, description="Documents classified per month")
+    dbus_per_thousand: Optional[float] = Field(None, gt=0, description="DBU per 1,000 documents (custom document_type only)")
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+
 class ShutterstockImageAICalculationRequest(BaseModel):
     cloud: str = Field(...)
     region: str = Field(...)
