@@ -8,7 +8,7 @@ sidebar_position: 20
 
 Use this guide to model monthly AI Classify consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not classification capabilities, label design, or product limits.
 
-AI Classify consumes documents produced by `ai_parse_document`; it does not accept files directly. If the documents in this workload are not already parsed elsewhere in your estimate, add an AI Parse workload for the same volume so the estimate covers the full pipeline.
+AI Classify accepts raw `STRING` inputs directly. It does not accept document files directly: pass files through `ai_parse_document` first, then use the parsed output. Add an AI Parse workload for file-based volume so the estimate covers the full pipeline.
 
 For current product guidance, start from the [official Databricks documentation](https://docs.databricks.com/). For current public rates, use the [Databricks pricing page](https://www.databricks.com/product/pricing) and the rate shown in Lakemeter.
 
@@ -16,9 +16,13 @@ For current product guidance, start from the [official Databricks documentation]
 
 ### Document Type
 
-Select the option that best represents the documents in this workload entry. The selection determines the DBU conversion applied per thousand documents; longer documents consume more DBUs per classification.
+Select the option that best represents the inputs in this workload entry. Lakemeter uses the midpoint of the published planning range:
 
-Use the options and descriptions shown in Lakemeter. If the monthly volume spans materially different document lengths, create separate workload entries so each quantity uses the appropriate conversion. Select **Custom rate** to supply your own DBU-per-thousand-documents conversion, for example from a measured pilot.
+- **Short text** — news brief; 3–6 DBUs per 1,000 inputs (4.5 midpoint).
+- **Rental contracts** — contracts of about 7–10 pages; 40–60 DBUs per 1,000 inputs (50 midpoint).
+- **Custom rate** — a positive DBU-per-thousand-inputs value from a measured pilot.
+
+If the monthly volume spans materially different input shapes, create separate workload entries so each quantity uses the appropriate conversion.
 
 ### Documents/Month
 
@@ -43,9 +47,9 @@ Monthly cost
   × Regional price per DBU
 ```
 
-The conversion and price values are intentionally not reproduced here because they can change. Review the values shown in Lakemeter and verify important estimates against current Databricks pricing.
+The regional DBU price can change. Review the value shown in Lakemeter and verify important estimates against current Databricks pricing.
 
 ## Related workloads
 
-- **AI Parse** parses the source files into documents; classification volume usually mirrors parse volume.
+- **AI Parse** parses source files before classification; raw `STRING` inputs do not need it.
 - **AI Extract** prices structured field extraction over the same parsed documents.

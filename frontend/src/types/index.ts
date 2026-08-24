@@ -99,10 +99,10 @@ export interface LineItem {
   ai_parse_mode?: string | null  // dbu, pages
   ai_parse_complexity?: string | null  // low_text, low_images, medium, high
   ai_parse_pages_thousands?: number | null
-  ai_extract_document_type?: string | null  // invoice, financial_report, custom
+  ai_extract_document_type?: string | null  // short_text, invoice, complex_reasoning, deep_nesting, custom
   ai_extract_num_inputs?: number | null
   ai_extract_dbus_per_thousand?: number | null
-  ai_classify_document_type?: string | null  // short_text, contract, custom
+  ai_classify_document_type?: string | null  // short_text, rental_contract, custom
   ai_classify_num_docs?: number | null
   ai_classify_dbus_per_thousand?: number | null
 

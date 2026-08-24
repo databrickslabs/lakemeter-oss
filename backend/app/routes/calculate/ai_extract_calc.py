@@ -1,23 +1,26 @@
 """AI Extract calculation endpoint.
 
-AI Extract uses SERVERLESS_REAL_TIME_INFERENCE SKU.
-Inputs must first be parsed with ai_parse_document; AI Extract consumes the
-parsed documents, not raw files.
+AI Extract uses SERVERLESS_REAL_TIME_INFERENCE SKU. Raw STRING inputs can be
+passed directly. Document files must first be parsed with ai_parse_document.
 
 Document presets (DBU per 1,000 inputs, midpoints of the published planning
 ranges, same convention as the AI Parse complexity rates):
+  short_text: 45        (receipt with a few fields; range 30-60)
   invoice: 45           (typical invoice or purchase order, ~1 page; range 30-60)
-  financial_report: 67.5 (annual financial report, 12-15 pages; range 45-90)
+  complex_reasoning: 562.5 (reasoning-heavy fields; precision mode; range 400-725)
+  deep_nesting: 537.5   (deeply nested schemas; precision mode; range 375-700)
   custom: caller-supplied dbus_per_thousand
 """
 import logging
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services.validators import validate_cloud, validate_region, validate_tier, validate_sku_specific_discounts
-from app.routes.calculate.helpers import build_sku_breakdown_serverless
+from app.routes.calculate.helpers import (
+    build_sku_breakdown_serverless,
+    get_required_regional_dbu_price,
+)
 from app.routes.calculate.discount import (
     apply_discount_to_sku_breakdown, calculate_total_discount_summary, enhance_total_cost_with_discount,
 )
@@ -28,14 +31,15 @@ router = APIRouter()
 
 # DBU per 1,000 document inputs by preset
 EXTRACT_DOCUMENT_RATES = {
+    "short_text": 45.0,
     "invoice": 45.0,
-    "financial_report": 67.5,
+    "complex_reasoning": 562.5,
+    "deep_nesting": 537.5,
 }
 
 AI_PARSE_DEPENDENCY_NOTE = (
-    "AI Extract consumes documents produced by ai_parse_document; it does not "
-    "accept files directly. Include an AI Parse workload for the same documents "
-    "unless they are already parsed."
+    "AI Extract accepts raw STRING inputs directly. For document files, call "
+    "ai_parse_document first and include an AI Parse workload for that volume."
 )
 
 
@@ -59,7 +63,7 @@ def calculate_ai_extract_cost(
         raise HTTPException(
             status_code=400,
             detail=f"Invalid document_type: {document_type}. Valid: {list(EXTRACT_DOCUMENT_RATES.keys()) + ['custom']}")
-    if document_type == "custom" and not request.dbus_per_thousand:
+    if document_type == "custom" and request.dbus_per_thousand is None:
         raise HTTPException(
             status_code=400,
             detail="document_type 'custom' requires dbus_per_thousand")
@@ -67,15 +71,13 @@ def calculate_ai_extract_cost(
     try:
         sku_type = "SERVERLESS_REAL_TIME_INFERENCE"
 
-        # Look up DBU price
-        price_row = db.execute(text("""
-            SELECT price_per_dbu FROM lakemeter.sync_pricing_dbu_rates
-            WHERE UPPER(cloud) = UPPER(:cloud) AND UPPER(region) = UPPER(:region)
-              AND UPPER(tier) = UPPER(:tier)
-              AND (UPPER(product_type) = UPPER(:pt) OR UPPER(sku_name) = UPPER(:pt))
-            LIMIT 1
-        """), {"cloud": request.cloud, "region": request.region, "tier": request.tier, "pt": sku_type}).fetchone()
-        dbu_price = float(price_row.price_per_dbu) if price_row else 0.0
+        dbu_price = get_required_regional_dbu_price(
+            db,
+            request.cloud,
+            request.region,
+            request.tier,
+            sku_type,
+        )
 
         if document_type == "custom":
             rate = float(request.dbus_per_thousand)

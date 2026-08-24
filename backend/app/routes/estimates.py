@@ -1,4 +1,5 @@
 """Estimates API routes."""
+from copy import deepcopy
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
@@ -57,7 +58,7 @@ def _copy_line_item(original_item, new_estimate_id):
     out-of-date field enumeration.
     """
     values = {
-        column.key: getattr(original_item, column.key)
+        column.key: deepcopy(getattr(original_item, column.key))
         for column in sa_inspect(LineItem).mapper.column_attrs
         if column.key not in _LINE_ITEM_COPY_EXCLUDE
     }

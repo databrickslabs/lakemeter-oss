@@ -1395,7 +1395,12 @@ export default function Calculator() {
 
       case 'AI_EXTRACT': {
         // inputs(K) x document-type rate
-        const extractRates: Record<string, number> = { invoice: 45, financial_report: 67.5 }
+        const extractRates: Record<string, number> = {
+          short_text: 45,
+          invoice: 45,
+          complex_reasoning: 562.5,
+          deep_nesting: 537.5,
+        }
         const docType = (effectiveItem.ai_extract_document_type || 'invoice').toLowerCase()
         const rate = docType === 'custom'
           ? (effectiveItem.ai_extract_dbus_per_thousand || 0)
@@ -1406,7 +1411,10 @@ export default function Calculator() {
 
       case 'AI_CLASSIFY': {
         // docs(K) x document-type rate
-        const classifyRates: Record<string, number> = { short_text: 4.5, contract: 50 }
+        const classifyRates: Record<string, number> = {
+          short_text: 4.5,
+          rental_contract: 50,
+        }
         const docType = (effectiveItem.ai_classify_document_type || 'short_text').toLowerCase()
         const rate = docType === 'custom'
           ? (effectiveItem.ai_classify_dbus_per_thousand || 0)
@@ -3342,8 +3350,13 @@ export default function Calculator() {
                                   if (wType === 'AI_EXTRACT' || wType === 'AI_CLASSIFY') {
                                     const isExtract = wType === 'AI_EXTRACT'
                                     const presetRates: Record<string, number> = isExtract
-                                      ? { invoice: 45, financial_report: 67.5 }
-                                      : { short_text: 4.5, contract: 50 }
+                                      ? {
+                                          short_text: 45,
+                                          invoice: 45,
+                                          complex_reasoning: 562.5,
+                                          deep_nesting: 537.5,
+                                        }
+                                      : { short_text: 4.5, rental_contract: 50 }
                                     const docType = ((isExtract ? effectiveItem.ai_extract_document_type : effectiveItem.ai_classify_document_type) || (isExtract ? 'invoice' : 'short_text')).toLowerCase()
                                     const customRate = isExtract ? effectiveItem.ai_extract_dbus_per_thousand : effectiveItem.ai_classify_dbus_per_thousand
                                     const unitRate = docType === 'custom' ? (customRate || 0) : (presetRates[docType] || 0)
@@ -4219,8 +4232,13 @@ export default function Calculator() {
                                 if (wType === 'AI_EXTRACT' || wType === 'AI_CLASSIFY') {
                                   const isExtract = wType === 'AI_EXTRACT'
                                   const presetRates: Record<string, number> = isExtract
-                                    ? { invoice: 45, financial_report: 67.5 }
-                                    : { short_text: 4.5, contract: 50 }
+                                    ? {
+                                        short_text: 45,
+                                        invoice: 45,
+                                        complex_reasoning: 562.5,
+                                        deep_nesting: 537.5,
+                                      }
+                                    : { short_text: 4.5, rental_contract: 50 }
                                   const docType = ((isExtract ? effectiveItem.ai_extract_document_type : effectiveItem.ai_classify_document_type) || (isExtract ? 'invoice' : 'short_text')).toLowerCase()
                                   const customRate = isExtract ? effectiveItem.ai_extract_dbus_per_thousand : effectiveItem.ai_classify_dbus_per_thousand
                                   const unitRate = docType === 'custom' ? (customRate || 0) : (presetRates[docType] || 0)

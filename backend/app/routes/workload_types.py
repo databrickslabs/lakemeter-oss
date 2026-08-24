@@ -290,7 +290,7 @@ DEFAULT_WORKLOAD_TYPES = [
     {
         "workload_type": "AI_EXTRACT",
         "display_name": "AI Extract",
-        "description": "Structured field extraction from parsed documents (requires AI Parse output)",
+        "description": "Structured extraction from raw text or parsed document input",
         "show_compute_config": False,
         "show_serverless_toggle": False,
         "show_serverless_performance_mode": False,
@@ -313,7 +313,7 @@ DEFAULT_WORKLOAD_TYPES = [
     {
         "workload_type": "AI_CLASSIFY",
         "display_name": "AI Classify",
-        "description": "Document classification on parsed documents (requires AI Parse output)",
+        "description": "Classification of raw text or parsed document input",
         "show_compute_config": False,
         "show_serverless_toggle": False,
         "show_serverless_performance_mode": False,

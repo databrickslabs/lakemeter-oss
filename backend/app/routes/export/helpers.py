@@ -7,6 +7,15 @@ from app.models import Estimate, User
 from app.models.sharing import Sharing
 
 
+def _get_json_backed_value(item, field, default=None):
+    """Read a public field from an attribute or workload_config."""
+    value = getattr(item, field, None)
+    if value is not None:
+        return value
+    workload_config = getattr(item, 'workload_config', None) or {}
+    return workload_config.get(field, default)
+
+
 def _check_estimate_access(estimate_id: UUID, user: User, db: Session) -> Estimate:
     """Check if user has access to an estimate."""
     estimate = db.query(Estimate).filter(
@@ -80,17 +89,25 @@ def _get_workload_config_details(item) -> str:
         images = int(images or 0)
         details.append(f"Images/mo: {images:,}")
     elif wt == 'AI_EXTRACT':
-        doc_type = getattr(item, 'ai_extract_document_type', None) or 'invoice'
-        inputs = float(getattr(item, 'ai_extract_num_inputs', 0) or 0)
+        doc_type = _get_json_backed_value(
+            item, 'ai_extract_document_type', 'invoice'
+        ) or 'invoice'
+        inputs = float(_get_json_backed_value(
+            item, 'ai_extract_num_inputs', 0
+        ) or 0)
         details.append(f"Type: {doc_type}")
         details.append(f"Inputs/mo: {inputs:,.0f}")
-        details.append("Requires AI Parse output")
+        details.append("Document files require AI Parse")
     elif wt == 'AI_CLASSIFY':
-        doc_type = getattr(item, 'ai_classify_document_type', None) or 'short_text'
-        docs = float(getattr(item, 'ai_classify_num_docs', 0) or 0)
+        doc_type = _get_json_backed_value(
+            item, 'ai_classify_document_type', 'short_text'
+        ) or 'short_text'
+        docs = float(_get_json_backed_value(
+            item, 'ai_classify_num_docs', 0
+        ) or 0)
         details.append(f"Type: {doc_type}")
         details.append(f"Docs/mo: {docs:,.0f}")
-        details.append("Requires AI Parse output")
+        details.append("Document files require AI Parse")
     elif wt == 'LAKEFLOW_CONNECT':
         details.extend(_lakeflow_connect_details(item))
 

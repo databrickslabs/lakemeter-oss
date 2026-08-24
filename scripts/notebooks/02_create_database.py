@@ -223,12 +223,6 @@ table_stmts = [
         ai_parse_dbu_quantity NUMERIC(12,2),
         ai_parse_num_pages NUMERIC(12,2),
         ai_parse_pages_thousands NUMERIC(12,2),
-        ai_extract_document_type VARCHAR(30),
-        ai_extract_num_inputs NUMERIC(14,2),
-        ai_extract_dbus_per_thousand NUMERIC(10,2),
-        ai_classify_document_type VARCHAR(30),
-        ai_classify_num_docs NUMERIC(14,2),
-        ai_classify_dbus_per_thousand NUMERIC(10,2),
         shutterstock_imageai_num_images INTEGER,
         shutterstock_images INTEGER,
         databricks_support_tier VARCHAR(50),
@@ -351,10 +345,10 @@ workload_seeds = [
     ("LAKEBASE", "Lakebase", "Managed PostgreSQL database for operational workloads",
      False, False, False, False, False, False, False, False, True, False, False, True, True, False,
      None, None, "DATABASE_SERVERLESS_COMPUTE", 9),
-    ("AI_EXTRACT", "AI Extract", "Structured field extraction from parsed documents (requires AI Parse output)",
+    ("AI_EXTRACT", "AI Extract", "Structured extraction from raw text or parsed document input",
      False, False, False, False, False, False, False, False, False, False, False, False, False, False,
      "SERVERLESS_REAL_TIME_INFERENCE", None, None, 13),
-    ("AI_CLASSIFY", "AI Classify", "Document classification on parsed documents (requires AI Parse output)",
+    ("AI_CLASSIFY", "AI Classify", "Classification of raw text or parsed document input",
      False, False, False, False, False, False, False, False, False, False, False, False, False, False,
      "SERVERLESS_REAL_TIME_INFERENCE", None, None, 14),
 ]
@@ -395,7 +389,7 @@ for ct in cloud_tier_seeds:
         ct,
     )
 
-print("Seed data loaded (9 workload types, 8 cloud tiers)")
+print("Seed data loaded (11 workload types, 8 cloud tiers)")
 
 # COMMAND ----------
 
@@ -436,12 +430,6 @@ migration_columns = [
     ("ai_parse_dbu_quantity", "NUMERIC(12,2)"),
     ("ai_parse_num_pages", "NUMERIC(12,2)"),
     ("ai_parse_pages_thousands", "NUMERIC(12,2)"),
-    ("ai_extract_document_type", "VARCHAR(30)"),
-    ("ai_extract_num_inputs", "NUMERIC(14,2)"),
-    ("ai_extract_dbus_per_thousand", "NUMERIC(10,2)"),
-    ("ai_classify_document_type", "VARCHAR(30)"),
-    ("ai_classify_num_docs", "NUMERIC(14,2)"),
-    ("ai_classify_dbus_per_thousand", "NUMERIC(10,2)"),
     ("shutterstock_imageai_num_images", "INTEGER"),
     ("shutterstock_images", "INTEGER"),
     ("databricks_support_tier", "VARCHAR(50)"),

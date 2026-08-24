@@ -598,7 +598,12 @@ export function calculateWorkloadCost(
     }
 
     case 'AI_EXTRACT': {
-      const extractRates: Record<string, number> = { invoice: 45, financial_report: 67.5 }
+      const extractRates: Record<string, number> = {
+        short_text: 45,
+        invoice: 45,
+        complex_reasoning: 562.5,
+        deep_nesting: 537.5,
+      }
       const docType = (item.ai_extract_document_type || 'invoice').toLowerCase()
       const rate = docType === 'custom'
         ? (item.ai_extract_dbus_per_thousand || 0)
@@ -608,7 +613,10 @@ export function calculateWorkloadCost(
     }
 
     case 'AI_CLASSIFY': {
-      const classifyRates: Record<string, number> = { short_text: 4.5, contract: 50 }
+      const classifyRates: Record<string, number> = {
+        short_text: 4.5,
+        rental_contract: 50,
+      }
       const docType = (item.ai_classify_document_type || 'short_text').toLowerCase()
       const rate = docType === 'custom'
         ? (item.ai_classify_dbus_per_thousand || 0)
