@@ -2484,7 +2484,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 />
               </div>
             )}
-            <div>
+            <div className={clsx(form.ai_extract_document_type !== 'custom' && 'lg:col-span-2')}>
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Document Inputs/Month (thousands)</label>
               <input
                 type="number"
@@ -2531,7 +2531,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 />
               </div>
             )}
-            <div>
+            <div className={clsx(form.ai_classify_document_type !== 'custom' && 'lg:col-span-2')}>
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Documents/Month (thousands)</label>
               <input
                 type="number"
