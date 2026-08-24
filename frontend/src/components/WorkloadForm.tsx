@@ -2454,7 +2454,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         {/* AI Extract Config */}
         {form.workload_type === 'AI_EXTRACT' && (
           <>
-            <div>
+            <div className={clsx(form.ai_extract_document_type !== 'custom' && 'lg:col-span-2')}>
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Document Type</label>
               <select
                 value={form.ai_extract_document_type || 'invoice'}
@@ -2484,7 +2484,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 />
               </div>
             )}
-            <div className={clsx(form.ai_extract_document_type !== 'custom' && 'lg:col-span-2')}>
+            <div>
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Document Inputs/Month (thousands)</label>
               <input
                 type="number"
@@ -2505,7 +2505,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         {/* AI Classify Config */}
         {form.workload_type === 'AI_CLASSIFY' && (
           <>
-            <div>
+            <div className={clsx(form.ai_classify_document_type !== 'custom' && 'lg:col-span-2')}>
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Document Type</label>
               <select
                 value={form.ai_classify_document_type || 'short_text'}
@@ -2531,7 +2531,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 />
               </div>
             )}
-            <div className={clsx(form.ai_classify_document_type !== 'custom' && 'lg:col-span-2')}>
+            <div>
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Documents/Month (thousands)</label>
               <input
                 type="number"
