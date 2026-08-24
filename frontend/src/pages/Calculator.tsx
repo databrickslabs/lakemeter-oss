@@ -393,6 +393,21 @@ const DBU_PRICING: Record<string, Record<string, number>> = {
   }
 }
 
+const SERVERLESS_REAL_TIME_INFERENCE_WORKLOADS = new Set([
+  'VECTOR_SEARCH',
+  'MODEL_SERVING',
+  'FMAPI_DATABRICKS',
+  'AI_PARSE',
+  'AI_EXTRACT',
+  'AI_CLASSIFY',
+  'SHUTTERSTOCK_IMAGEAI',
+])
+
+const formatDbuPrice = (workloadType: string, price: number): string =>
+  SERVERLESS_REAL_TIME_INFERENCE_WORKLOADS.has(workloadType)
+    ? price.toFixed(3)
+    : price.toFixed(2)
+
 // Note: Instance DBU rates are now fetched dynamically from instanceTypes
 // The hardcoded INSTANCE_DBU_RATES has been replaced with lookups using instanceTypes.dbu_rate
 
@@ -2892,7 +2907,7 @@ export default function Calculator() {
                                     : directHours
                                   
                                   const dbuPrice = costs.dbuPrice || 0
-                                  const dbuPriceDisplay = dbuPrice.toFixed(2)
+                                  const dbuPriceDisplay = formatDbuPrice(wType, dbuPrice)
                                   
                                     // Vector Search formula (with storage)
                                     if (wType === 'VECTOR_SEARCH') {
@@ -3839,7 +3854,7 @@ export default function Calculator() {
                                   : directHours
                                 
                                 const dbuPrice = costs.dbuPrice || 0
-                                const dbuPriceDisplay = dbuPrice.toFixed(2)
+                                const dbuPriceDisplay = formatDbuPrice(wType, dbuPrice)
                                 
                                 // Special workloads
                                 // Vector Search formula (with storage)
