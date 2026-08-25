@@ -17,8 +17,17 @@ from .helpers import (
     _get_pricing_tier_display,
 )
 from .calculations import _calculate_dbu_per_hour, _is_serverless_workload
-from .excel_item_helpers import calc_item_values, write_storage_subrow
+from .excel_item_helpers import (
+    _get_json_backed_value,
+    calc_item_values,
+    get_ai_gateway_usage,
+    write_storage_subrow,
+)
 from app.routes.vm_pricing import DEFAULT_VM_PRICING
+from app.routes.calculate.ai_gateway_calc import (
+    AI_GATEWAY_DIRECT_GB_NOTE,
+    AI_GATEWAY_EXCLUSION_NOTE,
+)
 from app.services.vm_pricing_resolver import resolve_vm_hourly_rate
 
 
@@ -289,7 +298,11 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
     """Write one line item (and its storage sub-row if applicable)."""
     wt = (item.workload_type or 'JOBS').upper()
     sku = _get_sku_type(item, cloud)
-    requires_exact_regional_price = wt in ('AI_EXTRACT', 'AI_CLASSIFY')
+    requires_exact_regional_price = wt in (
+        'AI_EXTRACT',
+        'AI_CLASSIFY',
+        'AI_GATEWAY',
+    )
     dbu_rate, dbu_rate_found = _get_dbu_price(
         cloud,
         region,
@@ -314,10 +327,21 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         'AI_PARSE',
         'AI_EXTRACT',
         'AI_CLASSIFY',
+        'AI_GATEWAY',
         'SHUTTERSTOCK_IMAGEAI',
     )
 
     auto_notes = list(dbu_warnings)
+    if wt == 'AI_GATEWAY':
+        return _write_ai_gateway_component_rows(
+            sheet,
+            fmt,
+            row,
+            idx,
+            item,
+            dbu_rate,
+            auto_notes,
+        )
     if not dbu_rate_found:
         auto_notes.append(f"DBU rate not found for {sku}, using fallback ${dbu_rate:.2f}")
 
@@ -433,5 +457,103 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         row = write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
                                    'Vector Search (Storage)', 'vector_search_storage_gb')
     return row
+
+
+def _write_ai_gateway_component_rows(
+    sheet,
+    fmt,
+    row,
+    idx,
+    item,
+    dbu_rate,
+    auto_notes,
+):
+    """Write one recalculation-safe row for each enabled gateway component."""
+    usage = get_ai_gateway_usage(item)
+    workload_name = _get_val(
+        item,
+        'workload_name',
+        f'Workload {idx + 1}',
+    )
+    user_notes = _get_val(item, 'notes', '') or ''
+    notes_parts = [user_notes] if user_notes else []
+    notes_parts.extend(auto_notes)
+    notes_parts.extend([
+        AI_GATEWAY_DIRECT_GB_NOTE,
+        AI_GATEWAY_EXCLUSION_NOTE,
+    ])
+    for component_index, component in enumerate(usage['components'], start=1):
+        component_config = _get_ai_gateway_component_config(
+            item,
+            component,
+        )
+        config = (
+            f"{component_config} | Component: {component['display_name']} | "
+            f"Component rate: {component['dbu_per_gb']:.3f} DBU/GB"
+        )
+        row_data = {
+            'idx': f'{idx + 1}.{component_index}',
+            'name': f"{workload_name} – {component['display_name']}",
+            'type_display': 'Unity AI Gateway',
+            'config': config,
+            'sku': 'SERVERLESS_REAL_TIME_INFERENCE',
+            'driver_node': '-',
+            'worker_node': '-',
+            'num_workers': 0,
+            'driver_tier': '-',
+            'worker_tier': '-',
+            'hours_per_month': 0,
+            'token_type': '',
+            'token_quantity_millions': 0,
+            'dbu_per_million': 0,
+            'dbu_per_hour': 0,
+            'total_dbus_month': component['monthly_dbus'],
+            'is_quantity_based': True,
+            'dbu_rate': dbu_rate,
+            'discount_pct': 0.0,
+            'driver_vm_cost_per_hour': 0,
+            'worker_vm_cost_per_hour': 0,
+            'notes': ' — '.join(notes_parts),
+        }
+        write_data_row(sheet, row, row_data, False, True, fmt)
+        row += 1
+    return row
+
+
+def _get_ai_gateway_component_config(item, component):
+    """Return export configuration for one independent gateway component."""
+    prefix = f"ai_gateway_{component['component']}"
+    input_method = _get_json_backed_value(
+        item,
+        f"{prefix}_input_method",
+    )
+    details = []
+    if input_method == "payload_gb":
+        details.append("Input: Direct metered payload")
+    else:
+        requests_millions = float(_get_json_backed_value(
+            item,
+            f"{prefix}_requests_millions",
+            0,
+        ) or 0)
+        request_kb = float(_get_json_backed_value(
+            item,
+            f"{prefix}_avg_request_payload_kb",
+            0,
+        ) or 0)
+        response_kb = float(_get_json_backed_value(
+            item,
+            f"{prefix}_avg_response_payload_kb",
+            0,
+        ) or 0)
+        details.append(f"Input: {requests_millions:g}M requests/mo")
+        details.append(
+            f"Payload/request: {request_kb:g} KB request + "
+            f"{response_kb:g} KB response"
+        )
+    details.append(
+        f"Monthly payload: {component['monthly_payload_gb']:g} GB"
+    )
+    return " | ".join(details)
 
 

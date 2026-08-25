@@ -109,6 +109,20 @@ export interface LineItem {
   // Shutterstock ImageAI Configuration
   shutterstock_images?: number | null
 
+  // Unity AI Gateway Configuration
+  ai_gateway_inference_tables_enabled?: boolean | null
+  ai_gateway_inference_tables_input_method?: 'requests' | 'payload_gb' | null
+  ai_gateway_inference_tables_requests_millions?: number | null
+  ai_gateway_inference_tables_avg_request_payload_kb?: number | null
+  ai_gateway_inference_tables_avg_response_payload_kb?: number | null
+  ai_gateway_inference_tables_monthly_payload_gb?: number | null
+  ai_gateway_usage_tracking_enabled?: boolean | null
+  ai_gateway_usage_tracking_input_method?: 'requests' | 'payload_gb' | null
+  ai_gateway_usage_tracking_requests_millions?: number | null
+  ai_gateway_usage_tracking_avg_request_payload_kb?: number | null
+  ai_gateway_usage_tracking_avg_response_payload_kb?: number | null
+  ai_gateway_usage_tracking_monthly_payload_gb?: number | null
+
   // Lakeflow Connect Configuration
   lakeflow_connect_pipeline_mode?: string | null
   lakeflow_connect_gateway_enabled?: boolean | null

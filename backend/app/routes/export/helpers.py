@@ -51,6 +51,7 @@ def _get_workload_display_name(workload_type: str) -> str:
         'SHUTTERSTOCK_IMAGEAI': 'Shutterstock ImageAI',
         'AI_EXTRACT': 'AI Extract',
         'AI_CLASSIFY': 'AI Classify',
+        'AI_GATEWAY': 'Unity AI Gateway',
         'LAKEFLOW_CONNECT': 'Lakeflow Connect',
     }
     return names.get(workload_type, workload_type)
@@ -108,6 +109,16 @@ def _get_workload_config_details(item) -> str:
         details.append(f"Type: {doc_type}")
         details.append(f"Docs/mo: {docs:,.0f}")
         details.append("Document files require AI Parse")
+    elif wt == 'AI_GATEWAY':
+        from .excel_item_helpers import get_ai_gateway_usage
+
+        usage = get_ai_gateway_usage(item)
+        for component in usage["components"]:
+            details.append(
+                f"{component['display_name']}: "
+                f"{component['monthly_payload_gb']:g} GB, "
+                f"{component['monthly_dbus']:g} DBUs"
+            )
     elif wt == 'LAKEFLOW_CONNECT':
         details.extend(_lakeflow_connect_details(item))
 

@@ -11,6 +11,119 @@ import {
   type PricingBundle 
 } from '../utils/pricingBundle'
 
+function AIGatewayComponentPanel({
+  component,
+  label,
+  otherComponent,
+  form,
+  setForm,
+}: {
+  component: 'inference_tables' | 'usage_tracking'
+  label: string
+  otherComponent: 'inference_tables' | 'usage_tracking'
+  form: Record<string, any>
+  setForm: (value: any) => void
+}) {
+  const prefix = `ai_gateway_${component}`
+  const enabledField = `${prefix}_enabled`
+  const inputMethodField = `${prefix}_input_method`
+  const enabled = Boolean(form[enabledField])
+  const inputMethod = form[inputMethodField] ?? 'requests'
+  const otherEnabled = Boolean(form[`ai_gateway_${otherComponent}_enabled`])
+  const update = (field: string, value: unknown) => {
+    setForm((current: Record<string, any>) => ({ ...current, [field]: value }))
+  }
+
+  return (
+    <div className="col-span-full space-y-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-4">
+      <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+        <input
+          type="checkbox"
+          checked={enabled}
+          disabled={enabled && !otherEnabled}
+          onChange={(event) => update(enabledField, event.target.checked)}
+          className="w-4 h-4 rounded border-lava-400 text-lava-600 focus:ring-lava-500"
+        />
+        {label}
+        <span className="text-xs font-normal text-[var(--text-muted)]">(1.429 DBU/GB)</span>
+      </label>
+
+      {enabled && (
+        <>
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-medium text-[var(--text-secondary)]">Usage Input Method:</span>
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => update(inputMethodField, 'requests')}
+                className={clsx(
+                  'px-3 py-1 text-xs rounded-l-md border transition-colors',
+                  inputMethod === 'requests'
+                    ? 'bg-lava-600 text-white border-lava-600'
+                    : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]',
+                )}
+              >
+                Request-Based
+              </button>
+              <button
+                type="button"
+                onClick={() => update(inputMethodField, 'payload_gb')}
+                className={clsx(
+                  'px-3 py-1 text-xs rounded-r-md border-y border-r transition-colors',
+                  inputMethod === 'payload_gb'
+                    ? 'bg-lava-600 text-white border-lava-600'
+                    : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)]',
+                )}
+              >
+                Direct GB
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {inputMethod === 'requests' ? (
+              <>
+                {[
+                  ['requests_millions', 'Requests/Month (millions)'],
+                  ['avg_request_payload_kb', 'Avg Request Payload (KB)'],
+                  ['avg_response_payload_kb', 'Avg Response Payload (KB)'],
+                ].map(([suffix, fieldLabel]) => (
+                  <div key={suffix}>
+                    <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">{fieldLabel}</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={form[`${prefix}_${suffix}`]}
+                      onChange={(event) => update(`${prefix}_${suffix}`, Number(event.target.value))}
+                      className="w-full text-sm"
+                    />
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div>
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Monthly Billable Payload (GB)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={form[`${prefix}_monthly_payload_gb`]}
+                  onChange={(event) => update(`${prefix}_monthly_payload_gb`, Number(event.target.value))}
+                  className="w-full text-sm"
+                />
+              </div>
+            )}
+          </div>
+          <p className="text-[10px] text-[var(--text-muted)]">
+            Direct GB is preferred when this component's metered billable payload is known.
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
 // Helper to get available context lengths for FMAPI Proprietary models from pricing bundle
 function getAvailableContextLengths(
   bundle: PricingBundle,
@@ -86,6 +199,7 @@ const PREMIUM_ONLY_WORKLOAD_TYPES = new Set([
   'AI_PARSE',
   'AI_EXTRACT',
   'AI_CLASSIFY',
+  'AI_GATEWAY',
   'SHUTTERSTOCK_IMAGEAI',
 ])
 
@@ -483,6 +597,18 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         ai_classify_num_docs: (lineItem.ai_classify_num_docs || 0) / 1000,
         ai_classify_dbus_per_thousand: lineItem.ai_classify_dbus_per_thousand || 0,
         shutterstock_images: lineItem.shutterstock_images || 0,
+        ai_gateway_inference_tables_enabled: lineItem.ai_gateway_inference_tables_enabled ?? true,
+        ai_gateway_inference_tables_input_method: lineItem.ai_gateway_inference_tables_input_method ?? 'requests',
+        ai_gateway_inference_tables_requests_millions: lineItem.ai_gateway_inference_tables_requests_millions ?? 1,
+        ai_gateway_inference_tables_avg_request_payload_kb: lineItem.ai_gateway_inference_tables_avg_request_payload_kb ?? 1,
+        ai_gateway_inference_tables_avg_response_payload_kb: lineItem.ai_gateway_inference_tables_avg_response_payload_kb ?? 1,
+        ai_gateway_inference_tables_monthly_payload_gb: lineItem.ai_gateway_inference_tables_monthly_payload_gb ?? 2,
+        ai_gateway_usage_tracking_enabled: lineItem.ai_gateway_usage_tracking_enabled ?? true,
+        ai_gateway_usage_tracking_input_method: lineItem.ai_gateway_usage_tracking_input_method ?? 'requests',
+        ai_gateway_usage_tracking_requests_millions: lineItem.ai_gateway_usage_tracking_requests_millions ?? 1,
+        ai_gateway_usage_tracking_avg_request_payload_kb: lineItem.ai_gateway_usage_tracking_avg_request_payload_kb ?? 1,
+        ai_gateway_usage_tracking_avg_response_payload_kb: lineItem.ai_gateway_usage_tracking_avg_response_payload_kb ?? 1,
+        ai_gateway_usage_tracking_monthly_payload_gb: lineItem.ai_gateway_usage_tracking_monthly_payload_gb ?? 2,
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
@@ -540,6 +666,32 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       model_serving_gpu_type: 'cpu',
       model_serving_scale_out: 'small',
       model_serving_concurrency: 4,
+      databricks_apps_size: 'medium',
+      ai_parse_mode: 'pages',
+      ai_parse_complexity: 'medium',
+      ai_parse_pages_thousands: 0,
+      ai_extract_document_type: 'invoice',
+      ai_extract_num_inputs: 0,
+      ai_extract_dbus_per_thousand: 0,
+      ai_classify_document_type: 'short_text',
+      ai_classify_num_docs: 0,
+      ai_classify_dbus_per_thousand: 0,
+      shutterstock_images: 0,
+      ai_gateway_inference_tables_enabled: true,
+      ai_gateway_inference_tables_input_method: 'requests',
+      ai_gateway_inference_tables_requests_millions: 1,
+      ai_gateway_inference_tables_avg_request_payload_kb: 1,
+      ai_gateway_inference_tables_avg_response_payload_kb: 1,
+      ai_gateway_inference_tables_monthly_payload_gb: 2,
+      ai_gateway_usage_tracking_enabled: true,
+      ai_gateway_usage_tracking_input_method: 'requests',
+      ai_gateway_usage_tracking_requests_millions: 1,
+      ai_gateway_usage_tracking_avg_request_payload_kb: 1,
+      ai_gateway_usage_tracking_avg_response_payload_kb: 1,
+      ai_gateway_usage_tracking_monthly_payload_gb: 2,
+      lakeflow_connect_pipeline_mode: 'serverless',
+      lakeflow_connect_gateway_enabled: false,
+      lakeflow_connect_gateway_instance: '',
       lakebase_cu: 1,
       lakebase_compute_mode: 'autoscale',
       lakebase_min_cu: 1,
@@ -607,6 +759,18 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     ai_classify_num_docs: 0,
     ai_classify_dbus_per_thousand: 0,
     shutterstock_images: 0,
+    ai_gateway_inference_tables_enabled: true,
+    ai_gateway_inference_tables_input_method: 'requests',
+    ai_gateway_inference_tables_requests_millions: 1,
+    ai_gateway_inference_tables_avg_request_payload_kb: 1,
+    ai_gateway_inference_tables_avg_response_payload_kb: 1,
+    ai_gateway_inference_tables_monthly_payload_gb: 2,
+    ai_gateway_usage_tracking_enabled: true,
+    ai_gateway_usage_tracking_input_method: 'requests',
+    ai_gateway_usage_tracking_requests_millions: 1,
+    ai_gateway_usage_tracking_avg_request_payload_kb: 1,
+    ai_gateway_usage_tracking_avg_response_payload_kb: 1,
+    ai_gateway_usage_tracking_monthly_payload_gb: 2,
     lakeflow_connect_pipeline_mode: 'serverless',
     lakeflow_connect_gateway_enabled: false,
     lakeflow_connect_gateway_instance: '',
@@ -678,6 +842,18 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         ai_classify_num_docs: (lineItem.ai_classify_num_docs || 0) / 1000,
         ai_classify_dbus_per_thousand: lineItem.ai_classify_dbus_per_thousand || 0,
         shutterstock_images: lineItem.shutterstock_images || 0,
+        ai_gateway_inference_tables_enabled: lineItem.ai_gateway_inference_tables_enabled ?? true,
+        ai_gateway_inference_tables_input_method: lineItem.ai_gateway_inference_tables_input_method ?? 'requests',
+        ai_gateway_inference_tables_requests_millions: lineItem.ai_gateway_inference_tables_requests_millions ?? 1,
+        ai_gateway_inference_tables_avg_request_payload_kb: lineItem.ai_gateway_inference_tables_avg_request_payload_kb ?? 1,
+        ai_gateway_inference_tables_avg_response_payload_kb: lineItem.ai_gateway_inference_tables_avg_response_payload_kb ?? 1,
+        ai_gateway_inference_tables_monthly_payload_gb: lineItem.ai_gateway_inference_tables_monthly_payload_gb ?? 2,
+        ai_gateway_usage_tracking_enabled: lineItem.ai_gateway_usage_tracking_enabled ?? true,
+        ai_gateway_usage_tracking_input_method: lineItem.ai_gateway_usage_tracking_input_method ?? 'requests',
+        ai_gateway_usage_tracking_requests_millions: lineItem.ai_gateway_usage_tracking_requests_millions ?? 1,
+        ai_gateway_usage_tracking_avg_request_payload_kb: lineItem.ai_gateway_usage_tracking_avg_request_payload_kb ?? 1,
+        ai_gateway_usage_tracking_avg_response_payload_kb: lineItem.ai_gateway_usage_tracking_avg_response_payload_kb ?? 1,
+        ai_gateway_usage_tracking_monthly_payload_gb: lineItem.ai_gateway_usage_tracking_monthly_payload_gb ?? 2,
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
@@ -877,6 +1053,18 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       ai_classify_num_docs: form.ai_classify_num_docs * 1000,
       ai_classify_dbus_per_thousand: form.ai_classify_dbus_per_thousand,
       shutterstock_images: form.shutterstock_images,
+      ai_gateway_inference_tables_enabled: form.ai_gateway_inference_tables_enabled,
+      ai_gateway_inference_tables_input_method: form.ai_gateway_inference_tables_input_method,
+      ai_gateway_inference_tables_requests_millions: form.ai_gateway_inference_tables_requests_millions,
+      ai_gateway_inference_tables_avg_request_payload_kb: form.ai_gateway_inference_tables_avg_request_payload_kb,
+      ai_gateway_inference_tables_avg_response_payload_kb: form.ai_gateway_inference_tables_avg_response_payload_kb,
+      ai_gateway_inference_tables_monthly_payload_gb: form.ai_gateway_inference_tables_monthly_payload_gb,
+      ai_gateway_usage_tracking_enabled: form.ai_gateway_usage_tracking_enabled,
+      ai_gateway_usage_tracking_input_method: form.ai_gateway_usage_tracking_input_method,
+      ai_gateway_usage_tracking_requests_millions: form.ai_gateway_usage_tracking_requests_millions,
+      ai_gateway_usage_tracking_avg_request_payload_kb: form.ai_gateway_usage_tracking_avg_request_payload_kb,
+      ai_gateway_usage_tracking_avg_response_payload_kb: form.ai_gateway_usage_tracking_avg_response_payload_kb,
+      ai_gateway_usage_tracking_monthly_payload_gb: form.ai_gateway_usage_tracking_monthly_payload_gb,
       lakeflow_connect_pipeline_mode: form.lakeflow_connect_pipeline_mode,
       lakeflow_connect_gateway_enabled: form.lakeflow_connect_gateway_enabled,
       lakeflow_connect_gateway_instance: form.lakeflow_connect_gateway_instance || undefined,
@@ -947,6 +1135,37 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     ) {
       toast.error('AI Classify custom rate must be greater than 0')
       return
+    }
+    if (
+      form.workload_type === 'AI_GATEWAY' &&
+      !form.ai_gateway_inference_tables_enabled &&
+      !form.ai_gateway_usage_tracking_enabled
+    ) {
+      toast.error('Enable at least one paid AI Gateway feature')
+      return
+    }
+    if (form.workload_type === 'AI_GATEWAY') {
+      for (const component of ['inference_tables', 'usage_tracking']) {
+        const prefix = `ai_gateway_${component}`
+        if (!form[`${prefix}_enabled`]) continue
+        if (form[`${prefix}_input_method`] === 'requests') {
+          const values = [
+            form[`${prefix}_requests_millions`],
+            form[`${prefix}_avg_request_payload_kb`],
+            form[`${prefix}_avg_response_payload_kb`],
+          ]
+          if (values.some(value => !Number.isFinite(value) || value < 0)) {
+            toast.error(`Enter non-negative request volume and payload sizes for ${component === 'inference_tables' ? 'Inference Tables' : 'Usage Tracking'}`)
+            return
+          }
+        } else {
+          const payloadGB = form[`${prefix}_monthly_payload_gb`]
+          if (!Number.isFinite(payloadGB) || payloadGB < 0) {
+            toast.error(`Enter a non-negative monthly payload for ${component === 'inference_tables' ? 'Inference Tables' : 'Usage Tracking'}`)
+            return
+          }
+        }
+      }
     }
     
     setIsSaving(true)
@@ -1098,6 +1317,35 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.shutterstock_images = null
       }
 
+      // Unity AI Gateway config
+      if (form.workload_type === 'AI_GATEWAY') {
+        data.ai_gateway_inference_tables_enabled = form.ai_gateway_inference_tables_enabled
+        data.ai_gateway_inference_tables_input_method = form.ai_gateway_inference_tables_input_method
+        data.ai_gateway_inference_tables_requests_millions = form.ai_gateway_inference_tables_requests_millions
+        data.ai_gateway_inference_tables_avg_request_payload_kb = form.ai_gateway_inference_tables_avg_request_payload_kb
+        data.ai_gateway_inference_tables_avg_response_payload_kb = form.ai_gateway_inference_tables_avg_response_payload_kb
+        data.ai_gateway_inference_tables_monthly_payload_gb = form.ai_gateway_inference_tables_monthly_payload_gb
+        data.ai_gateway_usage_tracking_enabled = form.ai_gateway_usage_tracking_enabled
+        data.ai_gateway_usage_tracking_input_method = form.ai_gateway_usage_tracking_input_method
+        data.ai_gateway_usage_tracking_requests_millions = form.ai_gateway_usage_tracking_requests_millions
+        data.ai_gateway_usage_tracking_avg_request_payload_kb = form.ai_gateway_usage_tracking_avg_request_payload_kb
+        data.ai_gateway_usage_tracking_avg_response_payload_kb = form.ai_gateway_usage_tracking_avg_response_payload_kb
+        data.ai_gateway_usage_tracking_monthly_payload_gb = form.ai_gateway_usage_tracking_monthly_payload_gb
+      } else {
+        data.ai_gateway_inference_tables_enabled = null
+        data.ai_gateway_inference_tables_input_method = null
+        data.ai_gateway_inference_tables_requests_millions = null
+        data.ai_gateway_inference_tables_avg_request_payload_kb = null
+        data.ai_gateway_inference_tables_avg_response_payload_kb = null
+        data.ai_gateway_inference_tables_monthly_payload_gb = null
+        data.ai_gateway_usage_tracking_enabled = null
+        data.ai_gateway_usage_tracking_input_method = null
+        data.ai_gateway_usage_tracking_requests_millions = null
+        data.ai_gateway_usage_tracking_avg_request_payload_kb = null
+        data.ai_gateway_usage_tracking_avg_response_payload_kb = null
+        data.ai_gateway_usage_tracking_monthly_payload_gb = null
+      }
+
       // Lakebase config
       if (selectedWorkloadType?.show_lakebase_config) {
         const isFixedLakebase = form.lakebase_compute_mode === 'fixed'
@@ -1177,6 +1425,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         form.workload_type === 'AI_PARSE' ||
         form.workload_type === 'AI_EXTRACT' ||
         form.workload_type === 'AI_CLASSIFY' ||
+        form.workload_type === 'AI_GATEWAY' ||
         form.workload_type === 'SHUTTERSTOCK_IMAGEAI'
       ) {
         // Quantity-based workloads - no hours, runs, or days needed
@@ -2549,6 +2798,30 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           </>
         )}
 
+        {/* Unity AI Gateway Config */}
+        {form.workload_type === 'AI_GATEWAY' && (
+          <>
+            <AIGatewayComponentPanel
+              component="inference_tables"
+              label="Inference Tables"
+              otherComponent="usage_tracking"
+              form={form}
+              setForm={setForm}
+            />
+            <AIGatewayComponentPanel
+              component="usage_tracking"
+              label="Usage Tracking"
+              otherComponent="inference_tables"
+              form={form}
+              setForm={setForm}
+            />
+            <div className="col-span-full space-y-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
+              <p>Each component has independent payload inputs. Request-Based mode uses decimal billing units: 1 million KB = 1 GB.</p>
+              <p>Underlying Model Serving or Foundation Model API inference and guardrail evaluator costs are excluded. Add them as separate workloads.</p>
+            </div>
+          </>
+        )}
+
         {/* Shutterstock ImageAI Config */}
         {form.workload_type === 'SHUTTERSTOCK_IMAGEAI' && (
           <div>
@@ -2633,7 +2906,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
             )}
             
             {/* Days per month - hide for workloads that use hours or quantity directly */}
-            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'AI_EXTRACT' && form.workload_type !== 'AI_CLASSIFY' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
+            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'AI_EXTRACT' && form.workload_type !== 'AI_CLASSIFY' && form.workload_type !== 'AI_GATEWAY' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
               <div>
                 <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Days/Month</label>
                 <input

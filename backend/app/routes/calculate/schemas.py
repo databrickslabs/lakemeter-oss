@@ -1,6 +1,6 @@
 """Pydantic request/response models for calculation endpoints."""
-from typing import Optional
-from pydantic import BaseModel, Field
+from typing import Literal, Optional
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class GlobalDiscountConfig(BaseModel):
@@ -283,6 +283,83 @@ class AIClassifyCalculationRequest(BaseModel):
     num_docs: Optional[float] = Field(None, ge=0, description="Documents classified per month")
     dbus_per_thousand: Optional[float] = Field(None, gt=0, description="DBU per 1,000 documents (custom document_type only)")
     discount_config: Optional[DiscountConfig] = Field(None)
+
+
+class AIGatewayCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    inference_tables_enabled: bool = Field(default=False)
+    inference_tables_input_method: Optional[
+        Literal["requests", "payload_gb"]
+    ] = None
+    inference_tables_requests_millions: Optional[float] = Field(
+        default=None, ge=0
+    )
+    inference_tables_avg_request_payload_kb: Optional[float] = Field(
+        default=None, ge=0
+    )
+    inference_tables_avg_response_payload_kb: Optional[float] = Field(
+        default=None, ge=0
+    )
+    inference_tables_monthly_payload_gb: Optional[float] = Field(
+        default=None, ge=0
+    )
+    usage_tracking_enabled: bool = Field(default=False)
+    usage_tracking_input_method: Optional[
+        Literal["requests", "payload_gb"]
+    ] = None
+    usage_tracking_requests_millions: Optional[float] = Field(
+        default=None, ge=0
+    )
+    usage_tracking_avg_request_payload_kb: Optional[float] = Field(
+        default=None, ge=0
+    )
+    usage_tracking_avg_response_payload_kb: Optional[float] = Field(
+        default=None, ge=0
+    )
+    usage_tracking_monthly_payload_gb: Optional[float] = Field(
+        default=None, ge=0
+    )
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def validate_gateway_configuration(self):
+        if not (
+            self.inference_tables_enabled
+            or self.usage_tracking_enabled
+        ):
+            raise ValueError(
+                "At least one paid AI Gateway feature must be enabled"
+            )
+        for component in ("inference_tables", "usage_tracking"):
+            if not getattr(self, f"{component}_enabled"):
+                continue
+            input_method = getattr(self, f"{component}_input_method")
+            if input_method is None:
+                raise ValueError(
+                    f"{component}_input_method is required when enabled"
+                )
+            if input_method == "requests":
+                suffixes = (
+                    "requests_millions",
+                    "avg_request_payload_kb",
+                    "avg_response_payload_kb",
+                )
+            else:
+                suffixes = ("monthly_payload_gb",)
+            missing = [
+                f"{component}_{suffix}"
+                for suffix in suffixes
+                if getattr(self, f"{component}_{suffix}") is None
+            ]
+            if missing:
+                raise ValueError(
+                    f"{', '.join(missing)} required for enabled {component}"
+                )
+        return self
 
 
 class ShutterstockImageAICalculationRequest(BaseModel):

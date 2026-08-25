@@ -35,6 +35,33 @@ def _get_json_backed_value(item, field, default=None):
     return workload_config.get(field, default)
 
 
+def get_ai_gateway_usage(item):
+    """Calculate independent AI Gateway component usage from one line item."""
+    from app.routes.calculate.ai_gateway_calc import (
+        calculate_ai_gateway_usage,
+    )
+
+    values = {}
+    for component in ("inference_tables", "usage_tracking"):
+        values[f"{component}_enabled"] = bool(_get_json_backed_value(
+            item,
+            f"ai_gateway_{component}_enabled",
+            False,
+        ))
+        for suffix in (
+            "input_method",
+            "requests_millions",
+            "avg_request_payload_kb",
+            "avg_response_payload_kb",
+            "monthly_payload_gb",
+        ):
+            values[f"{component}_{suffix}"] = _get_json_backed_value(
+                item,
+                f"ai_gateway_{component}_{suffix}",
+            )
+    return calculate_ai_gateway_usage(**values)
+
+
 def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
                      dbu_per_hour, cloud, auto_notes):
     """Calculate hours, tokens, DBUs for a line item.
@@ -124,6 +151,10 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
                 rate = rates[doc_type]
             total_dbus = (quantity / 1000.0) * rate
             return 0, 0, 0, total_dbus, ''
+        # AI Gateway: quantity-based (request-derived or direct payload GB)
+        if wt == 'AI_GATEWAY':
+            usage = get_ai_gateway_usage(item)
+            return 0, 0, 0, usage['monthly_dbus'], ''
         # Shutterstock ImageAI: quantity-based (images × 0.857 DBU)
         if wt == 'SHUTTERSTOCK_IMAGEAI':
             images = getattr(item, 'shutterstock_images', None)
