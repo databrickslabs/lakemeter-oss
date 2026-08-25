@@ -34,7 +34,8 @@ import {
   BarsArrowDownIcon,
   BarsArrowUpIcon,
   Bars3Icon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  BeakerIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -61,7 +62,11 @@ import {
   getExactRegionalDBUPrice
 } from '../utils/pricingBundle'
 import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from '../utils/lakebasePricing'
-import { calculateAIGatewayUsage } from '../utils/costCalculation'
+import {
+  AGENT_EVALUATION_COMPONENT_RATES,
+  calculateAgentEvaluationUsage,
+  calculateAIGatewayUsage,
+} from '../utils/costCalculation'
 
 // Error Boundary for catching render errors
 interface ErrorBoundaryState {
@@ -180,6 +185,12 @@ const WORKLOAD_TYPE_CONFIG: Record<string, {
     color: 'text-violet-500',
     bgColor: 'bg-violet-500/10',
     label: 'AI Gateway'
+  },
+  'AGENT_EVALUATION': {
+    icon: BeakerIcon,
+    color: 'text-fuchsia-500',
+    bgColor: 'bg-fuchsia-500/10',
+    label: 'Agent Eval'
   }
 }
 
@@ -410,6 +421,7 @@ const SERVERLESS_REAL_TIME_INFERENCE_WORKLOADS = new Set([
   'AI_EXTRACT',
   'AI_CLASSIFY',
   'AI_GATEWAY',
+  'AGENT_EVALUATION',
   'SHUTTERSTOCK_IMAGEAI',
 ])
 
@@ -516,6 +528,94 @@ function AIGatewayCostFormula({
       </div>
       <p className="text-[10px] text-[var(--text-muted)]">
         Direct GB is preferred when metered billable payload is known. Excludes underlying Model Serving/Foundation Model API inference and guardrail evaluator costs; add those as separate workloads.
+      </p>
+    </div>
+  )
+}
+
+function AgentEvaluationCostFormula({
+  item,
+  costs,
+  dbuPriceDisplay,
+}: {
+  item: Partial<LineItem>
+  costs: CostBreakdown
+  dbuPriceDisplay: string
+}) {
+  const usage = calculateAgentEvaluationUsage(item)
+  const dbuPrice = costs.dbuPrice || 0
+
+  return (
+    <div className="space-y-2">
+      {usage.labelsEnabled && (
+        <div className="rounded border border-[var(--border-primary)] p-2 space-y-1">
+          <div className="text-[10px] font-semibold text-[var(--text-secondary)]">Evaluation Labels</div>
+          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+            <span className="font-medium">{formatNumber(usage.inputTokensMillions, 3)}M input tokens</span>
+            <span>×</span>
+            <span>{AGENT_EVALUATION_COMPONENT_RATES.inputTokens.toFixed(3)} DBU/M</span>
+            <span>=</span>
+            <span className="font-medium">{formatNumber(usage.inputTokenDBUs, 3)} DBUs</span>
+            <span>×</span>
+            <span>${dbuPriceDisplay}/DBU</span>
+            <span>=</span>
+            <span className="font-semibold">{formatCurrency(usage.inputTokenDBUs * dbuPrice)}</span>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+            <span className="font-medium">{formatNumber(usage.outputTokensMillions, 3)}M output tokens</span>
+            <span>×</span>
+            <span>{AGENT_EVALUATION_COMPONENT_RATES.outputTokens.toFixed(3)} DBU/M</span>
+            <span>=</span>
+            <span className="font-medium">{formatNumber(usage.outputTokenDBUs, 3)} DBUs</span>
+            <span>×</span>
+            <span>${dbuPriceDisplay}/DBU</span>
+            <span>=</span>
+            <span className="font-semibold">{formatCurrency(usage.outputTokenDBUs * dbuPrice)}</span>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap pt-1 border-t border-dashed border-[var(--border-primary)]">
+            <span className="font-semibold">Labels subtotal:</span>
+            <span>{formatNumber(usage.evaluationTokenDBUs, 3)} DBUs</span>
+            <span>×</span>
+            <span>${dbuPriceDisplay}/DBU</span>
+            <span>=</span>
+            <span className="font-semibold">{formatCurrency(usage.evaluationTokenDBUs * dbuPrice)}</span>
+          </div>
+        </div>
+      )}
+      {usage.syntheticDataEnabled && (
+        <div className="rounded border border-[var(--border-primary)] p-2 space-y-1">
+          <div className="text-[10px] font-semibold text-[var(--text-secondary)]">Synthetic Data</div>
+          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+            <span className="font-medium">{usage.syntheticQuestions.toLocaleString()} questions</span>
+            <span>×</span>
+            <span>{AGENT_EVALUATION_COMPONENT_RATES.syntheticQuestions.toFixed(3)} DBU/question</span>
+            <span>=</span>
+            <span className="font-medium">{formatNumber(usage.syntheticQuestionDBUs, 3)} DBUs</span>
+            <span>×</span>
+            <span>${dbuPriceDisplay}/DBU</span>
+            <span>=</span>
+            <span className="font-semibold">{formatCurrency(usage.syntheticQuestionDBUs * dbuPrice)}</span>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap pt-1 border-t border-dashed border-[var(--border-primary)]">
+            <span className="font-semibold">Synthetic subtotal:</span>
+            <span>{formatNumber(usage.syntheticQuestionDBUs, 3)} DBUs</span>
+            <span>×</span>
+            <span>${dbuPriceDisplay}/DBU</span>
+            <span>=</span>
+            <span className="font-semibold">{formatCurrency(usage.syntheticQuestionDBUs * dbuPrice)}</span>
+          </div>
+        </div>
+      )}
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span className="text-blue-600 font-semibold">Combined total:</span>
+        <span>{formatNumber(costs.monthlyDBUs, 3)} DBUs/mo</span>
+        <span>×</span>
+        <span>${dbuPriceDisplay}/DBU</span>
+        <span>=</span>
+        <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
+      </div>
+      <p className="text-[10px] text-[var(--text-muted)]">
+        Evaluated application or model inference is excluded. Add it separately as a Model Serving or Foundation Model API workload.
       </p>
     </div>
   )
@@ -1005,6 +1105,7 @@ export default function Calculator() {
       case 'AI_EXTRACT':
       case 'AI_CLASSIFY':
       case 'AI_GATEWAY':
+      case 'AGENT_EVALUATION':
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
         break
 
@@ -1019,7 +1120,7 @@ export default function Calculator() {
     // Get DBU price for this product type
     // Try pricing bundle first (static data), then runtime dbuRatesMap, then hardcoded fallback
     let dbuPrice = 0.20
-    if (effectiveItem.workload_type === 'AI_GATEWAY') {
+    if (effectiveItem.workload_type === 'AI_GATEWAY' || effectiveItem.workload_type === 'AGENT_EVALUATION') {
       const exactBundlePrice = isPricingBundleLoaded && formData.tier
         ? getExactRegionalDBUPrice(
             pricingBundle,
@@ -1536,6 +1637,11 @@ export default function Calculator() {
         break
       }
 
+      case 'AGENT_EVALUATION': {
+        monthlyDBUs = calculateAgentEvaluationUsage(effectiveItem).monthlyDBUs
+        break
+      }
+
       case 'SHUTTERSTOCK_IMAGEAI': {
         // 0.857 DBU per image
         const imageCount = effectiveItem.shutterstock_images || 0
@@ -1882,7 +1988,7 @@ export default function Calculator() {
   const getUsageSummary = (item: LineItem) => {
     // Quantity-based workloads don't use run/hour usage
     const wt = item.workload_type || ''
-    if (['AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
+    if (['AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'AGENT_EVALUATION', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
     if (item.hours_per_month) {
       return `${item.hours_per_month}h/month`
     }
@@ -2041,6 +2147,23 @@ export default function Calculator() {
           details.push({
             label: 'Usage Tracking',
             value: `${formatNumber(usage.usageTracking.monthlyPayloadGB, 3)} GB · ${formatNumber(usage.usageTracking.monthlyDBUs, 3)} DBUs`,
+          })
+        }
+        break
+      }
+
+      case 'AGENT_EVALUATION': {
+        const usage = calculateAgentEvaluationUsage(item)
+        if (usage.labelsEnabled) {
+          details.push({
+            label: 'Evaluation Tokens',
+            value: `${formatNumber(usage.inputTokensMillions, 3)}M input + ${formatNumber(usage.outputTokensMillions, 3)}M output · ${formatNumber(usage.evaluationTokenDBUs, 3)} DBUs`,
+          })
+        }
+        if (usage.syntheticDataEnabled) {
+          details.push({
+            label: 'Synthetic Questions',
+            value: `${usage.syntheticQuestions.toLocaleString()}/mo · ${formatNumber(usage.syntheticQuestionDBUs, 3)} DBUs`,
           })
         }
         break
@@ -2728,6 +2851,20 @@ export default function Calculator() {
                               `${formatNumber(gatewayUsage.usageTracking.monthlyPayloadGB, 3)} GB / ${formatNumber(gatewayUsage.usageTracking.monthlyDBUs, 3)} DBUs`,
                             )
                           }
+                        } else if (wType === 'AGENT_EVALUATION') {
+                          const evaluationUsage = calculateAgentEvaluationUsage(effectiveItem)
+                          if (evaluationUsage.labelsEnabled) {
+                            config.badges.push({ text: 'Evaluation Labels' })
+                            config.details.push(
+                              `${formatNumber(evaluationUsage.inputTokensMillions, 3)}M input + ${formatNumber(evaluationUsage.outputTokensMillions, 3)}M output / ${formatNumber(evaluationUsage.evaluationTokenDBUs, 3)} DBUs`,
+                            )
+                          }
+                          if (evaluationUsage.syntheticDataEnabled) {
+                            config.badges.push({ text: 'Synthetic Data' })
+                            config.details.push(
+                              `${evaluationUsage.syntheticQuestions.toLocaleString()} questions / ${formatNumber(evaluationUsage.syntheticQuestionDBUs, 3)} DBUs`,
+                            )
+                          }
                         }
                         
                         return config
@@ -2946,7 +3083,7 @@ export default function Calculator() {
                                   <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.dbuCost)}</p>
                                 </div>
                                 {/* Hide VM Cost for serverless workloads */}
-                                {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY'].includes(wType) && (
+                                {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY', 'AGENT_EVALUATION'].includes(wType) && (
                                   <div>
                                     <span className="text-[var(--text-muted)]">VM Cost</span>
                                     <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.vmCost)}</p>
@@ -3041,6 +3178,16 @@ export default function Calculator() {
                                     if (wType === 'AI_GATEWAY') {
                                       return (
                                         <AIGatewayCostFormula
+                                          item={effectiveItem}
+                                          costs={costs}
+                                          dbuPriceDisplay={dbuPriceDisplay}
+                                        />
+                                      )
+                                    }
+
+                                    if (wType === 'AGENT_EVALUATION') {
+                                      return (
+                                        <AgentEvaluationCostFormula
                                           item={effectiveItem}
                                           costs={costs}
                                           dbuPriceDisplay={dbuPriceDisplay}
@@ -3778,6 +3925,9 @@ export default function Calculator() {
                   const usageSummary = getUsageSummary(effectiveItem)
                   const typeConfig = getWorkloadTypeConfig(effectiveItem.workload_type)
                   const TypeIcon = typeConfig.icon
+                  const agentEvaluationUsage = effectiveItem.workload_type === 'AGENT_EVALUATION'
+                    ? calculateAgentEvaluationUsage(effectiveItem)
+                    : null
                   // Show details row only in 'expanded' mode OR when the item is expanded for editing
                   const showDetailsRow = workloadsViewMode === 'expanded' || isExpanded
                   
@@ -3832,6 +3982,20 @@ export default function Calculator() {
                             <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-0.5">
                               <span>{workloadTypes.find(w => w.workload_type === item.workload_type)?.display_name || item.workload_type}</span>
                             </div>
+                            {agentEvaluationUsage && (
+                              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[var(--text-secondary)] mt-1">
+                                {agentEvaluationUsage.labelsEnabled && (
+                                  <span>
+                                    Evaluation tokens: {formatNumber(agentEvaluationUsage.inputTokensMillions, 3)}M in + {formatNumber(agentEvaluationUsage.outputTokensMillions, 3)}M out · {formatNumber(agentEvaluationUsage.evaluationTokenDBUs, 3)} DBUs
+                                  </span>
+                                )}
+                                {agentEvaluationUsage.syntheticDataEnabled && (
+                                  <span>
+                                    Synthetic: {agentEvaluationUsage.syntheticQuestions.toLocaleString()} questions · {formatNumber(agentEvaluationUsage.syntheticQuestionDBUs, 3)} DBUs
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           
                           {/* Cost - Using shared component */}
@@ -3899,7 +4063,7 @@ export default function Calculator() {
                                 <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.dbuCost)}</p>
                               </div>
                               {/* Hide VM Cost for serverless workloads */}
-                              {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY'].includes(item.workload_type || '') && (
+                              {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY', 'AGENT_EVALUATION'].includes(item.workload_type || '') && (
                                 <div>
                                   <span className="text-[var(--text-muted)]">VM Cost</span>
                                   <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.vmCost)}</p>
@@ -3998,6 +4162,16 @@ export default function Calculator() {
                                 if (wType === 'AI_GATEWAY') {
                                   return (
                                     <AIGatewayCostFormula
+                                      item={effectiveItem}
+                                      costs={costs}
+                                      dbuPriceDisplay={dbuPriceDisplay}
+                                    />
+                                  )
+                                }
+
+                                if (wType === 'AGENT_EVALUATION') {
+                                  return (
+                                    <AgentEvaluationCostFormula
                                       item={effectiveItem}
                                       costs={costs}
                                       dbuPriceDisplay={dbuPriceDisplay}

@@ -95,6 +95,9 @@ def _calculate_dbu_per_hour(item, cloud: str = 'aws', tier: str = 'PREMIUM') -> 
     elif wt == 'AI_GATEWAY':
         # Quantity-based (payload GB), not hour-based; handled separately
         return 0, warnings
+    elif wt == 'AGENT_EVALUATION':
+        # Quantity-based (tokens/questions), not hour-based; handled separately
+        return 0, warnings
     elif wt == 'LAKEFLOW_CONNECT':
         # Pipeline: DLT Serverless (handled like DLT)
         return 0, warnings  # simplified; actual calc done at endpoint level
@@ -213,7 +216,7 @@ def _is_serverless_workload(item) -> bool:
     wt = (item.workload_type or '').upper()
     if wt in ('VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY',
               'LAKEBASE', 'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY',
-              'AI_GATEWAY',
+              'AI_GATEWAY', 'AGENT_EVALUATION',
               'SHUTTERSTOCK_IMAGEAI', 'LAKEFLOW_CONNECT'):
         return True
     if wt in ('JOBS', 'ALL_PURPOSE', 'DLT') and item.serverless_enabled:

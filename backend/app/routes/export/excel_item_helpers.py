@@ -62,6 +62,41 @@ def get_ai_gateway_usage(item):
     return calculate_ai_gateway_usage(**values)
 
 
+def get_agent_evaluation_usage(item):
+    """Calculate Agent Evaluation dimensions from one line item."""
+    from app.routes.calculate.agent_evaluation_calc import (
+        calculate_agent_evaluation_usage,
+    )
+
+    return calculate_agent_evaluation_usage(
+        labels_enabled=bool(_get_json_backed_value(
+            item,
+            "agent_evaluation_labels_enabled",
+            False,
+        )),
+        input_tokens_millions=float(_get_json_backed_value(
+            item,
+            "agent_evaluation_input_tokens_millions",
+            0,
+        ) or 0),
+        output_tokens_millions=float(_get_json_backed_value(
+            item,
+            "agent_evaluation_output_tokens_millions",
+            0,
+        ) or 0),
+        synthetic_data_enabled=bool(_get_json_backed_value(
+            item,
+            "agent_evaluation_synthetic_data_enabled",
+            False,
+        )),
+        synthetic_questions=_get_json_backed_value(
+            item,
+            "agent_evaluation_synthetic_questions",
+            0,
+        ) or 0,
+    )
+
+
 def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
                      dbu_per_hour, cloud, auto_notes):
     """Calculate hours, tokens, DBUs for a line item.
@@ -154,6 +189,10 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
         # AI Gateway: quantity-based (request-derived or direct payload GB)
         if wt == 'AI_GATEWAY':
             usage = get_ai_gateway_usage(item)
+            return 0, 0, 0, usage['monthly_dbus'], ''
+        # Agent Evaluation: quantity-based token/question dimensions
+        if wt == 'AGENT_EVALUATION':
+            usage = get_agent_evaluation_usage(item)
             return 0, 0, 0, usage['monthly_dbus'], ''
         # Shutterstock ImageAI: quantity-based (images × 0.857 DBU)
         if wt == 'SHUTTERSTOCK_IMAGEAI':

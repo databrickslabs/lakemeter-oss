@@ -355,6 +355,31 @@ DEFAULT_WORKLOAD_TYPES = [
         "sku_product_type_photon": None,
         "sku_product_type_serverless": None,
         "display_order": 15
+    },
+    {
+        "workload_type": "AGENT_EVALUATION",
+        "display_name": "Agent Evaluation",
+        "description": (
+            "Additive label evaluation and synthetic data generation"
+        ),
+        "show_compute_config": False,
+        "show_serverless_toggle": False,
+        "show_serverless_performance_mode": False,
+        "show_photon_toggle": False,
+        "show_dlt_config": False,
+        "show_dbsql_config": False,
+        "show_serverless_product": False,
+        "show_fmapi_config": False,
+        "show_lakebase_config": False,
+        "show_vector_search_mode": False,
+        "show_vm_pricing": False,
+        "show_usage_hours": False,
+        "show_usage_runs": False,
+        "show_usage_tokens": False,
+        "sku_product_type_standard": "SERVERLESS_REAL_TIME_INFERENCE",
+        "sku_product_type_photon": None,
+        "sku_product_type_serverless": None,
+        "display_order": 16
     }
 ]
 

@@ -813,8 +813,12 @@ export interface CostCalculationResponse {
       component: string
       display_name: string
       enabled: boolean
-      dbu_per_gb: number
-      monthly_payload_gb: number
+      quantity?: number
+      unit?: string
+      quantity_unit?: string
+      dbu_per_unit?: number
+      dbu_per_gb?: number
+      monthly_payload_gb?: number
       monthly_dbus: number
       dbu_price: number
       monthly_dbu_cost: number
@@ -1114,6 +1118,21 @@ export const calculateAIGateway = async (request: AIGatewayRequest): Promise<Cos
   return data
 }
 
+// Agent Evaluation
+export interface AgentEvaluationRequest extends BaseCalculationRequest {
+  labels_enabled: boolean
+  input_tokens_millions: number
+  output_tokens_millions: number
+  synthetic_data_enabled: boolean
+  synthetic_questions: number
+  discount_config?: Record<string, unknown>
+}
+
+export const calculateAgentEvaluation = async (request: AgentEvaluationRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/agent-evaluation', request)
+  return data
+}
+
 // Shutterstock ImageAI
 export interface ShutterstockImageAIRequest extends BaseCalculationRequest {
   images_per_month: number
@@ -1227,6 +1246,9 @@ export const calculateWorkloadCost = async (
 
     case 'AI_GATEWAY':
       return calculateAIGateway(params as unknown as AIGatewayRequest)
+
+    case 'AGENT_EVALUATION':
+      return calculateAgentEvaluation(params as unknown as AgentEvaluationRequest)
 
     case 'SHUTTERSTOCK_IMAGEAI':
       return calculateShutterstockImageAI(params as unknown as ShutterstockImageAIRequest)

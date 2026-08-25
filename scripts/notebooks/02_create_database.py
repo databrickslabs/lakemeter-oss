@@ -354,6 +354,9 @@ workload_seeds = [
     ("AI_GATEWAY", "Unity AI Gateway", "Additive AI Gateway inference tables and usage tracking",
      False, False, False, False, False, False, False, False, False, False, False, False, False, False,
      "SERVERLESS_REAL_TIME_INFERENCE", None, None, 15),
+    ("AGENT_EVALUATION", "Agent Evaluation", "Additive label evaluation and synthetic data generation",
+     False, False, False, False, False, False, False, False, False, False, False, False, False, False,
+     "SERVERLESS_REAL_TIME_INFERENCE", None, None, 16),
 ]
 
 for wt in workload_seeds:

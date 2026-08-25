@@ -14,6 +14,9 @@ from app.routes.calculate.ai_parse_calc import router as ai_parse_router
 from app.routes.calculate.ai_extract_calc import router as ai_extract_router
 from app.routes.calculate.ai_classify_calc import router as ai_classify_router
 from app.routes.calculate.ai_gateway_calc import router as ai_gateway_router
+from app.routes.calculate.agent_evaluation_calc import (
+    router as agent_evaluation_router,
+)
 from app.routes.calculate.shutterstock_calc import router as shutterstock_router
 from app.routes.calculate.lakeflow_connect_calc import router as lakeflow_connect_router
 
@@ -31,5 +34,6 @@ router.include_router(ai_parse_router)
 router.include_router(ai_extract_router)
 router.include_router(ai_classify_router)
 router.include_router(ai_gateway_router)
+router.include_router(agent_evaluation_router)
 router.include_router(shutterstock_router)
 router.include_router(lakeflow_connect_router)

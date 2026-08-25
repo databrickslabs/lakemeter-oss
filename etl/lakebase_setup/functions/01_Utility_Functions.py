@@ -256,6 +256,9 @@ BEGIN
         WHEN 'AI_GATEWAY' THEN
             v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
 
+        WHEN 'AGENT_EVALUATION' THEN
+            v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
+
         WHEN 'SHUTTERSTOCK_IMAGEAI' THEN
             v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
 

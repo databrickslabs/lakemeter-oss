@@ -178,6 +178,7 @@ def get_sku_type(
         "AI_EXTRACT",
         "AI_CLASSIFY",
         "AI_GATEWAY",
+        "AGENT_EVALUATION",
         "SHUTTERSTOCK_IMAGEAI",
     ):
         return "SERVERLESS_REAL_TIME_INFERENCE"

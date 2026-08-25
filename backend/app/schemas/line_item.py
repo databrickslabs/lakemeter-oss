@@ -32,9 +32,18 @@ AI_GATEWAY_CONFIG_FIELDS = (
     "ai_gateway_usage_tracking_monthly_payload_gb",
 )
 
+AGENT_EVALUATION_CONFIG_FIELDS = (
+    "agent_evaluation_labels_enabled",
+    "agent_evaluation_input_tokens_millions",
+    "agent_evaluation_output_tokens_millions",
+    "agent_evaluation_synthetic_data_enabled",
+    "agent_evaluation_synthetic_questions",
+)
+
 JSON_BACKED_CONFIG_FIELDS = (
     *AI_FUNCTION_CONFIG_FIELDS,
     *AI_GATEWAY_CONFIG_FIELDS,
+    *AGENT_EVALUATION_CONFIG_FIELDS,
 )
 
 
@@ -98,6 +107,8 @@ def map_ai_parse_api_fields(
             fields_to_remove.extend(AI_FUNCTION_CONFIG_FIELDS[3:])
         if workload_type != "AI_GATEWAY":
             fields_to_remove.extend(AI_GATEWAY_CONFIG_FIELDS)
+        if workload_type != "AGENT_EVALUATION":
+            fields_to_remove.extend(AGENT_EVALUATION_CONFIG_FIELDS)
         original_config = dict(config)
         for field in fields_to_remove:
             config.pop(field, None)
@@ -241,6 +252,74 @@ def validate_ai_gateway_workload_config(
             )
 
 
+def validate_agent_evaluation_workload_config(
+    workload_type: Optional[str],
+    workload_config: Optional[Dict[str, Any]],
+) -> None:
+    """Validate JSON-backed Agent Evaluation configuration."""
+    if (workload_type or "").upper() != "AGENT_EVALUATION":
+        return
+
+    config = workload_config or {}
+    labels_enabled = config.get("agent_evaluation_labels_enabled")
+    synthetic_enabled = config.get(
+        "agent_evaluation_synthetic_data_enabled"
+    )
+    for field, value in (
+        ("agent_evaluation_labels_enabled", labels_enabled),
+        ("agent_evaluation_synthetic_data_enabled", synthetic_enabled),
+    ):
+        if not isinstance(value, bool):
+            raise ValueError(f"{field} must be a boolean")
+    if not (labels_enabled or synthetic_enabled):
+        raise ValueError(
+            "At least one Agent Evaluation feature must be enabled: "
+            "labels or synthetic data"
+        )
+
+    numeric_fields = (
+        "agent_evaluation_input_tokens_millions",
+        "agent_evaluation_output_tokens_millions",
+        "agent_evaluation_synthetic_questions",
+    )
+    for field in numeric_fields:
+        value = config.get(field)
+        if value is None:
+            continue
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{field} must be a number") from exc
+        if not math.isfinite(numeric_value):
+            raise ValueError(f"{field} must be finite")
+        if numeric_value < 0:
+            raise ValueError(f"{field} must be greater than or equal to 0")
+
+    if labels_enabled:
+        missing = [
+            field
+            for field in numeric_fields[:2]
+            if config.get(field) is None
+        ]
+        if missing:
+            raise ValueError(
+                f"{', '.join(missing)} required when labels are enabled"
+            )
+    questions = config.get("agent_evaluation_synthetic_questions")
+    if synthetic_enabled and questions is None:
+        raise ValueError(
+            "agent_evaluation_synthetic_questions is required when "
+            "synthetic data is enabled"
+        )
+    if questions is not None and (
+        isinstance(questions, bool)
+        or not float(questions).is_integer()
+    ):
+        raise ValueError(
+            "agent_evaluation_synthetic_questions must be an integer"
+        )
+
+
 class LineItemBase(BaseModel):
     """Base line item schema."""
     workload_name: str
@@ -370,6 +449,19 @@ class LineItemBase(BaseModel):
     )
     ai_gateway_usage_tracking_monthly_payload_gb: Optional[float] = Field(
         default=None, ge=0, allow_inf_nan=False
+    )
+
+    # Agent Evaluation Configuration (stored in workload_config)
+    agent_evaluation_labels_enabled: Optional[bool] = None
+    agent_evaluation_input_tokens_millions: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    agent_evaluation_output_tokens_millions: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    agent_evaluation_synthetic_data_enabled: Optional[bool] = None
+    agent_evaluation_synthetic_questions: Optional[int] = Field(
+        default=None, ge=0
     )
 
     # Databricks Support Configuration
@@ -551,6 +643,19 @@ class LineItemUpdate(BaseModel):
     )
     ai_gateway_usage_tracking_monthly_payload_gb: Optional[float] = Field(
         default=None, ge=0, allow_inf_nan=False
+    )
+
+    # Agent Evaluation Configuration (stored in workload_config)
+    agent_evaluation_labels_enabled: Optional[bool] = None
+    agent_evaluation_input_tokens_millions: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    agent_evaluation_output_tokens_millions: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    agent_evaluation_synthetic_data_enabled: Optional[bool] = None
+    agent_evaluation_synthetic_questions: Optional[int] = Field(
+        default=None, ge=0
     )
 
     # Databricks Support Configuration

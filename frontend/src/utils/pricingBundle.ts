@@ -470,7 +470,7 @@ const SKU_TO_WORKLOAD_MAP: Record<string, string> = {
 const ALL_WORKLOAD_TYPES = [
   'JOBS', 'ALL_PURPOSE', 'DLT', 'DBSQL',
   'VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE',
-  'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'SHUTTERSTOCK_IMAGEAI'
+  'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'AGENT_EVALUATION', 'SHUTTERSTOCK_IMAGEAI'
 ]
 
 /**
@@ -566,6 +566,7 @@ export function getAvailableWorkloadTypesForRegion(
     availableWorkloads.add('AI_EXTRACT')
     availableWorkloads.add('AI_CLASSIFY')
     availableWorkloads.add('AI_GATEWAY')
+    availableWorkloads.add('AGENT_EVALUATION')
     availableWorkloads.add('SHUTTERSTOCK_IMAGEAI')
   }
 

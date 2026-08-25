@@ -13,8 +13,13 @@
       "id": "021-ai-gateway",
       "path": "scripts/upgrades/data_updates/021_ai_gateway.sql",
       "sha256": "c763441c9b3ade69e1f3efda4be61225607eb1e5f493e74cc92a9e8e1bcb023e"
+    },
+    {
+      "id": "022-agent-evaluation",
+      "path": "scripts/upgrades/data_updates/022_agent_evaluation.sql",
+      "sha256": "55ccc7a6849f8e0a9e5db6c481551903c2c3d12f770d6c57983f7fbd0b01d544"
     }
   ],
   "migrations": [],
-  "runtime_sha256": "0f0f0e46e2c065713e1a0f43c15653b8d4bd154f8d88d1b7ff67fd948e9af072"
+  "runtime_sha256": "e23aac45a6145a07fb5b0a73157470714462cfa17bbc73e662c10d2ec131bd33"
 }
