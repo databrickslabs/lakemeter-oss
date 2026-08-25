@@ -666,6 +666,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         vector_search_mode: lineItem.vector_search_mode || 'standard',
         vector_capacity_millions: lineItem.vector_capacity_millions || 1,
         vector_search_storage_gb: lineItem.vector_search_storage_gb || 0,
+        ai_search_reranker_enabled: lineItem.ai_search_reranker_enabled ?? false,
+        ai_search_reranker_requests_thousands: lineItem.ai_search_reranker_requests_thousands ?? 0,
         model_serving_gpu_type: lineItem.model_serving_gpu_type || 'cpu',
         model_serving_scale_out: lineItem.model_serving_scale_out || 'small',
         model_serving_concurrency: lineItem.model_serving_concurrency || 4,
@@ -751,6 +753,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       vector_search_mode: 'standard',
       vector_capacity_millions: 1,
       vector_search_storage_gb: 0,
+      ai_search_reranker_enabled: false,
+      ai_search_reranker_requests_thousands: 0,
       model_serving_gpu_type: 'cpu',
       model_serving_scale_out: 'small',
       model_serving_concurrency: 4,
@@ -838,6 +842,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     vector_search_mode: 'standard',
     vector_capacity_millions: 1,
     vector_search_storage_gb: 0,
+    ai_search_reranker_enabled: false,
+    ai_search_reranker_requests_thousands: 0,
     model_serving_gpu_type: 'cpu',
     model_serving_scale_out: 'small',
     model_serving_concurrency: 4,
@@ -926,6 +932,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         vector_search_mode: lineItem.vector_search_mode || 'standard',
         vector_capacity_millions: lineItem.vector_capacity_millions || 1,
         vector_search_storage_gb: lineItem.vector_search_storage_gb || 0,
+        ai_search_reranker_enabled: lineItem.ai_search_reranker_enabled ?? false,
+        ai_search_reranker_requests_thousands: lineItem.ai_search_reranker_requests_thousands ?? 0,
         model_serving_gpu_type: lineItem.model_serving_gpu_type || 'cpu',
         model_serving_scale_out: lineItem.model_serving_scale_out || 'small',
         model_serving_concurrency: lineItem.model_serving_concurrency || 4,
@@ -1142,6 +1150,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       vector_search_mode: form.vector_search_mode,
       vector_capacity_millions: form.vector_capacity_millions,
       vector_search_storage_gb: form.vector_search_storage_gb,
+      ai_search_reranker_enabled: form.ai_search_reranker_enabled,
+      ai_search_reranker_requests_thousands: form.ai_search_reranker_requests_thousands,
       model_serving_gpu_type: form.model_serving_gpu_type,
       model_serving_concurrency: form.model_serving_concurrency,
       model_serving_scale_out: form.model_serving_scale_out,
@@ -1242,6 +1252,15 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         form.ai_classify_dbus_per_thousand <= 0)
     ) {
       toast.error('AI Classify custom rate must be greater than 0')
+      return
+    }
+    if (
+      form.workload_type === 'VECTOR_SEARCH' &&
+      form.ai_search_reranker_enabled &&
+      (!Number.isFinite(form.ai_search_reranker_requests_thousands) ||
+        form.ai_search_reranker_requests_thousands < 0)
+    ) {
+      toast.error('Enter a non-negative AI Search Reranker request volume')
       return
     }
     if (
@@ -1382,15 +1401,19 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.dbsql_worker_payment_option = null
       }
       
-      // Vector Search config
+      // AI Search config
       if (selectedWorkloadType?.show_vector_search_mode) {
         data.vector_search_mode = form.vector_search_mode
         data.vector_capacity_millions = form.vector_capacity_millions
         data.vector_search_storage_gb = form.vector_search_storage_gb || 0
+        data.ai_search_reranker_enabled = form.ai_search_reranker_enabled
+        data.ai_search_reranker_requests_thousands = form.ai_search_reranker_requests_thousands
       } else {
         data.vector_search_mode = null
         data.vector_capacity_millions = null
         data.vector_search_storage_gb = null
+        data.ai_search_reranker_enabled = null
+        data.ai_search_reranker_requests_thousands = null
       }
       
       // Model Serving config
@@ -1567,7 +1590,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           data.days_per_month = form.days_per_month
         }
       } else if (selectedWorkloadType?.show_vector_search_mode || form.workload_type === 'MODEL_SERVING' || selectedWorkloadType?.show_lakebase_config || form.workload_type === 'DATABRICKS_APPS') {
-        // For Vector Search, Model Serving, Lakebase, Databricks Apps - always use hours_per_month
+        // For AI Search, Model Serving, Lakebase, Databricks Apps - always use hours_per_month
         data.hours_per_month = form.hours_per_month || 730
         data.runs_per_day = null
         data.avg_runtime_minutes = null
@@ -1671,7 +1694,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
               const existingType = workloadTypes.find(wt => wt.workload_type === form.workload_type)
               return existingType ? (
                 <option key={existingType.workload_type} value={existingType.workload_type}>
-                  {existingType.display_name} (unavailable in region)
+                  {existingType.workload_type === 'VECTOR_SEARCH' ? 'AI Search' : existingType.display_name} (unavailable in region)
                 </option>
               ) : null
             })()}
@@ -1680,7 +1703,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 key={wt.workload_type} 
                 value={wt.workload_type}
               >
-                {wt.display_name}
+                {wt.workload_type === 'VECTOR_SEARCH' ? 'AI Search' : wt.display_name}
               </option>
             ))}
           </select>
@@ -1689,7 +1712,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           )}
           {isExistingWithUnavailableType && (
             <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-              ⚠️ {form.workload_type.replace(/_/g, ' ')} is not available in {selectedRegion}
+              ⚠️ {form.workload_type === 'VECTOR_SEARCH' ? 'AI Search' : selectedWorkloadType?.display_name || form.workload_type.replace(/_/g, ' ')} is not available in {selectedRegion}
             </p>
           )}
           {hasRegionalRestrictions && !isExistingWithUnavailableType && (
@@ -2257,11 +2280,11 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           </>
         )}
         
-        {/* Vector Search Config */}
+        {/* AI Search Config */}
         {selectedWorkloadType?.show_vector_search_mode && (
           <>
             <div>
-              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Vector Search Type</label>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">AI Search Type</label>
               <select
                 value={form.vector_search_mode}
                 onChange={(e) => setForm(f => ({ ...f, vector_search_mode: e.target.value }))}
@@ -2296,8 +2319,41 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 placeholder="e.g., 100"
               />
               <p className="text-xs text-[var(--text-muted)] mt-1">
-                Free: {Math.ceil((form.vector_capacity_millions || 1) * 1000000 / (form.vector_search_mode === 'storage_optimized' ? 64000000 : 2000000)) * 20} GB (20 GB/unit). Charged at $0.023/GB/mo above free tier.
+                The first 30 GB is free. Additional storage is charged at $0.023/GB/mo.
               </p>
+            </div>
+            <div className="lg:col-span-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3">
+              <label className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.ai_search_reranker_enabled)}
+                  onChange={(e) => setForm(f => ({ ...f, ai_search_reranker_enabled: e.target.checked }))}
+                  className="h-4 w-4 rounded border-[var(--border-primary)] text-lava-600"
+                />
+                Enable AI Search Reranker
+              </label>
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                Billed at 28.571 DBU per 1,000 reranker requests.
+              </p>
+              {form.ai_search_reranker_enabled && (
+                <div className="mt-3 max-w-sm">
+                  <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
+                    Reranker Requests/Month (thousands)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={form.ai_search_reranker_requests_thousands}
+                    onChange={(e) => setForm(f => ({
+                      ...f,
+                      ai_search_reranker_requests_thousands: Number(e.target.value),
+                    }))}
+                    className="w-full text-sm"
+                    placeholder="e.g., 250"
+                  />
+                </div>
+              )}
             </div>
           </>
         )}
@@ -3048,7 +3104,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         {/* Run-based usage inputs */}
         {!useDirectHours && (
           <>
-            {/* Usage - Runs (not for Lakebase, Vector Search, Model Serving, FMAPI which use hours_per_month directly) */}
+            {/* Usage - Runs (not for Lakebase, AI Search, Model Serving, FMAPI which use hours_per_month directly) */}
             {selectedWorkloadType?.show_usage_runs && !selectedWorkloadType?.show_lakebase_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_fmapi_config && form.workload_type !== 'MODEL_SERVING' && (
               <div>
                 <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Runs/Day</label>
@@ -3110,7 +3166,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           </div>
         )}
         
-        {/* For Vector Search, Model Serving, and Lakebase - always show direct hours */}
+        {/* For AI Search, Model Serving, and Lakebase - always show direct hours */}
         {(selectedWorkloadType?.show_vector_search_mode || form.workload_type === 'MODEL_SERVING' || selectedWorkloadType?.show_lakebase_config || form.workload_type === 'DATABRICKS_APPS') && (
           <div>
             <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Hours/Month</label>

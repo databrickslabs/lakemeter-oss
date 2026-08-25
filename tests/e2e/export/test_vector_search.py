@@ -1,4 +1,4 @@
-"""E2E tests: Vector Search — API calculation vs Excel export verification.
+"""E2E tests: AI Search — API calculation vs Excel export verification.
 
 Tests every combination of:
   - 6 cloud/region configs
@@ -37,7 +37,7 @@ def results():
 
 
 class TestVectorSearchCalculation:
-    """Verify Vector Search API calculation returns valid results."""
+    """Verify AI Search API calculation returns valid results."""
 
     @pytest.mark.parametrize("cfg, mode, capacity", _generate_params())
     def test_calculation_succeeds(self, e2e_client, cfg, mode, capacity, results):
@@ -59,7 +59,7 @@ class TestVectorSearchCalculation:
 
 
 class TestVectorSearchExcelExport:
-    """Create estimates with Vector Search workloads, export, verify."""
+    """Create estimates with AI Search workloads, export, verify."""
 
     @pytest.mark.parametrize("cfg", ESTIMATE_CONFIGS, ids=[config_id(c) for c in ESTIMATE_CONFIGS])
     def test_export_all_modes(self, e2e_client, cfg):

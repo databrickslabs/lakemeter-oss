@@ -335,14 +335,14 @@ def validate_vector_search_mode(mode: str, cloud: str, db: Session) -> Optional[
     if not valid_modes:
         return {
             "success": False,
-            "error": {"code": "NO_DATA", "message": f"No Vector Search modes found for cloud '{cloud}'", "field": "mode"},
+            "error": {"code": "NO_DATA", "message": f"No AI Search modes found for cloud '{cloud}'", "field": "mode"},
         }
     if mode not in valid_modes:
         return {
             "success": False,
             "error": {
                 "code": "INVALID_MODE",
-                "message": f"Invalid Vector Search mode '{mode}' for {cloud}. Must be one of: {', '.join(valid_modes)}",
+                "message": f"Invalid AI Search mode '{mode}' for {cloud}. Must be one of: {', '.join(valid_modes)}",
                 "field": "mode",
                 "allowed_values": valid_modes,
             },

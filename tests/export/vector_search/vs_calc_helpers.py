@@ -1,4 +1,4 @@
-"""Vector Search calculation helpers for FE/BE alignment tests."""
+"""AI Search calculation helpers for FE/BE alignment tests."""
 import json
 import os
 import math
@@ -20,7 +20,7 @@ def _load_vs_rates():
 
 
 def get_vs_rate_info(cloud: str, mode: str) -> dict:
-    """Get Vector Search rate info for a cloud:mode key."""
+    """Get AI Search rate info for a cloud:mode key."""
     rates = _load_vs_rates()
     key = f"{cloud}:{mode}"
     return rates.get(key, {})
@@ -53,7 +53,7 @@ def calc_units(capacity_millions: float, mode: str, cloud: str = 'aws') -> int:
 
 def calc_dbu_per_hour(capacity_millions: float, mode: str,
                       cloud: str = 'aws') -> float:
-    """Calculate DBU/hr for Vector Search — mirrors backend logic."""
+    """Calculate DBU/hr for AI Search — mirrors backend logic."""
     units = calc_units(capacity_millions, mode, cloud)
     dbu_rate = get_dbu_rate(cloud, mode)
     return units * dbu_rate

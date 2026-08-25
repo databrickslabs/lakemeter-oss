@@ -161,7 +161,7 @@ def get_sku_type(
         return "SQL_PRO_COMPUTE" if wh == "PRO" else "SQL_COMPUTE"
 
     if wt == "VECTOR_SEARCH":
-        return "VECTOR_SEARCH_ENDPOINT"
+        return "SERVERLESS_REAL_TIME_INFERENCE"
     if wt == "MODEL_SERVING":
         return "SERVERLESS_REAL_TIME_INFERENCE"
     if wt == "FMAPI_DATABRICKS":

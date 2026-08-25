@@ -7,7 +7,7 @@
 # MAGIC **Target Table:** `lakemeter.line_items` (MAIN TABLE ONLY)
 # MAGIC 
 # MAGIC **New Workload Columns (23):**
-# MAGIC - Vector Search (storage enhancement)
+# MAGIC - AI Search (storage enhancement)
 # MAGIC - Lakebase (storage enhancement)
 # MAGIC - Databricks Apps
 # MAGIC - AI Parse
@@ -145,12 +145,12 @@ else:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4. Add New Columns - Vector Search Storage
+# MAGIC ## 4. Add New Columns - AI Search Storage
 
 # COMMAND ----------
 
 print("=" * 80)
-print("1. VECTOR SEARCH STORAGE")
+print("1. AI SEARCH STORAGE")
 print("=" * 80)
 
 execute_sql("""

@@ -4,7 +4,7 @@ Populate All Workload Combinations
 
 Creates an estimate with every workload type and configuration variant,
 covering ALL DBSQL sizes, DLT editions, serverless/classic modes,
-run-based/hourly usage, vector search modes, model serving GPUs,
+run-based/hourly usage, AI Search modes, model serving GPUs,
 FMAPI providers, and Lakebase configs.
 
 Usage:
@@ -246,12 +246,12 @@ def build_workloads(cloud: str) -> list[dict]:
         })
 
     # =========================================================================
-    # 5. VECTOR SEARCH — Standard + Storage Optimized, with storage
+    # 5. AI SEARCH — Standard + Storage Optimized, with storage
     # =========================================================================
     for mode, capacity in [("standard", 5), ("standard", 50), ("storage_optimized", 50), ("storage_optimized", 200)]:
         storage = capacity * 2  # Rough storage estimate
         items.append({
-            "workload_name": f"Vector Search {mode.replace('_', ' ').title()} {capacity}M",
+            "workload_name": f"AI Search {mode.replace('_', ' ').title()} {capacity}M",
             "workload_type": "VECTOR_SEARCH",
             "display_order": (order := order + 1),
             "vector_search_mode": mode,

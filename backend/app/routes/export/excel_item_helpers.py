@@ -97,6 +97,37 @@ def get_agent_evaluation_usage(item):
     )
 
 
+def get_ai_search_reranker_usage(item):
+    """Calculate optional AI Search Reranker usage from one line item."""
+    from app.routes.calculate.vector_search_calc import (
+        AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS,
+    )
+
+    enabled = bool(_get_json_backed_value(
+        item,
+        "ai_search_reranker_enabled",
+        False,
+    ))
+    requests_thousands = float(_get_json_backed_value(
+        item,
+        "ai_search_reranker_requests_thousands",
+        0,
+    ) or 0)
+    return {
+        "enabled": enabled,
+        "requests_thousands": requests_thousands,
+        "dbu_per_thousand_requests": (
+            AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS
+        ),
+        "monthly_dbus": (
+            requests_thousands
+            * AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS
+            if enabled
+            else 0
+        ),
+    }
+
+
 def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
                      dbu_per_hour, cloud, auto_notes):
     """Calculate hours, tokens, DBUs for a line item.
@@ -208,13 +239,13 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
 
 def write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
                          type_display, size_attr):
-    """Write a storage sub-row for Lakebase (storage/PITR/snapshots) or Vector Search.
+    """Write a storage sub-row for Lakebase or AI Search.
 
     Lakebase uses DSU pricing with different multipliers per feature:
       - Database Storage: 15x DSU/GB
       - PITR: 8.7x DSU/GB
       - Snapshots: 3.91x DSU/GB
-    Vector Search uses standard storage pricing: cost = GB × $/GB/month.
+    AI Search uses standard storage pricing above its included allowance.
     """
     # DSU multipliers per Databricks SKU page
     DSU_MULTIPLIERS = {
@@ -245,13 +276,13 @@ def write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
         mode = (item.vector_search_mode or 'standard').lower()
         divisor = 64_000_000 if mode == 'storage_optimized' else 2_000_000
         units = math.ceil(capacity_m * 1_000_000 / divisor) if divisor else 0
-        free_gb = units * 20
+        free_gb = 30 if units > 0 else 0
         billable_gb = max(0, storage_gb - free_gb)
         price_per_gb = 0.023
         storage_cost = billable_gb * price_per_gb
         storage_rate = price_per_gb
         config = f'Storage: {storage_gb:.0f} GB (free: {free_gb} GB)'
-        notes = f'{storage_gb:.0f} GB total, {free_gb} GB free ({units} units × 20 GB), {billable_gb:.0f} GB billable × ${price_per_gb}/GB = ${storage_cost:.2f}/mo'
+        notes = f'{storage_gb:.0f} GB total, first {free_gb} GB free, {billable_gb:.0f} GB billable × ${price_per_gb}/GB = ${storage_cost:.2f}/mo'
     else:
         storage_gb = 0
         storage_rate = 0.023

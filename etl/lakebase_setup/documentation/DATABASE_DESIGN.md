@@ -283,7 +283,7 @@ These tables are **synced from Unity Catalog Delta tables** to Lakebase via CDC.
 
 ### 4. `sync_product_serverless_rates`
 
-**Purpose:** Serverless product rates (Vector Search, Model Serving).
+**Purpose:** Serverless product rates (AI Search, Model Serving).
 
 | Column | Type | PK | Description |
 |--------|------|:--:|-------------|
@@ -741,7 +741,7 @@ SELECT * FROM v_estimates_with_totals WHERE estimate_id = 'a1b2c3d4-...';
 | `dbsql_num_clusters` | INT | | | Number of clusters for scaling (1-100, default 1) |
 | **Serverless Products** *(VECTOR_SEARCH, MODEL_SERVING)* |
 | `vector_search_mode` | VARCHAR(50) | | | standard, storage_optimized (**for VECTOR_SEARCH only**) |
-| `vector_capacity_millions` | DECIMAL(10,2) | | | Vector Search capacity in millions (supports fractional) |
+| `vector_capacity_millions` | DECIMAL(10,2) | | | AI Search capacity in millions (supports fractional) |
 | `model_serving_gpu_type` | VARCHAR(50) | | | GPU type: gpu_medium_a10g_1x, cpu_medium_2x (**for MODEL_SERVING only**) |
 | **FMAPI Config** *(FMAPI_DATABRICKS, FMAPI_PROPRIETARY)* |
 | `fmapi_provider` | VARCHAR(50) | | | databricks, openai, anthropic, google |
@@ -1185,10 +1185,10 @@ Response:
 | `show_photon_toggle` | BOOLEAN | | Show Photon toggle (disabled when serverless=ON) |
 | `show_dlt_config` | BOOLEAN | | Show DLT edition (Core/Pro/Advanced) |
 | `show_dbsql_config` | BOOLEAN | | Show warehouse type/size |
-| `show_serverless_product` | BOOLEAN | | Show serverless product config (Vector Search, Model Serving) |
+| `show_serverless_product` | BOOLEAN | | Show serverless product config (AI Search, Model Serving) |
 | `show_fmapi_config` | BOOLEAN | | Show FMAPI model selection |
 | `show_lakebase_config` | BOOLEAN | | Show Lakebase config (CU, storage, HA, backup) |
-| `show_vector_search_mode` | BOOLEAN | | Show Vector Search mode dropdown (standard/storage_optimized) |
+| `show_vector_search_mode` | BOOLEAN | | Show AI Search mode dropdown (standard/storage_optimized) |
 | `show_vm_pricing` | BOOLEAN | | Show VM pricing tier (hidden when serverless=ON) |
 | `show_usage_hours` | BOOLEAN | | Show hours per day/month |
 | `show_usage_runs` | BOOLEAN | | Show runs per day, runtime |
@@ -1207,7 +1207,7 @@ Response:
 | ALL_PURPOSE | All-Purpose Compute | ✅ | ✅ | | ✅ | | | | | ✅ |
 | DLT | Delta Live Tables | ✅ | ✅ | ✅ | ✅ | ✅ | | | | ✅ |
 | DBSQL | Databricks SQL | | | | | | ✅ | | | |
-| VECTOR_SEARCH | Vector Search | | | | | | | | ✅ | |
+| VECTOR_SEARCH | AI Search | | | | | | | | ✅ | |
 | MODEL_SERVING | Model Serving | | | | | | | | | |
 | FMAPI_DATABRICKS | Foundation Models (Databricks) | | | | | | | | | |
 | FMAPI_PROPRIETARY | Foundation Models (Proprietary) | | | | | | | | | |

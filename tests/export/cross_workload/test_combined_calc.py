@@ -142,7 +142,7 @@ class TestFmapiProprietaryCalc:
 
 
 class TestVectorSearchCalc:
-    """AC-2: Vector Search Standard 5M calculation."""
+    """AC-2: AI Search Standard 5M calculation."""
 
     def test_dbu_per_hour(self):
         item = make_vector_search_standard()

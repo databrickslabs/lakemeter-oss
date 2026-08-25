@@ -40,7 +40,7 @@ class LineItem(Base):
     dbsql_vm_pricing_tier = Column(String(20))  # on-demand, 1yr, 3yr
     dbsql_vm_payment_option = Column(String(20))  # no-upfront, partial-upfront, all-upfront
 
-    # Vector Search Configuration
+    # AI Search Configuration (legacy column names retained)
     vector_search_mode = Column(String(20))  # standard, storage_optimized
     vector_capacity_millions = Column(Integer)
     vector_search_storage_gb = Column(Integer)

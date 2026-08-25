@@ -348,8 +348,8 @@ CREATE TABLE lakemeter.line_items (
     
     -- Serverless products
     vector_search_mode VARCHAR(50),
-    vector_capacity_millions DECIMAL(10,2),  -- Vector Search: capacity in millions of vectors (supports fractional)
-    vector_search_storage_gb DECIMAL(10,2) CHECK (vector_search_storage_gb >= 0),  -- Vector Search: total storage in GB
+    vector_capacity_millions DECIMAL(10,2),  -- AI Search: capacity in millions of vectors (supports fractional)
+    vector_search_storage_gb DECIMAL(10,2) CHECK (vector_search_storage_gb >= 0),  -- AI Search: total storage in GB
     model_serving_gpu_type VARCHAR(50),      -- Model Serving: GPU type (e.g., gpu_medium_a10g_1x, cpu_medium_2x)
     model_serving_concurrency INT DEFAULT 4, -- Model Serving: scale-out concurrency (multiples of 4)
     model_serving_scale_out VARCHAR(20),     -- Model Serving: scale-out preset (small, medium, large, custom)
@@ -471,9 +471,9 @@ workload_type_inserts = [
     ON CONFLICT (workload_type) DO NOTHING""",
     
     """INSERT INTO lakemeter.ref_workload_types VALUES
-    ('VECTOR_SEARCH', 'Vector Search', 'Vector search endpoints for RAG',
+    ('VECTOR_SEARCH', 'AI Search', 'AI Search endpoints and optional reranking',
      false, false, false, false, false, false, true, false, false, true, false, true, false, false,
-     NULL, NULL, 'VECTOR_SEARCH_ENDPOINT', 5)
+     NULL, NULL, 'SERVERLESS_REAL_TIME_INFERENCE', 5)
     ON CONFLICT (workload_type) DO NOTHING""",
     
     """INSERT INTO lakemeter.ref_workload_types VALUES

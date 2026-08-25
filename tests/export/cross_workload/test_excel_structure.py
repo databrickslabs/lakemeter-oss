@@ -38,7 +38,7 @@ class TestRowCount:
 
     def test_lakebase_storage_row_exists(self, ws):
         storage_rows = find_rows_by_sku(ws, 'DATABRICKS_STORAGE')
-        # Lakebase + Vector Search both have storage sub-rows
+        # Lakebase + AI Search both have storage sub-rows
         assert len(storage_rows) >= 2, \
             f"Expected >=2 DATABRICKS_STORAGE rows, got {len(storage_rows)}"
 

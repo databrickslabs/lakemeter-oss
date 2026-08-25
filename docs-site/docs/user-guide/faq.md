@@ -60,7 +60,7 @@ Yes. Each workload row in the Excel export has a **Discount %** column. Enter yo
 
 ### Why do some workloads show multiple rows in the export?
 
-Some workloads contain separately priced components. Vector Search can add a storage row. Lakebase can include compute, storage, PITR, and snapshot rows when those quantities are configured. All emitted rows are included in the totals. See the [Exporting guide](./exporting#3-multi-row-workloads).
+Some workloads contain separately priced components. AI Search can add reranker and storage rows. Lakebase can include compute, storage, PITR, and snapshot rows when those quantities are configured. All emitted rows are included in the totals. See the [Exporting guide](./exporting#3-multi-row-workloads).
 
 ### How are DBU rates determined?
 

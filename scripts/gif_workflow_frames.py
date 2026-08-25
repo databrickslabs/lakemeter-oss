@@ -87,7 +87,7 @@ def generate_adding_workload_frames() -> tuple[list, list]:
 
     # Frame 2: Workload type selector
     img, draw = _base_frame("Select Workload Type")
-    types = ["Jobs Compute", "DBSQL Warehouse", "DLT Pipeline", "Model Serving", "Vector Search", "FMAPI"]
+    types = ["Jobs Compute", "DBSQL Warehouse", "DLT Pipeline", "Model Serving", "AI Search", "FMAPI"]
     for i, wtype in enumerate(types):
         row, col = divmod(i, 3)
         x, y = 210 + col * 190, 80 + row * 100

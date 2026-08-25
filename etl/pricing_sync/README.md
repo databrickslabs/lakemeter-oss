@@ -45,7 +45,7 @@ All tables are created in: `lakemeter_catalog.lakemeter`
 | Table | Description |
 |-------|-------------|
 | `dbsql_rates` | DBSQL warehouse DBU/hour rates |
-| `serverless_product_rates` | Vector Search, Model Serving rates |
+| `serverless_product_rates` | AI Search, Model Serving rates |
 | `fmapi_databricks_rates` | Databricks-hosted LLM rates |
 | `fmapi_proprietary_rates` | External LLM rates (OpenAI, Anthropic, etc.) |
 

@@ -63,9 +63,20 @@ function normalizeVMPaymentOption(
 // =============================================================================
 // LOCAL STORAGE CACHE UTILITIES
 // =============================================================================
-const CACHE_VERSION = 'v11'  // Bumped - added Agent Evaluation workload metadata
+const CACHE_VERSION = 'v12'  // Bumped - canonical AI Search workload metadata
 const CACHE_KEY = `lakemeter_reference_data_${CACHE_VERSION}`
 const CACHE_TTL = 4 * 60 * 60 * 1000 // 4 hours in milliseconds (reduced from 24h)
+
+function canonicalizeWorkloadType(workloadType: WorkloadType): WorkloadType {
+  if (workloadType.workload_type !== 'VECTOR_SEARCH') {
+    return workloadType
+  }
+  return {
+    ...workloadType,
+    display_name: 'AI Search',
+    description: 'AI Search endpoints and optional reranking',
+  }
+}
 
 interface CachedReferenceData {
   workloadTypes: WorkloadType[]
@@ -130,6 +141,7 @@ function getCachedReferenceData(): CachedReferenceData | null {
       return null
     }
     
+    data.workloadTypes = data.workloadTypes.map(canonicalizeWorkloadType)
     return data
   } catch (e) {
     localStorage.removeItem(CACHE_KEY)
@@ -259,7 +271,7 @@ interface Store {
   serverlessModes: ServerlessMode[]
   photonMultipliers: PhotonMultiplier[]
   
-  // Vector Search & FMAPI Pricing (for local calculations)
+  // AI Search & FMAPI Pricing (for local calculations)
   vectorSearchModes: VectorSearchMode[]  // modes with dbu_per_hour and input_divisor
   fmapiDatabricksRates: Record<string, FMAPIDatabricksModel>  // "model:rate_type" -> rate data
   fmapiProprietaryRates: Record<string, FMAPIProprietaryModel>  // "provider:model:rate_type" -> rate data
@@ -326,7 +338,7 @@ interface Store {
   fetchServerlessModes: () => Promise<void>
   fetchPhotonMultipliers: (cloud: string) => Promise<void>
   
-  // Actions - Vector Search & FMAPI Pricing (for local calculations)
+  // Actions - AI Search & FMAPI Pricing (for local calculations)
   fetchVectorSearchModes: (cloud: string) => Promise<void>
   getVectorSearchRate: (mode: string) => { dbu_per_hour: number; input_divisor: number } | null
   fetchFMAPIDatabricksRate: (model: string, cloud: string, rate_type: string) => Promise<FMAPIDatabricksModel | null>
@@ -373,7 +385,7 @@ export const useStore = create<Store>((set, get) => ({
     { workload_type: 'ALL_PURPOSE', display_name: 'All Purpose Compute', description: 'Interactive compute', sku_product_type_standard: 'ALL_PURPOSE_COMPUTE', sku_product_type_photon: 'ALL_PURPOSE_COMPUTE_(PHOTON)', sku_product_type_serverless: 'INTERACTIVE_SERVERLESS_COMPUTE', show_compute_config: true, show_serverless_toggle: true, show_photon_toggle: true, show_usage_runs: true },
     { workload_type: 'DLT', display_name: 'Lakeflow Spark Declarative Pipelines', description: 'Spark Declarative Pipelines', sku_product_type_standard: 'DLT_CORE_COMPUTE', sku_product_type_photon: 'DLT_CORE_COMPUTE_(PHOTON)', sku_product_type_serverless: 'DELTA_LIVE_TABLES_SERVERLESS', show_compute_config: true, show_serverless_toggle: true, show_photon_toggle: true, show_dlt_config: true, show_usage_runs: true },
     { workload_type: 'DBSQL', display_name: 'Databricks SQL', description: 'SQL warehouse workloads', sku_product_type_standard: 'SQL_COMPUTE', sku_product_type_photon: 'SQL_PRO_COMPUTE', sku_product_type_serverless: 'SERVERLESS_SQL_COMPUTE', show_dbsql_config: true, show_usage_runs: true },
-    { workload_type: 'VECTOR_SEARCH', display_name: 'Vector Search', description: 'Vector search endpoints', sku_product_type_standard: 'VECTOR_SEARCH_ENDPOINT', show_vector_search_mode: true },
+    { workload_type: 'VECTOR_SEARCH', display_name: 'AI Search', description: 'AI Search endpoints and optional reranking', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE', show_vector_search_mode: true },
     { workload_type: 'MODEL_SERVING', display_name: 'Model Serving', description: 'Real-time ML inference', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE', show_model_serving_config: true },
     { workload_type: 'FMAPI_DATABRICKS', display_name: 'Foundation Models (Databricks)', description: 'Databricks foundation model APIs', sku_product_type_standard: 'FOUNDATION_MODEL_TRAINING', show_fmapi_config: true },
     { workload_type: 'FMAPI_PROPRIETARY', display_name: 'Foundation Models (Proprietary)', description: 'External foundation model APIs', sku_product_type_standard: 'FOUNDATION_MODEL_TRAINING', show_fmapi_config: true },
@@ -420,7 +432,7 @@ export const useStore = create<Store>((set, get) => ({
   serverlessModes: STATIC_SERVERLESS_MODES,
   photonMultipliers: [],
   
-  // Vector Search & FMAPI Pricing (for local calculations)
+  // AI Search & FMAPI Pricing (for local calculations)
   vectorSearchModes: [],
   fmapiDatabricksRates: {},
   fmapiProprietaryRates: {},
@@ -802,9 +814,14 @@ export const useStore = create<Store>((set, get) => ({
       })
       
       // Merge API workload types with fallback (ensure new types not yet in DB still appear)
-      const apiTypeSet = new Set((workloadTypes as WorkloadType[]).map((wt: WorkloadType) => wt.workload_type))
+      const canonicalWorkloadTypes = (
+        workloadTypes as WorkloadType[]
+      ).map(canonicalizeWorkloadType)
+      const apiTypeSet = new Set(
+        canonicalWorkloadTypes.map((wt: WorkloadType) => wt.workload_type)
+      )
       const mergedWorkloadTypes = [
-        ...(workloadTypes as WorkloadType[]),
+        ...canonicalWorkloadTypes,
         ...state.workloadTypes.filter((wt: WorkloadType) => !apiTypeSet.has(wt.workload_type)),
       ]
 
@@ -839,7 +856,7 @@ export const useStore = create<Store>((set, get) => ({
       
       // Save to localStorage cache (including all cloud regions)
       setCachedReferenceData({
-        workloadTypes,
+        workloadTypes: mergedWorkloadTypes,
         cloudProviders,
         dbsqlSizes,
         dltEditions,
@@ -1257,13 +1274,13 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
   
-  // Vector Search & FMAPI Pricing Actions
+  // AI Search & FMAPI Pricing Actions
   fetchVectorSearchModes: async (cloud) => {
     try {
       const vectorSearchModes = await api.fetchVectorSearchModesWithPricing(cloud)
       set({ vectorSearchModes })
     } catch (error) {
-      console.error('Failed to fetch vector search modes:', error)
+      console.error('Failed to fetch AI Search modes:', error)
     }
   },
   
@@ -1462,6 +1479,9 @@ export const useStore = create<Store>((set, get) => ({
             ...baseParams,
             mode: lineItem.vector_search_mode || 'standard',
             vector_capacity_millions: lineItem.vector_capacity_millions || 1,
+            storage_gb: lineItem.vector_search_storage_gb || 0,
+            reranker_enabled: lineItem.ai_search_reranker_enabled || false,
+            reranker_requests_thousands: lineItem.ai_search_reranker_requests_thousands || 0,
             hours_per_month: lineItem.hours_per_month || 730
           })
           break

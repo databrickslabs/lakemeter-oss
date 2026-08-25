@@ -48,7 +48,7 @@ def get_sku_type(
             return "SQL_COMPUTE"
 
     elif workload_upper == "VECTOR_SEARCH":
-        return "VECTOR_SEARCH_ENDPOINT"
+        return "SERVERLESS_REAL_TIME_INFERENCE"
 
     elif workload_upper == "MODEL_SERVING":
         return "SERVERLESS_REAL_TIME_INFERENCE"

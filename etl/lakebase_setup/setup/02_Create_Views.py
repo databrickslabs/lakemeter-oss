@@ -377,7 +377,7 @@ product_type_calc AS (
                     WHEN 'PRO' THEN 'SQL_PRO_COMPUTE'
                     ELSE 'SQL_COMPUTE'
                 END
-            WHEN f.workload_type = 'VECTOR_SEARCH' THEN 'VECTOR_SEARCH_ENDPOINT'
+            WHEN f.workload_type = 'VECTOR_SEARCH' THEN 'SERVERLESS_REAL_TIME_INFERENCE'
             WHEN f.workload_type = 'MODEL_SERVING' THEN 'SERVERLESS_REAL_TIME_INFERENCE'
             WHEN f.workload_type = 'FMAPI_DATABRICKS' THEN 'SERVERLESS_REAL_TIME_INFERENCE'
             WHEN f.workload_type = 'FMAPI_PROPRIETARY' THEN 

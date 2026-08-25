@@ -147,7 +147,7 @@ tests/sprint_10/test_regression_s10.py::TestBugS10005TestSuiteTimeout::test_defa
 
 ## Known Limitations
 
-- DLT and Vector Search SKUs still use fallback pricing (real pricing data gap)
+- DLT and AI Search SKUs still use fallback pricing (real pricing data gap)
 - AI assistant tests remain non-deterministic (LLM responses vary between runs)
 - FMAPI reachability check uses TCP socket to port 443 (5s timeout) — doesn't verify authentication
 - The AI may propose workloads in a different order than expected — tests check the set of types, not order

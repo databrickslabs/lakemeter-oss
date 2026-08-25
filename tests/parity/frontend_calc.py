@@ -50,7 +50,7 @@ def fe_dbsql_dbu_per_hour(*, warehouse_size='Small', num_clusters=1):
 
 def fe_vector_search_dbu_per_hour(*, capacity_millions=1, mode='standard',
                                   dbu_rate=None, input_divisor=None):
-    """Frontend Vector Search DBU/hr (matches costCalculation.ts ceiling calc)."""
+    """Frontend AI Search DBU/hr (matches costCalculation.ts ceiling calc)."""
     if dbu_rate is None:
         dbu_rate = 4.0 if mode == 'standard' else 18.29
     if input_divisor is None:
@@ -61,13 +61,13 @@ def fe_vector_search_dbu_per_hour(*, capacity_millions=1, mode='standard',
 
 
 def fe_vector_search_storage_cost(*, storage_gb, units_used):
-    """Frontend Vector Search storage cost (matches costCalculation.ts).
+    """Frontend AI Search storage cost (matches costCalculation.ts).
 
-    Free storage = units_used × 20 GB
+    The first 30 GB is free when an endpoint unit is provisioned.
     Billable = max(0, total - free)
     Cost = billable × $0.023/GB/month
     """
-    free_gb = units_used * 20
+    free_gb = 30 if units_used > 0 else 0
     billable_gb = max(0, storage_gb - free_gb)
     price_per_gb = 0.023
     return billable_gb * price_per_gb

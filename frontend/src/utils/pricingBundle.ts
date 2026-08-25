@@ -346,7 +346,7 @@ export function getDBSQLWarehouseConfig(
 }
 
 /**
- * Get Vector Search rate.
+ * Get AI Search rate.
  */
 export function getVectorSearchRate(
   bundle: PricingBundle,
@@ -436,7 +436,7 @@ const SKU_TO_WORKLOAD_MAP: Record<string, string> = {
   'SQL_PRO_COMPUTE': 'DBSQL',
   'SERVERLESS_SQL_COMPUTE': 'DBSQL',
   
-  // Vector Search
+  // AI Search
   'VECTOR_SEARCH_ENDPOINT': 'VECTOR_SEARCH',
   'MOSAIC_AI_VECTOR_SEARCH': 'VECTOR_SEARCH',
   
@@ -477,7 +477,7 @@ const ALL_WORKLOAD_TYPES = [
  * Get available workload types for a specific cloud/region/tier combination from the pricing bundle.
  * Maps SKU product types to workload types.
  * 
- * Also checks serverless workloads (Vector Search, Model Serving, FMAPI, Lakebase) which are 
+ * Also checks serverless workloads (AI Search, Model Serving, FMAPI, Lakebase) which are
  * stored in separate bundle files and are typically available globally across regions.
  * 
  * @param bundle - The loaded pricing bundle
@@ -519,7 +519,7 @@ export function getAvailableWorkloadTypesForRegion(
   // Check serverless workloads which are in separate bundle files
   // These are typically globally available and keyed by cloud (not region)
   
-  // Vector Search: check if cloud has vector search rates
+  // AI Search: check if cloud has search rates
   if (bundle.vectorSearchRates) {
     const vsStandardKey = `${cloudLower}:standard`
     const vsOptimizedKey = `${cloudLower}:storage_optimized`

@@ -134,7 +134,7 @@ class TestFMAPIDataConsistency:
 
 
 class TestServingDataConsistency:
-    """Model Serving and Vector Search data consistency."""
+    """Model Serving and AI Search data consistency."""
 
     @pytest.fixture(scope="class")
     def ms_rates(self):

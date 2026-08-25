@@ -904,7 +904,7 @@ I can assist you with:
                               {proposal.workload_name}
                             </span>
                             <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
-                              {proposal.workload_type}
+                              {proposal.workload_type === 'VECTOR_SEARCH' ? 'AI Search' : proposal.workload_type}
                             </span>
                           </div>
                           {proposal.reason && (
@@ -930,6 +930,23 @@ I can assist you with:
                               <span>{proposal.runs_per_day}×{proposal.avg_runtime_minutes}min</span>
                             )}
                             {proposal.dlt_edition && <span>{proposal.dlt_edition}</span>}
+                            {proposal.workload_type === 'VECTOR_SEARCH' && proposal.vector_search_mode && (
+                              <span>{proposal.vector_search_mode === 'storage_optimized' ? 'Storage Optimized' : 'Standard'}</span>
+                            )}
+                            {proposal.workload_type === 'VECTOR_SEARCH' && proposal.vector_capacity_millions != null && (
+                              <span>{proposal.vector_capacity_millions}M vectors</span>
+                            )}
+                            {proposal.workload_type === 'VECTOR_SEARCH' && proposal.vector_search_storage_gb > 0 && (
+                              <span>{proposal.vector_search_storage_gb} GB storage</span>
+                            )}
+                            {proposal.workload_type === 'VECTOR_SEARCH' && proposal.ai_search_reranker_enabled && (
+                              <>
+                                <span className="px-1.5 py-0.5 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 rounded">
+                                  AI Search Reranker
+                                </span>
+                                <span>{proposal.ai_search_reranker_requests_thousands ?? 0}K requests/mo</span>
+                              </>
+                            )}
                             {proposal.ai_extract_document_type && (
                               <span>Extract: {proposal.ai_extract_document_type.replace(/_/g, ' ')}</span>
                             )}

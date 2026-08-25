@@ -202,7 +202,7 @@ for cloud in CLOUDS:
              check_fn=lambda d: (d.get("success") and len(d.get("data", {}).get("gpu_types", [])) > 0,
                                 f"gpu_types: {len(d.get('data', {}).get('gpu_types', []))}"))
 
-# -- Per-cloud: Vector Search modes --
+# -- Per-cloud: AI Search modes --
 for cloud in CLOUDS:
     run_test(f"ref_vs_modes_{cloud.lower()}", "GET",
              f"{app_url}/api/v1/reference/vector-search/modes?cloud={cloud}",
@@ -346,7 +346,7 @@ run_test("calc_model_serving", "POST", f"{app_url}/api/v1/calculate/model-servin
     "provisioned_throughput": False,
 }, check_fn=cost_check)
 
-# Vector Search
+# AI Search
 run_test("calc_vector_search", "POST", f"{app_url}/api/v1/calculate/vector-search", json_body={
     "cloud": "AWS", "region": "us-east-1", "tier": "PREMIUM",
     "endpoint_type": "starter", "hours_per_month": 730,

@@ -260,6 +260,6 @@ class TestRegressionCoverage:
             )
         ]
         assert len(vml_files) >= 1, (
-            "Missing regression tests covering vector search/model serving/"
+            "Missing regression tests covering AI Search/model serving/"
             "lakebase workloads"
         )

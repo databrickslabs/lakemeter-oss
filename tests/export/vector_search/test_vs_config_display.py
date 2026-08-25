@@ -1,4 +1,4 @@
-"""Test Vector Search configuration display and workload type config.
+"""Test AI Search configuration display and workload type config.
 
 Verifies the workload type definition and config detail output.
 """

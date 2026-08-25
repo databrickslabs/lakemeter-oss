@@ -78,7 +78,7 @@ CREATE OR REPLACE FUNCTION lakemeter.calculate_line_item_costs(
     p_dbsql_num_clusters INT DEFAULT 1,
     p_dbsql_vm_pricing_tier VARCHAR DEFAULT 'on_demand',
     
-    -- Vector Search
+    -- AI Search
     p_vector_search_mode VARCHAR DEFAULT NULL,
     p_vector_search_capacity_millions DECIMAL DEFAULT 0,
     

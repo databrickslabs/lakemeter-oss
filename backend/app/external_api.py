@@ -430,7 +430,7 @@ class LakemeterAPIClient:
         )
     
     async def calculate_vector_search(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Calculate Vector Search cost."""
+        """Calculate AI Search cost."""
         return await call_external_api(
             "/api/v1/calculate/vector-search",
             method="POST",

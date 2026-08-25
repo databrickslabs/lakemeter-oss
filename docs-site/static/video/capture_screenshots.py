@@ -34,7 +34,7 @@ async def capture_all():
         await page.wait_for_timeout(5000)
         # Click on a workload to expand it
         try:
-            wl = page.locator('text=Vector Search').first
+            wl = page.locator('text=AI Search').first
             await wl.click(timeout=5000)
             await page.wait_for_timeout(2000)
         except:
@@ -50,7 +50,7 @@ async def capture_all():
         # 5. Workload expanded config
         print("Capturing: workload-expanded-config.png")
         try:
-            wl = page.locator('text=Vector Search').first
+            wl = page.locator('text=AI Search').first
             await wl.click(timeout=5000)
             await page.wait_for_timeout(2000)
         except:
@@ -120,7 +120,7 @@ async def capture_all():
             ("FMAPI", "fmapi-databricks-guide.png", "fmapi-databricks-worked-example.png"),
             ("Lakebase", "lakebase-guide.png", "lakebase-worked-example.png"),
             ("Model Serving", "model-serving-guide.png", "model-serving-worked-example.png"),
-            ("Vector Search", "vector-search-guide.png", "vector-search-worked-example.png"),
+            ("AI Search", "vector-search-guide.png", "vector-search-worked-example.png"),
         ]
 
         for wl_name, guide_file, example_file in workload_guides:

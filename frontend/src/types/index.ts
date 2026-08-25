@@ -82,10 +82,12 @@ export interface LineItem {
   dbsql_worker_pricing_tier?: string | null
   dbsql_worker_payment_option?: string | null
   
-  // Vector Search Configuration
+  // AI Search Configuration (internal workload type remains VECTOR_SEARCH)
   vector_search_mode?: string | null
   vector_capacity_millions?: number | null
   vector_search_storage_gb?: number | null
+  ai_search_reranker_enabled?: boolean | null
+  ai_search_reranker_requests_thousands?: number | null
   
   // Model Serving Configuration
   model_serving_gpu_type?: string | null

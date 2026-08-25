@@ -1,4 +1,4 @@
-"""Shared fixtures for Sprint 8 (Vector Search) tests."""
+"""Shared fixtures for Sprint 8 (AI Search) tests."""
 from types import SimpleNamespace
 
 
@@ -6,7 +6,7 @@ def make_line_item(**kwargs):
     """Create a mock line item with defaults for VECTOR_SEARCH workloads."""
     defaults = {
         "workload_type": "VECTOR_SEARCH",
-        "workload_name": "Test Vector Search",
+        "workload_name": "Test AI Search",
         "serverless_enabled": False,
         "serverless_mode": None,
         "photon_enabled": False,

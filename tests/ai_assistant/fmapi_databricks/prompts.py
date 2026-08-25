@@ -51,7 +51,7 @@ OUTPUT_TOKEN_FINAL = (
 
 EMBEDDINGS_PRIMARY = (
     "I need to run BGE-Large embeddings through the Databricks Foundation "
-    "Model API for a vector search pipeline. About 20 million input tokens "
+    "Model API for an AI Search pipeline. About 20 million input tokens "
     "per month on AWS us-east-1."
 )
 EMBEDDINGS_FOLLOWUP = (

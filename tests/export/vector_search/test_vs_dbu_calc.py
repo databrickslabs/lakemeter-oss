@@ -1,4 +1,4 @@
-"""Test Vector Search DBU/hr calculation logic.
+"""Test AI Search DBU/hr calculation logic.
 
 AC-1 to AC-5: Unit calculation, DBU rates, monthly DBUs, all clouds, zero cap.
 """

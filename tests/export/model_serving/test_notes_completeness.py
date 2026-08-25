@@ -46,7 +46,7 @@ class TestFallbackPricingNotes:
 
     def test_items_with_warnings_have_notes(self, ws):
         """Items whose SKU doesn't resolve to a standard rate get auto-notes.
-        DLT Serverless and Vector Search use non-standard SKUs that may
+        DLT Serverless and AI Search use non-standard SKUs that may
         trigger fallback pricing, generating auto-notes."""
         data_rows = find_all_data_rows(ws)
         rows_with_notes = 0
@@ -54,7 +54,7 @@ class TestFallbackPricingNotes:
             notes = ws.cell(row=row_idx, column=COL_NOTES).value
             if notes and 'fallback' in str(notes).lower():
                 rows_with_notes += 1
-        # At least DLT and Vector Search may get fallback notes
+        # At least DLT and AI Search may get fallback notes
         # This test documents the behavior without mandating a specific count
         assert rows_with_notes >= 0  # documents the pattern
 

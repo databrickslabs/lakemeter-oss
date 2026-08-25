@@ -59,7 +59,7 @@ Comprehensive test cases for all workload types covering:
 | 07 | `Test_07_DBSQL_Classic.py` | DBSQL Classic | T-shirt sizes (2X-Small to 4X-Large) |
 | 08 | `Test_08_DBSQL_Pro.py` | DBSQL Pro | T-shirt sizes |
 | 09 | `Test_09_DBSQL_Serverless.py` | DBSQL Serverless | Serverless warehouse |
-| 10 | `Test_10_Vector_Search.py` | Vector Search | Standard + Storage-optimized |
+| 10 | `Test_10_Vector_Search.py` | AI Search | Standard + Storage-optimized |
 | 11 | `Test_11_Model_Serving.py` | Model Serving | CPU, GPU (small/medium/large) |
 | 12 | `Test_12_FMAPI_Databricks.py` | FMAPI (Databricks) | Llama, DBRX models |
 | 13 | `Test_13_FMAPI_Proprietary.py` | FMAPI (Proprietary) | OpenAI, Anthropic, Google |

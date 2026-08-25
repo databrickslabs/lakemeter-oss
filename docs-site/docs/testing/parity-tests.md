@@ -24,7 +24,7 @@ tests/parity/
 ├── test_parity_allpurpose.py     # All-Purpose Classic, Photon, Serverless
 ├── test_parity_dlt.py            # DLT Core/Pro/Advanced x Classic/Photon/Serverless
 ├── test_parity_dbsql.py          # DBSQL Classic/Pro/Serverless x 9 sizes
-├── test_parity_vector_search.py  # Vector Search Standard/Storage-Optimized
+├── test_parity_vector_search.py  # AI Search Standard/Storage-Optimized
 ├── test_parity_model_serving.py  # Model Serving all GPU types
 └── test_parity_lakebase.py       # Lakebase CU sizes, HA nodes, storage
 ```
@@ -43,7 +43,7 @@ For each workload configuration, the tests compare:
 | **VM cost** | Driver + worker VM costs (where applicable) | $0.01 |
 | **Total monthly cost** | DBU cost + VM cost | $0.01 |
 | **SKU product type** | Correct SKU used for pricing lookup | Exact match |
-| **Storage costs** | For Vector Search and Lakebase sub-rows | $0.01 |
+| **Storage costs** | For AI Search and Lakebase sub-rows | $0.01 |
 
 ## Running the Tests
 
@@ -85,7 +85,7 @@ All parity tests are non-AI and run in under 5 seconds.
 
 **Bugs found and fixed**:
 - Driver DBU fallback rate: 0.25 -> 0.5 (aligned with frontend)
-- Vector Search storage sub-row: AttributeError on missing field (safe getattr)
+- AI Search storage sub-row: AttributeError on missing field (safe getattr)
 - Fallback warning message said "0.25" but actual value was 0.5
 
 ### Sprint 2: DLT + DBSQL (76 tests)
@@ -103,14 +103,14 @@ All parity tests are non-AI and run in under 5 seconds.
 **Bugs found and fixed**:
 - Frontend DLT serverless photon lookup hardcoded to `DLT_CORE_COMPUTE` instead of edition-specific SKU
 
-### Sprint 3: Vector Search + Model Serving + Lakebase (58 tests)
+### Sprint 3: AI Search + Model Serving + Lakebase (58 tests)
 
 | Workload | Configuration | Tests |
 |----------|--------------|-------|
-| Vector Search | Standard mode (6 capacity levels) | 6 |
-| Vector Search | Storage-Optimized mode (4 capacity levels) | 4 |
-| Vector Search | Storage sub-rows (5 scenarios) | 5 |
-| Vector Search | Total cost (compute + storage) | 3 |
+| AI Search | Standard mode (6 capacity levels) | 6 |
+| AI Search | Storage-Optimized mode (4 capacity levels) | 4 |
+| AI Search | Storage sub-rows (5 scenarios) | 5 |
+| AI Search | Total cost (compute + storage) | 3 |
 | Model Serving | All 7 AWS GPU types | 7 |
 | Model Serving | Case-insensitive GPU names | 1 |
 | Model Serving | Run-based usage | 1 |

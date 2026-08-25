@@ -51,7 +51,7 @@ But the answer usually depends on many details:
 - Which region?
 - Which Databricks tier?
 - Is the workload classic or serverless?
-- Is it Jobs, DBSQL, Lakeflow, Model Serving, FMAPI, Vector Search, Lakebase, or something else?
+- Is it Jobs, DBSQL, Lakeflow, Model Serving, FMAPI, AI Search, Lakebase, or something else?
 - How many hours per month does it run?
 - Which DBU SKU applies?
 - Are there VM costs, storage costs, or token-based costs?
@@ -74,7 +74,7 @@ It runs as a Databricks App, uses Lakebase as the backend database, and provides
 At a high level, Lakemeter helps users:
 
 - Create estimates for customer, partner, or internal planning scenarios.
-- Add Databricks workloads such as Jobs, DBSQL, Lakeflow/DLT, Model Serving, FMAPI, Vector Search, Lakebase, Databricks Apps, AI Parse, and Shutterstock ImageAI.
+- Add Databricks workloads such as Jobs, DBSQL, Lakeflow/DLT, Model Serving, FMAPI, AI Search, Lakebase, Databricks Apps, AI Parse, and Shutterstock ImageAI.
 - Review workload-level cost assumptions.
 - Inspect DBU, storage, SKU, token, and VM cost breakdowns where applicable.
 - Export estimates to Excel.
@@ -124,7 +124,7 @@ The first release covers common Databricks workload patterns, including:
 - Lakeflow Spark Declarative Pipelines / DLT
 - Model Serving
 - Foundation Model APIs for Databricks-hosted and proprietary models
-- Vector Search
+- AI Search
 - Lakebase
 - Databricks Apps
 - AI Parse

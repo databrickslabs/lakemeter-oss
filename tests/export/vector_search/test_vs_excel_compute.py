@@ -1,4 +1,4 @@
-"""Test Vector Search Excel export — compute row tests.
+"""Test AI Search Excel export — compute row tests.
 
 AC-9: Compute formula, SKU, DBU/hr values, serverless markers.
 """
@@ -70,7 +70,7 @@ class TestComputeRowSKU:
 
 
 class TestExcelServerlessMarkers:
-    """Vector Search rows should show 'Serverless' mode."""
+    """AI Search rows should show 'Serverless' mode."""
 
     def test_mode_column_says_serverless(self):
         items = [make_line_item(vector_capacity_millions=2)]
@@ -84,7 +84,7 @@ class TestExcelServerlessMarkers:
         )
 
     def test_token_columns_are_dashes(self):
-        """Vector Search is hour-based, not token-based."""
+        """AI Search is hour-based, not token-based."""
         items = [make_line_item(vector_capacity_millions=2)]
         wb = generate_xlsx(items)
         ws = wb.active

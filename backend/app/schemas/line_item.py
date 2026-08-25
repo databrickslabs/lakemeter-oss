@@ -40,10 +40,16 @@ AGENT_EVALUATION_CONFIG_FIELDS = (
     "agent_evaluation_synthetic_questions",
 )
 
+AI_SEARCH_CONFIG_FIELDS = (
+    "ai_search_reranker_enabled",
+    "ai_search_reranker_requests_thousands",
+)
+
 JSON_BACKED_CONFIG_FIELDS = (
     *AI_FUNCTION_CONFIG_FIELDS,
     *AI_GATEWAY_CONFIG_FIELDS,
     *AGENT_EVALUATION_CONFIG_FIELDS,
+    *AI_SEARCH_CONFIG_FIELDS,
 )
 
 
@@ -109,6 +115,8 @@ def map_ai_parse_api_fields(
             fields_to_remove.extend(AI_GATEWAY_CONFIG_FIELDS)
         if workload_type != "AGENT_EVALUATION":
             fields_to_remove.extend(AGENT_EVALUATION_CONFIG_FIELDS)
+        if workload_type != "VECTOR_SEARCH":
+            fields_to_remove.extend(AI_SEARCH_CONFIG_FIELDS)
         original_config = dict(config)
         for field in fields_to_remove:
             config.pop(field, None)
@@ -320,6 +328,44 @@ def validate_agent_evaluation_workload_config(
         )
 
 
+def validate_ai_search_workload_config(
+    workload_type: Optional[str],
+    workload_config: Optional[Dict[str, Any]],
+) -> None:
+    """Validate JSON-backed AI Search reranker configuration."""
+    if (workload_type or "").upper() != "VECTOR_SEARCH":
+        return
+
+    config = workload_config or {}
+    enabled = config.get("ai_search_reranker_enabled")
+    if enabled is not None and not isinstance(enabled, bool):
+        raise ValueError("ai_search_reranker_enabled must be a boolean")
+
+    requests = config.get("ai_search_reranker_requests_thousands")
+    if requests is None:
+        if enabled:
+            raise ValueError(
+                "ai_search_reranker_requests_thousands is required when "
+                "AI Search Reranker is enabled"
+            )
+        return
+    try:
+        requests_value = float(requests)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "ai_search_reranker_requests_thousands must be a number"
+        ) from exc
+    if not math.isfinite(requests_value):
+        raise ValueError(
+            "ai_search_reranker_requests_thousands must be finite"
+        )
+    if requests_value < 0:
+        raise ValueError(
+            "ai_search_reranker_requests_thousands must be greater than "
+            "or equal to 0"
+        )
+
+
 class LineItemBase(BaseModel):
     """Base line item schema."""
     workload_name: str
@@ -347,10 +393,14 @@ class LineItemBase(BaseModel):
     dbsql_vm_pricing_tier: Optional[str] = None
     dbsql_vm_payment_option: Optional[str] = None
 
-    # Vector Search Configuration
+    # AI Search Configuration (internal workload type remains VECTOR_SEARCH)
     vector_search_mode: Optional[str] = None
     vector_capacity_millions: Optional[int] = None
     vector_search_storage_gb: Optional[int] = None
+    ai_search_reranker_enabled: Optional[bool] = None
+    ai_search_reranker_requests_thousands: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
 
     # Model Serving Configuration
     model_serving_gpu_type: Optional[str] = None
@@ -541,10 +591,14 @@ class LineItemUpdate(BaseModel):
     dbsql_vm_pricing_tier: Optional[str] = None
     dbsql_vm_payment_option: Optional[str] = None
 
-    # Vector Search Configuration
+    # AI Search Configuration (internal workload type remains VECTOR_SEARCH)
     vector_search_mode: Optional[str] = None
     vector_capacity_millions: Optional[int] = None
     vector_search_storage_gb: Optional[int] = None
+    ai_search_reranker_enabled: Optional[bool] = None
+    ai_search_reranker_requests_thousands: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
 
     # Model Serving Configuration
     model_serving_gpu_type: Optional[str] = None
