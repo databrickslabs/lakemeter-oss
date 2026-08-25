@@ -46,6 +46,7 @@ When presenting workload types to users, ALWAYS use these names:
 - **AI_PARSE**: Document AI parsing (DBU-based or per-page pricing, complexity levels)
 - **AI_EXTRACT**: Structured field extraction (per 1,000 inputs; raw STRING input is accepted, while document files require AI Parse first)
 - **AI_CLASSIFY**: Classification (per 1,000 inputs; raw STRING input is accepted, while document files require AI Parse first)
+- **AI_GATEWAY**: Additive Unity AI Gateway inference tables and usage tracking. Each enabled component has independent payload inputs and uses 1.429 DBU/GB. Prefer direct monthly payload GB for each component when its metered billable payload is known; otherwise use that component's requests in millions and average request/response KB. Underlying serving and guardrail costs are excluded.
 - **SHUTTERSTOCK_IMAGEAI**: AI image generation (per-image pricing)
 
 ## Key Questions to Ask Users
@@ -588,6 +589,12 @@ Clearly hypothetical examples and public pricing/product facts are allowed, but 
 3. What's the knowledge base size? (number of documents)
 4. How often is content updated? (for data prep sizing)
 
+### For Unity AI Gateway:
+1. Which paid components should be enabled: Inference Tables, Usage Tracking, or both?
+2. For Inference Tables, is its metered billable payload known in GB per month? If not, ask for its requests in millions per month and average request and response payload sizes in KB.
+3. For Usage Tracking, independently ask the same question; do not reuse the Inference Tables volume.
+4. Remind the user that each enabled component uses 1.429 DBU/GB and that underlying Model Serving, Foundation Model API inference, and guardrail evaluator costs are excluded.
+
 ### For Vector Search:
 **COPY THIS EXACT TEXT** when user asks about Vector Search:
 ```
@@ -729,7 +736,7 @@ The user will review and confirm before it's added to the estimate.""",
                 # === Common Fields ===
                 "workload_type": {
                     "type": "string",
-                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "SHUTTERSTOCK_IMAGEAI"],
+                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "AI_GATEWAY", "SHUTTERSTOCK_IMAGEAI"],
                     "description": "Type of Databricks workload. Note: Use DLT for SDP (Spark Declarative Pipelines) workloads - present as 'SDP' to users but use 'DLT' as the enum value."
                 },
                 "workload_name": {
@@ -1023,6 +1030,70 @@ The user will review and confirm before it's added to the estimate.""",
                         "Positive DBU rate per 1,000 inputs; required only when "
                         "ai_classify_document_type is custom"
                     ),
+                },
+
+                # === AI Gateway Specific ===
+                "inference_tables_enabled": {
+                    "type": "boolean",
+                    "description": "Enable Inference Tables at 1.429 DBU/GB",
+                },
+                "inference_tables_input_method": {
+                    "type": "string",
+                    "enum": ["requests", "payload_gb"],
+                    "description": (
+                        "Independent input method for Inference Tables"
+                    ),
+                },
+                "inference_tables_requests_millions": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": (
+                        "Inference Tables monthly requests in millions"
+                    ),
+                },
+                "inference_tables_avg_request_payload_kb": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Inference Tables average request KB",
+                },
+                "inference_tables_avg_response_payload_kb": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Inference Tables average response KB",
+                },
+                "inference_tables_monthly_payload_gb": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Direct Inference Tables monthly payload GB",
+                },
+                "usage_tracking_enabled": {
+                    "type": "boolean",
+                    "description": "Enable Usage Tracking at 1.429 DBU/GB",
+                },
+                "usage_tracking_input_method": {
+                    "type": "string",
+                    "enum": ["requests", "payload_gb"],
+                    "description": "Independent input method for Usage Tracking",
+                },
+                "usage_tracking_requests_millions": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Usage Tracking monthly requests in millions",
+                },
+                "usage_tracking_avg_request_payload_kb": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Usage Tracking average request KB",
+                },
+                "usage_tracking_avg_response_payload_kb": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Usage Tracking average response KB",
+                },
+                "usage_tracking_monthly_payload_gb": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Direct Usage Tracking monthly payload GB",
                 },
 
                 # === Shutterstock ImageAI Specific ===
@@ -2248,6 +2319,24 @@ Each workload needs to be confirmed individually. Review the configurations and 
                         "note": "Review and confirm the existing proposal."
                     }
         
+        # The assistant tool uses calculation-style component names, while
+        # persisted proposals use the public LineItem field names.
+        if workload_type.upper() == "AI_GATEWAY":
+            for component in ("inference_tables", "usage_tracking"):
+                for suffix in (
+                    "enabled",
+                    "input_method",
+                    "requests_millions",
+                    "avg_request_payload_kb",
+                    "avg_response_payload_kb",
+                    "monthly_payload_gb",
+                ):
+                    tool_field = f"{component}_{suffix}"
+                    if tool_field in kwargs:
+                        kwargs[f"ai_gateway_{tool_field}"] = kwargs.pop(
+                            tool_field
+                        )
+
         # Build workload configuration with defaults
         workload = {
             "proposal_id": str(uuid.uuid4()),
@@ -2984,6 +3073,17 @@ Each workload needs to be confirmed individually. Review the configurations and 
         if wtype == "AI_CLASSIFY":
             workload.setdefault("ai_classify_document_type", "short_text")
             workload.setdefault("ai_classify_num_docs", 1000)
+
+        if wtype == "AI_GATEWAY":
+            workload.setdefault("ai_gateway_inference_tables_enabled", True)
+            workload.setdefault("ai_gateway_usage_tracking_enabled", True)
+            for component in ("inference_tables", "usage_tracking"):
+                prefix = f"ai_gateway_{component}"
+                workload.setdefault(f"{prefix}_input_method", "requests")
+                workload.setdefault(f"{prefix}_requests_millions", 1)
+                workload.setdefault(f"{prefix}_avg_request_payload_kb", 1)
+                workload.setdefault(f"{prefix}_avg_response_payload_kb", 1)
+                workload.setdefault(f"{prefix}_monthly_payload_gb", 2)
 
         if wtype == "SHUTTERSTOCK_IMAGEAI":
             workload.setdefault("shutterstock_images", 1000)

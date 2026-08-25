@@ -33,7 +33,8 @@ import {
   CalculatorIcon,
   BarsArrowDownIcon,
   BarsArrowUpIcon,
-  Bars3Icon
+  Bars3Icon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -56,9 +57,11 @@ import {
   getModelServingRate as getBundleModelServingRate,
   getFMAPIDatabricksRate as getBundleFMAPIDatabricksRate,
   getFMAPIProprietaryRate as getBundleFMAPIProprietaryRate,
-  getAvailableRegionsFromBundle
+  getAvailableRegionsFromBundle,
+  getExactRegionalDBUPrice
 } from '../utils/pricingBundle'
 import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from '../utils/lakebasePricing'
+import { calculateAIGatewayUsage } from '../utils/costCalculation'
 
 // Error Boundary for catching render errors
 interface ErrorBoundaryState {
@@ -171,6 +174,12 @@ const WORKLOAD_TYPE_CONFIG: Record<string, {
     color: 'text-indigo-500', 
     bgColor: 'bg-indigo-500/10',
     label: 'Lakebase'
+  },
+  'AI_GATEWAY': {
+    icon: ShieldCheckIcon,
+    color: 'text-violet-500',
+    bgColor: 'bg-violet-500/10',
+    label: 'AI Gateway'
   }
 }
 
@@ -400,6 +409,7 @@ const SERVERLESS_REAL_TIME_INFERENCE_WORKLOADS = new Set([
   'AI_PARSE',
   'AI_EXTRACT',
   'AI_CLASSIFY',
+  'AI_GATEWAY',
   'SHUTTERSTOCK_IMAGEAI',
 ])
 
@@ -438,6 +448,77 @@ interface CostBreakdown {
     totalDSU?: number       // Lakebase
     pricePerDSU?: number    // Lakebase
   }
+}
+
+function AIGatewayCostFormula({
+  item,
+  costs,
+  dbuPriceDisplay,
+}: {
+  item: Partial<LineItem>
+  costs: CostBreakdown
+  dbuPriceDisplay: string
+}) {
+  const usage = calculateAIGatewayUsage(item)
+  const components = [
+    {
+      label: 'Inference Tables',
+      usage: usage.inferenceTables,
+      requestKB: item.ai_gateway_inference_tables_avg_request_payload_kb ?? 1,
+      responseKB: item.ai_gateway_inference_tables_avg_response_payload_kb ?? 1,
+    },
+    {
+      label: 'Usage Tracking',
+      usage: usage.usageTracking,
+      requestKB: item.ai_gateway_usage_tracking_avg_request_payload_kb ?? 1,
+      responseKB: item.ai_gateway_usage_tracking_avg_response_payload_kb ?? 1,
+    },
+  ].filter(component => component.usage.enabled)
+
+  return (
+    <div className="space-y-2">
+      {components.map(component => {
+        const subtotal = usage.monthlyDBUs > 0
+          ? costs.totalCost * component.usage.monthlyDBUs / usage.monthlyDBUs
+          : 0
+        return (
+          <div key={component.label} className="rounded border border-[var(--border-primary)] p-2 space-y-1">
+            <div className="text-[10px] font-semibold text-[var(--text-secondary)]">{component.label}</div>
+            <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+              {component.usage.inputMethod === 'payload_gb' ? (
+                <span>Direct metered payload</span>
+              ) : (
+                <>
+                  <span>{component.usage.requestsMillions.toLocaleString()}M requests</span>
+                  <span>×</span>
+                  <span>({component.requestKB} + {component.responseKB}) KB/request</span>
+                  <span>=</span>
+                </>
+              )}
+              <span className="font-medium">{formatNumber(component.usage.monthlyPayloadGB, 3)} GB</span>
+              <span>×</span>
+              <span>1.429 DBU/GB</span>
+              <span>=</span>
+              <span className="font-medium">{formatNumber(component.usage.monthlyDBUs, 3)} DBUs</span>
+              <span>→</span>
+              <span className="font-semibold">{formatCurrency(subtotal)}</span>
+            </div>
+          </div>
+        )
+      })}
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span className="text-blue-600 font-semibold">Combined total:</span>
+        <span>{formatNumber(costs.monthlyDBUs)} DBUs/mo</span>
+        <span>×</span>
+        <span>${dbuPriceDisplay}/DBU</span>
+        <span>=</span>
+        <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
+      </div>
+      <p className="text-[10px] text-[var(--text-muted)]">
+        Direct GB is preferred when metered billable payload is known. Excludes underlying Model Serving/Foundation Model API inference and guardrail evaluator costs; add those as separate workloads.
+      </p>
+    </div>
+  )
 }
 
 function SortableRow({ id, disabled, children }: { id: string; disabled?: boolean; children: React.ReactNode }) {
@@ -923,6 +1004,7 @@ export default function Calculator() {
 
       case 'AI_EXTRACT':
       case 'AI_CLASSIFY':
+      case 'AI_GATEWAY':
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
         break
 
@@ -937,7 +1019,18 @@ export default function Calculator() {
     // Get DBU price for this product type
     // Try pricing bundle first (static data), then runtime dbuRatesMap, then hardcoded fallback
     let dbuPrice = 0.20
-    if (isPricingBundleLoaded && formData.tier) {
+    if (effectiveItem.workload_type === 'AI_GATEWAY') {
+      const exactBundlePrice = isPricingBundleLoaded && formData.tier
+        ? getExactRegionalDBUPrice(
+            pricingBundle,
+            cloud,
+            region,
+            formData.tier,
+            'SERVERLESS_REAL_TIME_INFERENCE',
+          )
+        : null
+      dbuPrice = exactBundlePrice ?? dbuRatesMap['SERVERLESS_REAL_TIME_INFERENCE'] ?? 0
+    } else if (isPricingBundleLoaded && formData.tier) {
       const bundlePrice = getBundleDBUPrice(pricingBundle, cloud, region, formData.tier, productType)
       if (bundlePrice > 0) {
         dbuPrice = bundlePrice
@@ -1438,6 +1531,11 @@ export default function Calculator() {
         break
       }
 
+      case 'AI_GATEWAY': {
+        monthlyDBUs = calculateAIGatewayUsage(effectiveItem).monthlyDBUs
+        break
+      }
+
       case 'SHUTTERSTOCK_IMAGEAI': {
         // 0.857 DBU per image
         const imageCount = effectiveItem.shutterstock_images || 0
@@ -1784,7 +1882,7 @@ export default function Calculator() {
   const getUsageSummary = (item: LineItem) => {
     // Quantity-based workloads don't use run/hour usage
     const wt = item.workload_type || ''
-    if (['AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
+    if (['AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
     if (item.hours_per_month) {
       return `${item.hours_per_month}h/month`
     }
@@ -1930,6 +2028,23 @@ export default function Calculator() {
           details.push({ label: 'Docs', value: `${formatNumber(item.ai_classify_num_docs / 1000)}K/mo` })
         }
         break
+
+      case 'AI_GATEWAY': {
+        const usage = calculateAIGatewayUsage(item)
+        if (usage.inferenceTables.enabled) {
+          details.push({
+            label: 'Inference Tables',
+            value: `${formatNumber(usage.inferenceTables.monthlyPayloadGB, 3)} GB · ${formatNumber(usage.inferenceTables.monthlyDBUs, 3)} DBUs`,
+          })
+        }
+        if (usage.usageTracking.enabled) {
+          details.push({
+            label: 'Usage Tracking',
+            value: `${formatNumber(usage.usageTracking.monthlyPayloadGB, 3)} GB · ${formatNumber(usage.usageTracking.monthlyDBUs, 3)} DBUs`,
+          })
+        }
+        break
+      }
 
       case 'SHUTTERSTOCK_IMAGEAI':
         if (item.shutterstock_images) {
@@ -2599,6 +2714,20 @@ export default function Calculator() {
                           if (effectiveItem.lakebase_storage_gb && effectiveItem.lakebase_storage_gb > 0) {
                             config.details.push(`${effectiveItem.lakebase_storage_gb.toLocaleString()} GB`)
                           }
+                        } else if (wType === 'AI_GATEWAY') {
+                          const gatewayUsage = calculateAIGatewayUsage(effectiveItem)
+                          if (gatewayUsage.inferenceTables.enabled) {
+                            config.badges.push({ text: 'Inference Tables' })
+                            config.details.push(
+                              `${formatNumber(gatewayUsage.inferenceTables.monthlyPayloadGB, 3)} GB / ${formatNumber(gatewayUsage.inferenceTables.monthlyDBUs, 3)} DBUs`,
+                            )
+                          }
+                          if (gatewayUsage.usageTracking.enabled) {
+                            config.badges.push({ text: 'Usage Tracking' })
+                            config.details.push(
+                              `${formatNumber(gatewayUsage.usageTracking.monthlyPayloadGB, 3)} GB / ${formatNumber(gatewayUsage.usageTracking.monthlyDBUs, 3)} DBUs`,
+                            )
+                          }
                         }
                         
                         return config
@@ -2817,7 +2946,7 @@ export default function Calculator() {
                                   <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.dbuCost)}</p>
                                 </div>
                                 {/* Hide VM Cost for serverless workloads */}
-                                {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE'].includes(wType) && (
+                                {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY'].includes(wType) && (
                                   <div>
                                     <span className="text-[var(--text-muted)]">VM Cost</span>
                                     <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.vmCost)}</p>
@@ -2909,6 +3038,16 @@ export default function Calculator() {
                                   const dbuPrice = costs.dbuPrice || 0
                                   const dbuPriceDisplay = formatDbuPrice(wType, dbuPrice)
                                   
+                                    if (wType === 'AI_GATEWAY') {
+                                      return (
+                                        <AIGatewayCostFormula
+                                          item={effectiveItem}
+                                          costs={costs}
+                                          dbuPriceDisplay={dbuPriceDisplay}
+                                        />
+                                      )
+                                    }
+
                                     // Vector Search formula (with storage)
                                     if (wType === 'VECTOR_SEARCH') {
                                       const capacity = effectiveItem.vector_capacity_millions || 1
@@ -3760,7 +3899,7 @@ export default function Calculator() {
                                 <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.dbuCost)}</p>
                               </div>
                               {/* Hide VM Cost for serverless workloads */}
-                              {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE'].includes(item.workload_type || '') && (
+                              {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY'].includes(item.workload_type || '') && (
                                 <div>
                                   <span className="text-[var(--text-muted)]">VM Cost</span>
                                   <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.vmCost)}</p>
@@ -3856,6 +3995,16 @@ export default function Calculator() {
                                 const dbuPrice = costs.dbuPrice || 0
                                 const dbuPriceDisplay = formatDbuPrice(wType, dbuPrice)
                                 
+                                if (wType === 'AI_GATEWAY') {
+                                  return (
+                                    <AIGatewayCostFormula
+                                      item={effectiveItem}
+                                      costs={costs}
+                                      dbuPriceDisplay={dbuPriceDisplay}
+                                    />
+                                  )
+                                }
+
                                 // Special workloads
                                 // Vector Search formula (with storage)
                                 if (wType === 'VECTOR_SEARCH') {

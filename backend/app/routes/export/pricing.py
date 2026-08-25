@@ -131,7 +131,7 @@ def _get_sku_type(item, cloud: str = 'aws') -> str:
         return 'SERVERLESS_REAL_TIME_INFERENCE'
     elif wt == 'SHUTTERSTOCK_IMAGEAI':
         return 'SERVERLESS_REAL_TIME_INFERENCE'
-    elif wt in ('AI_EXTRACT', 'AI_CLASSIFY'):
+    elif wt in ('AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY'):
         return 'SERVERLESS_REAL_TIME_INFERENCE'
     elif wt == 'LAKEFLOW_CONNECT':
         return 'JOBS_SERVERLESS_COMPUTE'

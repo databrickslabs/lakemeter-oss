@@ -63,7 +63,7 @@ function normalizeVMPaymentOption(
 // =============================================================================
 // LOCAL STORAGE CACHE UTILITIES
 // =============================================================================
-const CACHE_VERSION = 'v9'  // Bumped - updated AI Function presets and availability
+const CACHE_VERSION = 'v10'  // Bumped - added Unity AI Gateway workload metadata
 const CACHE_KEY = `lakemeter_reference_data_${CACHE_VERSION}`
 const CACHE_TTL = 4 * 60 * 60 * 1000 // 4 hours in milliseconds (reduced from 24h)
 
@@ -382,6 +382,7 @@ export const useStore = create<Store>((set, get) => ({
     { workload_type: 'AI_PARSE', display_name: 'AI Parse (Document AI)', description: 'Document parsing and extraction', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
     { workload_type: 'AI_EXTRACT', display_name: 'AI Extract', description: 'Structured extraction from raw text or parsed document input', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
     { workload_type: 'AI_CLASSIFY', display_name: 'AI Classify', description: 'Classification of raw text or parsed document input', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
+    { workload_type: 'AI_GATEWAY', display_name: 'Unity AI Gateway', description: 'Additive inference tables and usage tracking', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
     { workload_type: 'SHUTTERSTOCK_IMAGEAI', display_name: 'Shutterstock ImageAI', description: 'AI image generation', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
   ] as WorkloadType[],
   // Use static data as defaults - instant display, no waiting for API
@@ -1546,6 +1547,24 @@ export const useStore = create<Store>((set, get) => ({
             document_type: lineItem.ai_classify_document_type || 'short_text',
             num_docs: lineItem.ai_classify_num_docs || 0,
             dbus_per_thousand: lineItem.ai_classify_dbus_per_thousand || undefined,
+          })
+          break
+
+        case 'AI_GATEWAY':
+          result = await api.calculateAIGateway({
+            ...baseParams,
+            inference_tables_enabled: lineItem.ai_gateway_inference_tables_enabled ?? true,
+            inference_tables_input_method: lineItem.ai_gateway_inference_tables_input_method ?? 'requests',
+            inference_tables_requests_millions: lineItem.ai_gateway_inference_tables_requests_millions ?? 1,
+            inference_tables_avg_request_payload_kb: lineItem.ai_gateway_inference_tables_avg_request_payload_kb ?? 1,
+            inference_tables_avg_response_payload_kb: lineItem.ai_gateway_inference_tables_avg_response_payload_kb ?? 1,
+            inference_tables_monthly_payload_gb: lineItem.ai_gateway_inference_tables_monthly_payload_gb ?? 2,
+            usage_tracking_enabled: lineItem.ai_gateway_usage_tracking_enabled ?? true,
+            usage_tracking_input_method: lineItem.ai_gateway_usage_tracking_input_method ?? 'requests',
+            usage_tracking_requests_millions: lineItem.ai_gateway_usage_tracking_requests_millions ?? 1,
+            usage_tracking_avg_request_payload_kb: lineItem.ai_gateway_usage_tracking_avg_request_payload_kb ?? 1,
+            usage_tracking_avg_response_payload_kb: lineItem.ai_gateway_usage_tracking_avg_response_payload_kb ?? 1,
+            usage_tracking_monthly_payload_gb: lineItem.ai_gateway_usage_tracking_monthly_payload_gb ?? 2,
           })
           break
 

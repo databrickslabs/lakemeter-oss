@@ -8,6 +8,78 @@ import type { LineItem, InstanceType, DBSQLSize, ModelServingGPUType } from '../
 import type { VectorSearchMode, PhotonMultiplier } from '../api/client'
 import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from './lakebasePricing'
 
+export const AI_GATEWAY_COMPONENT_RATES = {
+  inferenceTables: 1.429,
+  usageTracking: 1.429,
+} as const
+
+export interface AIGatewayComponentUsage {
+  enabled: boolean
+  inputMethod: 'requests' | 'payload_gb'
+  requestsMillions: number
+  payloadKBPerRequest: number
+  monthlyPayloadGB: number
+  monthlyDBUs: number
+}
+
+function calculateAIGatewayComponent(
+  enabled: boolean,
+  inputMethod: 'requests' | 'payload_gb',
+  requestsMillions: number,
+  requestKB: number,
+  responseKB: number,
+  directPayloadGB: number,
+  dbuPerGB: number,
+): AIGatewayComponentUsage {
+  const payloadKBPerRequest = requestKB + responseKB
+  const monthlyPayloadGB = !enabled
+    ? 0
+    : inputMethod === 'payload_gb'
+      ? directPayloadGB
+      : requestsMillions * payloadKBPerRequest
+  return {
+    enabled,
+    inputMethod,
+    requestsMillions,
+    payloadKBPerRequest,
+    monthlyPayloadGB,
+    monthlyDBUs: monthlyPayloadGB * dbuPerGB,
+  }
+}
+
+export interface AIGatewayUsage {
+  inferenceTables: AIGatewayComponentUsage
+  usageTracking: AIGatewayComponentUsage
+  monthlyDBUs: number
+}
+
+export function calculateAIGatewayUsage(item: Partial<LineItem>): AIGatewayUsage {
+  const inferenceTables = calculateAIGatewayComponent(
+    item.ai_gateway_inference_tables_enabled ?? true,
+    item.ai_gateway_inference_tables_input_method ?? 'requests',
+    item.ai_gateway_inference_tables_requests_millions ?? 1,
+    item.ai_gateway_inference_tables_avg_request_payload_kb ?? 1,
+    item.ai_gateway_inference_tables_avg_response_payload_kb ?? 1,
+    item.ai_gateway_inference_tables_monthly_payload_gb ?? 2,
+    AI_GATEWAY_COMPONENT_RATES.inferenceTables,
+  )
+  const usageTracking = calculateAIGatewayComponent(
+    item.ai_gateway_usage_tracking_enabled ?? true,
+    item.ai_gateway_usage_tracking_input_method ?? 'requests',
+    item.ai_gateway_usage_tracking_requests_millions ?? 1,
+    item.ai_gateway_usage_tracking_avg_request_payload_kb ?? 1,
+    item.ai_gateway_usage_tracking_avg_response_payload_kb ?? 1,
+    item.ai_gateway_usage_tracking_monthly_payload_gb ?? 2,
+    AI_GATEWAY_COMPONENT_RATES.usageTracking,
+  )
+
+  return {
+    inferenceTables,
+    usageTracking,
+    monthlyDBUs: inferenceTables.monthlyDBUs + usageTracking.monthlyDBUs,
+  }
+}
+
 // Fallback DBU rates if fetched data not available ($/DBU)
 // These should match the actual Databricks pricing (PREMIUM tier defaults)
 // Note: ENTERPRISE tier rates are typically higher (e.g., Jobs Compute $0.20 vs $0.15)
@@ -100,6 +172,7 @@ export interface CostCalculationContext {
   getInstanceDBURate?: (instanceType: string) => number | null
   getPhotonMultiplier?: (skuType: string) => number | null
   getDBUPrice?: (productType: string) => number | null
+  getExactDBUPrice?: (productType: string) => number | null
 }
 
 /**
@@ -113,7 +186,8 @@ export function calculateWorkloadCost(
   const {
     cloud, region, tier, dbuRatesMap, instanceTypes, dbsqlSizes, photonMultipliers, modelServingGPUTypes,
     getVMPrice, getFMAPIDatabricksRate, getFMAPIProprietaryRate, getVectorSearchRate,
-    getInstanceDBURate, getPhotonMultiplier: getBundlePhotonMultiplier, getDBUPrice
+    getInstanceDBURate, getPhotonMultiplier: getBundlePhotonMultiplier, getDBUPrice,
+    getExactDBUPrice
   } = context
   
   // If no region selected, return zero costs
@@ -226,6 +300,7 @@ export function calculateWorkloadCost(
     case 'AI_PARSE':
     case 'AI_EXTRACT':
     case 'AI_CLASSIFY':
+    case 'AI_GATEWAY':
     case 'SHUTTERSTOCK_IMAGEAI':
       productType = 'SERVERLESS_REAL_TIME_INFERENCE'
       break
@@ -240,7 +315,9 @@ export function calculateWorkloadCost(
   
   // Get DBU price for this product type - try pricing bundle function first
   let dbuPrice: number | null = null
-  if (getDBUPrice) {
+  if (item.workload_type === 'AI_GATEWAY') {
+    dbuPrice = getExactDBUPrice?.(productType) ?? dbuRatesMap[productType] ?? 0
+  } else if (getDBUPrice) {
     const bundlePrice = getDBUPrice(productType)
     if (bundlePrice !== null && bundlePrice > 0) {
       dbuPrice = bundlePrice
@@ -622,6 +699,11 @@ export function calculateWorkloadCost(
         ? (item.ai_classify_dbus_per_thousand || 0)
         : (classifyRates[docType] || 4.5)
       monthlyDBUs = ((item.ai_classify_num_docs || 0) / 1000) * rate
+      break
+    }
+
+    case 'AI_GATEWAY': {
+      monthlyDBUs = calculateAIGatewayUsage(item).monthlyDBUs
       break
     }
 

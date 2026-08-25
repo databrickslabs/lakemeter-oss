@@ -15,6 +15,7 @@ from app.schemas import LineItemCreate, LineItemUpdate, LineItemResponse
 from app.schemas.line_item import (
     map_ai_parse_api_fields,
     validate_ai_function_workload_config,
+    validate_ai_gateway_workload_config,
 )
 from app.auth import get_current_user
 
@@ -43,6 +44,7 @@ def _validate_ai_config_or_422(workload_type: str, workload_config: dict) -> Non
     """Translate JSON configuration validation failures into API errors."""
     try:
         validate_ai_function_workload_config(workload_type, workload_config)
+        validate_ai_gateway_workload_config(workload_type, workload_config)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

@@ -280,7 +280,7 @@ Click **"+ New Estimate"** above to create one, then I can help you add workload
 I can assist you with:
 
 - 📊 **Analyze** your workloads and costs
-- 💡 **Optimize** spending with smart recommendations  
+- 💡 **Optimize** spending with smart recommendations
 - ➕ **Add workloads** based on your requirements
 - ❓ **Answer questions** about Databricks pricing
 
@@ -947,6 +947,30 @@ I can assist you with:
                             )}
                             {proposal.ai_classify_dbus_per_thousand != null && (
                               <span>{proposal.ai_classify_dbus_per_thousand} DBU/1K docs</span>
+                            )}
+                            {proposal.ai_gateway_inference_tables_enabled && (
+                              <>
+                                <span className="px-1.5 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded">
+                                  Inference Tables
+                                </span>
+                                <span>
+                                  {proposal.ai_gateway_inference_tables_input_method === 'payload_gb'
+                                    ? `${proposal.ai_gateway_inference_tables_monthly_payload_gb ?? 0} GB/mo`
+                                    : `${proposal.ai_gateway_inference_tables_requests_millions ?? 0}M requests/mo · ${proposal.ai_gateway_inference_tables_avg_request_payload_kb ?? 0}/${proposal.ai_gateway_inference_tables_avg_response_payload_kb ?? 0} KB`}
+                                </span>
+                              </>
+                            )}
+                            {proposal.ai_gateway_usage_tracking_enabled && (
+                              <>
+                                <span className="px-1.5 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded">
+                                  Usage Tracking
+                                </span>
+                                <span>
+                                  {proposal.ai_gateway_usage_tracking_input_method === 'payload_gb'
+                                    ? `${proposal.ai_gateway_usage_tracking_monthly_payload_gb ?? 0} GB/mo`
+                                    : `${proposal.ai_gateway_usage_tracking_requests_millions ?? 0}M requests/mo · ${proposal.ai_gateway_usage_tracking_avg_request_payload_kb ?? 0}/${proposal.ai_gateway_usage_tracking_avg_response_payload_kb ?? 0} KB`}
+                                </span>
+                              </>
                             )}
                           </div>
                         </div>

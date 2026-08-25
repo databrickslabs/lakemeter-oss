@@ -797,12 +797,37 @@ export interface CostCalculationResponse {
       days_per_month?: number
       hours_per_month?: number
     }
+    usage_calculation?: {
+      inference_tables?: {
+        input_method: 'requests' | 'payload_gb'
+        monthly_payload_gb: number
+        monthly_dbus: number
+      }
+      usage_tracking?: {
+        input_method: 'requests' | 'payload_gb'
+        monthly_payload_gb: number
+        monthly_dbus: number
+      }
+    }
+    component_breakdown?: Array<{
+      component: string
+      display_name: string
+      enabled: boolean
+      dbu_per_gb: number
+      monthly_payload_gb: number
+      monthly_dbus: number
+      dbu_price: number
+      monthly_dbu_cost: number
+    }>
     // Standard compute workloads use dbu_calculation
     dbu_calculation?: {
       dbu_per_hour?: number
       dbu_per_month?: number
+      monthly_dbus?: number
+      monthly_payload_gb?: number
       dbu_price?: number
       dbu_cost_per_month?: number
+      monthly_dbu_cost?: number
     }
     // DBSQL workloads use dbu_costs
     dbu_costs?: {
@@ -1067,6 +1092,28 @@ export const calculateAIClassify = async (request: AIClassifyRequest): Promise<C
   return data
 }
 
+// Unity AI Gateway
+export interface AIGatewayRequest extends BaseCalculationRequest {
+  inference_tables_enabled: boolean
+  inference_tables_input_method?: 'requests' | 'payload_gb'
+  inference_tables_requests_millions?: number
+  inference_tables_avg_request_payload_kb?: number
+  inference_tables_avg_response_payload_kb?: number
+  inference_tables_monthly_payload_gb?: number
+  usage_tracking_enabled: boolean
+  usage_tracking_input_method?: 'requests' | 'payload_gb'
+  usage_tracking_requests_millions?: number
+  usage_tracking_avg_request_payload_kb?: number
+  usage_tracking_avg_response_payload_kb?: number
+  usage_tracking_monthly_payload_gb?: number
+  discount_config?: Record<string, unknown>
+}
+
+export const calculateAIGateway = async (request: AIGatewayRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/ai-gateway', request)
+  return data
+}
+
 // Shutterstock ImageAI
 export interface ShutterstockImageAIRequest extends BaseCalculationRequest {
   images_per_month: number
@@ -1177,6 +1224,9 @@ export const calculateWorkloadCost = async (
 
     case 'AI_CLASSIFY':
       return calculateAIClassify(params as unknown as AIClassifyRequest)
+
+    case 'AI_GATEWAY':
+      return calculateAIGateway(params as unknown as AIGatewayRequest)
 
     case 'SHUTTERSTOCK_IMAGEAI':
       return calculateShutterstockImageAI(params as unknown as ShutterstockImageAIRequest)

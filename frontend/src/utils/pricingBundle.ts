@@ -303,6 +303,23 @@ export function getDBUPrice(
 }
 
 /**
+ * Get a DBU price only when the exact cloud/region/tier entry exists.
+ * Quantity-priced features such as Unity AI Gateway must not use global,
+ * cross-region, or hardcoded fallbacks.
+ */
+export function getExactRegionalDBUPrice(
+  bundle: PricingBundle,
+  cloud: string,
+  region: string,
+  tier: string,
+  productType: string
+): number | null {
+  const key = `${cloud.toLowerCase()}:${region}:${tier.toUpperCase()}`
+  const price = bundle.dbuRates?.[key]?.[productType]
+  return price !== undefined ? price : null
+}
+
+/**
  * Get DBSQL warehouse rate.
  */
 export function getDBSQLRate(
@@ -453,7 +470,7 @@ const SKU_TO_WORKLOAD_MAP: Record<string, string> = {
 const ALL_WORKLOAD_TYPES = [
   'JOBS', 'ALL_PURPOSE', 'DLT', 'DBSQL',
   'VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE',
-  'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'SHUTTERSTOCK_IMAGEAI'
+  'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'SHUTTERSTOCK_IMAGEAI'
 ]
 
 /**
@@ -544,10 +561,11 @@ export function getAvailableWorkloadTypesForRegion(
   }
 
   // AI Functions require an exact regional SERVERLESS_REAL_TIME_INFERENCE price.
-  if (productTypes['SERVERLESS_REAL_TIME_INFERENCE']) {
+  if (productTypes['SERVERLESS_REAL_TIME_INFERENCE'] !== undefined) {
     availableWorkloads.add('AI_PARSE')
     availableWorkloads.add('AI_EXTRACT')
     availableWorkloads.add('AI_CLASSIFY')
+    availableWorkloads.add('AI_GATEWAY')
     availableWorkloads.add('SHUTTERSTOCK_IMAGEAI')
   }
 

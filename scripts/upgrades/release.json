@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minimum_version": "0.1.0",
   "operation": "data_update",
   "pricing_refresh": false,
@@ -8,8 +8,13 @@
       "id": "020-ai-functions",
       "path": "scripts/upgrades/data_updates/020_ai_functions.sql",
       "sha256": "afc39bd1079d43eb3c4ba00f6282cc23fbf9fb985d97a5affb17e951a0eed9b2"
+    },
+    {
+      "id": "021-ai-gateway",
+      "path": "scripts/upgrades/data_updates/021_ai_gateway.sql",
+      "sha256": "c763441c9b3ade69e1f3efda4be61225607eb1e5f493e74cc92a9e8e1bcb023e"
     }
   ],
   "migrations": [],
-  "runtime_sha256": "9991e17bd67c6c8ef4e34836ab9368c3d82b38a232531fd1be2fb8b844e219ee"
+  "runtime_sha256": "0f0f0e46e2c065713e1a0f43c15653b8d4bd154f8d88d1b7ff67fd948e9af072"
 }

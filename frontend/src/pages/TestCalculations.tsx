@@ -22,6 +22,7 @@ import {
   getInstanceDBURate as getBundleInstanceDBURate,
   getPhotonMultiplier as getBundlePhotonMultiplier,
   getDBUPrice as getBundleDBUPrice,
+  getExactRegionalDBUPrice,
   getDBSQLWarehouseConfig,
   getAvailableWorkloadTypesForRegion,
   type PricingBundle
@@ -184,6 +185,7 @@ interface TestConfig {
   includeFMAPIDB: boolean
   includeFMAPIProp: boolean
   includeLakebase: boolean
+  includeAIGateway: boolean
   // Manual environment override (tests only this environment when enabled)
   manualEnvironment: ManualTestEnvironment
 }
@@ -535,6 +537,42 @@ function generateTestsForEnvironment(
       })
     }
   }
+
+  // Unity AI Gateway tests exercise request-derived payload and feature rates.
+  if (
+    config.includeAIGateway &&
+    env.tier.toUpperCase() !== 'STANDARD' &&
+    isAvailable('AI_GATEWAY')
+  ) {
+    const featureCases = [
+      { name: 'Both Features', inferenceTables: true, usageTracking: true },
+      { name: 'Inference Tables', inferenceTables: true, usageTracking: false },
+      { name: 'Usage Tracking', inferenceTables: false, usageTracking: true },
+    ]
+    for (const featureCase of featureCases) {
+      testCases.push({
+        id: `${++idCounter}`,
+        name: `AI Gateway - ${featureCase.name}`,
+        category: 'AI Gateway',
+        workloadType: 'AI_GATEWAY',
+        environment: env,
+        config: {
+          ai_gateway_inference_tables_enabled: featureCase.inferenceTables,
+          ai_gateway_inference_tables_input_method: 'requests',
+          ai_gateway_inference_tables_requests_millions: 1,
+          ai_gateway_inference_tables_avg_request_payload_kb: 0.1,
+          ai_gateway_inference_tables_avg_response_payload_kb: 1.9,
+          ai_gateway_inference_tables_monthly_payload_gb: 2,
+          ai_gateway_usage_tracking_enabled: featureCase.usageTracking,
+          ai_gateway_usage_tracking_input_method: 'payload_gb',
+          ai_gateway_usage_tracking_requests_millions: 1,
+          ai_gateway_usage_tracking_avg_request_payload_kb: 0.1,
+          ai_gateway_usage_tracking_avg_response_payload_kb: 1.9,
+          ai_gateway_usage_tracking_monthly_payload_gb: 5,
+        },
+      })
+    }
+  }
   
   return testCases
 }
@@ -623,6 +661,8 @@ function getAPIEndpoint(workloadType: string, config: Partial<LineItem>): string
       return '/api/v1/calculate/fmapi-databricks'
     case 'FMAPI_PROPRIETARY':
       return '/api/v1/calculate/fmapi-proprietary'
+    case 'AI_GATEWAY':
+      return '/api/v1/calculate/ai-gateway'
     default:
       return '/api/v1/calculate/jobs-classic'
   }
@@ -788,6 +828,23 @@ function buildAPIRequest(testCase: TestCase): Record<string, unknown> {
           quantity
         }
       }
+
+    case 'AI_GATEWAY':
+      return {
+        ...base,
+        inference_tables_enabled: config.ai_gateway_inference_tables_enabled ?? true,
+        inference_tables_input_method: config.ai_gateway_inference_tables_input_method ?? 'requests',
+        inference_tables_requests_millions: config.ai_gateway_inference_tables_requests_millions ?? 1,
+        inference_tables_avg_request_payload_kb: config.ai_gateway_inference_tables_avg_request_payload_kb ?? 1,
+        inference_tables_avg_response_payload_kb: config.ai_gateway_inference_tables_avg_response_payload_kb ?? 1,
+        inference_tables_monthly_payload_gb: config.ai_gateway_inference_tables_monthly_payload_gb ?? 2,
+        usage_tracking_enabled: config.ai_gateway_usage_tracking_enabled ?? true,
+        usage_tracking_input_method: config.ai_gateway_usage_tracking_input_method ?? 'requests',
+        usage_tracking_requests_millions: config.ai_gateway_usage_tracking_requests_millions ?? 1,
+        usage_tracking_avg_request_payload_kb: config.ai_gateway_usage_tracking_avg_request_payload_kb ?? 1,
+        usage_tracking_avg_response_payload_kb: config.ai_gateway_usage_tracking_avg_response_payload_kb ?? 1,
+        usage_tracking_monthly_payload_gb: config.ai_gateway_usage_tracking_monthly_payload_gb ?? 2,
+      }
       
     default:
       return base
@@ -889,6 +946,7 @@ export default function TestCalculations() {
     includeFMAPIDB: true,
     includeFMAPIProp: true,
     includeLakebase: true,
+    includeAIGateway: true,
     manualEnvironment: {
       enabled: false,
       cloud: 'aws',
@@ -1017,6 +1075,10 @@ export default function TestCalculations() {
       getDBUPrice: (productType: string) => {
         if (!isPricingBundleLoaded) return null
         return getBundleDBUPrice(pricingBundle, cloud, region, tier, productType)
+      },
+      getExactDBUPrice: (productType: string) => {
+        if (!isPricingBundleLoaded) return null
+        return getExactRegionalDBUPrice(pricingBundle, cloud, region, tier, productType)
       },
       getDBSQLWarehouseConfig: (warehouseType: string, warehouseSize: string) => {
         if (!isPricingBundleLoaded) return null
@@ -1814,7 +1876,8 @@ export default function TestCalculations() {
                   { key: 'includeModelServing', label: 'Model Serving' },
                   { key: 'includeFMAPIDB', label: 'FMAPI Databricks' },
                   { key: 'includeFMAPIProp', label: 'FMAPI Proprietary' },
-                  { key: 'includeLakebase', label: 'Lakebase' }
+                  { key: 'includeLakebase', label: 'Lakebase' },
+                  { key: 'includeAIGateway', label: 'Unity AI Gateway' }
                 ].map(({ key, label }) => (
                   <label key={key} className="flex items-center gap-2 text-sm">
                     <input
@@ -1968,7 +2031,7 @@ export default function TestCalculations() {
                     <tr
                       key={test.id}
                       className={`
-                        border-t border-[var(--border-primary)] 
+                        border-t border-[var(--border-primary)]
                         ${result && !result.matches ? 'bg-red-500/5' : ''}
                         ${isRunning ? 'bg-blue-500/10' : ''}
                         hover:bg-[var(--bg-hover)] cursor-pointer

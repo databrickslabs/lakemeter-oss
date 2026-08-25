@@ -1,6 +1,8 @@
 """Line Item schemas."""
+from copy import deepcopy
 from datetime import datetime
 from decimal import Decimal
+import math
 from typing import Optional, Dict, Any, Literal
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -13,6 +15,26 @@ AI_FUNCTION_CONFIG_FIELDS = (
     "ai_classify_document_type",
     "ai_classify_num_docs",
     "ai_classify_dbus_per_thousand",
+)
+
+AI_GATEWAY_CONFIG_FIELDS = (
+    "ai_gateway_inference_tables_enabled",
+    "ai_gateway_inference_tables_input_method",
+    "ai_gateway_inference_tables_requests_millions",
+    "ai_gateway_inference_tables_avg_request_payload_kb",
+    "ai_gateway_inference_tables_avg_response_payload_kb",
+    "ai_gateway_inference_tables_monthly_payload_gb",
+    "ai_gateway_usage_tracking_enabled",
+    "ai_gateway_usage_tracking_input_method",
+    "ai_gateway_usage_tracking_requests_millions",
+    "ai_gateway_usage_tracking_avg_request_payload_kb",
+    "ai_gateway_usage_tracking_avg_response_payload_kb",
+    "ai_gateway_usage_tracking_monthly_payload_gb",
+)
+
+JSON_BACKED_CONFIG_FIELDS = (
+    *AI_FUNCTION_CONFIG_FIELDS,
+    *AI_GATEWAY_CONFIG_FIELDS,
 )
 
 
@@ -45,13 +67,13 @@ def map_ai_parse_api_fields(
     data.pop("shutterstock_images", None)
 
     ai_fields_provided = any(
-        field in provided_fields for field in AI_FUNCTION_CONFIG_FIELDS
+        field in provided_fields for field in JSON_BACKED_CONFIG_FIELDS
     )
     if ai_fields_provided:
-        config = dict(existing_workload_config or {})
+        config = deepcopy(existing_workload_config or {})
         if "workload_config" in provided_fields:
-            config = dict(data.get("workload_config") or {})
-        for field in AI_FUNCTION_CONFIG_FIELDS:
+            config = deepcopy(data.get("workload_config") or {})
+        for field in JSON_BACKED_CONFIG_FIELDS:
             if field not in provided_fields:
                 continue
             value = data.get(field)
@@ -68,19 +90,21 @@ def map_ai_parse_api_fields(
             if "workload_config" in data
             else existing_workload_config
         )
-        config = dict(config_source or {})
+        config = deepcopy(config_source or {})
         fields_to_remove = []
         if workload_type != "AI_EXTRACT":
             fields_to_remove.extend(AI_FUNCTION_CONFIG_FIELDS[:3])
         if workload_type != "AI_CLASSIFY":
             fields_to_remove.extend(AI_FUNCTION_CONFIG_FIELDS[3:])
+        if workload_type != "AI_GATEWAY":
+            fields_to_remove.extend(AI_GATEWAY_CONFIG_FIELDS)
         original_config = dict(config)
         for field in fields_to_remove:
             config.pop(field, None)
         if config != original_config:
             data["workload_config"] = config or None
 
-    for field in AI_FUNCTION_CONFIG_FIELDS:
+    for field in JSON_BACKED_CONFIG_FIELDS:
         data.pop(field, None)
 
     return data
@@ -140,6 +164,81 @@ def validate_ai_function_workload_config(
         raise ValueError(
             f"{custom_rate_field} is required when {document_type_field} is custom"
         )
+
+
+def validate_ai_gateway_workload_config(
+    workload_type: Optional[str],
+    workload_config: Optional[Dict[str, Any]],
+) -> None:
+    """Validate JSON-backed AI Gateway configuration."""
+    if (workload_type or "").upper() != "AI_GATEWAY":
+        return
+
+    config = workload_config or {}
+    components = ("inference_tables", "usage_tracking")
+    numeric_suffixes = (
+        "requests_millions",
+        "avg_request_payload_kb",
+        "avg_response_payload_kb",
+        "monthly_payload_gb",
+    )
+    numeric_fields = tuple(
+        f"ai_gateway_{component}_{suffix}"
+        for component in components
+        for suffix in numeric_suffixes
+    )
+    for field in numeric_fields:
+        value = config.get(field)
+        if value is None:
+            continue
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{field} must be a number") from exc
+        if not math.isfinite(numeric_value):
+            raise ValueError(f"{field} must be finite")
+        if numeric_value < 0:
+            raise ValueError(f"{field} must be greater than or equal to 0")
+
+    feature_fields = (
+        "ai_gateway_inference_tables_enabled",
+        "ai_gateway_usage_tracking_enabled",
+    )
+    for field in feature_fields:
+        value = config.get(field)
+        if value is not None and not isinstance(value, bool):
+            raise ValueError(f"{field} must be a boolean")
+    if not any(config.get(field) is True for field in feature_fields):
+        raise ValueError(
+            "At least one paid AI Gateway feature must be enabled: "
+            "inference tables or usage tracking"
+        )
+
+    for component in components:
+        enabled_field = f"ai_gateway_{component}_enabled"
+        if config.get(enabled_field) is not True:
+            continue
+        input_method_field = f"ai_gateway_{component}_input_method"
+        input_method = config.get(input_method_field)
+        if input_method not in {"requests", "payload_gb"}:
+            raise ValueError(
+                f"{input_method_field} must be requests or payload_gb"
+            )
+        required_suffixes = (
+            numeric_suffixes[:3]
+            if input_method == "requests"
+            else ("monthly_payload_gb",)
+        )
+        missing_fields = [
+            f"ai_gateway_{component}_{suffix}"
+            for suffix in required_suffixes
+            if config.get(f"ai_gateway_{component}_{suffix}") is None
+        ]
+        if missing_fields:
+            raise ValueError(
+                f"{', '.join(missing_fields)} required for enabled "
+                f"{component}"
+            )
 
 
 class LineItemBase(BaseModel):
@@ -229,6 +328,48 @@ class LineItemBase(BaseModel):
     ai_classify_dbus_per_thousand: Optional[float] = Field(
         default=None,
         gt=0,
+    )
+
+    # AI Gateway Configuration (stored in workload_config)
+    ai_gateway_inference_tables_enabled: Optional[bool] = None
+    ai_gateway_inference_tables_input_method: Optional[
+        Literal["requests", "payload_gb"]
+    ] = None
+    ai_gateway_inference_tables_requests_millions: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_inference_tables_avg_request_payload_kb: Optional[
+        float
+    ] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_inference_tables_avg_response_payload_kb: Optional[
+        float
+    ] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_inference_tables_monthly_payload_gb: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_usage_tracking_enabled: Optional[bool] = None
+    ai_gateway_usage_tracking_input_method: Optional[
+        Literal["requests", "payload_gb"]
+    ] = None
+    ai_gateway_usage_tracking_requests_millions: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_usage_tracking_avg_request_payload_kb: Optional[
+        float
+    ] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_usage_tracking_avg_response_payload_kb: Optional[
+        float
+    ] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_usage_tracking_monthly_payload_gb: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
     )
 
     # Databricks Support Configuration
@@ -370,6 +511,48 @@ class LineItemUpdate(BaseModel):
         gt=0,
     )
 
+    # AI Gateway Configuration (stored in workload_config)
+    ai_gateway_inference_tables_enabled: Optional[bool] = None
+    ai_gateway_inference_tables_input_method: Optional[
+        Literal["requests", "payload_gb"]
+    ] = None
+    ai_gateway_inference_tables_requests_millions: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_inference_tables_avg_request_payload_kb: Optional[
+        float
+    ] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_inference_tables_avg_response_payload_kb: Optional[
+        float
+    ] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_inference_tables_monthly_payload_gb: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_usage_tracking_enabled: Optional[bool] = None
+    ai_gateway_usage_tracking_input_method: Optional[
+        Literal["requests", "payload_gb"]
+    ] = None
+    ai_gateway_usage_tracking_requests_millions: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_usage_tracking_avg_request_payload_kb: Optional[
+        float
+    ] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_usage_tracking_avg_response_payload_kb: Optional[
+        float
+    ] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    ai_gateway_usage_tracking_monthly_payload_gb: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+
     # Databricks Support Configuration
     databricks_support_tier: Optional[str] = None
     databricks_support_annual_commit: Optional[float] = None
@@ -450,7 +633,7 @@ class LineItemResponse(LineItemBase):
             )
 
         workload_config = data.get("workload_config") or {}
-        for field in AI_FUNCTION_CONFIG_FIELDS:
+        for field in JSON_BACKED_CONFIG_FIELDS:
             if data.get(field) is None:
                 data[field] = workload_config.get(field)
 

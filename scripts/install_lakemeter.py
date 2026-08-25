@@ -782,6 +782,9 @@ def _create_tables_inline(cur):
         ("AI_CLASSIFY", "AI Classify", "Classification of raw text or parsed document input",
          False, False, False, False, False, False, False, False, False, False, False, False, False, False,
          "SERVERLESS_REAL_TIME_INFERENCE", None, None, 14),
+        ("AI_GATEWAY", "Unity AI Gateway", "Additive AI Gateway inference tables and usage tracking",
+         False, False, False, False, False, False, False, False, False, False, False, False, False, False,
+         "SERVERLESS_REAL_TIME_INFERENCE", None, None, 15),
     ]
     for wt in workload_seeds:
         cur.execute(

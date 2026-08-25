@@ -14,13 +14,13 @@
         try {
           const theme = localStorage.getItem('theme') || 'system';
           let isDark = false;
-          
+
           if (theme === 'dark') {
             isDark = true;
           } else if (theme === 'system') {
             isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           }
-          
+
           if (isDark) {
             document.documentElement.classList.add('dark');
           }
