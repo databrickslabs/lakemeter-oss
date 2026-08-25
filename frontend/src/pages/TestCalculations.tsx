@@ -186,6 +186,7 @@ interface TestConfig {
   includeFMAPIProp: boolean
   includeLakebase: boolean
   includeAIGateway: boolean
+  includeAgentEvaluation: boolean
   // Manual environment override (tests only this environment when enabled)
   manualEnvironment: ManualTestEnvironment
 }
@@ -573,6 +574,35 @@ function generateTestsForEnvironment(
       })
     }
   }
+
+  // Agent Evaluation tests cover both billable components and each component independently.
+  if (
+    config.includeAgentEvaluation &&
+    env.tier.toUpperCase() !== 'STANDARD' &&
+    isAvailable('AGENT_EVALUATION')
+  ) {
+    const componentCases = [
+      { name: 'Both Components', labels: true, syntheticData: true },
+      { name: 'Evaluation Labels', labels: true, syntheticData: false },
+      { name: 'Synthetic Data', labels: false, syntheticData: true },
+    ]
+    for (const componentCase of componentCases) {
+      testCases.push({
+        id: `${++idCounter}`,
+        name: `Agent Evaluation - ${componentCase.name}`,
+        category: 'Agent Evaluation',
+        workloadType: 'AGENT_EVALUATION',
+        environment: env,
+        config: {
+          agent_evaluation_labels_enabled: componentCase.labels,
+          agent_evaluation_input_tokens_millions: 2,
+          agent_evaluation_output_tokens_millions: 0.5,
+          agent_evaluation_synthetic_data_enabled: componentCase.syntheticData,
+          agent_evaluation_synthetic_questions: 25,
+        },
+      })
+    }
+  }
   
   return testCases
 }
@@ -663,6 +693,8 @@ function getAPIEndpoint(workloadType: string, config: Partial<LineItem>): string
       return '/api/v1/calculate/fmapi-proprietary'
     case 'AI_GATEWAY':
       return '/api/v1/calculate/ai-gateway'
+    case 'AGENT_EVALUATION':
+      return '/api/v1/calculate/agent-evaluation'
     default:
       return '/api/v1/calculate/jobs-classic'
   }
@@ -845,6 +877,17 @@ function buildAPIRequest(testCase: TestCase): Record<string, unknown> {
         usage_tracking_avg_response_payload_kb: config.ai_gateway_usage_tracking_avg_response_payload_kb ?? 1,
         usage_tracking_monthly_payload_gb: config.ai_gateway_usage_tracking_monthly_payload_gb ?? 2,
       }
+
+    case 'AGENT_EVALUATION':
+      return {
+        ...base,
+        labels_enabled: config.agent_evaluation_labels_enabled ?? true,
+        input_tokens_millions: config.agent_evaluation_input_tokens_millions ?? 1,
+        output_tokens_millions: config.agent_evaluation_output_tokens_millions ?? 1,
+        synthetic_data_enabled: config.agent_evaluation_synthetic_data_enabled ?? false,
+        synthetic_questions: config.agent_evaluation_synthetic_questions ?? 0,
+        discount_config: {},
+      }
       
     default:
       return base
@@ -947,6 +990,7 @@ export default function TestCalculations() {
     includeFMAPIProp: true,
     includeLakebase: true,
     includeAIGateway: true,
+    includeAgentEvaluation: true,
     manualEnvironment: {
       enabled: false,
       cloud: 'aws',
@@ -1197,12 +1241,29 @@ export default function TestCalculations() {
         const data = responseData.data || responseData
         
         // Extract from nested structure with detailed logging
-        const monthlyDBUs = data.dbu_calculation?.dbu_per_month ?? 
+        const componentDBUs = Array.isArray(data.component_breakdown) && data.component_breakdown.length > 0
+          ? data.component_breakdown.reduce(
+              (sum: number, component: { monthly_dbus?: number }) => sum + (component.monthly_dbus ?? 0),
+              0,
+            )
+          : undefined
+        const componentCost = Array.isArray(data.component_breakdown) && data.component_breakdown.length > 0
+          ? data.component_breakdown.reduce(
+              (sum: number, component: { monthly_dbu_cost?: number }) => sum + (component.monthly_dbu_cost ?? 0),
+              0,
+            )
+          : undefined
+        const monthlyDBUs = data.dbu_calculation?.dbu_per_month ??
+          data.dbu_calculation?.monthly_dbus ??
+          data.monthly_dbus ??
+          componentDBUs ??
           data.dbu_per_month ?? 
           (data.dbu_calculation?.dbu_per_hour ?? data.dbu_per_hour ?? 0) * (config.hours_per_month || 730)
         
-        const dbuCost = data.dbu_calculation?.dbu_cost_per_month ?? 
+        const dbuCost = data.dbu_calculation?.dbu_cost_per_month ??
+          data.dbu_calculation?.monthly_dbu_cost ??
           data.total_cost?.breakdown?.dbu_cost ??
+          componentCost ??
           data.dbu_cost_per_month ?? 
           data.dbu_cost ?? 0
         
@@ -1877,7 +1938,8 @@ export default function TestCalculations() {
                   { key: 'includeFMAPIDB', label: 'FMAPI Databricks' },
                   { key: 'includeFMAPIProp', label: 'FMAPI Proprietary' },
                   { key: 'includeLakebase', label: 'Lakebase' },
-                  { key: 'includeAIGateway', label: 'Unity AI Gateway' }
+                  { key: 'includeAIGateway', label: 'Unity AI Gateway' },
+                  { key: 'includeAgentEvaluation', label: 'Agent Evaluation' }
                 ].map(({ key, label }) => (
                   <label key={key} className="flex items-center gap-2 text-sm">
                     <input

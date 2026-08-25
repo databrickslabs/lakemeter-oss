@@ -14,6 +14,7 @@ from app.models.sharing import Sharing
 from app.schemas import LineItemCreate, LineItemUpdate, LineItemResponse
 from app.schemas.line_item import (
     map_ai_parse_api_fields,
+    validate_agent_evaluation_workload_config,
     validate_ai_function_workload_config,
     validate_ai_gateway_workload_config,
 )
@@ -45,6 +46,10 @@ def _validate_ai_config_or_422(workload_type: str, workload_config: dict) -> Non
     try:
         validate_ai_function_workload_config(workload_type, workload_config)
         validate_ai_gateway_workload_config(workload_type, workload_config)
+        validate_agent_evaluation_workload_config(
+            workload_type,
+            workload_config,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

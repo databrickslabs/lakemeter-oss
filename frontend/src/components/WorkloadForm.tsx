@@ -124,6 +124,88 @@ function AIGatewayComponentPanel({
   )
 }
 
+function AgentEvaluationComponentPanel({
+  component,
+  form,
+  setForm,
+}: {
+  component: 'labels' | 'synthetic_data'
+  form: Record<string, any>
+  setForm: (value: any) => void
+}) {
+  const isLabels = component === 'labels'
+  const enabledField = isLabels
+    ? 'agent_evaluation_labels_enabled'
+    : 'agent_evaluation_synthetic_data_enabled'
+  const otherEnabledField = isLabels
+    ? 'agent_evaluation_synthetic_data_enabled'
+    : 'agent_evaluation_labels_enabled'
+  const enabled = Boolean(form[enabledField])
+  const otherEnabled = Boolean(form[otherEnabledField])
+  const update = (field: string, value: unknown) => {
+    setForm((current: Record<string, any>) => ({ ...current, [field]: value }))
+  }
+
+  return (
+    <div className="col-span-full space-y-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-4">
+      <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+        <input
+          type="checkbox"
+          checked={enabled}
+          disabled={enabled && !otherEnabled}
+          onChange={(event) => update(enabledField, event.target.checked)}
+          className="w-4 h-4 rounded border-lava-400 text-lava-600 focus:ring-lava-500"
+        />
+        {isLabels ? 'Evaluation Labels' : 'Synthetic Data'}
+      </label>
+
+      {enabled && (
+        isLabels ? (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Input Tokens/Month (millions)</label>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={form.agent_evaluation_input_tokens_millions}
+                onChange={(event) => update('agent_evaluation_input_tokens_millions', Number(event.target.value))}
+                className="w-full text-sm"
+              />
+              <span className="text-[10px] text-[var(--text-tertiary)]">2.143 DBU per million input tokens</span>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Output Tokens/Month (millions)</label>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={form.agent_evaluation_output_tokens_millions}
+                onChange={(event) => update('agent_evaluation_output_tokens_millions', Number(event.target.value))}
+                className="w-full text-sm"
+              />
+              <span className="text-[10px] text-[var(--text-tertiary)]">8.571 DBU per million output tokens</span>
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-md">
+            <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Synthetic Questions/Month</label>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={form.agent_evaluation_synthetic_questions}
+              onChange={(event) => update('agent_evaluation_synthetic_questions', Number(event.target.value))}
+              className="w-full text-sm"
+            />
+            <span className="text-[10px] text-[var(--text-tertiary)]">5 DBU per synthetic question</span>
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
 // Helper to get available context lengths for FMAPI Proprietary models from pricing bundle
 function getAvailableContextLengths(
   bundle: PricingBundle,
@@ -200,6 +282,7 @@ const PREMIUM_ONLY_WORKLOAD_TYPES = new Set([
   'AI_EXTRACT',
   'AI_CLASSIFY',
   'AI_GATEWAY',
+  'AGENT_EVALUATION',
   'SHUTTERSTOCK_IMAGEAI',
 ])
 
@@ -609,6 +692,11 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         ai_gateway_usage_tracking_avg_request_payload_kb: lineItem.ai_gateway_usage_tracking_avg_request_payload_kb ?? 1,
         ai_gateway_usage_tracking_avg_response_payload_kb: lineItem.ai_gateway_usage_tracking_avg_response_payload_kb ?? 1,
         ai_gateway_usage_tracking_monthly_payload_gb: lineItem.ai_gateway_usage_tracking_monthly_payload_gb ?? 2,
+        agent_evaluation_labels_enabled: lineItem.agent_evaluation_labels_enabled ?? true,
+        agent_evaluation_input_tokens_millions: lineItem.agent_evaluation_input_tokens_millions ?? 1,
+        agent_evaluation_output_tokens_millions: lineItem.agent_evaluation_output_tokens_millions ?? 1,
+        agent_evaluation_synthetic_data_enabled: lineItem.agent_evaluation_synthetic_data_enabled ?? false,
+        agent_evaluation_synthetic_questions: lineItem.agent_evaluation_synthetic_questions ?? 0,
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
@@ -689,6 +777,11 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       ai_gateway_usage_tracking_avg_request_payload_kb: 1,
       ai_gateway_usage_tracking_avg_response_payload_kb: 1,
       ai_gateway_usage_tracking_monthly_payload_gb: 2,
+      agent_evaluation_labels_enabled: true,
+      agent_evaluation_input_tokens_millions: 1,
+      agent_evaluation_output_tokens_millions: 1,
+      agent_evaluation_synthetic_data_enabled: false,
+      agent_evaluation_synthetic_questions: 0,
       lakeflow_connect_pipeline_mode: 'serverless',
       lakeflow_connect_gateway_enabled: false,
       lakeflow_connect_gateway_instance: '',
@@ -771,6 +864,11 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     ai_gateway_usage_tracking_avg_request_payload_kb: 1,
     ai_gateway_usage_tracking_avg_response_payload_kb: 1,
     ai_gateway_usage_tracking_monthly_payload_gb: 2,
+    agent_evaluation_labels_enabled: true,
+    agent_evaluation_input_tokens_millions: 1,
+    agent_evaluation_output_tokens_millions: 1,
+    agent_evaluation_synthetic_data_enabled: false,
+    agent_evaluation_synthetic_questions: 0,
     lakeflow_connect_pipeline_mode: 'serverless',
     lakeflow_connect_gateway_enabled: false,
     lakeflow_connect_gateway_instance: '',
@@ -854,6 +952,11 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         ai_gateway_usage_tracking_avg_request_payload_kb: lineItem.ai_gateway_usage_tracking_avg_request_payload_kb ?? 1,
         ai_gateway_usage_tracking_avg_response_payload_kb: lineItem.ai_gateway_usage_tracking_avg_response_payload_kb ?? 1,
         ai_gateway_usage_tracking_monthly_payload_gb: lineItem.ai_gateway_usage_tracking_monthly_payload_gb ?? 2,
+        agent_evaluation_labels_enabled: lineItem.agent_evaluation_labels_enabled ?? true,
+        agent_evaluation_input_tokens_millions: lineItem.agent_evaluation_input_tokens_millions ?? 1,
+        agent_evaluation_output_tokens_millions: lineItem.agent_evaluation_output_tokens_millions ?? 1,
+        agent_evaluation_synthetic_data_enabled: lineItem.agent_evaluation_synthetic_data_enabled ?? false,
+        agent_evaluation_synthetic_questions: lineItem.agent_evaluation_synthetic_questions ?? 0,
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
@@ -1065,6 +1168,11 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       ai_gateway_usage_tracking_avg_request_payload_kb: form.ai_gateway_usage_tracking_avg_request_payload_kb,
       ai_gateway_usage_tracking_avg_response_payload_kb: form.ai_gateway_usage_tracking_avg_response_payload_kb,
       ai_gateway_usage_tracking_monthly_payload_gb: form.ai_gateway_usage_tracking_monthly_payload_gb,
+      agent_evaluation_labels_enabled: form.agent_evaluation_labels_enabled,
+      agent_evaluation_input_tokens_millions: form.agent_evaluation_input_tokens_millions,
+      agent_evaluation_output_tokens_millions: form.agent_evaluation_output_tokens_millions,
+      agent_evaluation_synthetic_data_enabled: form.agent_evaluation_synthetic_data_enabled,
+      agent_evaluation_synthetic_questions: form.agent_evaluation_synthetic_questions,
       lakeflow_connect_pipeline_mode: form.lakeflow_connect_pipeline_mode,
       lakeflow_connect_gateway_enabled: form.lakeflow_connect_gateway_enabled,
       lakeflow_connect_gateway_instance: form.lakeflow_connect_gateway_instance || undefined,
@@ -1166,6 +1274,34 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           }
         }
       }
+    }
+    if (
+      form.workload_type === 'AGENT_EVALUATION' &&
+      !form.agent_evaluation_labels_enabled &&
+      !form.agent_evaluation_synthetic_data_enabled
+    ) {
+      toast.error('Enable Evaluation Labels or Synthetic Data')
+      return
+    }
+    if (form.workload_type === 'AGENT_EVALUATION' && form.agent_evaluation_labels_enabled) {
+      const tokenValues = [
+        form.agent_evaluation_input_tokens_millions,
+        form.agent_evaluation_output_tokens_millions,
+      ]
+      if (tokenValues.some(value => !Number.isFinite(value) || value < 0)) {
+        toast.error('Enter non-negative input and output token quantities')
+        return
+      }
+    }
+    if (
+      form.workload_type === 'AGENT_EVALUATION' &&
+      form.agent_evaluation_synthetic_data_enabled &&
+      (!Number.isFinite(form.agent_evaluation_synthetic_questions) ||
+        form.agent_evaluation_synthetic_questions < 0 ||
+        !Number.isInteger(form.agent_evaluation_synthetic_questions))
+    ) {
+      toast.error('Enter a non-negative whole number of synthetic questions')
+      return
     }
     
     setIsSaving(true)
@@ -1346,6 +1482,21 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.ai_gateway_usage_tracking_monthly_payload_gb = null
       }
 
+      // Agent Evaluation config (token values are already in millions)
+      if (form.workload_type === 'AGENT_EVALUATION') {
+        data.agent_evaluation_labels_enabled = form.agent_evaluation_labels_enabled
+        data.agent_evaluation_input_tokens_millions = form.agent_evaluation_input_tokens_millions
+        data.agent_evaluation_output_tokens_millions = form.agent_evaluation_output_tokens_millions
+        data.agent_evaluation_synthetic_data_enabled = form.agent_evaluation_synthetic_data_enabled
+        data.agent_evaluation_synthetic_questions = form.agent_evaluation_synthetic_questions
+      } else {
+        data.agent_evaluation_labels_enabled = null
+        data.agent_evaluation_input_tokens_millions = null
+        data.agent_evaluation_output_tokens_millions = null
+        data.agent_evaluation_synthetic_data_enabled = null
+        data.agent_evaluation_synthetic_questions = null
+      }
+
       // Lakebase config
       if (selectedWorkloadType?.show_lakebase_config) {
         const isFixedLakebase = form.lakebase_compute_mode === 'fixed'
@@ -1426,6 +1577,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         form.workload_type === 'AI_EXTRACT' ||
         form.workload_type === 'AI_CLASSIFY' ||
         form.workload_type === 'AI_GATEWAY' ||
+        form.workload_type === 'AGENT_EVALUATION' ||
         form.workload_type === 'SHUTTERSTOCK_IMAGEAI'
       ) {
         // Quantity-based workloads - no hours, runs, or days needed
@@ -2822,6 +2974,25 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           </>
         )}
 
+        {/* Agent Evaluation Config */}
+        {form.workload_type === 'AGENT_EVALUATION' && (
+          <>
+            <AgentEvaluationComponentPanel
+              component="labels"
+              form={form}
+              setForm={setForm}
+            />
+            <AgentEvaluationComponentPanel
+              component="synthetic_data"
+              form={form}
+              setForm={setForm}
+            />
+            <div className="col-span-full text-[11px] leading-relaxed text-[var(--text-muted)]">
+              Evaluated application or model inference is excluded. Add Model Serving or Foundation Model API workloads separately.
+            </div>
+          </>
+        )}
+
         {/* Shutterstock ImageAI Config */}
         {form.workload_type === 'SHUTTERSTOCK_IMAGEAI' && (
           <div>
@@ -2906,7 +3077,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
             )}
             
             {/* Days per month - hide for workloads that use hours or quantity directly */}
-            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'AI_EXTRACT' && form.workload_type !== 'AI_CLASSIFY' && form.workload_type !== 'AI_GATEWAY' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
+            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'AI_EXTRACT' && form.workload_type !== 'AI_CLASSIFY' && form.workload_type !== 'AI_GATEWAY' && form.workload_type !== 'AGENT_EVALUATION' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
               <div>
                 <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Days/Month</label>
                 <input

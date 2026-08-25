@@ -52,6 +52,7 @@ def _get_workload_display_name(workload_type: str) -> str:
         'AI_EXTRACT': 'AI Extract',
         'AI_CLASSIFY': 'AI Classify',
         'AI_GATEWAY': 'Unity AI Gateway',
+        'AGENT_EVALUATION': 'Agent Evaluation',
         'LAKEFLOW_CONNECT': 'Lakeflow Connect',
     }
     return names.get(workload_type, workload_type)
@@ -117,6 +118,17 @@ def _get_workload_config_details(item) -> str:
             details.append(
                 f"{component['display_name']}: "
                 f"{component['monthly_payload_gb']:g} GB, "
+                f"{component['monthly_dbus']:g} DBUs"
+            )
+    elif wt == 'AGENT_EVALUATION':
+        from .excel_item_helpers import get_agent_evaluation_usage
+
+        usage = get_agent_evaluation_usage(item)
+        for component in usage["components"]:
+            details.append(
+                f"{component['display_name']}: "
+                f"{component['quantity']:g} "
+                f"{component['quantity_unit'].replace('_', ' ')}, "
                 f"{component['monthly_dbus']:g} DBUs"
             )
     elif wt == 'LAKEFLOW_CONNECT':

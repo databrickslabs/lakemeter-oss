@@ -972,6 +972,24 @@ I can assist you with:
                                 </span>
                               </>
                             )}
+                            {proposal.workload_type === 'AGENT_EVALUATION' && (proposal.agent_evaluation_labels_enabled ?? true) && (
+                              <>
+                                <span className="px-1.5 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded">
+                                  Evaluation Labels
+                                </span>
+                                <span>
+                                  {proposal.agent_evaluation_input_tokens_millions ?? 1}M input · {proposal.agent_evaluation_output_tokens_millions ?? 1}M output tokens/mo
+                                </span>
+                              </>
+                            )}
+                            {proposal.agent_evaluation_synthetic_data_enabled && (
+                              <>
+                                <span className="px-1.5 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded">
+                                  Synthetic Data
+                                </span>
+                                <span>{(proposal.agent_evaluation_synthetic_questions ?? 0).toLocaleString()} questions/mo</span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">

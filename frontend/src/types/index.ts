@@ -123,6 +123,13 @@ export interface LineItem {
   ai_gateway_usage_tracking_avg_response_payload_kb?: number | null
   ai_gateway_usage_tracking_monthly_payload_gb?: number | null
 
+  // Agent Evaluation Configuration
+  agent_evaluation_labels_enabled?: boolean | null
+  agent_evaluation_input_tokens_millions?: number | null
+  agent_evaluation_output_tokens_millions?: number | null
+  agent_evaluation_synthetic_data_enabled?: boolean | null
+  agent_evaluation_synthetic_questions?: number | null
+
   // Lakeflow Connect Configuration
   lakeflow_connect_pipeline_mode?: string | null
   lakeflow_connect_gateway_enabled?: boolean | null

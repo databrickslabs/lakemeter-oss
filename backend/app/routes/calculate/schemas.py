@@ -362,6 +362,36 @@ class AIGatewayCalculationRequest(BaseModel):
         return self
 
 
+class AgentEvaluationCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    labels_enabled: bool = Field(default=False)
+    input_tokens_millions: float = Field(
+        default=0,
+        ge=0,
+        allow_inf_nan=False,
+    )
+    output_tokens_millions: float = Field(
+        default=0,
+        ge=0,
+        allow_inf_nan=False,
+    )
+    synthetic_data_enabled: bool = Field(default=False)
+    synthetic_questions: int = Field(default=0, ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def validate_agent_evaluation_configuration(self):
+        if not (self.labels_enabled or self.synthetic_data_enabled):
+            raise ValueError(
+                "At least one Agent Evaluation feature must be enabled"
+            )
+        return self
+
+
 class ShutterstockImageAICalculationRequest(BaseModel):
     cloud: str = Field(...)
     region: str = Field(...)

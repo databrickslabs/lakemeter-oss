@@ -20,6 +20,7 @@ from .calculations import _calculate_dbu_per_hour, _is_serverless_workload
 from .excel_item_helpers import (
     _get_json_backed_value,
     calc_item_values,
+    get_agent_evaluation_usage,
     get_ai_gateway_usage,
     write_storage_subrow,
 )
@@ -27,6 +28,9 @@ from app.routes.vm_pricing import DEFAULT_VM_PRICING
 from app.routes.calculate.ai_gateway_calc import (
     AI_GATEWAY_DIRECT_GB_NOTE,
     AI_GATEWAY_EXCLUSION_NOTE,
+)
+from app.routes.calculate.agent_evaluation_calc import (
+    AGENT_EVALUATION_EXCLUSION_NOTE,
 )
 from app.services.vm_pricing_resolver import resolve_vm_hourly_rate
 
@@ -297,11 +301,16 @@ def _write_line_items(sheet, fmt, row, line_items, cloud, region, tier, db=None)
 def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None):
     """Write one line item (and its storage sub-row if applicable)."""
     wt = (item.workload_type or 'JOBS').upper()
+    if wt == 'AGENT_EVALUATION' and (tier or '').upper() == 'STANDARD':
+        raise ValueError(
+            "Agent Evaluation requires Premium or Enterprise tier"
+        )
     sku = _get_sku_type(item, cloud)
     requires_exact_regional_price = wt in (
         'AI_EXTRACT',
         'AI_CLASSIFY',
         'AI_GATEWAY',
+        'AGENT_EVALUATION',
     )
     dbu_rate, dbu_rate_found = _get_dbu_price(
         cloud,
@@ -328,12 +337,23 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         'AI_EXTRACT',
         'AI_CLASSIFY',
         'AI_GATEWAY',
+        'AGENT_EVALUATION',
         'SHUTTERSTOCK_IMAGEAI',
     )
 
     auto_notes = list(dbu_warnings)
     if wt == 'AI_GATEWAY':
         return _write_ai_gateway_component_rows(
+            sheet,
+            fmt,
+            row,
+            idx,
+            item,
+            dbu_rate,
+            auto_notes,
+        )
+    if wt == 'AGENT_EVALUATION':
+        return _write_agent_evaluation_component_rows(
             sheet,
             fmt,
             row,
@@ -555,5 +575,74 @@ def _get_ai_gateway_component_config(item, component):
         f"Monthly payload: {component['monthly_payload_gb']:g} GB"
     )
     return " | ".join(details)
+
+
+def _write_agent_evaluation_component_rows(
+    sheet,
+    fmt,
+    row,
+    idx,
+    item,
+    dbu_rate,
+    auto_notes,
+):
+    """Write one formula-backed row per enabled evaluation dimension."""
+    usage = get_agent_evaluation_usage(item)
+    workload_name = _get_val(
+        item,
+        'workload_name',
+        f'Workload {idx + 1}',
+    )
+    user_notes = _get_val(item, 'notes', '') or ''
+    notes_parts = [user_notes] if user_notes else []
+    notes_parts.extend(auto_notes)
+    notes_parts.append(AGENT_EVALUATION_EXCLUSION_NOTE)
+
+    token_type_names = {
+        'input_tokens': 'Input Tokens',
+        'output_tokens': 'Output Tokens',
+        'synthetic_questions': 'Synthetic Questions',
+    }
+    for component_index, component in enumerate(
+        usage['components'],
+        start=1,
+    ):
+        quantity_unit = (
+            'million tokens'
+            if component['quantity_unit'] == 'million_tokens'
+            else 'questions'
+        )
+        config = (
+            f"Quantity: {component['quantity']:g} {quantity_unit}/mo | "
+            f"Canonical rate: {component['dbu_per_unit']:.3f} "
+            f"DBU/{quantity_unit}"
+        )
+        row_data = {
+            'idx': f'{idx + 1}.{component_index}',
+            'name': f"{workload_name} – {component['display_name']}",
+            'type_display': 'Agent Evaluation',
+            'config': config,
+            'sku': 'SERVERLESS_REAL_TIME_INFERENCE',
+            'driver_node': '-',
+            'worker_node': '-',
+            'num_workers': 0,
+            'driver_tier': '-',
+            'worker_tier': '-',
+            'hours_per_month': 0,
+            'token_type': token_type_names[component['component']],
+            'token_quantity_millions': component['quantity'],
+            'dbu_per_million': component['dbu_per_unit'],
+            'dbu_per_hour': 0,
+            'total_dbus_month': component['monthly_dbus'],
+            'is_quantity_based': False,
+            'dbu_rate': dbu_rate,
+            'discount_pct': 0.0,
+            'driver_vm_cost_per_hour': 0,
+            'worker_vm_cost_per_hour': 0,
+            'notes': ' — '.join(notes_parts),
+        }
+        write_data_row(sheet, row, row_data, True, True, fmt)
+        row += 1
+    return row
 
 

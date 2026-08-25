@@ -13,6 +13,55 @@ export const AI_GATEWAY_COMPONENT_RATES = {
   usageTracking: 1.429,
 } as const
 
+export const AGENT_EVALUATION_COMPONENT_RATES = {
+  inputTokens: 2.143,
+  outputTokens: 8.571,
+  syntheticQuestions: 5,
+} as const
+
+export interface AgentEvaluationUsage {
+  labelsEnabled: boolean
+  syntheticDataEnabled: boolean
+  inputTokensMillions: number
+  outputTokensMillions: number
+  syntheticQuestions: number
+  inputTokenDBUs: number
+  outputTokenDBUs: number
+  evaluationTokenDBUs: number
+  syntheticQuestionDBUs: number
+  monthlyDBUs: number
+}
+
+export function calculateAgentEvaluationUsage(item: Partial<LineItem>): AgentEvaluationUsage {
+  const labelsEnabled = item.agent_evaluation_labels_enabled ?? true
+  const syntheticDataEnabled = item.agent_evaluation_synthetic_data_enabled ?? false
+  const inputTokensMillions = item.agent_evaluation_input_tokens_millions ?? 1
+  const outputTokensMillions = item.agent_evaluation_output_tokens_millions ?? 1
+  const syntheticQuestions = item.agent_evaluation_synthetic_questions ?? 0
+  const inputTokenDBUs = labelsEnabled
+    ? inputTokensMillions * AGENT_EVALUATION_COMPONENT_RATES.inputTokens
+    : 0
+  const outputTokenDBUs = labelsEnabled
+    ? outputTokensMillions * AGENT_EVALUATION_COMPONENT_RATES.outputTokens
+    : 0
+  const syntheticQuestionDBUs = syntheticDataEnabled
+    ? syntheticQuestions * AGENT_EVALUATION_COMPONENT_RATES.syntheticQuestions
+    : 0
+
+  return {
+    labelsEnabled,
+    syntheticDataEnabled,
+    inputTokensMillions,
+    outputTokensMillions,
+    syntheticQuestions,
+    inputTokenDBUs,
+    outputTokenDBUs,
+    evaluationTokenDBUs: inputTokenDBUs + outputTokenDBUs,
+    syntheticQuestionDBUs,
+    monthlyDBUs: inputTokenDBUs + outputTokenDBUs + syntheticQuestionDBUs,
+  }
+}
+
 export interface AIGatewayComponentUsage {
   enabled: boolean
   inputMethod: 'requests' | 'payload_gb'
@@ -301,6 +350,7 @@ export function calculateWorkloadCost(
     case 'AI_EXTRACT':
     case 'AI_CLASSIFY':
     case 'AI_GATEWAY':
+    case 'AGENT_EVALUATION':
     case 'SHUTTERSTOCK_IMAGEAI':
       productType = 'SERVERLESS_REAL_TIME_INFERENCE'
       break
@@ -315,7 +365,7 @@ export function calculateWorkloadCost(
   
   // Get DBU price for this product type - try pricing bundle function first
   let dbuPrice: number | null = null
-  if (item.workload_type === 'AI_GATEWAY') {
+  if (item.workload_type === 'AI_GATEWAY' || item.workload_type === 'AGENT_EVALUATION') {
     dbuPrice = getExactDBUPrice?.(productType) ?? dbuRatesMap[productType] ?? 0
   } else if (getDBUPrice) {
     const bundlePrice = getDBUPrice(productType)
@@ -704,6 +754,11 @@ export function calculateWorkloadCost(
 
     case 'AI_GATEWAY': {
       monthlyDBUs = calculateAIGatewayUsage(item).monthlyDBUs
+      break
+    }
+
+    case 'AGENT_EVALUATION': {
+      monthlyDBUs = calculateAgentEvaluationUsage(item).monthlyDBUs
       break
     }
 

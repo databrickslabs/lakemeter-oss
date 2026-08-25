@@ -22,6 +22,14 @@ AI_PARSE_FIELDS = (
     "ai_parse_num_pages",
 )
 
+AGENT_EVALUATION_FIELDS = (
+    "agent_evaluation_labels_enabled",
+    "agent_evaluation_input_tokens_millions",
+    "agent_evaluation_output_tokens_millions",
+    "agent_evaluation_synthetic_data_enabled",
+    "agent_evaluation_synthetic_questions",
+)
+
 
 class IntegrationFailure(RuntimeError):
     """Raised when a release-candidate integration assertion fails."""
@@ -119,6 +127,38 @@ def _assert_ai_parse_persisted(item: dict[str, Any], label: str) -> None:
         )
 
 
+def _selected_agent_evaluation(
+    item: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        field: item.get(field) for field in AGENT_EVALUATION_FIELDS
+    }
+
+
+def _assert_agent_evaluation_persisted(
+    item: dict[str, Any],
+    label: str,
+) -> None:
+    values = _selected_agent_evaluation(item)
+    expected = {
+        "agent_evaluation_labels_enabled": True,
+        "agent_evaluation_input_tokens_millions": 2.0,
+        "agent_evaluation_output_tokens_millions": 3.0,
+        "agent_evaluation_synthetic_data_enabled": True,
+        "agent_evaluation_synthetic_questions": 4,
+    }
+    mismatches = {
+        field: {"expected": value, "actual": values.get(field)}
+        for field, value in expected.items()
+        if values.get(field) != value
+    }
+    if mismatches:
+        raise IntegrationFailure(
+            f"{label} did not persist Agent Evaluation fields: "
+            f"{mismatches}"
+        )
+
+
 def _ai_parse_calculation(client: AppClient) -> dict[str, Any]:
     calculation = client.json(
         "POST",
@@ -140,6 +180,36 @@ def _ai_parse_calculation(client: AppClient) -> dict[str, Any]:
     if monthly_dbu != 218.75:
         raise IntegrationFailure(
             f"AI Parse returned {monthly_dbu} DBU/month; expected 218.75."
+        )
+    return calculation
+
+
+def _agent_evaluation_calculation(
+    client: AppClient,
+) -> dict[str, Any]:
+    calculation = client.json(
+        "POST",
+        "/calculate/agent-evaluation",
+        json={
+            "cloud": "AWS",
+            "region": "ap-southeast-1",
+            "tier": "ENTERPRISE",
+            "labels_enabled": True,
+            "input_tokens_millions": 2,
+            "output_tokens_millions": 3,
+            "synthetic_data_enabled": True,
+            "synthetic_questions": 4,
+        },
+    )
+    monthly_dbu = (
+        calculation.get("data", {})
+        .get("dbu_calculation", {})
+        .get("dbu_per_month")
+    )
+    if monthly_dbu is None or abs(float(monthly_dbu) - 49.999) > 1e-9:
+        raise IntegrationFailure(
+            "Agent Evaluation returned "
+            f"{monthly_dbu} DBU/month; expected 49.999."
         )
     return calculation
 
@@ -278,6 +348,53 @@ def verify_candidate(
     clone_reloaded = client.json("GET", f"/line-items/{clone_id}")
     _assert_ai_parse_persisted(clone_reloaded, "Cloned candidate item")
 
+    agent_calculation = _agent_evaluation_calculation(client)
+    agent_fields = {
+        "agent_evaluation_labels_enabled": True,
+        "agent_evaluation_input_tokens_millions": 2,
+        "agent_evaluation_output_tokens_millions": 3,
+        "agent_evaluation_synthetic_data_enabled": True,
+        "agent_evaluation_synthetic_questions": 4,
+        "cost_calculation_response": agent_calculation,
+        "calculation_completed_at": datetime.now(timezone.utc).isoformat(),
+    }
+    agent_item = client.json(
+        "POST",
+        "/line-items/",
+        expected_status=201,
+        json={
+            "estimate_id": estimate_id,
+            "workload_name": "Candidate Agent Evaluation item",
+            "workload_type": "AGENT_EVALUATION",
+            "cloud": "AWS",
+            **agent_fields,
+        },
+    )
+    agent_item_id = str(agent_item["line_item_id"])
+    agent_reloaded = client.json(
+        "GET",
+        f"/line-items/{agent_item_id}",
+    )
+    _assert_agent_evaluation_persisted(
+        agent_reloaded,
+        "New Agent Evaluation item",
+    )
+    agent_clone = client.json(
+        "POST",
+        f"/line-items/{agent_item_id}/clone",
+        expected_status=201,
+        json={"new_name": "Candidate Agent Evaluation clone"},
+    )
+    agent_clone_id = str(agent_clone["line_item_id"])
+    agent_clone_reloaded = client.json(
+        "GET",
+        f"/line-items/{agent_clone_id}",
+    )
+    _assert_agent_evaluation_persisted(
+        agent_clone_reloaded,
+        "Cloned Agent Evaluation item",
+    )
+
     exported = client.request(
         "GET",
         f"/export/estimate/{estimate_id}/excel",
@@ -304,6 +421,12 @@ def verify_candidate(
         "baseline_item": _selected_ai_parse(original),
         "fresh_item": _selected_ai_parse(fresh_reloaded),
         "cloned_item": _selected_ai_parse(clone_reloaded),
+        "agent_evaluation_item": _selected_agent_evaluation(
+            agent_reloaded
+        ),
+        "agent_evaluation_clone": _selected_agent_evaluation(
+            agent_clone_reloaded
+        ),
         "excel_bytes": len(exported.content),
     }
 

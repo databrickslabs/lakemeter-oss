@@ -47,6 +47,7 @@ When presenting workload types to users, ALWAYS use these names:
 - **AI_EXTRACT**: Structured field extraction (per 1,000 inputs; raw STRING input is accepted, while document files require AI Parse first)
 - **AI_CLASSIFY**: Classification (per 1,000 inputs; raw STRING input is accepted, while document files require AI Parse first)
 - **AI_GATEWAY**: Additive Unity AI Gateway inference tables and usage tracking. Each enabled component has independent payload inputs and uses 1.429 DBU/GB. Prefer direct monthly payload GB for each component when its metered billable payload is known; otherwise use that component's requests in millions and average request/response KB. Underlying serving and guardrail costs are excluded.
+- **AGENT_EVALUATION**: Additive Agent Evaluation label scoring and synthetic data generation. Labels use separate monthly input/output token quantities; synthetic data uses generated question count. The evaluated app/model inference is excluded and must be modeled separately.
 - **SHUTTERSTOCK_IMAGEAI**: AI image generation (per-image pricing)
 
 ## Key Questions to Ask Users
@@ -736,7 +737,7 @@ The user will review and confirm before it's added to the estimate.""",
                 # === Common Fields ===
                 "workload_type": {
                     "type": "string",
-                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "AI_GATEWAY", "SHUTTERSTOCK_IMAGEAI"],
+                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "AI_GATEWAY", "AGENT_EVALUATION", "SHUTTERSTOCK_IMAGEAI"],
                     "description": "Type of Databricks workload. Note: Use DLT for SDP (Spark Declarative Pipelines) workloads - present as 'SDP' to users but use 'DLT' as the enum value."
                 },
                 "workload_name": {
@@ -1094,6 +1095,37 @@ The user will review and confirm before it's added to the estimate.""",
                     "type": "number",
                     "minimum": 0,
                     "description": "Direct Usage Tracking monthly payload GB",
+                },
+
+                # === Agent Evaluation Specific ===
+                "labels_enabled": {
+                    "type": "boolean",
+                    "description": "Enable Agent Evaluation label scoring",
+                },
+                "input_tokens_millions": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": (
+                        "Monthly evaluated input tokens in millions"
+                    ),
+                },
+                "output_tokens_millions": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": (
+                        "Monthly evaluated output tokens in millions"
+                    ),
+                },
+                "synthetic_data_enabled": {
+                    "type": "boolean",
+                    "description": (
+                        "Enable Agent Evaluation synthetic data generation"
+                    ),
+                },
+                "synthetic_questions": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Monthly generated synthetic questions",
                 },
 
                 # === Shutterstock ImageAI Specific ===
@@ -2337,6 +2369,17 @@ Each workload needs to be confirmed individually. Review the configurations and 
                             tool_field
                         )
 
+        if workload_type.upper() == "AGENT_EVALUATION":
+            for field in (
+                "labels_enabled",
+                "input_tokens_millions",
+                "output_tokens_millions",
+                "synthetic_data_enabled",
+                "synthetic_questions",
+            ):
+                if field in kwargs:
+                    kwargs[f"agent_evaluation_{field}"] = kwargs.pop(field)
+
         # Build workload configuration with defaults
         workload = {
             "proposal_id": str(uuid.uuid4()),
@@ -3084,6 +3127,22 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 workload.setdefault(f"{prefix}_avg_request_payload_kb", 1)
                 workload.setdefault(f"{prefix}_avg_response_payload_kb", 1)
                 workload.setdefault(f"{prefix}_monthly_payload_gb", 2)
+
+        if wtype == "AGENT_EVALUATION":
+            workload.setdefault("agent_evaluation_labels_enabled", True)
+            workload.setdefault(
+                "agent_evaluation_input_tokens_millions",
+                1,
+            )
+            workload.setdefault(
+                "agent_evaluation_output_tokens_millions",
+                1,
+            )
+            workload.setdefault(
+                "agent_evaluation_synthetic_data_enabled",
+                False,
+            )
+            workload.setdefault("agent_evaluation_synthetic_questions", 0)
 
         if wtype == "SHUTTERSTOCK_IMAGEAI":
             workload.setdefault("shutterstock_images", 1000)
