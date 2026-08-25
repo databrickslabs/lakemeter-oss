@@ -91,7 +91,7 @@ When you click **Confirm**, the workload is created in your estimate with all fi
 >
 > **Assistant:** Here's a recommended GenAI stack for a RAG chatbot:
 >
-> 1. **Vector Search** (Storage Optimized) — Store and query document embeddings
+> 1. **AI Search** (Storage Optimized) — Store and query document embeddings
 > 2. **Model Serving** (GPU) — Host the embedding model for document ingestion
 > 3. **FMAPI** (Claude or GPT) — Generate responses using retrieved context
 > 4. **Jobs** — Scheduled pipeline to re-index new documents

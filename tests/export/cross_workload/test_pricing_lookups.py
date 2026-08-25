@@ -37,10 +37,10 @@ class TestPricingLookups:
         assert len(warnings) == 0, f"All-Purpose had warnings: {warnings}"
 
     def test_vector_search_no_warnings(self):
-        """Vector Search DBU calc itself has no warnings (rate lookup is separate)."""
+        """AI Search DBU calc itself has no warnings (rate lookup is separate)."""
         item = make_vector_search_standard()
         _, warnings = _calculate_dbu_per_hour(item, 'aws')
-        assert len(warnings) == 0, f"Vector Search had warnings: {warnings}"
+        assert len(warnings) == 0, f"AI Search had warnings: {warnings}"
 
 
 class TestFallbackPricingExpected:

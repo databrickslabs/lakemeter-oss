@@ -38,7 +38,7 @@ When presenting workload types to users, ALWAYS use these names:
 - **SDP (Spark Declarative Pipelines)**: Declarative ETL, CDC, materialized views, data quality (internal type: DLT)
 - **DBSQL (Databricks SQL)**: SQL analytics, BI dashboards, ad-hoc queries
 - **MODEL_SERVING**: Real-time ML inference endpoints
-- **VECTOR_SEARCH**: Vector similarity search for AI applications
+- **VECTOR_SEARCH (AI Search)**: Search and reranking for AI applications
 - **FMAPI_DATABRICKS**: Foundation Model APIs (Databricks-hosted models like Llama, DBRX)
 - **FMAPI_PROPRIETARY**: Foundation Model APIs (GPT-5+, Claude, Gemini - all within Databricks security)
 - **LAKEBASE**: PostgreSQL-compatible database
@@ -293,7 +293,7 @@ A typical RAG (Retrieval-Augmented Generation) chatbot requires MULTIPLE workloa
 1. **Data Preparation (JOBS)**: Process and chunk documents for embeddings
    - Lakeflow Jobs, Photon enabled, spot workers for cost savings
    - Run frequency: daily or when new documents added
-2. **Vector Search (VECTOR_SEARCH)**: Store and query document embeddings
+2. **AI Search (VECTOR_SEARCH)**: Store and query document embeddings
    - Estimate based on number of vectors and query volume
 3. **Foundation Model (FMAPI_PROPRIETARY or FMAPI_DATABRICKS)**: Generate responses
    - Input tokens: ~2000-4000 per query (context + question)
@@ -306,7 +306,7 @@ A typical RAG (Retrieval-Augmented Generation) chatbot requires MULTIPLE workloa
    - Higher input tokens (full document), lower output tokens
 
 ### Customer Support Bot
-1. **Vector Search**: FAQ and knowledge base retrieval
+1. **AI Search**: FAQ and knowledge base retrieval
 2. **Foundation Model**: Response generation
 3. **Optional Model Serving**: Custom intent classification model
 
@@ -596,10 +596,10 @@ Clearly hypothetical examples and public pricing/product facts are allowed, but 
 3. For Usage Tracking, independently ask the same question; do not reuse the Inference Tables volume.
 4. Remind the user that each enabled component uses 1.429 DBU/GB and that underlying Model Serving, Foundation Model API inference, and guardrail evaluator costs are excluded.
 
-### For Vector Search:
-**COPY THIS EXACT TEXT** when user asks about Vector Search:
+### For AI Search:
+**COPY THIS EXACT TEXT** when user asks about AI Search:
 ```
-I'll help you configure Vector Search! Please answer these 5 questions:
+I'll help you configure AI Search! Please answer these 6 questions:
 
 1. **Endpoint Type**: Which do you need?
    - Standard: 20-50ms latency, best for <320M vectors
@@ -617,14 +617,18 @@ I'll help you configure Vector Search! Please answer these 5 questions:
 
 5. **Query Volume**: Expected queries per second (QPS)?
 
-Note: Vector Search runs 24/7 continuously (730 hours/month) - it cannot be stopped.
+6. **Reranker**: Will you use AI Search Reranker? If yes, how many reranker requests per month?
+
+Note: AI Search runs 24/7 continuously (730 hours/month) - it cannot be stopped. The first 30 GB of storage is included. Reranker usage is billed at 28.571 DBU per 1,000 requests.
 ```
 DO NOT ask about "use case", "how many vectors", "index type preference", "hours per month", or any other questions.
 
-**When calling propose_workload for VECTOR_SEARCH, pass these 2 parameters:**
+**When calling propose_workload for VECTOR_SEARCH, pass these parameters:**
 - `vector_search_endpoint_type`: STANDARD (<320M vectors) or STORAGE_OPTIMIZED (10M+ vectors, 7x cheaper)
 - `vector_capacity_millions`: Calculate from answers: docs × pages × 1.2 × (dimensions÷768)
   Example: 1M docs × 1000 pages × 1.2 × (1024÷768) = 1600 → pass 1600
+- `ai_search_reranker_enabled`: Whether AI Search Reranker is used
+- `ai_search_reranker_requests_thousands`: Monthly reranker requests in thousands
 
 ## Using Context
 - The estimate details (name, cloud, region, tier) are provided in the context
@@ -699,7 +703,7 @@ You are on the home page where users can learn about Databricks pricing and work
    - Say: "To add workloads and calculate costs, please click 'New Estimate' in the navigation or select an existing estimate from the Estimates page."
 
 2. Be helpful and educational:
-   - Explain workload types: Jobs, All-Purpose, SDP (DLT), DBSQL, Model Serving, Vector Search, FMAPI, Lakebase
+   - Explain workload types: Jobs, All-Purpose, SDP (DLT), DBSQL, Model Serving, AI Search, FMAPI, Lakebase
    - Share the key pricing factors for each workload type
    - Provide architecture guidance based on their described use case
 
@@ -711,7 +715,7 @@ You are on the home page where users can learn about Databricks pricing and work
 - **SDP (Spark Declarative Pipelines)**: Declarative ETL, CDC, materialized views
 - **DBSQL (Databricks SQL)**: SQL analytics, BI dashboards, ad-hoc queries
 - **MODEL_SERVING**: Real-time ML inference endpoints
-- **VECTOR_SEARCH**: Vector similarity search for AI applications
+- **VECTOR_SEARCH (AI Search)**: Search and reranking for AI applications
 - **FMAPI_DATABRICKS**: Foundation Model APIs (Databricks-hosted open models)
 - **FMAPI_PROPRIETARY**: Foundation Model APIs (GPT, Claude, Gemini via Databricks)
 - **LAKEBASE**: PostgreSQL-compatible database
@@ -874,7 +878,7 @@ The user will review and confirm before it's added to the estimate.""",
                     "description": "Allow scaling to zero when idle (saves cost but adds cold start latency)"
                 },
                 
-                # === Vector Search Specific ===
+                # === AI Search Specific (internal type: VECTOR_SEARCH) ===
                 "vector_search_endpoint_type": {
                     "type": "string",
                     "enum": ["STANDARD", "STORAGE_OPTIMIZED"],
@@ -886,7 +890,16 @@ The user will review and confirm before it's added to the estimate.""",
                 },
                 "vector_search_storage_gb": {
                     "type": "integer",
-                    "description": "Storage in GB for Vector Search. Free tier: 20 GB per unit used. Billable storage = max(0, storage_gb - free_storage_gb). Cost: $0.023/GB/month for storage above free tier."
+                    "description": "Storage in GB for AI Search. The first 30 GB is free. Billable storage = max(0, storage_gb - 30). Cost: $0.023/GB/month for storage above the free tier."
+                },
+                "ai_search_reranker_enabled": {
+                    "type": "boolean",
+                    "description": "Enable AI Search Reranker at 28.571 DBU per 1,000 requests."
+                },
+                "ai_search_reranker_requests_thousands": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Monthly AI Search Reranker requests in thousands. For example, 250 means 250,000 requests."
                 },
                 
                 # === Foundation Model API Specific ===
@@ -1155,7 +1168,7 @@ Format as bullet points. This will be displayed to the user as the configuration
         "name": "ask_clarifying_questions",
         "description": """Use this tool to ask the user clarifying questions before proposing a workload.
 CRITICAL: You MUST use the EXACT questions from the 'Question Guidelines by Workload Type' section for each workload type.
-For Vector Search specifically: Ask the 6 questions (Endpoint Type, Embedding Model/Dimensions, Number of Documents, Pages per Document, Query Volume, Hours per Month).
+For AI Search specifically: Ask the 6 questions (Endpoint Type, Embedding Model/Dimensions, Number of Documents, Pages per Document, Query Volume, Reranker Usage).
 DO NOT make up generic questions like 'primary use case', 'how many vectors', or 'index type preference'.""",
         "parameters": {
             "type": "object",
@@ -1201,7 +1214,7 @@ DO NOT make up generic questions like 'primary use case', 'how many vectors', or
         "name": "propose_genai_architecture",
         "description": """Propose a complete GenAI architecture with MULTIPLE workloads for common use cases.
 Use this when user mentions: chatbot, RAG, knowledge base, document Q&A, assistant, AI agent, summarization.
-This will propose all necessary workloads (data prep, vector search, foundation models) together.""",
+This will propose all necessary workloads (data prep, AI Search, foundation models) together.""",
         "parameters": {
             "type": "object",
             "properties": {
@@ -1233,7 +1246,7 @@ This will propose all necessary workloads (data prep, vector search, foundation 
                 },
                 "document_count": {
                     "type": "integer",
-                    "description": "Approximate number of documents in knowledge base (for vector search sizing)"
+                    "description": "Approximate number of documents in knowledge base (for AI Search sizing)"
                 },
                 "data_prep_frequency": {
                     "type": "string",
@@ -2057,7 +2070,7 @@ The following fields MUST be set before workloads can be added:
     ) -> Dict[str, Any]:
         """
         Propose a complete GenAI architecture with multiple workloads.
-        Creates workload proposals for data prep, vector search, and foundation models.
+        Creates workload proposals for data prep, AI Search, and foundation models.
         """
         # Check required estimate fields first
         if self.current_estimate:
@@ -2172,7 +2185,7 @@ The following fields MUST be set before workloads can be added:
             }
             add_workload_if_new(data_prep)
         
-        # 2. Vector Search (for retrieval)
+        # 2. AI Search (for retrieval)
         if use_case in ["rag_chatbot", "customer_support", "document_processing"]:
             # Estimate vector dimensions and storage based on chunking
             # Assume 10 pages per document, 1.2 chunks per page (with overlap)
@@ -2195,7 +2208,7 @@ The following fields MUST be set before workloads can be added:
             vector_search = {
                 "proposal_id": str(uuid.uuid4()),
                 "workload_type": "VECTOR_SEARCH",
-                "workload_name": f"{use_case_name} - Vector Search",
+                "workload_name": f"{use_case_name} - AI Search",
                 "cloud": cloud,
                 "vector_search_endpoint_type": endpoint_type,
                 "vector_search_index_type": "DELTA_SYNC",
@@ -2205,7 +2218,7 @@ The following fields MUST be set before workloads can be added:
                 "vector_search_qps": max(1, expected_conversations_per_day / (24 * 3600)),  # Convert daily conversations to QPS
                 "hours_per_month": 730,  # 24/7 for production
                 "reason": "Semantic search over document embeddings for RAG retrieval",
-                "notes": f"""**Vector Search Configuration** (AI-generated)
+                "notes": f"""**AI Search Configuration** (AI-generated)
 
 - **Endpoint**: {endpoint_type} ({"<100ms latency" if endpoint_type == "STANDARD" else "~250ms, 7x cheaper"})
 - **Documents**: ~{document_count:,} docs × {pages_per_doc} pages × 1.2 chunks = ~{estimated_vectors:,} vectors
@@ -2896,17 +2909,19 @@ Each workload needs to be confirmed individually. Review the configurations and 
             
             # Ensure capacity is set
             workload["vector_capacity_millions"] = capacity_millions
+            workload.setdefault("ai_search_reranker_enabled", False)
+            workload.setdefault("ai_search_reranker_requests_thousands", 0)
             
             # Calculate total_vectors for display
             total_vectors = capacity_millions * 1_000_000
             workload["vector_search_total_vectors"] = total_vectors
             
-            # Vector Search runs 24/7 - cannot be stopped
+            # AI Search runs 24/7 - cannot be stopped
             workload["hours_per_month"] = 730
             
             notes_parts.append("")
             notes_parts.append("=" * 60)
-            notes_parts.append("**VECTOR SEARCH CONFIGURATION**")
+            notes_parts.append("**AI SEARCH CONFIGURATION**")
             notes_parts.append("=" * 60)
             notes_parts.append("")
             notes_parts.append(f"**🔍 Index Configuration:**")
@@ -2958,7 +2973,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 notes_parts.append("• Storage Optimized provides 7x cost savings at scale")
             notes_parts.append("")
             
-            notes_parts.append("**🎯 VECTOR SEARCH OPERATIONAL GUIDANCE:**")
+            notes_parts.append("**🎯 AI SEARCH OPERATIONAL GUIDANCE:**")
             notes_parts.append("• **Monitoring**: Track search latency, QPS, index size, sync lag (for DELTA_SYNC)")
             notes_parts.append("• **Optimization**:")
             notes_parts.append("  - Use filters to reduce search space (metadata filtering)")
@@ -2972,7 +2987,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
             notes_parts.append("• **Best Practices**:")
             notes_parts.append("  - Test both endpoint types with your latency requirements")
             notes_parts.append("  - Monitor p50/p95/p99 latencies, not just average")
-            notes_parts.append("  - Pre-filter large indexes using metadata before vector search")
+            notes_parts.append("  - Pre-filter large AI Search indexes using metadata")
             notes_parts.append("  - Consider approximate nearest neighbor (ANN) algorithms for ultra-scale")
             
             # Storage cost info
@@ -2980,15 +2995,33 @@ Each workload needs to be confirmed individually. Review the configurations and 
             if storage_gb > 0:
                 divisor = 64 if mode == "storage_optimized" else 2
                 units_used = (capacity_millions + divisor - 1) // divisor  # ceiling division
-                free_storage_gb = units_used * 20
+                free_storage_gb = 30 if units_used > 0 else 0
                 billable_storage_gb = max(0, storage_gb - free_storage_gb)
                 storage_cost = billable_storage_gb * 0.023
                 notes_parts.append("")
                 notes_parts.append("**💾 Storage Configuration:**")
                 notes_parts.append(f"• **Total Storage**: {storage_gb} GB")
-                notes_parts.append(f"• **Free Storage**: {free_storage_gb} GB ({units_used} units × 20 GB/unit)")
+                notes_parts.append(f"• **Free Storage**: First {free_storage_gb} GB")
                 notes_parts.append(f"• **Billable Storage**: {billable_storage_gb} GB")
                 notes_parts.append(f"• **Storage Cost**: ${storage_cost:.2f}/month ($0.023/GB/month)")
+            if workload.get("ai_search_reranker_enabled"):
+                reranker_requests = float(
+                    workload.get(
+                        "ai_search_reranker_requests_thousands",
+                        0,
+                    )
+                    or 0
+                )
+                reranker_dbus = reranker_requests * 28.571
+                notes_parts.append("")
+                notes_parts.append("**🔄 AI Search Reranker:**")
+                notes_parts.append(
+                    f"• **Requests**: {reranker_requests:g}K/month"
+                )
+                notes_parts.append(
+                    f"• **Usage**: {reranker_requests:g}K × "
+                    f"28.571 DBU/1K = {reranker_dbus:.3f} DBU/month"
+                )
         
         if wtype in ["FMAPI_PROPRIETARY", "FMAPI_DATABRICKS"]:
             # Get FMAPI-specific fields - these should be PROVIDED by the AI, not defaulted
@@ -3495,7 +3528,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
                         recommendations.append({
                             "workload": wname,
                             "type": "cost",
-                            "category": "Vector Search",
+                            "category": "AI Search",
                             "current_cost": f"${cost:.2f}/month",
                             "suggestion": "Consider OPTIMIZED endpoint if latency requirements allow",
                             "detail": "OPTIMIZED endpoints are 7x cheaper (~$0.07/hr vs $0.49/hr) with ~250ms latency vs <100ms.",

@@ -1,8 +1,8 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Test Case: Vector Search
+# MAGIC # Test Case: AI Search
 # MAGIC 
-# MAGIC **Vector Search Modes:**
+# MAGIC **AI Search Modes:**
 # MAGIC - **standard:** Optimized for query performance
 # MAGIC - **storage_optimized:** Lower cost, slightly higher latency
 # MAGIC 
@@ -71,7 +71,7 @@ for cloud in ['AWS', 'AZURE', 'GCP']:
             region = region_map[cloud]
             test_scenarios.append({
                 'scenario_id': scenario_id, 'cloud': cloud, 'region': region, 'tier': tier,
-                'workload_name': f"{cloud} {tier} Vector Search {mode.upper()}",
+                'workload_name': f"{cloud} {tier} AI Search {mode.upper()}",
                 'vector_search_mode': mode, 'serverless_product': 'vector_search', 'serverless_size': mode,
                 'runs_per_day': 24, 'avg_runtime_minutes': 60, 'days_per_month': 30
             })
@@ -95,7 +95,7 @@ for scenario in test_scenarios:
     line_item_ids.append(line_item_id)
     estimate_key = f"{scenario['cloud']}_{scenario['region']}_{scenario['tier']}"
     execute_query("""INSERT INTO lakemeter.line_items (line_item_id, estimate_id, display_order, workload_name, workload_type, serverless_enabled, vector_search_mode, serverless_product, serverless_size, runs_per_day, avg_runtime_minutes, days_per_month, notes, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
-                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'VECTOR_SEARCH', True, scenario['vector_search_mode'], 'vector_search', scenario['serverless_size'], scenario['runs_per_day'], scenario['avg_runtime_minutes'], scenario['days_per_month'], f"Vector Search {scenario['vector_search_mode']}", datetime.now(), datetime.now()), fetch=False)
+                  (line_item_id, estimate_map[estimate_key], scenario['scenario_id'], scenario['workload_name'], 'VECTOR_SEARCH', True, scenario['vector_search_mode'], 'vector_search', scenario['serverless_size'], scenario['runs_per_day'], scenario['avg_runtime_minutes'], scenario['days_per_month'], f"AI Search {scenario['vector_search_mode']}", datetime.now(), datetime.now()), fetch=False)
 
 print(f"✅ Created {len(line_item_ids)} line items")
 
@@ -109,7 +109,7 @@ for col in ['dbu_per_hour', 'price_per_dbu', 'vm_cost_per_month', 'dbu_cost_per_
 
 results_df['cost_per_month'] = results_df['cost_per_month'].round(2)
 print("=" * 150)
-print("VECTOR SEARCH - COST CALCULATION SUMMARY")
+print("AI SEARCH - COST CALCULATION SUMMARY")
 print("=" * 150)
 print(tabulate(results_df, headers='keys', tablefmt='grid', showindex=False))
 display(results_df)
@@ -128,6 +128,6 @@ premium_enterprise_results = results_df[results_df['tier'].isin(['PREMIUM', 'ENT
 if len(premium_enterprise_results) > 0:
     assert (premium_enterprise_results['cost_per_month'] > 0).all(), "❌ FAIL: PREMIUM/ENTERPRISE should have positive costs"
     print(f"   ✅ All {len(premium_enterprise_results)} PREMIUM/ENTERPRISE scenarios have positive costs")
-print(f"✅ All {len(test_scenarios)} Vector Search scenarios validated!")
+print(f"✅ All {len(test_scenarios)} AI Search scenarios validated!")
 
 # COMMAND ----------

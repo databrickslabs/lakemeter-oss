@@ -89,7 +89,7 @@ class TestVmCosts:
             'Jobs Serverless Perf', 'DLT Pro Serverless',
             'DBSQL Serverless Medium', 'Model Serving GPU',
             'FMAPI DB Llama Input', 'FMAPI Anthropic Output',
-            'Vector Search Standard 5M', 'Lakebase 4CU 2HA',
+            'AI Search Standard 5M', 'Lakebase 4CU 2HA',
         ]
         for name in serverless_names:
             row = find_row_by_name(ws, name)

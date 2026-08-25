@@ -125,7 +125,7 @@ const GPU_TYPES_BY_CLOUD: Record<string, string[]> = {
 // Fallback for backward compatibility
 const GPU_TYPES = ['cpu', 'gpu_small_t4']
 
-// Vector search modes
+// AI Search modes
 const VECTOR_MODES = ['standard', 'storage_optimized']
 
 // Manual test environment configuration interface
@@ -212,7 +212,7 @@ function generateTestsForEnvironment(
   let idCounter = startIdCounter
   
   // Get available workload types for this region from pricing bundle
-  // This filters out workloads not available in the region (e.g., no Vector Search in ap-southeast-3)
+  // This filters out workloads not available in the region (e.g., no AI Search in ap-southeast-3)
   const availableWorkloads = bundle?.isLoaded 
     ? getAvailableWorkloadTypesForRegion(bundle, env.cloud, env.region, env.tier)
     : null
@@ -424,18 +424,21 @@ function generateTestsForEnvironment(
     })
   }
   
-  // Vector Search tests
+  // AI Search tests
   if (config.includeVectorSearch && isAvailable('VECTOR_SEARCH')) {
     for (const mode of VECTOR_MODES) {
       testCases.push({
         id: `${++idCounter}`,
-        name: `Vector Search ${mode}`,
-        category: 'Vector Search',
+        name: `AI Search ${mode}`,
+        category: 'AI Search',
         workloadType: 'VECTOR_SEARCH',
         environment: env,
         config: {
           vector_search_mode: mode,
           vector_capacity_millions: 5,
+          vector_search_storage_gb: 100,
+          ai_search_reranker_enabled: mode === 'standard',
+          ai_search_reranker_requests_thousands: mode === 'standard' ? 10 : 0,
           hours_per_month: 730
         }
       })
@@ -799,11 +802,14 @@ function buildAPIRequest(testCase: TestCase): Record<string, unknown> {
       }
       
     case 'VECTOR_SEARCH':
-      // Vector Search
+      // AI Search
       return {
         ...base,
         mode: config.vector_search_mode || 'standard',
         vector_capacity_millions: config.vector_capacity_millions || 1,
+        storage_gb: config.vector_search_storage_gb || 0,
+        reranker_enabled: config.ai_search_reranker_enabled || false,
+        reranker_requests_thousands: config.ai_search_reranker_requests_thousands || 0,
         hours_per_month: config.hours_per_month || 730
       }
       
@@ -1094,7 +1100,7 @@ export default function TestCalculations() {
         }
         return getFMAPIProprietaryRate(provider, model, rateType)
       },
-      // Transform Vector Search rate from pricing bundle (dbu_rate -> dbu_per_hour)
+      // Transform AI Search rate from pricing bundle (dbu_rate -> dbu_per_hour)
       getVectorSearchRate: (mode: string) => {
         if (isPricingBundleLoaded && pricingBundle.vectorSearchRates) {
           const key = `${cloud.toLowerCase()}:${mode}`
@@ -1914,7 +1920,7 @@ export default function TestCalculations() {
                   { key: 'includeAllPurpose', label: 'All Purpose' },
                   { key: 'includeDLT', label: 'DLT' },
                   { key: 'includeDBSQL', label: 'DBSQL' },
-                  { key: 'includeVectorSearch', label: 'Vector Search' }
+                  { key: 'includeVectorSearch', label: 'AI Search' }
                 ].map(({ key, label }) => (
                   <label key={key} className="flex items-center gap-2 text-sm">
                     <input

@@ -149,7 +149,7 @@ CREATE OR REPLACE FUNCTION lakemeter.calculate_line_item_costs(
     p_dbsql_num_clusters INT DEFAULT 1,
     p_dbsql_vm_pricing_tier VARCHAR DEFAULT 'on_demand',
     
-    -- Vector Search
+    -- AI Search
     p_vector_search_mode VARCHAR DEFAULT NULL,
     p_vector_search_capacity_millions DECIMAL DEFAULT 0,
     
@@ -297,7 +297,7 @@ BEGIN
                 v_vm_cost_per_month := vm_costs.total_vm_cost_per_month::DECIMAL(18,2);
             END IF;
         
-        -- Vector Search (hourly pricing, 24/7 availability)
+        -- AI Search (hourly pricing, 24/7 availability)
         WHEN 'VECTOR_SEARCH' THEN
             v_dbu_per_hour := lakemeter.calculate_vector_search_dbu(
                 p_cloud, p_vector_search_mode, p_vector_search_capacity_millions
@@ -515,7 +515,7 @@ print("   3. Route to DBU calculator:")
 print("      • Classic compute → calculate_classic_compute_dbu")
 print("      • Serverless compute → calculate_serverless_compute_dbu")
 print("      • DBSQL → calculate_dbsql_dbu")
-print("      • Vector Search → calculate_vector_search_dbu")
+print("      • AI Search → calculate_vector_search_dbu")
 print("      • Model Serving → calculate_model_serving_dbu")
 print("      • FMAPI Databricks → calculate_fmapi_databricks_dbu")
 print("      • FMAPI Proprietary → calculate_fmapi_proprietary_dbu")

@@ -235,7 +235,7 @@ def convert_serverless_rates():
                 "description": info.get("description", ""),
             })
 
-    # Vector search
+    # AI Search
     src = PRICING_DIR / "vector-search-rates.json"
     with open(src) as f:
         data = json.load(f)

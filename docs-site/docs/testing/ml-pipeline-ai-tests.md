@@ -4,7 +4,7 @@ sidebar_position: 13
 
 # Sprint 11: ML Pipeline AI Tests (VECTOR_SEARCH + FMAPI + MODEL_SERVING)
 
-Sprint 11 validates the AI assistant's ability to handle **ML/RAG pipeline conversations** — multi-workload scenarios targeting AI/ML workload types: Vector Search, Foundation Model API (Proprietary), and Model Serving.
+Sprint 11 validates the AI assistant's ability to handle **ML/RAG pipeline conversations** — multi-workload scenarios targeting AI/ML workload types: AI Search, Foundation Model API (Proprietary), and Model Serving.
 
 ## What's Tested
 
@@ -26,7 +26,7 @@ Sprint 11 validates the AI assistant's ability to handle **ML/RAG pipeline conve
 
 The primary scenario simulates a full RAG application setup:
 
-> *"Set up a RAG application with vector search for embeddings, Claude for text generation, and a model serving endpoint for our custom reranker"*
+> *"Set up a RAG application with AI Search for embeddings, Claude for text generation, and a model serving endpoint for our custom reranker"*
 
 The test suite verifies the AI proposes all three ML workload types across the conversation:
 
@@ -37,7 +37,7 @@ The test suite verifies the AI proposes all three ML workload types across the c
 | **MODEL_SERVING** | `workload_type=MODEL_SERVING`, `model_serving_type` populated |
 
 ![Calculator overview](/img/calculator-overview.png)
-*The AI assistant proposes ML pipeline workloads — Vector Search, FMAPI Proprietary, and Model Serving for a complete RAG architecture.*
+*The AI assistant proposes ML pipeline workloads — AI Search, FMAPI Proprietary, and Model Serving for a complete RAG architecture.*
 
 Each workload is checked for common metadata fields:
 - `workload_name` — descriptive name
@@ -52,9 +52,9 @@ Each workload is checked for common metadata fields:
 
 ### 2-Workload Variant (14 tests)
 
-A simpler RAG scenario with only Vector Search and FMAPI:
+A simpler RAG scenario with only AI Search and FMAPI:
 
-> *"I need vector search for embeddings and Claude for inference"*
+> *"I need AI Search for embeddings and Claude for inference"*
 
 Verifies:
 - Both VS and FMAPI_PROPRIETARY workloads proposed
@@ -168,7 +168,7 @@ tests/sprint_11/test_notes_completeness.py::TestNotesCompleteness::test_all_type
 
 | Issue | Resolution |
 |-------|-----------|
-| AI proposes wrong types | Check that the prompt clearly specifies "vector search", "Claude", and "model serving" |
+| AI proposes wrong types | Check that the prompt clearly specifies "AI Search", "Claude", and "model serving" |
 | FMAPI provider not `anthropic` | Ensure the prompt says "Claude" — the AI may default to a different provider if prompt is ambiguous |
 | Fewer than 3 proposals | The AI may bundle proposals or ask clarifying questions — escalation prompts handle this |
 | AI tests skip | Check network access; tests auto-skip if FMAPI endpoint is unreachable |

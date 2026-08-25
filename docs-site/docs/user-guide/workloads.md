@@ -25,7 +25,7 @@ For current Databricks product capabilities and availability, refer to the [offi
 | What you need to size | Lakemeter guide | Main sizing inputs |
 |---|---|---|
 | Model inference endpoints | [Model Serving](./model-serving) | Endpoint type, endpoint count, hours |
-| Vector indexing and search | [Vector Search](./vector-search) | Endpoint mode, vector capacity, storage, hours |
+| Vector indexing and search | [AI Search](./vector-search) | Endpoint mode, vector capacity, storage, reranker requests, hours |
 | Databricks-hosted foundation models | [FMAPI — Databricks](./fmapi-databricks) | Model, rate type, token volume or hours |
 | Proprietary foundation models | [FMAPI — Proprietary](./fmapi-proprietary) | Provider, model, geography, context, token volume |
 | Transactional database capacity | [Lakebase](./lakebase) | Compute range, usage, nodes, storage protection |

@@ -91,7 +91,7 @@ class TestStorageRowsInSum:
 
 
 class TestMultiRowWorkloads:
-    """AC-7: Lakebase and Vector Search have storage sub-rows."""
+    """AC-7: Lakebase and AI Search have storage sub-rows."""
 
     def test_lakebase_has_storage_subrow(self, ws):
         storage_rows = find_rows_by_sku(ws, 'DATABRICKS_STORAGE')
@@ -103,13 +103,13 @@ class TestMultiRowWorkloads:
             "No Lakebase storage sub-row found"
 
     def test_vector_search_storage_subrow_emitted(self, ws):
-        """Vector Search storage sub-row emitted when storage_gb > 0."""
+        """AI Search storage sub-row emitted when storage_gb > 0."""
         storage_rows = find_rows_by_sku(ws, 'DATABRICKS_STORAGE')
         vs_storage = [r for r in storage_rows
-                      if 'Vector' in str(ws.cell(row=r, column=3).value)
-                      or 'Vector' in str(ws.cell(row=r, column=2).value)]
+                      if 'AI Search' in str(ws.cell(row=r, column=3).value)
+                      or 'AI Search' in str(ws.cell(row=r, column=2).value)]
         assert len(vs_storage) >= 1, \
-            "Vector Search storage sub-row should be present when storage_gb > 0"
+            "AI Search storage sub-row should be present when storage_gb > 0"
 
     def test_storage_rows_have_notes(self, ws):
         """Storage rows should have descriptive notes."""

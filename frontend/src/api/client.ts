@@ -454,7 +454,7 @@ export const fetchDBSQLWarehouseHardware = async (params: {
 }
 
 // ============================================================================
-// Vector Search (NEW API)
+// AI Search (legacy route retained for compatibility)
 // ============================================================================
 export interface VectorSearchMode {
   mode: string
@@ -981,10 +981,13 @@ export const calculateDLTServerless = async (request: DLTServerlessRequest): Pro
   return data
 }
 
-// Vector Search
+// AI Search (legacy route name retained for compatibility)
 export interface VectorSearchRequest extends BaseCalculationRequest {
   mode: string
   vector_capacity_millions: number
+  storage_gb?: number
+  reranker_enabled?: boolean
+  reranker_requests_thousands?: number
   hours_per_month?: number
 }
 

@@ -1,4 +1,4 @@
-"""Shared Excel test helpers for Vector Search export tests."""
+"""Shared Excel test helpers for AI Search export tests."""
 import os
 import tempfile
 from datetime import datetime
@@ -29,7 +29,7 @@ COL_NOTES = 30
 
 
 def make_estimate(**kw):
-    d = dict(estimate_name='Vector Search E2E', status='draft', version=1,
+    d = dict(estimate_name='AI Search E2E', status='draft', version=1,
              created_at=datetime(2026, 3, 31), updated_at=datetime(2026, 3, 31))
     d.update(kw)
     return SimpleNamespace(**d)
@@ -62,7 +62,7 @@ def find_data_rows(ws, sku_filter=None):
 
 
 def find_vs_compute_row(ws):
-    """Find Vector Search compute row (SERVERLESS_REAL_TIME_INFERENCE)."""
+    """Find AI Search compute row (SERVERLESS_REAL_TIME_INFERENCE)."""
     rows = find_data_rows(ws, 'SERVERLESS_REAL_TIME_INFERENCE')
     return rows[0] if rows else None
 

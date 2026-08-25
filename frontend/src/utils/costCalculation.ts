@@ -19,6 +19,22 @@ export const AGENT_EVALUATION_COMPONENT_RATES = {
   syntheticQuestions: 5,
 } as const
 
+export const AI_SEARCH_INCLUDED_STORAGE_GB = 30
+export const AI_SEARCH_STORAGE_PRICE_PER_GB = 0.023
+export const AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS = 28.571
+
+export function calculateAISearchRerankerUsage(item: Partial<LineItem>) {
+  const enabled = item.ai_search_reranker_enabled ?? false
+  const requestsThousands = item.ai_search_reranker_requests_thousands ?? 0
+  return {
+    enabled,
+    requestsThousands,
+    monthlyDBUs: enabled
+      ? requestsThousands * AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS
+      : 0,
+  }
+}
+
 export interface AgentEvaluationUsage {
   labelsEnabled: boolean
   syntheticDataEnabled: boolean
@@ -151,7 +167,7 @@ export const DEFAULT_DBU_PRICING: Record<string, Record<string, number>> = {
     'SQL_COMPUTE': 0.22,
     'SQL_PRO_COMPUTE': 0.55,
     'SERVERLESS_SQL_COMPUTE': 0.70,
-    'SERVERLESS_REAL_TIME_INFERENCE': 0.07,  // Used for Vector Search, Model Serving, FMAPI Databricks
+    'SERVERLESS_REAL_TIME_INFERENCE': 0.07,  // Used for AI Search, Model Serving, FMAPI Databricks
     'SERVERLESS_REAL_TIME_INFERENCE_LAUNCH': 0.07,
     'OPENAI_MODEL_SERVING': 0.07,
     'ANTHROPIC_MODEL_SERVING': 0.07,
@@ -179,16 +195,16 @@ export interface CostBreakdown {
   vmCost: number
   totalCost: number
   // Optional fields for specific workload types
-  unitsUsed?: number  // Vector Search units
+  unitsUsed?: number  // AI Search units
   dbuPerHour?: number // DBU per hour for display
   dbuPrice?: number   // $/DBU rate for display
-  // Storage costs for Vector Search and Lakebase
+  // Storage costs for AI Search and Lakebase
   storageCost?: number
   storageDetails?: {
     totalStorageGB: number
-    freeStorageGB?: number  // Vector Search only
+    freeStorageGB?: number  // AI Search only
     billableStorageGB: number
-    pricePerGB?: number     // Vector Search
+    pricePerGB?: number     // AI Search
     dsuPerGB?: number       // Lakebase
     totalDSU?: number       // Lakebase
     pricePerDSU?: number    // Lakebase
@@ -313,7 +329,7 @@ export function calculateWorkloadCost(
       break
     
     case 'VECTOR_SEARCH':
-      // Vector Search uses SERVERLESS_REAL_TIME_INFERENCE pricing ($0.07/DBU)
+      // AI Search uses SERVERLESS_REAL_TIME_INFERENCE pricing
       productType = 'SERVERLESS_REAL_TIME_INFERENCE'
       break
     
@@ -385,8 +401,8 @@ export function calculateWorkloadCost(
   let dbuPerHour = 0
   let monthlyDBUs = 0
   let vmCost = 0
-  let unitsUsed: number | undefined = undefined  // For Vector Search
-  let storageCost: number | undefined = undefined  // For Vector Search and Lakebase
+  let unitsUsed: number | undefined = undefined  // For AI Search
+  let storageCost: number | undefined = undefined  // For AI Search and Lakebase
   let storageDetails: CostBreakdown['storageDetails'] = undefined
   
   // Get instance DBU rates - try pricing bundle function first, then fetched instanceTypes
@@ -550,7 +566,7 @@ export function calculateWorkloadCost(
       break
     
     case 'VECTOR_SEARCH':
-      // Vector Search: Units = CEILING(vector_capacity / divisor)
+      // AI Search: Units = CEILING(vector_capacity / divisor)
       // Standard: 2M vectors per unit, 4.00 DBU/hour per unit
       // Storage Optimized: 64M vectors per unit, 18.29 DBU/hour per unit
       const vectorMode = item.vector_search_mode || 'standard'
@@ -569,16 +585,21 @@ export function calculateWorkloadCost(
       
       // DBU/Hour = units_used × mode_dbu_rate
       dbuPerHour = vectorUnitsUsed * vectorModeDBURate
-      monthlyDBUs = dbuPerHour * hoursPerMonth
+      monthlyDBUs = (
+        dbuPerHour * hoursPerMonth
+        + calculateAISearchRerankerUsage(item).monthlyDBUs
+      )
       
-      // Storage calculation for Vector Search
-      // Free Storage = units_used × 20 GB
+      // Storage calculation for AI Search
+      // The first 30 GB of storage is included
       // Billable Storage = MAX(0, storage_gb - free_storage_gb)
       // Storage Cost = billable_storage_gb × price_per_gb_per_month ($0.023/GB/month)
       const vectorStorageGB = item.vector_search_storage_gb || 0
-      const vectorFreeStorageGB = vectorUnitsUsed * 20
+      const vectorFreeStorageGB = vectorUnitsUsed > 0
+        ? AI_SEARCH_INCLUDED_STORAGE_GB
+        : 0
       const vectorBillableStorageGB = Math.max(0, vectorStorageGB - vectorFreeStorageGB)
-      const vectorStoragePricePerGB = 0.023  // $0.023 per GB per month
+      const vectorStoragePricePerGB = AI_SEARCH_STORAGE_PRICE_PER_GB
       const vectorStorageCost = vectorBillableStorageGB * vectorStoragePricePerGB
 
       if (vectorStorageGB > 0) {
@@ -792,7 +813,7 @@ export function calculateWorkloadCost(
     dbuCost: safeDbuCost, 
     vmCost: safeVmCost, 
     totalCost: safeTotalCost,
-    unitsUsed,  // For Vector Search
+    unitsUsed,  // For AI Search
     dbuPerHour: safeDbuPerHour, // For display
     dbuPrice: safeDbuPrice,    // $/DBU rate for display
     storageCost: safeStorageCost > 0 ? safeStorageCost : undefined,

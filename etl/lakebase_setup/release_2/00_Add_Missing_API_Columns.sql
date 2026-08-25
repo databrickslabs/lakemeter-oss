@@ -14,7 +14,7 @@
 -- ============================================================================
 
 -- ===========================================
--- 1. Add Vector Search Capacity Column
+-- 1. Add AI Search Capacity Column
 -- ===========================================
 
 -- Add vector_capacity_millions for VECTOR_SEARCH workload type
@@ -23,7 +23,7 @@ ADD COLUMN IF NOT EXISTS vector_capacity_millions DECIMAL(15,2)
 CHECK (vector_capacity_millions >= 0);
 
 COMMENT ON COLUMN lakemeter.line_items_backup_20260114.vector_capacity_millions IS 
-'Vector capacity in millions (e.g., 2 for 2M vectors). Replaces old serverless_size field for Vector Search.';
+'Vector capacity in millions (e.g., 2 for 2M vectors). Replaces old serverless_size field for AI Search.';
 
 -- Also add to main table if needed
 ALTER TABLE lakemeter.line_items 
@@ -31,7 +31,7 @@ ADD COLUMN IF NOT EXISTS vector_capacity_millions DECIMAL(15,2)
 CHECK (vector_capacity_millions >= 0);
 
 COMMENT ON COLUMN lakemeter.line_items.vector_capacity_millions IS 
-'Vector capacity in millions (e.g., 2 for 2M vectors). Replaces old serverless_size field for Vector Search.';
+'Vector capacity in millions (e.g., 2 for 2M vectors). Replaces old serverless_size field for AI Search.';
 
 -- ===========================================
 -- 2. Add FMAPI Rate Type and Quantity Columns
@@ -108,7 +108,7 @@ ORDER BY table_name, column_name;
 --   - Create 2 rows from each old row (one for input, one for output)
 --   - OR decide which rate_type to use for existing rows
 --
--- For Vector Search:
+-- For AI Search:
 --   - Map serverless_size to vector_capacity_millions
 --   - Need to determine the mapping logic
 

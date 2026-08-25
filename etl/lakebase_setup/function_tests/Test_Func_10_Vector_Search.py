@@ -1,15 +1,15 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Test_Func_10: Vector Search Cost Calculation
+# MAGIC # Test_Func_10: AI Search Cost Calculation
 # MAGIC
-# MAGIC **Objective:** Validate `calculate_line_item_costs()` function for Vector Search workloads
+# MAGIC **Objective:** Validate `calculate_line_item_costs()` function for AI Search workloads
 # MAGIC
 # MAGIC **Approach:** Call function directly (no database INSERTs)
 # MAGIC
 # MAGIC **Test Matrix:**
 # MAGIC - **Clouds:** AWS, Azure, GCP (2 regions each)
-# MAGIC - **Tiers:** PREMIUM, ENTERPRISE (Vector Search not available in STANDARD)
-# MAGIC - **Vector Search Modes:** standard, storage_optimized
+# MAGIC - **Tiers:** PREMIUM, ENTERPRISE (AI Search not available in STANDARD)
+# MAGIC - **AI Search Modes:** standard, storage_optimized
 # MAGIC - **Capacity:** 3M, 10M, 50M, 100M vectors
 # MAGIC - **Usage:** Monthly pricing
 # MAGIC
@@ -196,7 +196,7 @@ display_cols = ['scenario_id', 'cloud', 'region', 'tier', 'mode', 'capacity_mill
 available_cols = [col for col in display_cols if col in results_df.columns]
 
 print("=" * 80)
-print("VECTOR SEARCH TEST RESULTS")
+print("AI SEARCH TEST RESULTS")
 print("=" * 80)
 display(results_df[available_cols])
 
@@ -258,5 +258,5 @@ for cloud in clouds:
                     print(f"⚠️  WARNING: {cloud} {tier} {capacity}M - Same costs for both modes")
 
 print("=" * 80)
-print("VECTOR SEARCH TEST COMPLETE")
+print("AI SEARCH TEST COMPLETE")
 print("=" * 80)

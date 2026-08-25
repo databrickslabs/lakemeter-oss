@@ -1,6 +1,6 @@
-"""E2E tests: AI Assistant Accept Button — Vector Search.
+"""E2E tests: AI Assistant Accept Button — AI Search.
 
-Verifies that confirmed Vector Search workloads preserve endpoint mode,
+Verifies that confirmed AI Search workloads preserve endpoint mode,
 vector capacity, and other non-default values.
 
 Run: pytest tests/e2e/ai_assistant/test_accept_vector_search.py -v
@@ -17,7 +17,7 @@ def results():
 
 
 class TestAcceptVectorSearch:
-    """Verify confirm-workload preserves Vector Search config."""
+    """Verify confirm-workload preserves AI Search config."""
 
     @pytest.mark.parametrize("mode", ["standard", "performance"])
     def test_endpoint_mode_preserved(self, inject_proposal, confirm_workload, mode, results):

@@ -1,4 +1,4 @@
-"""Test Vector Search edge cases.
+"""Test AI Search edge cases.
 
 AC-15 to AC-20: Config display, fractional/large capacity, defaults, no negatives.
 """
@@ -144,10 +144,10 @@ class TestNoNegatives:
 
 
 class TestCalcItemValuesIntegration:
-    """Test calc_item_values for Vector Search path."""
+    """Test calc_item_values for AI Search path."""
 
     def test_hourly_path_used(self):
-        """Vector Search uses hourly path, not token or provisioned."""
+        """AI Search uses hourly path, not token or provisioned."""
         from app.routes.export.excel_item_helpers import calc_item_values
         item = make_line_item(
             vector_capacity_millions=2, hours_per_month=730,
@@ -161,7 +161,7 @@ class TestCalcItemValuesIntegration:
         assert tok_type == ''
 
     def test_run_based_hours(self):
-        """Vector Search with run-based usage."""
+        """AI Search with run-based usage."""
         from app.routes.export.excel_item_helpers import calc_item_values
         item = make_line_item(
             vector_capacity_millions=2,
@@ -181,6 +181,6 @@ class TestCalcItemValuesIntegration:
 class TestDisplayName:
     """Verify workload display name."""
 
-    def test_display_name_is_vector_search(self):
+    def test_display_name_is_ai_search(self):
         from app.routes.export.helpers import _get_workload_display_name
-        assert _get_workload_display_name('VECTOR_SEARCH') == 'Vector Search'
+        assert _get_workload_display_name('VECTOR_SEARCH') == 'AI Search'

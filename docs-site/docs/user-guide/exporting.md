@@ -58,7 +58,7 @@ All cost cells use **Excel formulas**, not static values. If you change an input
 Some workloads can produce additional rows:
 
 - **Lakebase** — Compute, plus optional database storage, point-in-time restore, and snapshot rows
-- **Vector Search** — Row 1: compute costs, Row 2: storage costs (if storage GB > 0)
+- **AI Search** — Row 1: compute costs, optional reranker row, then storage costs (if storage GB > 0)
 
 Only configured components are emitted. The totals row at the bottom uses `SUM` formulas that include every primary row and sub-row.
 
@@ -117,4 +117,4 @@ Since all cells use formulas, you can build additional analysis on top of the ex
 - Export **after** finalizing your estimate — the file reflects the exact state at download time
 - The **discount percentage** column is editable in Excel. Set it to your negotiated rate and all costs recalculate
 - For FMAPI workloads, the token configuration columns show your volume assumptions — adjust these for different usage scenarios
-- Lakebase and Vector Search storage-related costs can appear on separate rows. Include every emitted sub-row when referencing total costs
+- Lakebase and AI Search storage-related costs can appear on separate rows. Include every emitted sub-row when referencing total costs

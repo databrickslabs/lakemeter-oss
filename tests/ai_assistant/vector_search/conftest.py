@@ -17,7 +17,7 @@ from tests.ai_assistant.vector_search.prompts import (
 
 @pytest.fixture(scope="module")
 def standard_proposal(http_client, test_estimate):
-    """Single AI call for Vector Search Standard — shared by standard tests."""
+    """Single AI call for AI Search Standard — shared by standard tests."""
     proposal, resp = send_chat_until_proposal(
         http_client,
         [STANDARD_PRIMARY, STANDARD_FOLLOWUP, STANDARD_FINAL],
@@ -28,7 +28,7 @@ def standard_proposal(http_client, test_estimate):
 
 @pytest.fixture(scope="module")
 def storage_optimized_proposal(http_client, test_estimate):
-    """Single AI call for Vector Search Storage-Optimized — shared by SO tests."""
+    """Single AI call for AI Search Storage-Optimized — shared by SO tests."""
     proposal, resp = send_chat_until_proposal(
         http_client,
         [STORAGE_OPT_PRIMARY, STORAGE_OPT_FOLLOWUP, STORAGE_OPT_FINAL],
@@ -39,7 +39,7 @@ def storage_optimized_proposal(http_client, test_estimate):
 
 @pytest.fixture(scope="module")
 def small_rag_proposal(http_client, test_estimate):
-    """Single AI call for Vector Search Small RAG — shared by small RAG tests."""
+    """Single AI call for AI Search Small RAG — shared by small RAG tests."""
     proposal, resp = send_chat_until_proposal(
         http_client,
         [SMALL_RAG_PRIMARY, SMALL_RAG_FOLLOWUP, SMALL_RAG_FINAL],

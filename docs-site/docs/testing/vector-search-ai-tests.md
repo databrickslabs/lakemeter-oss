@@ -2,9 +2,9 @@
 sidebar_position: 8
 ---
 
-# Sprint 6: Vector Search Tests
+# Sprint 6: AI Search Tests
 
-Sprint 6 validates the AI assistant's ability to propose **Vector Search** workloads across Standard and Storage-Optimized endpoint types, handle small RAG use cases, and correctly reject non-vector-search requests.
+Sprint 6 validates the AI assistant's ability to propose **AI Search** workloads across Standard and Storage-Optimized endpoint types, handle small RAG use cases, and correctly reject non-search requests.
 
 ## What's Tested
 
@@ -21,9 +21,9 @@ Sprint 6 validates the AI assistant's ability to propose **Vector Search** workl
 
 ### Standard Endpoint — 50M Vectors (8 tests)
 
-A single AI call simulates setting up a standard vector search endpoint for a RAG application:
+A single AI call simulates setting up a standard AI Search endpoint for a RAG application:
 
-> *"Set up vector search for RAG with 50 million embeddings"*
+> *"Set up AI Search for RAG with 50 million embeddings"*
 
 | Field | Assertion |
 |-------|-----------|
@@ -36,13 +36,13 @@ A single AI call simulates setting up a standard vector search endpoint for a RA
 | `proposal_id` | Present |
 
 ![Calculator with workloads](/img/calculator-overview.png)
-*The AI assistant proposes Vector Search workloads from natural language descriptions of embedding storage needs.*
+*The AI assistant proposes AI Search workloads from natural language descriptions of embedding storage needs.*
 
 ### Storage-Optimized — 200M Vectors (7 tests)
 
 Tests a large-scale storage-optimized endpoint:
 
-> *"I need storage-optimized vector search for 200M vectors"*
+> *"I need storage-optimized AI Search for 200M vectors"*
 
 Verifies:
 - `workload_type` equals `"VECTOR_SEARCH"`
@@ -52,7 +52,7 @@ Verifies:
 
 ### Small RAG Chatbot — 5M Vectors (7 tests)
 
-Tests a lightweight vector search for a simple chatbot:
+Tests a lightweight AI Search endpoint for a simple chatbot:
 
 > *"Small RAG chatbot, 5 million vectors"*
 
@@ -64,7 +64,7 @@ Verifies:
 
 ### Negative Discrimination (4 tests)
 
-Two scenarios ensure the AI doesn't propose Vector Search for unrelated workloads:
+Two scenarios ensure the AI doesn't propose AI Search for unrelated workloads:
 
 **Model Deployment (AC-15)**:
 > *"I need to deploy a custom ML model for real-time inference"*
@@ -114,11 +114,11 @@ tests/ai_assistant/sprint_6/test_vector_search_negative.py::TestVectorSearchNega
 
 ## Endpoint Type Selection Logic
 
-The AI must correctly map user requirements to vector search endpoint types:
+The AI must correctly map user requirements to AI Search endpoint types:
 
 | User Intent | Expected Type | Key Signals |
 |-------------|--------------|-------------|
-| Standard RAG, moderate scale | **STANDARD** | "vector search", "RAG", "embeddings", < 100M |
+| Standard RAG, moderate scale | **STANDARD** | "AI Search", "RAG", "embeddings", < 100M |
 | Large-scale, cost-optimized storage | **STORAGE_OPTIMIZED** | "storage-optimized", "200M+", "large-scale" |
 | Small chatbot, lightweight | **STANDARD** (default) | "small", "chatbot", "5M vectors" |
 

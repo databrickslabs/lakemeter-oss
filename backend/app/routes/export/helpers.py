@@ -41,7 +41,7 @@ def _get_workload_display_name(workload_type: str) -> str:
         'ALL_PURPOSE': 'All-Purpose Compute',
         'DLT': 'Lakeflow Spark Declarative Pipelines',
         'DBSQL': 'Databricks SQL',
-        'VECTOR_SEARCH': 'Vector Search',
+        'VECTOR_SEARCH': 'AI Search',
         'MODEL_SERVING': 'Model Serving',
         'FMAPI_DATABRICKS': 'Foundation Models (Databricks)',
         'FMAPI_PROPRIETARY': 'Foundation Models (Proprietary)',
@@ -155,6 +155,13 @@ def _vector_search_details(item) -> list:
     details.append(f"Mode: {mode_display}")
     if item.vector_capacity_millions:
         details.append(f"Capacity: {item.vector_capacity_millions}M vectors")
+    if _get_json_backed_value(item, 'ai_search_reranker_enabled', False):
+        requests = float(_get_json_backed_value(
+            item,
+            'ai_search_reranker_requests_thousands',
+            0,
+        ) or 0)
+        details.append(f"Reranker: {requests:g}K requests/mo")
     return details
 
 

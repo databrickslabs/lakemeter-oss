@@ -25,7 +25,7 @@ But the answer often depends on many moving parts:
 - Which region?
 - Which pricing tier?
 - Classic or serverless?
-- Jobs, SQL, Lakeflow, AI, Lakebase, Vector Search, or something else?
+- Jobs, SQL, Lakeflow, AI, Lakebase, AI Search, or something else?
 - How many hours per month?
 - Which DBU SKU?
 - Is there storage involved?
@@ -44,7 +44,7 @@ It runs as a Databricks App, uses Lakebase as the backend database, and provides
 At a high level, Lakemeter helps users:
 
 - Create an estimate for a customer, project, or workload scenario.
-- Add Databricks workloads such as Jobs, DBSQL, Lakeflow/DLT, Model Serving, FMAPI, Vector Search, Lakebase, Databricks Apps, AI Parse, and Shutterstock ImageAI.
+- Add Databricks workloads such as Jobs, DBSQL, Lakeflow/DLT, Model Serving, FMAPI, AI Search, Lakebase, Databricks Apps, AI Parse, and Shutterstock ImageAI.
 - Review workload-level cost assumptions.
 - See DBU, storage, and SKU-level breakdowns where applicable.
 - Export estimates to Excel for customer conversations, planning, or internal review.

@@ -135,10 +135,10 @@ def make_fmapi_proprietary():
 
 
 def make_vector_search_standard():
-    """Vector Search Standard — 5M vectors, 50GB storage, 730 hrs/month."""
+    """AI Search Standard — 5M vectors, 50GB storage, 730 hrs/month."""
     return make_line_item(
         workload_type="VECTOR_SEARCH",
-        workload_name="Vector Search Standard 5M",
+        workload_name="AI Search Standard 5M",
         vector_search_mode="standard",
         vector_capacity_millions=5,
         vector_search_storage_gb=50,

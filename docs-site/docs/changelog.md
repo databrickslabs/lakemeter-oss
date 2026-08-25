@@ -85,7 +85,7 @@ Patch release introducing safer upgrades and correcting AI Parse estimate persis
 
 Initial public open-source release.
 
-- Workload coverage for Jobs, All-Purpose, DBSQL, DLT/Lakeflow, Model Serving, FMAPI (Databricks + Proprietary), Vector Search, Lakebase, Databricks Apps, AI Parse, and Shutterstock ImageAI
+- Workload coverage for Jobs, All-Purpose, DBSQL, DLT/Lakeflow, Model Serving, FMAPI (Databricks + Proprietary), AI Search, Lakebase, Databricks Apps, AI Parse, and Shutterstock ImageAI
 - AI assistant with streaming chat, workload suggestions, and one-click accept
 - Excel export with full cost breakdowns, SKU details, and discount calculations
 - One-command installer (`scripts/install.sh`) using Databricks Asset Bundles

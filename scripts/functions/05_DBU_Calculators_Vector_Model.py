@@ -1,10 +1,10 @@
 # MAGIC %md
-# MAGIC # Vector Search & Model Serving DBU Calculators
+# MAGIC # AI Search & Model Serving DBU Calculators
 # MAGIC
-# MAGIC **Purpose:** Calculate DBU per hour for Vector Search and Model Serving workloads
+# MAGIC **Purpose:** Calculate DBU per hour for AI Search and Model Serving workloads
 # MAGIC
 # MAGIC **Functions Created:**
-# MAGIC 1. `calculate_vector_search_dbu()` - Vector Search with capacity rounding
+# MAGIC 1. `calculate_vector_search_dbu()` - AI Search with capacity rounding
 # MAGIC 2. `calculate_model_serving_dbu()` - Model Serving with cloud-specific GPU types
 
 # COMMAND ----------
@@ -66,7 +66,7 @@ DECLARE
     v_units DECIMAL(18,4);
     v_total_dbu DECIMAL(18,4);
 BEGIN
-    -- Lookup DBU rate for vector search mode
+    -- Lookup DBU rate for AI Search mode
     SELECT dbu_rate INTO v_dbu_rate
     FROM lakemeter.sync_product_serverless_rates
     WHERE UPPER(cloud) = UPPER(p_cloud)
@@ -94,7 +94,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION lakemeter.calculate_vector_search_dbu IS 
-'Calculate DBU per hour for Vector Search workloads.
+'Calculate DBU per hour for AI Search workloads.
 Formula: CEILING(capacity_millions / divisor) × dbu_rate
 Divisors: standard=2M per unit, storage_optimized=64M per unit
 Always rounds UP to next unit.';
@@ -192,14 +192,14 @@ except Exception as e:
 # COMMAND ----------
 
 print("\n" + "=" * 100)
-print("TESTING: Vector Search & Model Serving")
+print("TESTING: AI Search & Model Serving")
 print("=" * 100)
 
 test_query = """
-SELECT 'Vector Search Test 1: 3M standard' as test_case,
+SELECT 'AI Search Test 1: 3M standard' as test_case,
        lakemeter.calculate_vector_search_dbu('AWS', 'standard', 3.0) as dbu_per_hour
 UNION ALL
-SELECT 'Vector Search Test 2: 100M storage_optimized',
+SELECT 'AI Search Test 2: 100M storage_optimized',
        lakemeter.calculate_vector_search_dbu('AWS', 'storage_optimized', 100.0)
 UNION ALL
 SELECT 'Model Serving Test 1: CPU',
@@ -225,14 +225,14 @@ except Exception as e:
 # COMMAND ----------
 
 print("\n" + "=" * 100)
-print("✅ VECTOR SEARCH & MODEL SERVING DBU CALCULATORS CREATED")
+print("✅ AI SEARCH & MODEL SERVING DBU CALCULATORS CREATED")
 print("=" * 100)
 
 print("\n📋 Functions created:")
 print("   ✅ calculate_vector_search_dbu")
 print("   ✅ calculate_model_serving_dbu")
 
-print("\n🎯 Vector Search:")
+print("\n🎯 AI Search:")
 print("   • Handles capacity in millions of vectors")
 print("   • CEILING rounding (always round up)")
 print("   • Different divisors: standard (2M), storage_optimized (64M)")

@@ -12,7 +12,7 @@ Tables queried:
 4. lakemeter.sync_product_dbu_rates - DBU pricing ($/DBU)
 5. lakemeter.sync_product_dbsql_rates - DBSQL warehouse DBU rates
 6. lakemeter.sync_ref_dbsql_warehouse_config - DBSQL warehouse VM config
-7. lakemeter.sync_product_serverless_rates - Vector Search & Model Serving rates
+7. lakemeter.sync_product_serverless_rates - AI Search & Model Serving rates
 8. lakemeter.sync_product_fmapi_databricks - FMAPI Databricks rates
 9. lakemeter.sync_product_fmapi_proprietary - FMAPI Proprietary rates
 
@@ -417,7 +417,7 @@ def generate_dbsql_warehouse_config(conn, output_dir: str):
 
 def generate_vector_search_rates(conn, output_dir: str):
     """
-    Generate Vector Search rates from lakemeter.sync_product_serverless_rates.
+    Generate AI Search rates from lakemeter.sync_product_serverless_rates.
     
     Output structure:
     {
@@ -426,7 +426,7 @@ def generate_vector_search_rates(conn, output_dir: str):
         ...
     }
     """
-    print("\n🔍 Generating Vector Search rates...")
+    print("\n🔍 Generating AI Search rates...")
     
     result = conn.execute(text("""
         SELECT cloud, size_or_model as mode, dbu_rate, input_divisor, sku_product_type, description
@@ -453,7 +453,7 @@ def generate_vector_search_rates(conn, output_dir: str):
     with open(output_file, 'w') as f:
         json.dump(data, f, indent=2, default=decimal_default)
     
-    print(f"   ✅ Generated {count} Vector Search rate entries")
+    print(f"   ✅ Generated {count} AI Search rate entries")
     return count
 
 

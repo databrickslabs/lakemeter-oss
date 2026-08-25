@@ -52,7 +52,7 @@ class TestBugS10002FallbackNotesInExcel:
     """Regression: BUG-S10-002 — Items with fallback pricing show warning notes.
 
     After SKU alignment, DLT Serverless uses JOBS_SERVERLESS_COMPUTE and
-    Vector Search uses SERVERLESS_REAL_TIME_INFERENCE — both are standard SKUs
+    AI Search uses SERVERLESS_REAL_TIME_INFERENCE — both are standard SKUs
     found in the pricing JSON, so they no longer generate fallback warnings.
     """
 
@@ -68,8 +68,8 @@ class TestBugS10002FallbackNotesInExcel:
         assert 'DELTA_LIVE_TABLES' not in notes
 
     def test_vector_search_no_fallback_note(self, ws):
-        """Vector Search uses SERVERLESS_REAL_TIME_INFERENCE (found in pricing JSON)."""
-        row = find_row_by_name(ws, 'Vector Search Standard 5M')
+        """AI Search uses SERVERLESS_REAL_TIME_INFERENCE (found in pricing JSON)."""
+        row = find_row_by_name(ws, 'AI Search Standard 5M')
         notes = ws.cell(row=row, column=COL_NOTES).value or ''
         assert 'VECTOR_SEARCH_ENDPOINT' not in notes
 

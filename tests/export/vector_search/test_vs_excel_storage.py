@@ -1,4 +1,4 @@
-"""Test Vector Search Excel export — storage sub-row, totals, NaN checks.
+"""Test AI Search Excel export — storage sub-row, totals, NaN checks.
 
 AC-10 to AC-14, AC-20: Storage sub-row, totals SUM, no NaN.
 """
@@ -17,7 +17,7 @@ class TestStorageSubRow:
     """AC-10 to AC-13: Storage sub-row emitted with correct values."""
 
     def test_storage_row_emitted(self):
-        """AC-10: Storage sub-row exists for Vector Search with storage_gb > 0."""
+        """AC-10: Storage sub-row exists for AI Search with storage_gb > 0."""
         items = [make_line_item(vector_capacity_millions=5, vector_search_storage_gb=50)]
         wb = generate_xlsx(items)
         ws = wb.active
@@ -34,14 +34,14 @@ class TestStorageSubRow:
         assert ws.cell(row=row, column=COL_SKU).value == 'DATABRICKS_STORAGE'
 
     def test_storage_row_type_display(self):
-        """Storage sub-row type should say 'Vector Search (Storage)'."""
+        """Storage sub-row type should say 'AI Search (Storage)'."""
         items = [make_line_item(vector_capacity_millions=5, vector_search_storage_gb=50)]
         wb = generate_xlsx(items)
         ws = wb.active
         row = find_storage_row(ws)
         assert row is not None
         type_val = ws.cell(row=row, column=COL_TYPE).value
-        assert 'Vector Search' in str(type_val)
+        assert 'AI Search' in str(type_val)
         assert 'Storage' in str(type_val)
 
     def test_storage_gb_approximation(self):
@@ -58,8 +58,8 @@ class TestStorageSubRow:
 
     def test_storage_cost_positive(self):
         """AC-13: Storage cost = storage_gb * rate > 0 (billable > free)."""
-        # 10M vectors, standard mode: units=ceil(10M/2M)=5, free=5*20=100GB
-        # Set storage_gb=200 so billable=200-100=100GB, cost=100*0.023=$2.30
+        # 10M vectors, standard mode: units=5, free=5*30=150GB
+        # Set storage_gb=200 so billable=50GB and cost=$1.15
         items = [make_line_item(vector_capacity_millions=10, vector_search_storage_gb=200)]
         wb = generate_xlsx(items)
         ws = wb.active

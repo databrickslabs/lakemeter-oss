@@ -16,7 +16,7 @@ def _calculate_hours_per_month(item) -> float:
     calculate from those. Only fall back to hours_per_month if no run-based data.
     This prevents hours_per_month=730 default from overriding user's run config.
 
-    Always-on workloads (Vector Search, Model Serving, Lakebase, Databricks Apps)
+    Always-on workloads (AI Search, Model Serving, Lakebase, Databricks Apps)
     default to 730 hours/month when no usage data is provided.
     """
     wt = (getattr(item, 'workload_type', '') or '').upper()
@@ -165,7 +165,7 @@ def _calc_dbsql_dbu(item, warnings):
 
 
 def _calc_vector_search_dbu(item, cloud, warnings):
-    """Calculate DBU/hr for Vector Search workloads.
+    """Calculate DBU/hr for AI Search workloads.
 
     Uses CEILING(capacity / divisor) to determine endpoint units, matching
     the frontend's costCalculation.ts.  Defaults capacity to 1M vectors
@@ -180,7 +180,7 @@ def _calc_vector_search_dbu(item, cloud, warnings):
     key = f"{cloud_lc}:{mode}"
     info = VECTOR_SEARCH_RATES.get(key, {})
     if not info:
-        warnings.append(f"Vector Search rates not found for {key}, using defaults")
+        warnings.append(f"AI Search rates not found for {key}, using defaults")
     dbu_rate = info.get('dbu_rate', 4.0 if mode == 'standard' else 18.29)
     divisor = info.get('input_divisor', 2000000)
     vectors_total = capacity * 1_000_000

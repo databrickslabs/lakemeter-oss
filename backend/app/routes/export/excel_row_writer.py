@@ -38,7 +38,7 @@ def write_data_row(sheet, row, row_data, is_fmapi_token, is_serverless, fmt,
     _write_token_cols(sheet, row, row_data, is_fmapi_token, fmt)
 
     # Col 15: DBU/Hr
-    if is_fmapi_token:
+    if is_fmapi_token or row_data.get('is_quantity_based', False):
         sheet.write(row, 15, 'N/A', fmt['token_cell'])
     elif is_storage_row:
         sheet.write(row, 15, 'N/A', fmt['cell_center'])
@@ -59,7 +59,7 @@ def write_data_row(sheet, row, row_data, is_fmapi_token, is_serverless, fmt,
 
 
 def _write_hours(sheet, row, row_data, is_fmapi_token, is_storage_row, fmt):
-    if is_fmapi_token:
+    if is_fmapi_token or row_data.get('is_quantity_based', False):
         sheet.write(row, 11, 'N/A', fmt['token_cell'])
     elif is_storage_row:
         sheet.write(row, 11, 'N/A', fmt['cell_center'])
@@ -68,7 +68,10 @@ def _write_hours(sheet, row, row_data, is_fmapi_token, is_storage_row, fmt):
 
 
 def _write_token_cols(sheet, row, row_data, is_fmapi_token, fmt):
-    if is_fmapi_token:
+    if row_data.get('token_columns_na', False):
+        for column in range(12, 15):
+            sheet.write(row, column, 'N/A', fmt['cell_center'])
+    elif is_fmapi_token:
         sheet.write(row, 12, row_data.get('token_type', ''), fmt['token_cell'])
         sheet.write(row, 13, row_data['token_quantity_millions'], fmt['token_num'])
         sheet.write(row, 14, row_data['dbu_per_million'], fmt['token_dbu'])
@@ -89,7 +92,12 @@ def _write_dbu_costs(sheet, row, r, row_data, is_fmapi_token, is_storage_row, fm
     elif row_data.get('is_quantity_based', False):
         # Quantity workloads have no Hours/Mo × DBU/Hr basis. Writing their
         # computed DBUs as a value keeps downstream formulas recalculation-safe.
-        sheet.write(row, 16, total_dbus_month, fmt['number'])
+        dbu_format = (
+            fmt['decimal']
+            if row_data.get('show_dbu_month_decimals', False)
+            else fmt['number']
+        )
+        sheet.write(row, 16, total_dbus_month, dbu_format)
     elif is_fmapi_token:
         formula = f'={_col(13)}{r}*{_col(14)}{r}'
         sheet.write_formula(row, 16, formula, fmt['number'], total_dbus_month)

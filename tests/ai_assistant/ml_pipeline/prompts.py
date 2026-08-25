@@ -3,7 +3,7 @@
 Sprint 11: conversations requesting an ML/RAG pipeline with
 VECTOR_SEARCH + FMAPI_PROPRIETARY + MODEL_SERVING.
 Variant 1: 3-workload full RAG pipeline.
-Variant 2: 2-workload (Vector Search + FMAPI only, no Model Serving).
+Variant 2: 2-workload (AI Search + FMAPI only, no Model Serving).
 Negative: single-workload model serving only.
 """
 
@@ -11,26 +11,26 @@ Negative: single-workload model serving only.
 
 RAG_PRIMARY = (
     "I'm building a RAG application on AWS us-east-1. I need three "
-    "components: (1) vector search for storing and querying embeddings, "
+    "components: (1) AI Search for storing and querying embeddings, "
     "(2) Claude via Foundation Model API for text generation, and "
     "(3) a model serving endpoint for our custom reranker model."
 )
 
 RAG_VS_FOLLOWUP = (
-    "Let's start with vector search. I need a Databricks Vector Search "
+    "Let's start with AI Search. I need a Databricks AI Search "
     "endpoint to store about 50 million embedding vectors for our "
     "document corpus. Standard endpoint type. "
-    "Please propose the Vector Search workload now."
+    "Please propose the AI Search workload now."
 )
 
 RAG_VS_FINAL = (
-    "Go ahead and propose a Vector Search workload — standard endpoint, "
+    "Go ahead and propose an AI Search workload — standard endpoint, "
     "50 million vectors for RAG document retrieval."
 )
 
 # After confirming VECTOR_SEARCH, ask for FMAPI_PROPRIETARY (Claude)
 RAG_FMAPI_PRIMARY = (
-    "Great, vector search is confirmed. Now I need Claude for text "
+    "Great, AI Search is confirmed. Now I need Claude for text "
     "generation. We'll use Anthropic's Claude via the Foundation Model "
     "API — about 10 million input tokens and 2 million output tokens "
     "per month."
@@ -69,18 +69,18 @@ RAG_MS_FINAL = (
 
 TWO_WL_PRIMARY = (
     "I need two workloads for a RAG system on AWS us-east-1: "
-    "(1) vector search for embeddings and (2) Claude via FMAPI "
+    "(1) AI Search for embeddings and (2) Claude via FMAPI "
     "for text generation. No custom model serving needed."
 )
 
 TWO_WL_VS_FOLLOWUP = (
-    "Start with vector search. Standard endpoint, 20 million "
+    "Start with AI Search. Standard endpoint, 20 million "
     "vectors for document retrieval. "
-    "Please propose the Vector Search workload now."
+    "Please propose the AI Search workload now."
 )
 
 TWO_WL_VS_FINAL = (
-    "Go ahead and propose a Vector Search workload — standard "
+    "Go ahead and propose an AI Search workload — standard "
     "endpoint, 20 million vectors."
 )
 
@@ -104,7 +104,7 @@ TWO_WL_FMAPI_FINAL = (
 NEG_MS_ONLY_PRIMARY = (
     "I just need a model serving endpoint for deploying our ML model "
     "on AWS us-east-1. GPU medium, about 300 hours per month. "
-    "No vector search or FMAPI needed."
+    "No AI Search or FMAPI needed."
 )
 
 NEG_MS_ONLY_FOLLOWUP = (

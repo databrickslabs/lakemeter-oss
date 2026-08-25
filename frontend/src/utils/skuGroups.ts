@@ -125,7 +125,7 @@ export function formatProductName(productType: string): string {
     DLT_ADVANCED_COMPUTE: 'Lakeflow SDP Advanced',
     DELTA_LIVE_TABLES_SERVERLESS: 'Lakeflow SDP SVLS',
     SERVERLESS_REAL_TIME_INFERENCE: 'Model Serving',
-    VECTOR_SEARCH_ENDPOINT: 'Vector Search Compute',
+    VECTOR_SEARCH_ENDPOINT: 'AI Search Compute',
     DATABASE_SERVERLESS_COMPUTE: 'Lakebase Compute',
     DATABRICKS_STORAGE: 'Databricks Default Storage',
   }

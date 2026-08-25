@@ -1,4 +1,4 @@
-"""Test Vector Search SKU mapping and pricing lookups.
+"""Test AI Search SKU mapping and pricing lookups.
 
 AC-6 to AC-8: SKU = SERVERLESS_REAL_TIME_INFERENCE, $/DBU, serverless.
 """
@@ -10,7 +10,7 @@ from app.routes.export.calculations import _is_serverless_workload
 
 
 class TestSKUMapping:
-    """AC-6: SKU = SERVERLESS_REAL_TIME_INFERENCE for all Vector Search items."""
+    """AC-6: SKU = SERVERLESS_REAL_TIME_INFERENCE for all AI Search items."""
 
     @pytest.mark.parametrize("mode", ["standard", "storage_optimized"])
     def test_sku_is_vector_search_endpoint(self, mode):
@@ -51,7 +51,7 @@ class TestDBUPriceLookup:
 
 
 class TestServerlessClassification:
-    """AC-8: Vector Search is always serverless (no VM costs)."""
+    """AC-8: AI Search is always serverless (no VM costs)."""
 
     def test_standard_is_serverless(self):
         item = make_line_item(vector_search_mode='standard')

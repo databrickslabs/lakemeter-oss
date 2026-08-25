@@ -64,7 +64,11 @@ import {
 import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from '../utils/lakebasePricing'
 import {
   AGENT_EVALUATION_COMPONENT_RATES,
+  AI_SEARCH_INCLUDED_STORAGE_GB,
+  AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS,
+  AI_SEARCH_STORAGE_PRICE_PER_GB,
   calculateAgentEvaluationUsage,
+  calculateAISearchRerankerUsage,
   calculateAIGatewayUsage,
 } from '../utils/costCalculation'
 
@@ -154,7 +158,7 @@ const WORKLOAD_TYPE_CONFIG: Record<string, {
     icon: MagnifyingGlassCircleIcon, 
     color: 'text-rose-500', 
     bgColor: 'bg-rose-500/10',
-    label: 'VS'
+    label: 'AI Search'
   },
   'MODEL_SERVING': { 
     icon: SparklesIcon, 
@@ -372,7 +376,7 @@ const DBU_PRICING: Record<string, Record<string, number>> = {
     'SQL_COMPUTE': 0.22,
     'SQL_PRO_COMPUTE': 0.55,
     'SERVERLESS_SQL_COMPUTE': 0.70,
-    'SERVERLESS_REAL_TIME_INFERENCE': 0.07,  // Vector Search, Model Serving, FMAPI Databricks
+    'SERVERLESS_REAL_TIME_INFERENCE': 0.07,  // AI Search, Model Serving, FMAPI Databricks
     'DATABASE_SERVERLESS_COMPUTE': 0.48  // Lakebase
   },
   azure: {
@@ -390,7 +394,7 @@ const DBU_PRICING: Record<string, Record<string, number>> = {
     'SQL_COMPUTE': 0.22,
     'SQL_PRO_COMPUTE': 0.55,
     'SERVERLESS_SQL_COMPUTE': 0.70,
-    'SERVERLESS_REAL_TIME_INFERENCE': 0.07,  // Vector Search, Model Serving, FMAPI Databricks
+    'SERVERLESS_REAL_TIME_INFERENCE': 0.07,  // AI Search, Model Serving, FMAPI Databricks
     'DATABASE_SERVERLESS_COMPUTE': 0.48  // Lakebase
   },
   gcp: {
@@ -408,7 +412,7 @@ const DBU_PRICING: Record<string, Record<string, number>> = {
     'SQL_COMPUTE': 0.22,
     'SQL_PRO_COMPUTE': 0.55,
     'SERVERLESS_SQL_COMPUTE': 0.70,
-    'SERVERLESS_REAL_TIME_INFERENCE': 0.07,  // Vector Search, Model Serving, FMAPI Databricks
+    'SERVERLESS_REAL_TIME_INFERENCE': 0.07,  // AI Search, Model Serving, FMAPI Databricks
     'DATABASE_SERVERLESS_COMPUTE': 0.48  // Lakebase
   }
 }
@@ -446,16 +450,16 @@ interface CostBreakdown {
   vmCost: number
   totalCost: number
   // Optional fields for specific workload types
-  unitsUsed?: number  // Vector Search units
+  unitsUsed?: number  // AI Search units
   dbuPerHour?: number // DBU per hour for display
   dbuPrice?: number   // $/DBU rate for display
-  // Storage costs for Vector Search and Lakebase
+  // Storage costs for AI Search and Lakebase
   storageCost?: number
   storageDetails?: {
     totalStorageGB: number
-    freeStorageGB?: number  // Vector Search only
+    freeStorageGB?: number  // AI Search only
     billableStorageGB: number
-    pricePerGB?: number     // Vector Search
+    pricePerGB?: number     // AI Search
     dsuPerGB?: number       // Lakebase
     totalDSU?: number       // Lakebase
     pricePerDSU?: number    // Lakebase
@@ -621,6 +625,94 @@ function AgentEvaluationCostFormula({
   )
 }
 
+function AISearchCostFormula({
+  item,
+  costs,
+  dbuPriceDisplay,
+}: {
+  item: Partial<LineItem>
+  costs: CostBreakdown
+  dbuPriceDisplay: string
+}) {
+  const capacity = item.vector_capacity_millions || 1
+  const mode = item.vector_search_mode || 'standard'
+  const divisor = mode === 'storage_optimized' ? 64 : 2
+  const unitsUsed = Math.ceil(capacity / divisor)
+  const hoursPerMonth = item.hours_per_month || 730
+  const dbuPerUnit = unitsUsed > 0
+    ? (costs.dbuPerHour || (mode === 'storage_optimized' ? 18.29 : 4)) / unitsUsed
+    : 0
+  const servingDBUs = unitsUsed * dbuPerUnit * hoursPerMonth
+  const reranker = calculateAISearchRerankerUsage(item)
+  const dbuPrice = costs.dbuPrice || 0
+  const storageGB = item.vector_search_storage_gb || 0
+  const freeStorageGB = unitsUsed > 0 ? AI_SEARCH_INCLUDED_STORAGE_GB : 0
+  const billableStorageGB = Math.max(0, storageGB - freeStorageGB)
+  const storageCost = billableStorageGB * AI_SEARCH_STORAGE_PRICE_PER_GB
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span className="text-blue-600 font-semibold">Serving:</span>
+        <span>⌈<span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{capacity}M</span> vectors ÷ {divisor}M⌉</span>
+        <span>=</span>
+        <span className="font-semibold">{unitsUsed} unit{unitsUsed !== 1 ? 's' : ''}</span>
+        <span>×</span>
+        <span>{dbuPerUnit.toFixed(2)} DBU/hr/unit</span>
+        <span>×</span>
+        <span>{hoursPerMonth}h</span>
+        <span>=</span>
+        <span>{formatNumber(servingDBUs, 3)} DBUs</span>
+        <span>×</span>
+        <span>${dbuPriceDisplay}/DBU</span>
+        <span>=</span>
+        <span className="text-blue-500 font-semibold">{formatCurrency(servingDBUs * dbuPrice)}</span>
+      </div>
+      {reranker.enabled && (
+        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+          <span className="text-rose-600 font-semibold">Reranker:</span>
+          <span>{formatNumber(reranker.requestsThousands, 3)}K requests</span>
+          <span>×</span>
+          <span>{AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS.toFixed(3)} DBU/1K</span>
+          <span>=</span>
+          <span>{formatNumber(reranker.monthlyDBUs, 3)} DBUs</span>
+          <span>×</span>
+          <span>${dbuPriceDisplay}/DBU</span>
+          <span>=</span>
+          <span className="text-rose-500 font-semibold">{formatCurrency(reranker.monthlyDBUs * dbuPrice)}</span>
+        </div>
+      )}
+      {storageGB > 0 && (
+        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+          <span className="text-purple-600 font-semibold">Storage:</span>
+          <span>{storageGB} GB</span>
+          <span>−</span>
+          <span>{freeStorageGB} GB free</span>
+          <span className="text-[var(--text-muted)]">(first 30 GB included)</span>
+          <span>=</span>
+          <span>{billableStorageGB} GB</span>
+          <span>×</span>
+          <span>${AI_SEARCH_STORAGE_PRICE_PER_GB}/GB</span>
+          <span>=</span>
+          <span className="text-purple-500 font-semibold">{formatCurrency(storageCost)}</span>
+        </div>
+      )}
+      <div className="flex items-center gap-1 text-[10px] font-mono flex-wrap pt-1 border-t border-dashed border-[var(--border-primary)]">
+        <span className="text-[var(--text-secondary)] font-semibold">Total:</span>
+        <span>{formatNumber(costs.monthlyDBUs, 3)} DBUs × ${dbuPriceDisplay}/DBU</span>
+        {storageGB > 0 && (
+          <>
+            <span>+</span>
+            <span>{formatCurrency(storageCost)} storage</span>
+          </>
+        )}
+        <span>=</span>
+        <span className="text-[var(--text-primary)] font-medium">{formatCurrency(costs.totalCost)}</span>
+      </div>
+    </div>
+  )
+}
+
 function SortableRow({ id, disabled, children }: { id: string; disabled?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled })
   return (
@@ -676,7 +768,7 @@ export default function Calculator() {
     dbsqlSizes,
     // Model Serving GPU types for DBU rates
     modelServingGPUTypes,
-    // Vector Search modes for DBU rates
+    // AI Search modes for DBU rates
     vectorSearchModes,
     getVectorSearchRate,
     // FMAPI rates (cached lookups)
@@ -1066,7 +1158,7 @@ export default function Calculator() {
         break
       
       case 'VECTOR_SEARCH':
-        // Vector Search uses SERVERLESS_REAL_TIME_INFERENCE pricing ($0.07/DBU)
+        // AI Search uses SERVERLESS_REAL_TIME_INFERENCE pricing
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
         break
       
@@ -1149,8 +1241,8 @@ export default function Calculator() {
     let dbuPerHour = 0
     let monthlyDBUs = 0
     let vmCost = 0
-    let unitsUsed: number | undefined = undefined  // For Vector Search
-    let storageCost: number | undefined = undefined  // For Vector Search and Lakebase
+    let unitsUsed: number | undefined = undefined  // For AI Search
+    let storageCost: number | undefined = undefined  // For AI Search and Lakebase
     let storageDetails: CostBreakdown['storageDetails'] = undefined
     
     // Get instance DBU rates - try pricing bundle first, then fetched instanceTypes
@@ -1359,7 +1451,7 @@ export default function Calculator() {
         break
       
       case 'VECTOR_SEARCH':
-        // Vector Search: Units = CEILING(vector_capacity / divisor)
+        // AI Search: Units = CEILING(vector_capacity / divisor)
         // Standard: 2M vectors per unit, 4.00 DBU/hour per unit
         // Storage Optimized: 64M vectors per unit, 18.29 DBU/hour per unit
         const vectorMode = effectiveItem.vector_search_mode || 'standard'
@@ -1391,16 +1483,21 @@ export default function Calculator() {
         
         // DBU/Hour = units_used × mode_dbu_rate
         dbuPerHour = vectorUnitsUsed * vectorModeDBURate
-        monthlyDBUs = dbuPerHour * hoursPerMonth
+        monthlyDBUs = (
+          dbuPerHour * hoursPerMonth
+          + calculateAISearchRerankerUsage(effectiveItem).monthlyDBUs
+        )
         
-        // Storage calculation for Vector Search
-        // Free Storage = units_used × 20 GB
+        // Storage calculation for AI Search
+        // The first 30 GB of storage is included
         // Billable Storage = MAX(0, storage_gb - free_storage_gb)
         // Storage Cost = billable_storage_gb × price_per_gb_per_month ($0.023/GB/month)
         const vectorStorageGB = effectiveItem.vector_search_storage_gb || 0
-        const vectorFreeStorageGB = vectorUnitsUsed * 20
+        const vectorFreeStorageGB = vectorUnitsUsed > 0
+          ? AI_SEARCH_INCLUDED_STORAGE_GB
+          : 0
         const vectorBillableStorageGB = Math.max(0, vectorStorageGB - vectorFreeStorageGB)
-        const vectorStoragePricePerGB = 0.023  // $0.023 per GB per month
+        const vectorStoragePricePerGB = AI_SEARCH_STORAGE_PRICE_PER_GB
         const vectorStorageCost = vectorBillableStorageGB * vectorStoragePricePerGB
 
         if (vectorStorageGB > 0) {
@@ -1669,7 +1766,7 @@ export default function Calculator() {
       dbuCost: isNaN(dbuCost) ? 0 : dbuCost, 
       vmCost: safeVmCost, 
       totalCost: isNaN(totalCost) ? 0 : totalCost,
-      unitsUsed,  // For Vector Search
+      unitsUsed,  // For AI Search
       dbuPerHour, // For display
       dbuPrice: safeDbuPrice,  // $/DBU rate for display
       storageCost: safeStorageCost > 0 ? safeStorageCost : undefined,
@@ -2020,6 +2117,12 @@ export default function Calculator() {
         }
         if (item.vector_capacity_millions) {
           details.push({ label: 'Capacity', value: `${item.vector_capacity_millions}M vectors` })
+        }
+        if (item.ai_search_reranker_enabled) {
+          details.push({
+            label: 'Reranker',
+            value: `${item.ai_search_reranker_requests_thousands || 0}K requests/mo`,
+          })
         }
         break
         
@@ -2753,7 +2856,9 @@ export default function Calculator() {
                       const isSelected = selectedItems.has(item.line_item_id)
                       const wType = effectiveItem.workload_type || ''
                       const isServerless = effectiveItem.serverless_enabled || (wType === 'DBSQL' && (effectiveItem.dbsql_warehouse_type || '').toUpperCase() === 'SERVERLESS')
-                      const typeName = workloadTypes.find(w => w.workload_type === wType)?.display_name || wType
+                      const typeName = wType === 'VECTOR_SEARCH'
+                        ? 'AI Search'
+                        : workloadTypes.find(w => w.workload_type === wType)?.display_name || wType
                       const usageSummary = getUsageSummary(effectiveItem)
 
                       // Build structured config for better display - uses effectiveItem for real-time sync
@@ -2801,7 +2906,7 @@ export default function Calculator() {
                             config.details.push(`${effectiveItem.dbsql_num_clusters} clusters`)
                           }
                         } else if (wType === 'VECTOR_SEARCH') {
-                          // Vector Search - mode as badge
+                          // AI Search - mode as badge
                           if (effectiveItem.vector_search_mode) {
                             const modeLabel = effectiveItem.vector_search_mode === 'storage_optimized' ? 'Storage Opt.' : 'Standard'
                             config.badges.push({ text: modeLabel })
@@ -3098,7 +3203,7 @@ export default function Calculator() {
                                   </div>
                                 )}
                                 
-                                {/* Vector Search: Units Used */}
+                                {/* AI Search: Units Used */}
                                 {wType === 'VECTOR_SEARCH' && costs.unitsUsed !== undefined && (
                                   <div>
                                     <span className="text-[var(--text-muted)]">Units Used</span>
@@ -3195,76 +3300,14 @@ export default function Calculator() {
                                       )
                                     }
 
-                                    // Vector Search formula (with storage)
+                                    // AI Search formula
                                     if (wType === 'VECTOR_SEARCH') {
-                                      const capacity = effectiveItem.vector_capacity_millions || 1
-                                      const mode = effectiveItem.vector_search_mode || 'standard'
-                                      const divisor = mode === 'storage_optimized' ? 64 : 2
-                                      const unitsUsed = Math.ceil(capacity / divisor)
-                                      const dbuPerUnit = mode === 'storage_optimized' ? 18.29 : 4
-                                      const vsStorageGB = effectiveItem.vector_search_storage_gb || 0
-                                      const vsFreeStorageGB = unitsUsed * 20
-                                      const vsBillableStorageGB = Math.max(0, vsStorageGB - vsFreeStorageGB)
-                                      const vsStorageCost = vsBillableStorageGB * 0.023
                                       return (
-                                        <div className="space-y-1">
-                                          {/* Hours calculation (if run-based) */}
-                                          {isRunBased && (
-                                            <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
-                                              <span className="font-semibold">Hours:</span>
-                                              <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{runsPerDay} runs/day</span>
-                                              <span>×</span>
-                                              <span>(<span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{avgRuntimeMin}min</span> ÷ 60)</span>
-                                              <span>×</span>
-                                              <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{daysPerMonth} days/mo</span>
-                                              <span>=</span>
-                                              <span className="font-semibold">{hoursPerMonth.toFixed(1)}h/mo</span>
-                                            </div>
-                                          )}
-                                          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
-                                            <span className="text-blue-600 font-semibold">DBU:</span>
-                                            <span>⌈<span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{capacity}M</span> vectors ÷ {divisor}M⌉</span>
-                                            <span>=</span>
-                                            <span className="font-semibold">{unitsUsed} unit{unitsUsed !== 1 ? 's' : ''}</span>
-                                            <span>×</span>
-                                            <span>{dbuPerUnit.toFixed(2)} DBU/hr/unit</span>
-                                            <span>×</span>
-                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(isRunBased ? 1 : 0)}h</span>
-                                            <span>=</span>
-                                            <span>{formatNumber(costs.monthlyDBUs)} DBUs</span>
-                                            <span>×</span>
-                                            <span>${dbuPriceDisplay}/DBU</span>
-                                            <span>=</span>
-                                            <span className="text-blue-500 font-semibold">{formatCurrency(costs.dbuCost)}</span>
-                                          </div>
-                                          {vsStorageGB > 0 && (
-                                            <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
-                                              <span className="text-purple-600 font-semibold">Storage:</span>
-                                              <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{vsStorageGB} GB</span>
-                                              <span>−</span>
-                                              <span>{vsFreeStorageGB} GB free</span>
-                                              <span className="text-[var(--text-muted)]">({unitsUsed} units × 20GB)</span>
-                                              <span>=</span>
-                                              <span className="font-semibold">{vsBillableStorageGB} GB</span>
-                                              <span>×</span>
-                                              <span>$0.023/GB</span>
-                                              <span>=</span>
-                                              <span className="text-purple-500 font-semibold">{formatCurrency(vsStorageCost)}</span>
-                                            </div>
-                                          )}
-                                          <div className="flex items-center gap-1 text-[10px] font-mono flex-wrap pt-1 border-t border-dashed border-[var(--border-primary)]">
-                                            <span className="text-[var(--text-secondary)] font-semibold">Total:</span>
-                                            <span className="text-blue-500">{formatCurrency(costs.dbuCost)}</span>
-                                            {vsStorageGB > 0 && (
-                                              <>
-                                                <span>+</span>
-                                                <span className="text-purple-500">{formatCurrency(vsStorageCost)}</span>
-                                              </>
-                                            )}
-                                            <span>=</span>
-                                            <span className="text-[var(--text-primary)] font-medium">{formatCurrency(costs.totalCost)}</span>
-                                          </div>
-                                        </div>
+                                        <AISearchCostFormula
+                                          item={effectiveItem}
+                                          costs={costs}
+                                          dbuPriceDisplay={dbuPriceDisplay}
+                                        />
                                       )
                                     }
                                   
@@ -3980,7 +4023,11 @@ export default function Calculator() {
                               )}
                             </div>
                             <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-0.5">
-                              <span>{workloadTypes.find(w => w.workload_type === item.workload_type)?.display_name || item.workload_type}</span>
+                              <span>
+                                {item.workload_type === 'VECTOR_SEARCH'
+                                  ? 'AI Search'
+                                  : workloadTypes.find(w => w.workload_type === item.workload_type)?.display_name || item.workload_type}
+                              </span>
                             </div>
                             {agentEvaluationUsage && (
                               <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[var(--text-secondary)] mt-1">
@@ -4078,7 +4125,7 @@ export default function Calculator() {
                                 </div>
                               )}
                               
-                              {/* Vector Search: Units Used (prominent) */}
+                              {/* AI Search: Units Used (prominent) */}
                               {item.workload_type === 'VECTOR_SEARCH' && costs.unitsUsed !== undefined && (
                                 <div>
                                   <span className="text-[var(--text-muted)]">Units Used</span>
@@ -4180,58 +4227,14 @@ export default function Calculator() {
                                 }
 
                                 // Special workloads
-                                // Vector Search formula (with storage)
+                                // AI Search formula
                                 if (wType === 'VECTOR_SEARCH') {
-                                  const capacity = effectiveItem.vector_capacity_millions || 1
-                                  const mode = effectiveItem.vector_search_mode || 'standard'
-                                  const divisor = mode === 'storage_optimized' ? 64 : 2
-                                  const unitsUsed = Math.ceil(capacity / divisor)
-                                  const dbuPerUnit = mode === 'storage_optimized' ? 18.29 : 4
-                                  const vsStorageGB = effectiveItem.vector_search_storage_gb || 0
-                                  const vsFreeStorageGB = unitsUsed * 20
-                                  const vsBillableStorageGB = Math.max(0, vsStorageGB - vsFreeStorageGB)
-                                  const vsStorageCost = vsBillableStorageGB * 0.023
                                   return (
-                                    <div className="space-y-1">
-                                      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
-                                        <span className="text-blue-600 font-semibold">DBU:</span>
-                                        <span>⌈<span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{capacity}M vectors</span> ÷ {divisor}⌉</span>
-                                        <span>= {unitsUsed} units ×</span>
-                                        <span>{dbuPerUnit} DBU/unit/hr ×</span>
-                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(0)}h</span>
-                                        <span>=</span>
-                                        <span>{formatNumber(costs.monthlyDBUs)} DBUs × ${dbuPriceDisplay}</span>
-                                        <span>=</span>
-                                        <span className="text-blue-500 font-semibold">{formatCurrency(costs.dbuCost)}</span>
-                                      </div>
-                                      {vsStorageGB > 0 && (
-                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
-                                          <span className="text-purple-600 font-semibold">Storage:</span>
-                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{vsStorageGB} GB</span>
-                                          <span>−</span>
-                                          <span>{vsFreeStorageGB} GB free</span>
-                                          <span className="text-[var(--text-muted)]">({unitsUsed} units × 20GB)</span>
-                                          <span>=</span>
-                                          <span className="font-semibold">{vsBillableStorageGB} GB</span>
-                                          <span>×</span>
-                                          <span>$0.023/GB</span>
-                                          <span>=</span>
-                                          <span className="text-purple-500 font-semibold">{formatCurrency(vsStorageCost)}</span>
-                                        </div>
-                                      )}
-                                      <div className="flex items-center gap-1 text-[10px] font-mono flex-wrap pt-1 border-t border-dashed border-[var(--border-primary)]">
-                                        <span className="text-[var(--text-secondary)] font-semibold">Total:</span>
-                                        <span className="text-blue-500">{formatCurrency(costs.dbuCost)}</span>
-                                        {vsStorageGB > 0 && (
-                                          <>
-                                            <span>+</span>
-                                            <span className="text-purple-500">{formatCurrency(vsStorageCost)}</span>
-                                          </>
-                                        )}
-                                        <span>=</span>
-                                        <span className="text-[var(--text-primary)] font-medium">{formatCurrency(costs.totalCost)}</span>
-                                      </div>
-                                    </div>
+                                    <AISearchCostFormula
+                                      item={effectiveItem}
+                                      costs={costs}
+                                      dbuPriceDisplay={dbuPriceDisplay}
+                                    />
                                   )
                                 }
                                 

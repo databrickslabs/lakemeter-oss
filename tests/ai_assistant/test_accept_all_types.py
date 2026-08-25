@@ -214,7 +214,7 @@ def test_vector_search_accept(http_client, test_estimate):
         http_client,
         test_estimate,
         [
-            "Add a Vector Search endpoint named 'Document Search Index' with "
+            "Add an AI Search endpoint named 'Document Search Index' with "
             "STORAGE_OPTIMIZED type, 50 million vectors, 100 GB storage."
         ],
         {

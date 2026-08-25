@@ -20,6 +20,7 @@ from .calculations import _calculate_dbu_per_hour, _is_serverless_workload
 from .excel_item_helpers import (
     _get_json_backed_value,
     calc_item_values,
+    get_ai_search_reranker_usage,
     get_agent_evaluation_usage,
     get_ai_gateway_usage,
     write_storage_subrow,
@@ -473,10 +474,77 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         if getattr(item, 'lakebase_snapshot_gb', 0) and item.lakebase_snapshot_gb > 0:
             row = write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
                                        'Lakebase (Snapshots)', 'lakebase_snapshot_gb')
-    elif wt == 'VECTOR_SEARCH' and (getattr(item, 'vector_search_storage_gb', 0) or 0) > 0:
-        row = write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
-                                   'Vector Search (Storage)', 'vector_search_storage_gb')
+    elif wt == 'VECTOR_SEARCH':
+        row = _write_ai_search_reranker_row(
+            sheet,
+            fmt,
+            row,
+            idx,
+            item,
+            dbu_rate,
+        )
+        if (getattr(item, 'vector_search_storage_gb', 0) or 0) > 0:
+            row = write_storage_subrow(
+                sheet,
+                fmt,
+                row,
+                item,
+                idx,
+                cloud,
+                region,
+                tier,
+                'AI Search (Storage)',
+                'vector_search_storage_gb',
+            )
     return row
+
+
+def _write_ai_search_reranker_row(sheet, fmt, row, idx, item, dbu_rate):
+    """Write a DBU/month row for optional AI Search Reranker usage."""
+    usage = get_ai_search_reranker_usage(item)
+    if not usage['enabled']:
+        return row
+
+    workload_name = _get_val(
+        item,
+        'workload_name',
+        f'Workload {idx + 1}',
+    )
+    requests = usage['requests_thousands']
+    component_rate = usage['dbu_per_thousand_requests']
+    monthly_dbus = usage['monthly_dbus']
+    config = (
+        f"{requests:g}K requests × {component_rate:.3f} DBU/1K "
+        f"= {monthly_dbus:.3f} DBU/mo"
+    )
+    row_data = {
+        'idx': f'{idx + 1}.1',
+        'name': f'{workload_name} – AI Search Reranker',
+        'type_display': 'AI Search (Reranker)',
+        'config': config,
+        'sku': 'SERVERLESS_REAL_TIME_INFERENCE',
+        'driver_node': '-',
+        'worker_node': '-',
+        'num_workers': 0,
+        'driver_tier': '-',
+        'worker_tier': '-',
+        'hours_per_month': 0,
+        'token_type': '',
+        'token_quantity_millions': 0,
+        'dbu_per_million': 0,
+        'dbu_per_hour': 0,
+        'total_dbus_month': monthly_dbus,
+        'is_quantity_based': True,
+        'token_columns_na': True,
+        'show_dbu_month_decimals': True,
+        'dbu_rate': dbu_rate,
+        'discount_pct': 0.0,
+        'driver_vm_cost_per_hour': 0,
+        'worker_vm_cost_per_hour': 0,
+        'notes': _get_val(item, 'notes', '') or '',
+    }
+    write_data_row(sheet, row, row_data, False, True, fmt)
+    return row + 1
 
 
 def _write_ai_gateway_component_rows(

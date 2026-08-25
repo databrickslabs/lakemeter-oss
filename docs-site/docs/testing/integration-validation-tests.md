@@ -79,7 +79,7 @@ Data consistency checks across all pricing files:
 | FMAPI (Databricks) | 4 | Non-empty, correct key format |
 | FMAPI (Proprietary) | 4 | Non-empty, correct key format |
 | Model Serving | 4 | Non-empty, correct key format |
-| Vector Search | 4 | Non-empty, correct key format |
+| AI Search | 4 | Non-empty, correct key format |
 | Manifest integrity | 7 | File count = 9, total > 4000, all listed files exist |
 
 ## Running the Tests

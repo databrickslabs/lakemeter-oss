@@ -1,6 +1,6 @@
 """Pydantic request/response models for calculation endpoints."""
 from typing import Literal, Optional
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 
 class GlobalDiscountConfig(BaseModel):
@@ -230,7 +230,18 @@ class VectorSearchCalculationRequest(BaseModel):
     region: str = Field(...)
     tier: str = Field(...)
     mode: str = Field(..., description="standard or storage_optimized")
-    num_vectors_millions: float = Field(..., ge=0, description="Number of vectors in millions")
+    num_vectors_millions: float = Field(
+        ...,
+        ge=0,
+        validation_alias=AliasChoices(
+            "num_vectors_millions",
+            "vector_capacity_millions",
+        ),
+        description="Number of AI Search vectors in millions",
+    )
+    storage_gb: float = Field(default=0, ge=0)
+    reranker_enabled: bool = Field(default=False)
+    reranker_requests_thousands: float = Field(default=0, ge=0)
     hours_per_day: Optional[float] = Field(None, ge=0)
     days_per_month: Optional[int] = Field(None, ge=1, le=31)
     hours_per_month: Optional[float] = Field(None, ge=0)

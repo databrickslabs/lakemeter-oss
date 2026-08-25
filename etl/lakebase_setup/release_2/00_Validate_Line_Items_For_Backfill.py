@@ -108,10 +108,10 @@ column_names = [col['column_name'] for col in available_columns]
 print(f"\n📊 Line Items table has {len(column_names)} columns")
 print("\nChecking for workload-specific columns:")
 
-# Check for Vector Search columns
+# Check for AI Search columns
 has_vector_capacity = 'vector_capacity_millions' in column_names
 has_vector_mode = 'vector_search_mode' in column_names
-print(f"  Vector Search: vector_capacity_millions={'✅' if has_vector_capacity else '❌'}, vector_search_mode={'✅' if has_vector_mode else '❌'}")
+print(f"  AI Search: vector_capacity_millions={'✅' if has_vector_capacity else '❌'}, vector_search_mode={'✅' if has_vector_mode else '❌'}")
 
 # Check for FMAPI columns  
 has_fmapi_rate = 'fmapi_rate_type' in column_names

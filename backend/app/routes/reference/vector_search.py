@@ -1,4 +1,4 @@
-"""Vector Search reference endpoints."""
+"""AI Search reference endpoints (legacy route retained for compatibility)."""
 import logging
 from fastapi import APIRouter, Query, Depends
 from sqlalchemy import text
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/vector-search/list", tags=["Vector Search"])
+@router.get("/vector-search/list", tags=["AI Search"])
 def list_vector_search_modes(db: Session = Depends(get_db)):
     cached = ref_cache.get("vector_search_list")
     if cached is not None:
@@ -31,11 +31,11 @@ def list_vector_search_modes(db: Session = Depends(get_db)):
         ref_cache.set("vector_search_list", response)
         return response
     except Exception as e:
-        logger.error(f"Error fetching Vector Search mode list: {e}")
+        logger.error(f"Error fetching AI Search mode list: {e}")
         return {"success": False, "error": {"message": str(e), "code": "DATABASE_ERROR"}}
 
 
-@router.get("/vector-search/modes", tags=["Vector Search"])
+@router.get("/vector-search/modes", tags=["AI Search"])
 def get_vector_search_modes(
     cloud: str = Query(..., description="Cloud provider (required): AWS, AZURE, GCP"),
     mode: str = Query(None, description="Filter by mode"),
@@ -95,5 +95,5 @@ def get_vector_search_modes(
             },
         }
     except Exception as e:
-        logger.error(f"Error fetching Vector Search modes: {e}")
+        logger.error(f"Error fetching AI Search modes: {e}")
         return {"success": False, "error": {"message": str(e), "code": "DATABASE_ERROR"}}
