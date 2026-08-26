@@ -440,15 +440,16 @@ export function calculateWorkloadCost(
   let storageCost: number | undefined = undefined  // For AI Search and Lakebase
   let storageDetails: CostBreakdown['storageDetails'] = undefined
   
-  // Get instance DBU rates - try pricing bundle function first, then fetched instanceTypes
-  let driverDBURate = 0.5 // Fallback
-  let workerDBURate = 0.5
+  // Use the legacy fallback only for a selected but unknown instance.
+  // An empty node selection contributes no hidden DBUs.
+  let driverDBURate = item.driver_node_type ? 0.5 : 0
+  let workerDBURate = item.worker_node_type ? 0.5 : 0
   
   if (getInstanceDBURate && item.driver_node_type) {
     const bundleRate = getInstanceDBURate(item.driver_node_type)
     if (bundleRate !== null && bundleRate > 0) driverDBURate = bundleRate
   }
-  if (driverDBURate === 0.5) {
+  if (item.driver_node_type && driverDBURate === 0.5) {
     const driverInstance = instanceTypes.find(it => it.id === item.driver_node_type || it.name === item.driver_node_type)
     if (driverInstance?.dbu_rate) driverDBURate = driverInstance.dbu_rate
   }
@@ -457,7 +458,7 @@ export function calculateWorkloadCost(
     const bundleRate = getInstanceDBURate(item.worker_node_type)
     if (bundleRate !== null && bundleRate > 0) workerDBURate = bundleRate
   }
-  if (workerDBURate === 0.5) {
+  if (item.worker_node_type && workerDBURate === 0.5) {
     const workerInstance = instanceTypes.find(it => it.id === item.worker_node_type || it.name === item.worker_node_type)
     if (workerInstance?.dbu_rate) workerDBURate = workerInstance.dbu_rate
   }

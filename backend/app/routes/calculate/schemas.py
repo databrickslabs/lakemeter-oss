@@ -55,8 +55,8 @@ class JobsClassicCalculationRequest(BaseModel):
     region: str = Field(..., description="Region code (e.g., us-east-1)")
     tier: str = Field(..., description="Pricing tier: STANDARD, PREMIUM, ENTERPRISE")
     driver_node_type: str = Field(..., description="Driver instance type")
-    worker_node_type: str = Field(..., description="Worker instance type")
-    num_workers: int = Field(..., ge=0, description="Number of worker nodes")
+    worker_node_type: Optional[str] = Field(None, description="Worker instance type")
+    num_workers: int = Field(..., ge=0, le=100, description="Number of worker nodes")
     photon_enabled: bool = Field(default=False, description="Enable Photon acceleration")
     driver_pricing_tier: str = Field(default="on_demand", description="Driver VM pricing tier")
     worker_pricing_tier: str = Field(default="on_demand", description="Worker VM pricing tier")
@@ -67,6 +67,14 @@ class JobsClassicCalculationRequest(BaseModel):
     days_per_month: Optional[int] = Field(None, ge=1, le=31, description="Number of days per month")
     hours_per_month: Optional[float] = Field(None, ge=0, description="Direct hours per month")
     discount_config: Optional[DiscountConfig] = Field(None, description="Discount configuration")
+
+    @model_validator(mode="after")
+    def validate_worker_selection(self):
+        if self.num_workers > 0 and not (self.worker_node_type or "").strip():
+            raise ValueError(
+                "worker_node_type is required when num_workers is greater than 0"
+            )
+        return self
 
 
 class JobsServerlessCalculationRequest(BaseModel):
@@ -89,8 +97,8 @@ class AllPurposeClassicCalculationRequest(BaseModel):
     region: str = Field(...)
     tier: str = Field(...)
     driver_node_type: str = Field(...)
-    worker_node_type: str = Field(...)
-    num_workers: int = Field(..., ge=0)
+    worker_node_type: Optional[str] = Field(None)
+    num_workers: int = Field(..., ge=0, le=100)
     photon_enabled: bool = Field(default=False)
     driver_pricing_tier: str = Field(default="on_demand")
     worker_pricing_tier: str = Field(default="on_demand")
@@ -100,6 +108,14 @@ class AllPurposeClassicCalculationRequest(BaseModel):
     days_per_month: Optional[int] = Field(None, ge=1, le=31)
     hours_per_month: Optional[float] = Field(None, ge=0)
     discount_config: Optional[DiscountConfig] = Field(None)
+
+    @model_validator(mode="after")
+    def validate_worker_selection(self):
+        if self.num_workers > 0 and not (self.worker_node_type or "").strip():
+            raise ValueError(
+                "worker_node_type is required when num_workers is greater than 0"
+            )
+        return self
 
 
 class AllPurposeServerlessCalculationRequest(BaseModel):
@@ -149,8 +165,8 @@ class DLTClassicCalculationRequest(BaseModel):
     tier: str = Field(...)
     dlt_edition: str = Field(default="CORE", description="CORE, PRO, ADVANCED")
     driver_node_type: str = Field(...)
-    worker_node_type: str = Field(...)
-    num_workers: int = Field(..., ge=0)
+    worker_node_type: Optional[str] = Field(None)
+    num_workers: int = Field(..., ge=0, le=100)
     photon_enabled: bool = Field(default=False)
     driver_pricing_tier: str = Field(default="on_demand")
     worker_pricing_tier: str = Field(default="on_demand")
@@ -161,6 +177,14 @@ class DLTClassicCalculationRequest(BaseModel):
     days_per_month: Optional[int] = Field(None, ge=1, le=31)
     hours_per_month: Optional[float] = Field(None, ge=0)
     discount_config: Optional[DiscountConfig] = Field(None)
+
+    @model_validator(mode="after")
+    def validate_worker_selection(self):
+        if self.num_workers > 0 and not (self.worker_node_type or "").strip():
+            raise ValueError(
+                "worker_node_type is required when num_workers is greater than 0"
+            )
+        return self
 
 
 class DLTServerlessCalculationRequest(BaseModel):

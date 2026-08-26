@@ -33,22 +33,27 @@ def make_item(**kwargs):
 # ---- JOBS configs ----
 def make_jobs_classic():
     return make_item(workload_type="JOBS", workload_name="Jobs Classic",
+                     driver_node_type="unknown.driver",
                      hours_per_month=160)
 
 
 def make_jobs_photon():
     return make_item(workload_type="JOBS", workload_name="Jobs Photon",
+                     driver_node_type="unknown.driver",
+                     worker_node_type="unknown.worker",
                      photon_enabled=True, num_workers=2, hours_per_month=160)
 
 
 def make_jobs_serverless_std():
     return make_item(workload_type="JOBS", workload_name="Jobs SL Std",
+                     driver_node_type="unknown.driver",
                      serverless_enabled=True, serverless_mode="standard",
                      hours_per_month=200)
 
 
 def make_jobs_serverless_perf():
     return make_item(workload_type="JOBS", workload_name="Jobs SL Perf",
+                     driver_node_type="unknown.driver",
                      serverless_enabled=True, serverless_mode="performance",
                      hours_per_month=200)
 
@@ -56,33 +61,42 @@ def make_jobs_serverless_perf():
 # ---- ALL_PURPOSE configs ----
 def make_ap_classic():
     return make_item(workload_type="ALL_PURPOSE", workload_name="AP Classic",
+                     driver_node_type="unknown.driver",
+                     worker_node_type="unknown.worker",
                      num_workers=1, hours_per_month=730)
 
 
 def make_ap_photon():
     return make_item(workload_type="ALL_PURPOSE", workload_name="AP Photon",
+                     driver_node_type="unknown.driver",
+                     worker_node_type="unknown.worker",
                      photon_enabled=True, num_workers=2, hours_per_month=730)
 
 
 def make_ap_serverless():
     return make_item(workload_type="ALL_PURPOSE", workload_name="AP Serverless",
+                     driver_node_type="unknown.driver",
                      serverless_enabled=True, hours_per_month=500)
 
 
 # ---- DLT configs ----
 def make_dlt_core_classic():
     return make_item(workload_type="DLT", workload_name="DLT Core Classic",
+                     driver_node_type="unknown.driver",
                      dlt_edition="CORE", hours_per_month=100)
 
 
 def make_dlt_pro_serverless():
     return make_item(workload_type="DLT", workload_name="DLT Pro SL",
+                     driver_node_type="unknown.driver",
                      dlt_edition="PRO", serverless_enabled=True,
                      serverless_mode="standard", hours_per_month=100)
 
 
 def make_dlt_advanced_photon():
     return make_item(workload_type="DLT", workload_name="DLT Adv Photon",
+                     driver_node_type="unknown.driver",
+                     worker_node_type="unknown.worker",
                      dlt_edition="ADVANCED", photon_enabled=True,
                      num_workers=4, hours_per_month=100)
 

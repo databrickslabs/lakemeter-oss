@@ -414,7 +414,7 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
                     component="Driver",
                     auto_notes=auto_notes,
                 )
-            if worker_node:
+            if worker_node and num_workers > 0:
                 worker_vm_hr = _resolve_vm_rate(
                     db,
                     cloud=cloud,
@@ -443,6 +443,14 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         display_worker_tier = _get_pricing_tier_display(
             item.worker_pricing_tier) if hasattr(item, 'worker_pricing_tier') and item.worker_pricing_tier else '-'
 
+    display_worker_node = (
+        dbsql_worker_inst or _get_val(item, 'worker_node_type', '-') or '-'
+    )
+    if num_workers == 0:
+        display_worker_node = '-'
+        display_worker_tier = '-'
+        worker_vm_hr = 0
+
     base_row = {
         'idx': idx + 1,
         'name': _get_val(item, 'workload_name', f'Workload {idx + 1}'),
@@ -450,7 +458,7 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         'config': _get_workload_config_details(item),
         'sku': sku,
         'driver_node': dbsql_driver_inst or _get_val(item, 'driver_node_type', '-') or '-',
-        'worker_node': dbsql_worker_inst or _get_val(item, 'worker_node_type', '-') or '-',
+        'worker_node': display_worker_node,
         'num_workers': num_workers,
         'driver_tier': display_driver_tier,
         'worker_tier': display_worker_tier,

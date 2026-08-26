@@ -1751,7 +1751,13 @@ export default function TestCalculations() {
               <input
                 type="number"
                 value={singleTestConfig.numWorkers}
-                onChange={(e) => setSingleTestConfig({ ...singleTestConfig, numWorkers: parseInt(e.target.value) || 1 })}
+                onChange={(e) => {
+                  const value = Number.parseInt(e.target.value, 10)
+                  setSingleTestConfig({
+                    ...singleTestConfig,
+                    numWorkers: Number.isNaN(value) ? 0 : Math.max(0, Math.min(100, value)),
+                  })
+                }}
                 min={0}
                 max={100}
                 className="w-full text-sm"
