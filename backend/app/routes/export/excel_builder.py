@@ -306,12 +306,18 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         raise ValueError(
             "Agent Evaluation requires Premium or Enterprise tier"
         )
+    if wt == 'AI_RUNTIME':
+        if (tier or '').upper() == 'STANDARD':
+            raise ValueError(
+                "AI Runtime requires Premium or Enterprise tier"
+            )
     sku = _get_sku_type(item, cloud)
     requires_exact_regional_price = wt in (
         'AI_EXTRACT',
         'AI_CLASSIFY',
         'AI_GATEWAY',
         'AGENT_EVALUATION',
+        'AI_RUNTIME',
     )
     dbu_rate, dbu_rate_found = _get_dbu_price(
         cloud,

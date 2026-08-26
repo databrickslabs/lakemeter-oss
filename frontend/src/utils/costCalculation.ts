@@ -7,6 +7,7 @@
 import type { LineItem, InstanceType, DBSQLSize, ModelServingGPUType } from '../types'
 import type { VectorSearchMode, PhotonMultiplier } from '../api/client'
 import { calculateLakebaseComputeUsage, resolveLakebaseAutoscaleConfig } from './lakebasePricing'
+import { calculateAIRuntimeUsage } from './aiRuntime'
 
 export const AI_GATEWAY_COMPONENT_RATES = {
   inferenceTables: 1.429,
@@ -169,6 +170,7 @@ export const DEFAULT_DBU_PRICING: Record<string, Record<string, number>> = {
     'SERVERLESS_SQL_COMPUTE': 0.70,
     'SERVERLESS_REAL_TIME_INFERENCE': 0.07,  // Used for AI Search, Model Serving, FMAPI Databricks
     'SERVERLESS_REAL_TIME_INFERENCE_LAUNCH': 0.07,
+    'MODEL_TRAINING': 0.65,
     'OPENAI_MODEL_SERVING': 0.07,
     'ANTHROPIC_MODEL_SERVING': 0.07,
     'GOOGLE_MODEL_SERVING': 0.07,
@@ -336,6 +338,10 @@ export function calculateWorkloadCost(
     case 'MODEL_SERVING':
       productType = 'SERVERLESS_REAL_TIME_INFERENCE'
       break
+
+    case 'AI_RUNTIME':
+      productType = 'MODEL_TRAINING'
+      break
     
     case 'FMAPI_DATABRICKS':
       // FMAPI uses SERVERLESS_REAL_TIME_INFERENCE pricing
@@ -381,7 +387,11 @@ export function calculateWorkloadCost(
   
   // Get DBU price for this product type - try pricing bundle function first
   let dbuPrice: number | null = null
-  if (item.workload_type === 'AI_GATEWAY' || item.workload_type === 'AGENT_EVALUATION') {
+  if (
+    item.workload_type === 'AI_GATEWAY'
+    || item.workload_type === 'AGENT_EVALUATION'
+    || item.workload_type === 'AI_RUNTIME'
+  ) {
     dbuPrice = getExactDBUPrice?.(productType) ?? dbuRatesMap[productType] ?? 0
   } else if (getDBUPrice) {
     const bundlePrice = getDBUPrice(productType)
@@ -734,6 +744,17 @@ export function calculateWorkloadCost(
       dbuPerHour = appsDbuRates[appsSize] || 0.5
       monthlyDBUs = dbuPerHour * hoursPerMonth
       break
+
+    case 'AI_RUNTIME': {
+      const usage = calculateAIRuntimeUsage(
+        cloud,
+        item.ai_runtime_accelerator_type,
+        hoursPerMonth,
+      )
+      dbuPerHour = usage.dbuPerNodeHour
+      monthlyDBUs = usage.monthlyDBUs
+      break
+    }
 
     case 'AI_PARSE': {
       const complexityRates: Record<string, number> = {

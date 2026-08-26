@@ -23,8 +23,13 @@
       "id": "023-ai-search-alignment",
       "path": "scripts/upgrades/data_updates/023_ai_search_alignment.sql",
       "sha256": "b3c035bc31df035145251bdd43440f301bc3e5be75a53d646c56f91a0303def3"
+    },
+    {
+      "id": "024-ai-runtime",
+      "path": "scripts/upgrades/data_updates/024_ai_runtime.sql",
+      "sha256": "383461791b2c74bb98bcfbf97fbdaa5ae972d33fcd50c3aff2201407edf15ef4"
     }
   ],
   "migrations": [],
-  "runtime_sha256": "a4d2ab61207b72acf7dc85e41547cdee35ac11acfcde7ad5ff263c78ad745c25"
+  "runtime_sha256": "e5d9cef33f2700305df6165c338c71571145f02f1f2f3f13f6c84f367c2198ac"
 }

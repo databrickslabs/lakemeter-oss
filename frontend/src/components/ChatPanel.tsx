@@ -1007,6 +1007,19 @@ I can assist you with:
                                 <span>{(proposal.agent_evaluation_synthetic_questions ?? 0).toLocaleString()} questions/mo</span>
                               </>
                             )}
+                            {proposal.workload_type === 'AI_RUNTIME' && (
+                              <>
+                                <span className="px-1.5 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded">
+                                  AI Runtime
+                                </span>
+                                <span>{proposal.ai_runtime_accelerator_type ?? 'GPU_1xA10'}</span>
+                                <span>
+                                  {proposal.hours_per_month != null
+                                    ? `${proposal.hours_per_month} node-hours/mo`
+                                    : `${proposal.runs_per_day ?? 1} runs/day · ${proposal.avg_runtime_minutes ?? 60} min/run`}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">

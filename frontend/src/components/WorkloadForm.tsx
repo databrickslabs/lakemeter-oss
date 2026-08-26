@@ -10,6 +10,7 @@ import {
   getAvailableWorkloadTypesForRegion,
   type PricingBundle 
 } from '../utils/pricingBundle'
+import { getAIRuntimeAccelerators } from '../utils/aiRuntime'
 
 function AIGatewayComponentPanel({
   component,
@@ -283,6 +284,7 @@ const PREMIUM_ONLY_WORKLOAD_TYPES = new Set([
   'AI_CLASSIFY',
   'AI_GATEWAY',
   'AGENT_EVALUATION',
+  'AI_RUNTIME',
   'SHUTTERSTOCK_IMAGEAI',
 ])
 
@@ -631,6 +633,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
   const fmapiProprietaryModels = (fmapiProprietaryConfig && Array.isArray(fmapiProprietaryConfig.providers))
     ? fmapiProprietaryConfig
     : defaultFmapiProprietaryConfig
+  const aiRuntimeAccelerators = getAIRuntimeAccelerators(selectedCloud)
   
   const [isSaving, setIsSaving] = useState(false)
   // Initialize useDirectHours from lineItem if available to prevent flash
@@ -699,6 +702,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         agent_evaluation_output_tokens_millions: lineItem.agent_evaluation_output_tokens_millions ?? 1,
         agent_evaluation_synthetic_data_enabled: lineItem.agent_evaluation_synthetic_data_enabled ?? false,
         agent_evaluation_synthetic_questions: lineItem.agent_evaluation_synthetic_questions ?? 0,
+        ai_runtime_accelerator_type: lineItem.ai_runtime_accelerator_type ?? 'GPU_1xA10',
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
@@ -786,6 +790,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       agent_evaluation_output_tokens_millions: 1,
       agent_evaluation_synthetic_data_enabled: false,
       agent_evaluation_synthetic_questions: 0,
+      ai_runtime_accelerator_type: 'GPU_1xA10',
       lakeflow_connect_pipeline_mode: 'serverless',
       lakeflow_connect_gateway_enabled: false,
       lakeflow_connect_gateway_instance: '',
@@ -875,6 +880,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     agent_evaluation_output_tokens_millions: 1,
     agent_evaluation_synthetic_data_enabled: false,
     agent_evaluation_synthetic_questions: 0,
+    ai_runtime_accelerator_type: 'GPU_1xA10',
     lakeflow_connect_pipeline_mode: 'serverless',
     lakeflow_connect_gateway_enabled: false,
     lakeflow_connect_gateway_instance: '',
@@ -965,6 +971,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         agent_evaluation_output_tokens_millions: lineItem.agent_evaluation_output_tokens_millions ?? 1,
         agent_evaluation_synthetic_data_enabled: lineItem.agent_evaluation_synthetic_data_enabled ?? false,
         agent_evaluation_synthetic_questions: lineItem.agent_evaluation_synthetic_questions ?? 0,
+        ai_runtime_accelerator_type: lineItem.ai_runtime_accelerator_type ?? 'GPU_1xA10',
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
@@ -1183,6 +1190,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       agent_evaluation_output_tokens_millions: form.agent_evaluation_output_tokens_millions,
       agent_evaluation_synthetic_data_enabled: form.agent_evaluation_synthetic_data_enabled,
       agent_evaluation_synthetic_questions: form.agent_evaluation_synthetic_questions,
+      ai_runtime_accelerator_type: form.ai_runtime_accelerator_type,
       lakeflow_connect_pipeline_mode: form.lakeflow_connect_pipeline_mode,
       lakeflow_connect_gateway_enabled: form.lakeflow_connect_gateway_enabled,
       lakeflow_connect_gateway_instance: form.lakeflow_connect_gateway_instance || undefined,
@@ -1520,6 +1528,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.agent_evaluation_synthetic_questions = null
       }
 
+      if (form.workload_type === 'AI_RUNTIME') {
+        data.ai_runtime_accelerator_type = form.ai_runtime_accelerator_type
+      } else {
+        data.ai_runtime_accelerator_type = null
+      }
+
       // Lakebase config
       if (selectedWorkloadType?.show_lakebase_config) {
         const isFixedLakebase = form.lakebase_compute_mode === 'fixed'
@@ -1573,7 +1587,10 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       
       // Hours per month vs Run-based usage
       // For compute workloads, check if using direct hours
-      const isComputeWorkload = selectedWorkloadType?.show_compute_config || selectedWorkloadType?.show_dlt_config || selectedWorkloadType?.show_dbsql_config
+      const isComputeWorkload = selectedWorkloadType?.show_compute_config
+        || selectedWorkloadType?.show_dlt_config
+        || selectedWorkloadType?.show_dbsql_config
+        || form.workload_type === 'AI_RUNTIME'
       
       if (isComputeWorkload) {
         if (useDirectHours) {
@@ -2416,6 +2433,29 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
             )}
           </>
         )}
+
+        {/* AI Runtime Config */}
+        {form.workload_type === 'AI_RUNTIME' && (
+          <>
+            <div className="col-span-full lg:col-span-2">
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Training Accelerator</label>
+              <select
+                value={form.ai_runtime_accelerator_type}
+                onChange={(e) => setForm(f => ({ ...f, ai_runtime_accelerator_type: e.target.value }))}
+                className="w-full text-sm"
+              >
+                {aiRuntimeAccelerators.map(accelerator => (
+                  <option key={accelerator.id} value={accelerator.id}>
+                    {accelerator.label} ({(accelerator.gpuCount * accelerator.dbuPerGpuHour).toFixed(3)} DBU/node-hr)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-full text-[11px] leading-relaxed text-[var(--text-muted)]">
+              AI Runtime is available on AWS and Azure where an exact MODEL_TRAINING price is published. Billing origin AI_RUNTIME is charged on that SKU.
+            </div>
+          </>
+        )}
         
         {/* FMAPI Config - Foundation Models (Databricks) */}
         {selectedWorkloadType?.show_fmapi_config && form.workload_type === 'FMAPI_DATABRICKS' && (
@@ -3067,7 +3107,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         )}
 
         {/* Usage Input Method Toggle - for compute workloads only */}
-        {(selectedWorkloadType?.show_compute_config || selectedWorkloadType?.show_dlt_config || selectedWorkloadType?.show_dbsql_config) && (
+        {(selectedWorkloadType?.show_compute_config || selectedWorkloadType?.show_dlt_config || selectedWorkloadType?.show_dbsql_config || form.workload_type === 'AI_RUNTIME') && (
           <div className="col-span-full">
             <div className="flex items-center gap-4 mb-3">
               <span className="text-xs font-medium text-[var(--text-secondary)]">Usage Input Method:</span>
@@ -3119,7 +3159,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
             )}
             
             {/* Avg Runtime - for Jobs, All Purpose, DLT, and SQL Warehouse */}
-            {(selectedWorkloadType?.show_compute_config || selectedWorkloadType?.show_dlt_config || selectedWorkloadType?.show_dbsql_config) && (
+            {(selectedWorkloadType?.show_compute_config || selectedWorkloadType?.show_dlt_config || selectedWorkloadType?.show_dbsql_config || form.workload_type === 'AI_RUNTIME') && (
               <div>
                 <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Avg Runtime (min)</label>
                 <input
@@ -3150,7 +3190,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         )}
         
         {/* Direct hours input */}
-        {useDirectHours && (selectedWorkloadType?.show_compute_config || selectedWorkloadType?.show_dlt_config || selectedWorkloadType?.show_dbsql_config) && (
+        {useDirectHours && (selectedWorkloadType?.show_compute_config || selectedWorkloadType?.show_dlt_config || selectedWorkloadType?.show_dbsql_config || form.workload_type === 'AI_RUNTIME') && (
           <div className="col-span-full md:col-span-1">
             <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Hours/Month</label>
             <input

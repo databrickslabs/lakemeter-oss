@@ -380,6 +380,29 @@ DEFAULT_WORKLOAD_TYPES = [
         "sku_product_type_photon": None,
         "sku_product_type_serverless": None,
         "display_order": 16
+    },
+    {
+        "workload_type": "AI_RUNTIME",
+        "display_name": "AI Runtime",
+        "description": "Serverless GPU model training",
+        "show_compute_config": False,
+        "show_serverless_toggle": False,
+        "show_serverless_performance_mode": False,
+        "show_photon_toggle": False,
+        "show_dlt_config": False,
+        "show_dbsql_config": False,
+        "show_serverless_product": False,
+        "show_fmapi_config": False,
+        "show_lakebase_config": False,
+        "show_vector_search_mode": False,
+        "show_vm_pricing": False,
+        "show_usage_hours": True,
+        "show_usage_runs": True,
+        "show_usage_tokens": False,
+        "sku_product_type_standard": "MODEL_TRAINING",
+        "sku_product_type_photon": None,
+        "sku_product_type_serverless": None,
+        "display_order": 17
     }
 ]
 

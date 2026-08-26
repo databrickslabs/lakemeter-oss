@@ -1136,6 +1136,21 @@ export const calculateAgentEvaluation = async (request: AgentEvaluationRequest):
   return data
 }
 
+// AI Runtime
+export interface AIRuntimeRequest extends BaseCalculationRequest {
+  accelerator_type: 'GPU_1xA10' | 'GPU_1xH100' | 'GPU_8xH100'
+  runs_per_day?: number | null
+  avg_runtime_minutes?: number | null
+  days_per_month?: number | null
+  hours_per_month?: number | null
+  discount_config?: Record<string, unknown>
+}
+
+export const calculateAIRuntime = async (request: AIRuntimeRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/ai-runtime', request)
+  return data
+}
+
 // Shutterstock ImageAI
 export interface ShutterstockImageAIRequest extends BaseCalculationRequest {
   images_per_month: number
@@ -1252,6 +1267,9 @@ export const calculateWorkloadCost = async (
 
     case 'AGENT_EVALUATION':
       return calculateAgentEvaluation(params as unknown as AgentEvaluationRequest)
+
+    case 'AI_RUNTIME':
+      return calculateAIRuntime(params as unknown as AIRuntimeRequest)
 
     case 'SHUTTERSTOCK_IMAGEAI':
       return calculateShutterstockImageAI(params as unknown as ShutterstockImageAIRequest)
