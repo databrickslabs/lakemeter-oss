@@ -94,8 +94,13 @@ class TestAllGpuRates:
             hours_per_month=100,
         )
         dbu, warnings = _calculate_dbu_per_hour(item, cloud)
-        assert dbu == pytest.approx(expected_rate, abs=0.01), \
-            f"{cloud}:{gpu_type} expected {expected_rate}, got {dbu}"
+        expected_dbu = (
+            expected_rate * 4
+            if gpu_type.lower().startswith("cpu")
+            else expected_rate
+        )
+        assert dbu == pytest.approx(expected_dbu, abs=0.01), \
+            f"{cloud}:{gpu_type} expected {expected_dbu}, got {dbu}"
         assert len(warnings) == 0, \
             f"{cloud}:{gpu_type} had warnings: {warnings}"
 

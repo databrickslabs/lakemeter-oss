@@ -49,27 +49,42 @@ class TestModelServingDetails:
     def test_cpu_details(self):
         item = make_line_item(model_serving_gpu_type='cpu')
         details = _model_serving_details(item)
-        assert details == ["GPU: CPU"]
+        assert details == [
+            "GPU: CPU",
+            "Scale-Out: Small (4 concurrency)",
+        ]
 
     def test_t4_details(self):
         item = make_line_item(model_serving_gpu_type='gpu_small_t4')
         details = _model_serving_details(item)
-        assert details == ["GPU: Small (T4)"]
+        assert details == [
+            "GPU: Small (T4)",
+            "Scale-Out: Small (4 concurrency)",
+            "GPU Replicas: 1",
+        ]
 
     def test_a100_details(self):
         item = make_line_item(model_serving_gpu_type='gpu_xlarge_a100_80gb_8x')
         details = _model_serving_details(item)
-        assert details == ["GPU: XLarge (A100 80GB 8x)"]
+        assert details == [
+            "GPU: XLarge (A100 80GB 8x)",
+            "Scale-Out: Small (4 concurrency)",
+            "GPU Replicas: 1",
+        ]
 
     def test_none_gpu_no_details(self):
         item = make_line_item(model_serving_gpu_type=None)
         details = _model_serving_details(item)
-        assert details == []
+        assert details == ["Scale-Out: Small (4 concurrency)"]
 
     def test_unknown_gpu_uses_raw_name(self):
         item = make_line_item(model_serving_gpu_type='some_new_gpu')
         details = _model_serving_details(item)
-        assert details == ["GPU: some_new_gpu"]
+        assert details == [
+            "GPU: some_new_gpu",
+            "Scale-Out: Small (4 concurrency)",
+            "GPU Replicas: 1",
+        ]
 
 
 class TestWorkloadDisplayName:
@@ -90,4 +105,4 @@ class TestWorkloadConfigDetails:
     def test_config_no_gpu(self):
         item = make_line_item(model_serving_gpu_type=None)
         config = _get_workload_config_details(item)
-        assert config == '-'
+        assert config == 'Scale-Out: Small (4 concurrency)'

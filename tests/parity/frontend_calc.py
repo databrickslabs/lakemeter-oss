@@ -73,9 +73,19 @@ def fe_vector_search_storage_cost(*, storage_gb, units_used):
     return billable_gb * price_per_gb
 
 
-def fe_model_serving_dbu_per_hour(*, gpu_dbu_rate):
-    """Frontend Model Serving DBU/hr (direct rate lookup)."""
-    return gpu_dbu_rate
+def fe_model_serving_dbu_per_hour(
+    *,
+    gpu_dbu_rate,
+    workload_type="gpu",
+    concurrency=4,
+):
+    """Frontend Model Serving DBU/hr from CPU concurrency or GPU replicas."""
+    capacity = (
+        concurrency
+        if workload_type.lower().startswith("cpu")
+        else concurrency / 4
+    )
+    return gpu_dbu_rate * capacity
 
 
 def fe_fmapi_token_cost(*, quantity_millions, dbu_per_million, dbu_price):

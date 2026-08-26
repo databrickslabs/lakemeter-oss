@@ -339,7 +339,7 @@ print("=" * 80)
 
 execute_sql("""
 COMMENT ON COLUMN lakemeter.line_items.model_serving_concurrency IS 
-'Model Serving scale-out concurrency. Multiples of 4 (4, 8, 12, ..., 64). DBU/hr = gpu_dbu_rate x concurrency.';
+'Model Serving scale-out concurrency. Multiples of 4 (4, 8, 12, ..., 64). CPU DBU/hr = rate x concurrency; GPU DBU/hr = rate x (concurrency / 4 replicas).';
 """, "Added comment for model_serving_concurrency (main)")
 
 execute_sql("""
@@ -351,7 +351,7 @@ if backup_tables:
     for backup_table in backup_tables:
         execute_sql(f"""
 COMMENT ON COLUMN lakemeter.{backup_table}.model_serving_concurrency IS 
-'Model Serving scale-out concurrency. Multiples of 4 (4, 8, 12, ..., 64). DBU/hr = gpu_dbu_rate x concurrency.';
+'Model Serving scale-out concurrency. Multiples of 4 (4, 8, 12, ..., 64). CPU DBU/hr = rate x concurrency; GPU DBU/hr = rate x (concurrency / 4 replicas).';
 """, f"Added comment for model_serving_concurrency ({backup_table})")
 
         execute_sql(f"""
@@ -471,7 +471,7 @@ print(f"""
      - Column: model_serving_concurrency INT DEFAULT 4
      - Constraint: Must be >= 4 and multiples of 4
      - Purpose: Scale-out concurrency for Model Serving endpoints
-     - Formula: DBU/hr = gpu_dbu_rate × concurrency
+     - Formula: CPU rate × concurrency; GPU rate × (concurrency ÷ 4 replicas)
      - Tables: line_items + backup table(s)
 
   2. LAKEBASE CU TYPE CHANGE (altered column)

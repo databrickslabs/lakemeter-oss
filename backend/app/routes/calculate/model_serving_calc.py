@@ -1,11 +1,15 @@
 """Model Serving calculation endpoint (GPU-based, independent pricing)."""
 import logging
-import math
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.services.model_serving_pricing import (
+    calculate_model_serving_dbu_per_hour,
+    get_billing_capacity_units,
+    is_gpu_workload_type,
+)
 from app.services.validators import validate_cloud, validate_region, validate_tier, validate_sku_specific_discounts
 from app.services.lakebase_queries import get_product_type_for_pricing
 from app.routes.calculate.helpers import build_sku_breakdown_serverless
@@ -68,9 +72,17 @@ def calculate_model_serving_cost(
 
         hours_per_month = usage.hours_per_month or 0
 
-        # DBU calculation
-        dbu_per_hour = gpu_dbu_rate * concurrency
+        # GPU rates are per replica and one replica provides four concurrency
+        # units. CPU rates remain per concurrency unit.
+        capacity_units = get_billing_capacity_units(
+            request.gpu_type, concurrency
+        )
+        dbu_per_hour = calculate_model_serving_dbu_per_hour(
+            gpu_dbu_rate, request.gpu_type, concurrency
+        )
         dbu_per_month = dbu_per_hour * hours_per_month
+        is_gpu = is_gpu_workload_type(request.gpu_type)
+        capacity_label = "GPU replicas" if is_gpu else "CPU concurrency"
 
         # Look up DBU price
         sku_type = get_product_type_for_pricing(db, "MODEL_SERVING", False, False, None, None, None)
@@ -115,9 +127,22 @@ def calculate_model_serving_cost(
                 "usage": {"hours_per_month": hours_per_month},
                 "dbu_calculation": {
                     "gpu_dbu_rate": gpu_dbu_rate, "concurrency": concurrency,
+                    "gpu_replicas": capacity_units if is_gpu else None,
+                    "concurrency_per_gpu_replica": 4 if is_gpu else None,
+                    "billing_capacity_units": capacity_units,
                     "dbu_per_hour": round(dbu_per_hour, 4), "dbu_per_month": round(dbu_per_month, 2),
                     "dbu_price": dbu_price, "dbu_cost_per_month": round(dbu_cost_per_month, 2),
-                    "calculation": f"{gpu_dbu_rate} DBU/hr × {concurrency} concurrency × {hours_per_month} hrs",
+                    "calculation": (
+                        (
+                            f"{concurrency} concurrency ÷ 4 concurrency/replica "
+                            f"= {capacity_units:g} GPU replicas; "
+                            if is_gpu
+                            else ""
+                        )
+                        + f"{gpu_dbu_rate} DBU/{'replica' if is_gpu else 'concurrency'}-hr "
+                        + f"× {capacity_units:g} {capacity_label} "
+                        + f"× {hours_per_month} hrs"
+                    ),
                 },
                 "total_cost": {
                     "cost_per_month": round(cost_per_month, 2),

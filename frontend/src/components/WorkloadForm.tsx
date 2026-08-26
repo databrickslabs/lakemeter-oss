@@ -12,6 +12,44 @@ import {
 } from '../utils/pricingBundle'
 import { getAIRuntimeAccelerators } from '../utils/aiRuntime'
 
+const WORKLOAD_TYPE_GROUPS: ReadonlyArray<{
+  label: string
+  workloadTypes: readonly string[]
+}> = [
+  {
+    label: 'Data Engineering',
+    workloadTypes: ['JOBS', 'DLT', 'LAKEFLOW_CONNECT'],
+  },
+  {
+    label: 'Data Warehousing',
+    workloadTypes: ['DBSQL'],
+  },
+  {
+    label: 'Interactive Workloads',
+    workloadTypes: ['ALL_PURPOSE', 'DATABRICKS_APPS'],
+  },
+  {
+    label: 'Operational Database',
+    workloadTypes: ['LAKEBASE'],
+  },
+  {
+    label: 'Artificial Intelligence',
+    workloadTypes: [
+      'VECTOR_SEARCH',
+      'MODEL_SERVING',
+      'FMAPI_DATABRICKS',
+      'FMAPI_PROPRIETARY',
+      'AI_PARSE',
+      'AI_EXTRACT',
+      'AI_CLASSIFY',
+      'AI_GATEWAY',
+      'AGENT_EVALUATION',
+      'AI_RUNTIME',
+      'SHUTTERSTOCK_IMAGEAI',
+    ],
+  },
+]
+
 function AIGatewayComponentPanel({
   component,
   label,
@@ -1103,6 +1141,22 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     // If regional availability not loaded yet, show all tier-available types
     return true
   })
+
+  const groupedWorkloadTypes = WORKLOAD_TYPE_GROUPS
+    .map(group => ({
+      ...group,
+      workloadTypes: filteredWorkloadTypes.filter(workload =>
+        group.workloadTypes.includes(workload.workload_type),
+      ),
+    }))
+    .filter(group => group.workloadTypes.length > 0)
+
+  const groupedWorkloadTypeNames = new Set(
+    WORKLOAD_TYPE_GROUPS.flatMap(group => group.workloadTypes),
+  )
+  const uncategorizedWorkloadTypes = filteredWorkloadTypes.filter(
+    workload => !groupedWorkloadTypeNames.has(workload.workload_type),
+  )
   
   // Check if some workload types are hidden due to regional restrictions
   const hasRegionalRestrictions = availableWorkloadTypesForRegion !== null &&
@@ -1715,14 +1769,34 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 </option>
               ) : null
             })()}
-            {filteredWorkloadTypes.map(wt => (
-              <option 
-                key={wt.workload_type} 
-                value={wt.workload_type}
-              >
-                {wt.workload_type === 'VECTOR_SEARCH' ? 'AI Search' : wt.display_name}
-              </option>
+            {groupedWorkloadTypes.map(group => (
+              <optgroup key={group.label} label={group.label}>
+                {group.workloadTypes.map(workload => (
+                  <option
+                    key={workload.workload_type}
+                    value={workload.workload_type}
+                  >
+                    {workload.workload_type === 'VECTOR_SEARCH'
+                      ? 'AI Search'
+                      : workload.display_name}
+                  </option>
+                ))}
+              </optgroup>
             ))}
+            {uncategorizedWorkloadTypes.length > 0 && (
+              <optgroup label="Other">
+                {uncategorizedWorkloadTypes.map(workload => (
+                  <option
+                    key={workload.workload_type}
+                    value={workload.workload_type}
+                  >
+                    {workload.workload_type === 'VECTOR_SEARCH'
+                      ? 'AI Search'
+                      : workload.display_name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
           {isWorkloadTypeInvalid && (
             <p className="text-xs text-red-500 mt-1">Unknown workload type: {form.workload_type}</p>
@@ -2387,7 +2461,11 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
               >
                 {modelServingGPUTypes.map(gpu => (
                   <option key={gpu.id} value={gpu.id}>
-                    {gpu.name} ({gpu.dbu_per_hour} DBU/hr)
+                    {gpu.name} ({gpu.dbu_per_hour} {
+                      gpu.id.toLowerCase().startsWith('cpu')
+                        ? 'DBU/concurrency-hr'
+                        : 'DBU/replica-hr'
+                    })
                   </option>
                 ))}
               </select>
