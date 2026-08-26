@@ -694,7 +694,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         serverless_mode: lineItem.serverless_mode || 'standard',
         driver_node_type: lineItem.driver_node_type || '',
         worker_node_type: lineItem.worker_node_type || '',
-        num_workers: lineItem.num_workers || 2,
+        num_workers: lineItem.num_workers ?? 2,
         photon_enabled: lineItem.photon_enabled || false,
         dlt_edition: lineItem.dlt_edition || 'PRO',
         dbsql_warehouse_type: (lineItem.dbsql_warehouse_type || 'SERVERLESS').toUpperCase(),
@@ -962,7 +962,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         serverless_mode: lineItem.serverless_mode || 'standard',
         driver_node_type: lineItem.driver_node_type || '',
         worker_node_type: lineItem.worker_node_type || '',
-        num_workers: lineItem.num_workers || 2,
+        num_workers: lineItem.num_workers ?? 2,
         photon_enabled: lineItem.photon_enabled || false,
         dlt_edition: lineItem.dlt_edition || 'PRO',
         dbsql_warehouse_type: (lineItem.dbsql_warehouse_type || 'SERVERLESS').toUpperCase(),
@@ -1197,7 +1197,9 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       serverless_enabled: form.serverless_enabled,
       serverless_mode: form.serverless_mode,
       driver_node_type: form.driver_node_type || undefined,
-      worker_node_type: form.worker_node_type || undefined,
+      worker_node_type: form.num_workers > 0
+        ? form.worker_node_type || undefined
+        : undefined,
       num_workers: form.num_workers,
       photon_enabled: form.photon_enabled,
       dlt_edition: form.dlt_edition,
@@ -1290,6 +1292,16 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     if (!form.workload_name.trim()) {
       toast.error('Enter a workload name')
       return
+    }
+    if (selectedWorkloadType?.show_compute_config) {
+      if (!form.driver_node_type) {
+        toast.error('Select a driver instance type')
+        return
+      }
+      if (form.num_workers > 0 && !form.worker_node_type) {
+        toast.error('Select a worker instance type or set worker count to 0 for single node')
+        return
+      }
     }
     if (
       availableWorkloadTypesForRegion !== null &&
@@ -1412,7 +1424,9 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         // Serverless compute automatically includes Photon acceleration
         data.photon_enabled = form.serverless_enabled ? true : form.photon_enabled
         data.driver_node_type = form.driver_node_type || null
-        data.worker_node_type = form.worker_node_type || null
+        data.worker_node_type = form.num_workers > 0
+          ? form.worker_node_type || null
+          : null
         data.num_workers = form.num_workers
         data.driver_pricing_tier = form.driver_pricing_tier || 'on_demand'
         data.worker_pricing_tier = form.worker_pricing_tier || 'spot'
@@ -2011,18 +2025,24 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 <label className="flex items-center gap-1.5 cursor-pointer group">
                   <input
                     type="checkbox"
-                    checked={form.driver_node_type === form.worker_node_type && form.driver_node_type !== ''}
+                    checked={
+                      form.num_workers > 0 &&
+                      form.driver_node_type === form.worker_node_type &&
+                      form.driver_node_type !== ''
+                    }
                     onChange={(e) => {
                       if (e.target.checked && form.driver_node_type) {
                         setForm(f => ({ ...f, worker_node_type: f.driver_node_type }))
                       }
                     }}
-                    disabled={!form.driver_node_type}
+                    disabled={!form.driver_node_type || form.num_workers === 0}
                     className="w-3.5 h-3.5 rounded border-[var(--border-primary)] text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
                   />
                   <span className={clsx(
                     "text-xs font-medium transition-colors",
-                    form.driver_node_type === form.worker_node_type && form.driver_node_type !== ''
+                    form.num_workers > 0 &&
+                    form.driver_node_type === form.worker_node_type &&
+                    form.driver_node_type !== ''
                       ? "text-blue-500"
                       : "text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]"
                   )}>
@@ -2044,8 +2064,9 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                       }))}
                       value={form.worker_node_type}
                       onChange={(value) => setForm(f => ({ ...f, worker_node_type: value }))}
-                      placeholder="Select type..."
+                      placeholder={form.num_workers === 0 ? 'Not used' : 'Select type...'}
                       searchPlaceholder="Search instance types..."
+                      disabled={form.num_workers === 0}
                       grouped
                     />
                   </div>
@@ -2053,17 +2074,23 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                     <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Count</label>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       max={100}
                       value={form.num_workers}
-                      onChange={(e) => setForm(f => ({ ...f, num_workers: parseInt(e.target.value) || 1 }))}
+                      onChange={(e) => {
+                        const value = Number.parseInt(e.target.value, 10)
+                        setForm(f => ({
+                          ...f,
+                          num_workers: Number.isNaN(value) ? 0 : Math.max(0, Math.min(100, value)),
+                        }))
+                      }}
                       className="w-full text-sm text-center"
                     />
                   </div>
                 </div>
                 
                 {/* Pricing Tier & Payment Option Row - Hide for serverless */}
-                {!form.serverless_enabled && (
+                {!form.serverless_enabled && form.num_workers > 0 && (
                   <div className={clsx(
                     "grid gap-2",
                     selectedCloud === 'aws' && form.worker_pricing_tier.startsWith('reserved') 

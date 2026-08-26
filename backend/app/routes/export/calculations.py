@@ -131,8 +131,8 @@ def _calculate_dbu_per_hour(item, cloud: str = 'aws', tier: str = 'PREMIUM') -> 
 
 def _calc_compute_dbu(item, cloud, wt, warnings):
     """Calculate DBU/hr for Jobs, All-Purpose, or DLT workloads."""
-    driver_dbu = 0.5  # Match frontend fallback (costCalculation.ts:250)
-    worker_dbu = 0.5
+    driver_dbu = 0.5 if item.driver_node_type else 0
+    worker_dbu = 0.5 if item.worker_node_type else 0
     driver_found = False
     worker_found = False
     if INSTANCE_DBU_RATES:

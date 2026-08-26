@@ -395,6 +395,30 @@ def validate_ai_runtime_workload_config(
         )
 
 
+def validate_compute_workload_config(
+    workload_type: Optional[str],
+    driver_node_type: Optional[str],
+    worker_node_type: Optional[str],
+    num_workers: Optional[int],
+) -> None:
+    """Validate node selections used to estimate compute workloads."""
+    if (workload_type or "").upper() not in {"JOBS", "ALL_PURPOSE", "DLT"}:
+        return
+
+    if not (driver_node_type or "").strip():
+        raise ValueError(
+            "driver_node_type is required for compute workloads"
+        )
+
+    worker_count = int(num_workers or 0)
+    if worker_count < 0:
+        raise ValueError("num_workers must be greater than or equal to 0")
+    if worker_count > 0 and not (worker_node_type or "").strip():
+        raise ValueError(
+            "worker_node_type is required when num_workers is greater than 0"
+        )
+
+
 class LineItemBase(BaseModel):
     """Base line item schema."""
     workload_name: str
@@ -410,7 +434,7 @@ class LineItemBase(BaseModel):
     photon_enabled: Optional[bool] = False
     driver_node_type: Optional[str] = None
     worker_node_type: Optional[str] = None
-    num_workers: Optional[int] = 1
+    num_workers: Optional[int] = Field(default=1, ge=0, le=100)
 
     # DLT Configuration
     dlt_edition: Optional[str] = None
@@ -613,7 +637,7 @@ class LineItemUpdate(BaseModel):
     photon_enabled: Optional[bool] = None
     driver_node_type: Optional[str] = None
     worker_node_type: Optional[str] = None
-    num_workers: Optional[int] = None
+    num_workers: Optional[int] = Field(default=None, ge=0, le=100)
 
     # DLT Configuration
     dlt_edition: Optional[str] = None

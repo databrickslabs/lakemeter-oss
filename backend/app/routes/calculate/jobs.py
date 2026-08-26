@@ -114,9 +114,14 @@ def _validate_classic_inputs(request, db):
     error = validate_instance_type(request.cloud, request.driver_node_type, db)
     if error:
         raise HTTPException(status_code=400, detail=error["error"])
-    error = validate_instance_type(request.cloud, request.worker_node_type, db)
-    if error:
-        raise HTTPException(status_code=400, detail=error["error"])
+    if request.num_workers > 0:
+        error = validate_instance_type(
+            request.cloud,
+            request.worker_node_type,
+            db,
+        )
+        if error:
+            raise HTTPException(status_code=400, detail=error["error"])
     error = validate_pricing_tier(request.driver_pricing_tier, is_driver=True)
     if error:
         raise HTTPException(status_code=400, detail=error["error"])

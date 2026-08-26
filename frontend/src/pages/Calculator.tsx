@@ -310,12 +310,18 @@ const VMCalculationLine: React.FC<VMCalculationLineProps> = React.memo(({
         <span className="font-medium text-[var(--text-primary)]">Driver</span>
         <span>{driverType}</span>
         <span className="text-[var(--text-muted)]">(${driverRate.toFixed(4)}/hr)</span>
-        <span>+</span>
-        <span className="font-medium text-[var(--text-primary)]">
-          {workerCount} worker{workerCount !== 1 ? 's' : ''}
-        </span>
-        <span>{workerType}</span>
-        <span className="text-[var(--text-muted)]">(${workerRate.toFixed(4)}/hr each)</span>
+        {workerCount > 0 ? (
+          <>
+            <span>+</span>
+            <span className="font-medium text-[var(--text-primary)]">
+              {workerCount} worker{workerCount !== 1 ? 's' : ''}
+            </span>
+            <span>{workerType}</span>
+            <span className="text-[var(--text-muted)]">(${workerRate.toFixed(4)}/hr each)</span>
+          </>
+        ) : (
+          <span className="text-[var(--text-muted)]">Single node — driver VM only</span>
+        )}
         <span>)</span>
         {clusters !== undefined && (
           <>
@@ -1335,15 +1341,16 @@ export default function Calculator() {
     let storageCost: number | undefined = undefined  // For AI Search and Lakebase
     let storageDetails: CostBreakdown['storageDetails'] = undefined
     
-    // Get instance DBU rates - try pricing bundle first, then fetched instanceTypes
-    let driverDBURate = 0.5 // Fallback
-    let workerDBURate = 0.5
+    // Use the legacy fallback only for a selected but unknown instance.
+    // An empty node selection contributes no hidden DBUs.
+    let driverDBURate = effectiveItem.driver_node_type ? 0.5 : 0
+    let workerDBURate = effectiveItem.worker_node_type ? 0.5 : 0
     
     if (isPricingBundleLoaded && effectiveItem.driver_node_type) {
       const bundleDriverRate = getBundleInstanceDBURate(pricingBundle, cloud, effectiveItem.driver_node_type)
       if (bundleDriverRate > 0) driverDBURate = bundleDriverRate
     }
-    if (!driverDBURate || driverDBURate === 0.5) {
+    if (effectiveItem.driver_node_type && driverDBURate === 0.5) {
       const driverInstance = instanceTypes.find(it => it.id === effectiveItem.driver_node_type || it.name === effectiveItem.driver_node_type)
       if (driverInstance?.dbu_rate) driverDBURate = driverInstance.dbu_rate
     }
@@ -1352,7 +1359,7 @@ export default function Calculator() {
       const bundleWorkerRate = getBundleInstanceDBURate(pricingBundle, cloud, effectiveItem.worker_node_type)
       if (bundleWorkerRate > 0) workerDBURate = bundleWorkerRate
     }
-    if (!workerDBURate || workerDBURate === 0.5) {
+    if (effectiveItem.worker_node_type && workerDBURate === 0.5) {
       const workerInstance = instanceTypes.find(it => it.id === effectiveItem.worker_node_type || it.name === effectiveItem.worker_node_type)
       if (workerInstance?.dbu_rate) workerDBURate = workerInstance.dbu_rate
     }
@@ -3945,8 +3952,12 @@ export default function Calculator() {
                                   const workerInstance = instanceTypes.find(it => it.id === workerNode || it.name === workerNode)
 
                                   // Use getInstanceDbuRate (from dynamic API) with fallback to instanceTypes
-                                  const driverDBURate = getInstanceDbuRate(cloud, driverNode) || driverInstance?.dbu_rate || 0
-                                  const workerDBURate = getInstanceDbuRate(cloud, workerNode) || workerInstance?.dbu_rate || 0
+                                  const driverDBURate = driverNode
+                                    ? getInstanceDbuRate(cloud, driverNode) || driverInstance?.dbu_rate || 0.5
+                                    : 0
+                                  const workerDBURate = workerNode
+                                    ? getInstanceDbuRate(cloud, workerNode) || workerInstance?.dbu_rate || 0.5
+                                    : 0
 
                                   // Get VM costs using getVMPrice (same as cost calculation) - this properly fetches from VM pricing cache
                                   const driverVMCost = region && driverNode
@@ -3988,12 +3999,18 @@ export default function Calculator() {
                                             <span className="font-medium text-[var(--text-primary)]">Driver</span>
                                             <span>{driverNode}</span>
                                             <span className="text-[var(--text-muted)]">({driverDBURate.toFixed(2)} DBU/hr)</span>
-                                            <span>+</span>
-                                            <span className="font-medium text-[var(--text-primary)]">
-                                              {numWorkers} worker{numWorkers !== 1 ? 's' : ''}
-                                            </span>
-                                            <span>{workerNode}</span>
-                                            <span className="text-[var(--text-muted)]">({workerDBURate.toFixed(2)} DBU/hr each)</span>
+                                            {numWorkers > 0 ? (
+                                              <>
+                                                <span>+</span>
+                                                <span className="font-medium text-[var(--text-primary)]">
+                                                  {numWorkers} worker{numWorkers !== 1 ? 's' : ''}
+                                                </span>
+                                                <span>{workerNode}</span>
+                                                <span className="text-[var(--text-muted)]">({workerDBURate.toFixed(2)} DBU/hr each)</span>
+                                              </>
+                                            ) : (
+                                              <span className="text-[var(--text-muted)]">Single node — driver only</span>
+                                            )}
                                             <span>)</span>
                                             {photonEnabled && (
                                               <>
@@ -4865,8 +4882,12 @@ export default function Calculator() {
                                 const driverInstance = instanceTypes.find(it => it.id === driverNode || it.name === driverNode)
                                 const workerInstance = instanceTypes.find(it => it.id === workerNode || it.name === workerNode)
 
-                                const driverDBURate = getInstanceDbuRate(cloud, driverNode) || driverInstance?.dbu_rate || 0
-                                const workerDBURate = getInstanceDbuRate(cloud, workerNode) || workerInstance?.dbu_rate || 0
+                                const driverDBURate = driverNode
+                                  ? getInstanceDbuRate(cloud, driverNode) || driverInstance?.dbu_rate || 0.5
+                                  : 0
+                                const workerDBURate = workerNode
+                                  ? getInstanceDbuRate(cloud, workerNode) || workerInstance?.dbu_rate || 0.5
+                                  : 0
 
                                 const driverVMCost = region && driverNode
                                   ? getVMPrice(cloud, region, driverNode, effectiveItem.driver_pricing_tier || 'on_demand', effectiveItem.driver_payment_option || 'no_upfront')
@@ -4907,12 +4928,18 @@ export default function Calculator() {
                                           <span className="font-medium text-[var(--text-primary)]">Driver</span>
                                           <span>{driverNode}</span>
                                           <span className="text-[var(--text-muted)]">({driverDBURate.toFixed(2)} DBU/hr)</span>
-                                          <span>+</span>
-                                          <span className="font-medium text-[var(--text-primary)]">
-                                            {numWorkers} worker{numWorkers !== 1 ? 's' : ''}
-                                          </span>
-                                          <span>{workerNode}</span>
-                                          <span className="text-[var(--text-muted)]">({workerDBURate.toFixed(2)} DBU/hr each)</span>
+                                          {numWorkers > 0 ? (
+                                            <>
+                                              <span>+</span>
+                                              <span className="font-medium text-[var(--text-primary)]">
+                                                {numWorkers} worker{numWorkers !== 1 ? 's' : ''}
+                                              </span>
+                                              <span>{workerNode}</span>
+                                              <span className="text-[var(--text-muted)]">({workerDBURate.toFixed(2)} DBU/hr each)</span>
+                                            </>
+                                          ) : (
+                                            <span className="text-[var(--text-muted)]">Single node — driver only</span>
+                                          )}
                                           <span>)</span>
                                           {photonEnabled && (
                                             <>
