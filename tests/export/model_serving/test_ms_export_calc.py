@@ -21,7 +21,7 @@ class TestModelServingDBUPerHour:
     def test_cpu_rate(self):
         item = make_line_item(model_serving_gpu_type='cpu')
         dbu, warnings = _calculate_dbu_per_hour(item, 'aws')
-        assert dbu == 1.0
+        assert dbu == 4.0
         assert len(warnings) == 0
 
     def test_gpu_small_t4(self):
@@ -78,9 +78,9 @@ class TestModelServingHours:
         expected = (5 * 60 / 60) * 20  # 100 hours, NOT 730
         assert _calculate_hours_per_month(item) == expected
 
-    def test_zero_hours(self):
+    def test_missing_usage_defaults_to_always_on(self):
         item = make_line_item(hours_per_month=None, runs_per_day=None)
-        assert _calculate_hours_per_month(item) == 0
+        assert _calculate_hours_per_month(item) == 730
 
 
 class TestModelServingUnknownGPU:
@@ -97,7 +97,7 @@ class TestModelServingUnknownGPU:
         """AC-31: Missing gpu_type defaults to 'cpu'."""
         item = make_line_item(model_serving_gpu_type=None)
         dbu, warnings = _calculate_dbu_per_hour(item, 'aws')
-        assert dbu == 1.0  # CPU rate
+        assert dbu == 4.0  # CPU rate × default concurrency
         assert len(warnings) == 0
 
     def test_wrong_cloud_returns_zero(self):

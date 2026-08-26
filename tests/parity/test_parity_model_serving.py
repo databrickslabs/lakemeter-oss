@@ -32,9 +32,13 @@ class TestModelServingCPU:
             hours_per_month=730,
         )
         be = _get_be_results(item)
-        fe_dbu_hr = fe_model_serving_dbu_per_hour(gpu_dbu_rate=ms_info['dbu_rate'])
+        fe_dbu_hr = fe_model_serving_dbu_per_hour(
+            gpu_dbu_rate=ms_info['dbu_rate'],
+            workload_type='cpu',
+            concurrency=4,
+        )
         assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(1.0, abs=TOL)
+        assert be['dbu_hr'] == pytest.approx(4.0, abs=TOL)
         assert be['sku'] == 'SERVERLESS_REAL_TIME_INFERENCE'
         fe_cost = fe_monthly_dbu_cost(
             dbu_per_hour=fe_dbu_hr, hours_per_month=730, dbu_price=be['dbu_price'],
@@ -49,7 +53,11 @@ class TestModelServingCPU:
             hours_per_month=160,
         )
         be = _get_be_results(item)
-        fe_dbu_hr = fe_model_serving_dbu_per_hour(gpu_dbu_rate=ms_info['dbu_rate'])
+        fe_dbu_hr = fe_model_serving_dbu_per_hour(
+            gpu_dbu_rate=ms_info['dbu_rate'],
+            workload_type='cpu',
+            concurrency=4,
+        )
         fe_cost = fe_monthly_dbu_cost(
             dbu_per_hour=fe_dbu_hr, hours_per_month=160, dbu_price=be['dbu_price'],
         )
@@ -173,7 +181,7 @@ class TestModelServingMonthlyCost:
     """Verify end-to-end monthly cost for various configs."""
 
     @pytest.mark.parametrize("gpu_type,expected_dbu_hr", [
-        ('cpu', 1.0),
+        ('cpu', 4.0),
         ('gpu_small_t4', 10.48),
         ('gpu_medium_a10g_1x', 20.0),
         ('gpu_medium_a10g_4x', 112.0),
@@ -191,5 +199,10 @@ class TestModelServingMonthlyCost:
         )
         be = _get_be_results(item)
         assert be['dbu_hr'] == pytest.approx(expected_dbu_hr, abs=TOL)
-        assert be['dbu_hr'] == pytest.approx(ms_info['dbu_rate'], abs=TOL)
+        fe_dbu_hr = fe_model_serving_dbu_per_hour(
+            gpu_dbu_rate=ms_info['dbu_rate'],
+            workload_type=gpu_type,
+            concurrency=4,
+        )
+        assert be['dbu_hr'] == pytest.approx(fe_dbu_hr, abs=TOL)
         assert be['sku'] == 'SERVERLESS_REAL_TIME_INFERENCE'

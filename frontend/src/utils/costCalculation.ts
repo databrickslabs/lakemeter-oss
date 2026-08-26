@@ -23,6 +23,31 @@ export const AGENT_EVALUATION_COMPONENT_RATES = {
 export const AI_SEARCH_INCLUDED_STORAGE_GB = 30
 export const AI_SEARCH_STORAGE_PRICE_PER_GB = 0.023
 export const AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS = 28.571
+export const MODEL_SERVING_GPU_CONCURRENCY_PER_REPLICA = 4
+
+export function isModelServingGPUType(workloadType?: string | null): boolean {
+  return !(workloadType || 'cpu').trim().toLowerCase().startsWith('cpu')
+}
+
+export function getModelServingBillingCapacityUnits(
+  workloadType: string | null | undefined,
+  concurrency: number,
+): number {
+  return isModelServingGPUType(workloadType)
+    ? concurrency / MODEL_SERVING_GPU_CONCURRENCY_PER_REPLICA
+    : concurrency
+}
+
+export function calculateModelServingDBUPerHour(
+  dbuRate: number,
+  workloadType: string | null | undefined,
+  concurrency: number,
+): number {
+  return dbuRate * getModelServingBillingCapacityUnits(
+    workloadType,
+    concurrency,
+  )
+}
 
 export function calculateAISearchRerankerUsage(item: Partial<LineItem>) {
   const enabled = item.ai_search_reranker_enabled ?? false
@@ -633,7 +658,11 @@ export function calculateWorkloadCost(
         ? (item.model_serving_concurrency || 4)
         : (msScaleOutPresets[msScaleOut] || 4)
 
-      dbuPerHour = gpuDBURate * msConcurrency
+      dbuPerHour = calculateModelServingDBUPerHour(
+        gpuDBURate,
+        gpuType,
+        msConcurrency,
+      )
       monthlyDBUs = dbuPerHour * hoursPerMonth
       break
     

@@ -78,9 +78,24 @@ def get_model_serving_gpu_types(
                     for r in results
                 ],
                 "scale_out_presets": {
-                    "small": {"concurrency": 4, "dbu_multiplier": 4, "range": "4"},
-                    "medium": {"concurrency": 12, "dbu_multiplier": 12, "range": "8-16"},
-                    "large": {"concurrency": 40, "dbu_multiplier": 40, "range": "16-64"},
+                    "small": {
+                        "concurrency": 4,
+                        "cpu_dbu_multiplier": 4,
+                        "gpu_replicas": 1,
+                        "range": "4",
+                    },
+                    "medium": {
+                        "concurrency": 12,
+                        "cpu_dbu_multiplier": 12,
+                        "gpu_replicas": 3,
+                        "range": "8-16",
+                    },
+                    "large": {
+                        "concurrency": 40,
+                        "cpu_dbu_multiplier": 40,
+                        "gpu_replicas": 10,
+                        "range": "16-64",
+                    },
                 },
                 "custom_scale_out": {
                     "min": 4,

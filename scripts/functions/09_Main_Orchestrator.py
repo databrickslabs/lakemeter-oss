@@ -170,7 +170,8 @@ CREATE OR REPLACE FUNCTION lakemeter.calculate_line_item_costs(
     -- VM Payment Options (optional, at end due to DEFAULT requirements)
     p_driver_payment_option VARCHAR DEFAULT 'NA',
     p_worker_payment_option VARCHAR DEFAULT 'NA',
-    p_dbsql_vm_payment_option VARCHAR DEFAULT 'NA'
+    p_dbsql_vm_payment_option VARCHAR DEFAULT 'NA',
+    p_model_serving_concurrency INT DEFAULT 4
 )
 RETURNS TABLE(
     dbu_per_hour DECIMAL(18,4),
@@ -305,7 +306,11 @@ BEGIN
         
         -- Model Serving (hourly pricing, 24/7 availability)
         WHEN 'MODEL_SERVING' THEN
-            v_dbu_per_hour := lakemeter.calculate_model_serving_dbu(p_cloud, p_model_serving_gpu_type);
+            v_dbu_per_hour := lakemeter.calculate_model_serving_dbu(
+                p_cloud,
+                p_model_serving_gpu_type,
+                p_model_serving_concurrency
+            );
             v_dbu_per_month := v_dbu_per_hour * v_hours_per_month;
         
         -- FMAPI Databricks (ONE line = ONE rate_type)

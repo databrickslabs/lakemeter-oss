@@ -5,6 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.models import Estimate, User
 from app.models.sharing import Sharing
+from app.services.model_serving_pricing import (
+    get_billing_capacity_units,
+    is_gpu_workload_type,
+)
 
 
 def _get_json_backed_value(item, field, default=None):
@@ -206,6 +210,7 @@ MODEL_SERVING_GPU_NAMES = {
 
 def _model_serving_details(item) -> list:
     details = []
+    workload_type = item.model_serving_gpu_type or 'cpu'
     if item.model_serving_gpu_type:
         name = MODEL_SERVING_GPU_NAMES.get(
             item.model_serving_gpu_type, item.model_serving_gpu_type
@@ -217,6 +222,9 @@ def _model_serving_details(item) -> list:
     scale_labels = {'small': 'Small', 'medium': 'Medium', 'large': 'Large', 'custom': 'Custom'}
     label = scale_labels.get(scale_out, scale_out)
     details.append(f"Scale-Out: {label} ({concurrency} concurrency)")
+    if is_gpu_workload_type(workload_type):
+        replicas = get_billing_capacity_units(workload_type, concurrency)
+        details.append(f"GPU Replicas: {replicas:g}")
     return details
 
 

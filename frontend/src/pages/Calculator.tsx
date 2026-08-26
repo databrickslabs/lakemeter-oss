@@ -70,6 +70,9 @@ import {
   calculateAgentEvaluationUsage,
   calculateAISearchRerankerUsage,
   calculateAIGatewayUsage,
+  calculateModelServingDBUPerHour,
+  getModelServingBillingCapacityUnits,
+  isModelServingGPUType,
 } from '../utils/costCalculation'
 import { calculateAIRuntimeUsage } from '../utils/aiRuntime'
 
@@ -1618,15 +1621,19 @@ export default function Calculator() {
           if (gpuTypeData?.dbu_per_hour) gpuDBURate = gpuTypeData.dbu_per_hour
         }
         
-        // Apply concurrency multiplier
+        // GPU rates are per replica (one replica per four concurrency units).
+        // CPU rates remain per concurrency unit.
         const msScaleOutCalc = effectiveItem.model_serving_scale_out || 'small'
         const msPresets: Record<string, number> = { small: 4, medium: 12, large: 40 }
         const msConcurrencyCalc = msScaleOutCalc === 'custom'
           ? (effectiveItem.model_serving_concurrency || 4)
           : (msPresets[msScaleOutCalc] || 4)
 
-        // Total Cost = DBU/Hour × concurrency × hours_per_month × dbu_price
-        dbuPerHour = gpuDBURate * msConcurrencyCalc
+        dbuPerHour = calculateModelServingDBUPerHour(
+          gpuDBURate,
+          gpuType,
+          msConcurrencyCalc,
+        )
         monthlyDBUs = dbuPerHour * hoursPerMonth
         break
 
@@ -3624,8 +3631,13 @@ export default function Calculator() {
                                     const msConcurrencyDisp = msScaleOutDisp === 'custom'
                                       ? (effectiveItem.model_serving_concurrency || 4)
                                       : (msPresetsDisp[msScaleOutDisp] || 4)
-                                    const gpuBaseRate = msConcurrencyDisp > 0 && costs.dbuPerHour
-                                      ? costs.dbuPerHour / msConcurrencyDisp : 2
+                                    const isGPU = isModelServingGPUType(gpuType)
+                                    const billingCapacityUnits = getModelServingBillingCapacityUnits(
+                                      gpuType,
+                                      msConcurrencyDisp,
+                                    )
+                                    const baseRate = billingCapacityUnits > 0 && costs.dbuPerHour
+                                      ? costs.dbuPerHour / billingCapacityUnits : 2
                                     return (
                                       <div className="space-y-1">
                                         {isRunBased && (
@@ -3640,13 +3652,34 @@ export default function Calculator() {
                                             <span className="font-semibold">{hoursPerMonth.toFixed(1)}h/mo</span>
                                           </div>
                                         )}
+                                        {isGPU && (
+                                          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                            <span className="text-blue-600 font-semibold">GPU replicas:</span>
+                                            <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">
+                                              {msConcurrencyDisp} concurrency
+                                            </span>
+                                            <span>÷</span>
+                                            <span>4 concurrency/replica</span>
+                                            <span>=</span>
+                                            <span className="font-semibold">
+                                              {billingCapacityUnits} GPU replica{billingCapacityUnits === 1 ? '' : 's'}
+                                            </span>
+                                            <span className="text-[var(--text-muted)]">
+                                              ({msScaleOutDisp} scale-out)
+                                            </span>
+                                          </div>
+                                        )}
                                         <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                           <span className="text-blue-600 font-semibold">DBU:</span>
-                                          <span>{gpuBaseRate.toFixed(2)} DBU/hr</span>
+                                          <span>{baseRate.toFixed(2)} DBU/{isGPU ? 'replica-hr' : 'concurrency-hr'}</span>
                                           <span className="text-[var(--text-muted)]">({gpuType})</span>
                                           <span>×</span>
-                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{msConcurrencyDisp} concurrency</span>
-                                          <span className="text-[var(--text-muted)]">({msScaleOutDisp})</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">
+                                            {billingCapacityUnits} {isGPU ? `GPU replica${billingCapacityUnits === 1 ? '' : 's'}` : 'concurrency'}
+                                          </span>
+                                          {!isGPU && (
+                                            <span className="text-[var(--text-muted)]">({msScaleOutDisp} scale-out)</span>
+                                          )}
                                           <span>×</span>
                                           <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(isRunBased ? 1 : 0)}h</span>
                                           <span>=</span>
@@ -4649,21 +4682,48 @@ export default function Calculator() {
                                 }
                                 
                                 if (wType === 'MODEL_SERVING') {
+                                  const gpuTypeCard = effectiveItem.model_serving_gpu_type || 'cpu'
                                   const msScaleOutCard = effectiveItem.model_serving_scale_out || 'small'
                                   const msPresetsCard: Record<string, number> = { small: 4, medium: 12, large: 40 }
                                   const msConcurrencyCard = msScaleOutCard === 'custom'
                                     ? (effectiveItem.model_serving_concurrency || 4)
                                     : (msPresetsCard[msScaleOutCard] || 4)
-                                  const gpuBaseRateCard = msConcurrencyCard > 0 && costs.dbuPerHour
-                                    ? costs.dbuPerHour / msConcurrencyCard : 2
+                                  const isGPUCard = isModelServingGPUType(gpuTypeCard)
+                                  const billingCapacityUnitsCard = getModelServingBillingCapacityUnits(
+                                    gpuTypeCard,
+                                    msConcurrencyCard,
+                                  )
+                                  const baseRateCard = billingCapacityUnitsCard > 0 && costs.dbuPerHour
+                                    ? costs.dbuPerHour / billingCapacityUnitsCard : 2
                                   return (
                                     <div className="space-y-1">
+                                      {isGPUCard && (
+                                        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+                                          <span className="text-blue-600 font-semibold">GPU replicas:</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">
+                                            {msConcurrencyCard} concurrency
+                                          </span>
+                                          <span>÷</span>
+                                          <span>4 concurrency/replica</span>
+                                          <span>=</span>
+                                          <span className="font-semibold">
+                                            {billingCapacityUnitsCard} GPU replica{billingCapacityUnitsCard === 1 ? '' : 's'}
+                                          </span>
+                                          <span className="text-[var(--text-muted)]">
+                                            ({msScaleOutCard} scale-out)
+                                          </span>
+                                        </div>
+                                      )}
                                       <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                         <span className="text-blue-600 font-semibold">DBU:</span>
-                                        <span>{gpuBaseRateCard.toFixed(2)} DBU/hr</span>
+                                        <span>{baseRateCard.toFixed(2)} DBU/{isGPUCard ? 'replica-hr' : 'concurrency-hr'}</span>
                                         <span>×</span>
-                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{msConcurrencyCard} concurrency</span>
-                                        <span className="text-[var(--text-muted)]">({msScaleOutCard})</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">
+                                          {billingCapacityUnitsCard} {isGPUCard ? `GPU replica${billingCapacityUnitsCard === 1 ? '' : 's'}` : 'concurrency'}
+                                        </span>
+                                        {!isGPUCard && (
+                                          <span className="text-[var(--text-muted)]">({msScaleOutCard} scale-out)</span>
+                                        )}
                                         <span>×</span>
                                         <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(0)}h</span>
                                         <span>=</span>
