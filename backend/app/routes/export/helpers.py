@@ -43,6 +43,7 @@ def _get_workload_display_name(workload_type: str) -> str:
         'DBSQL': 'Databricks SQL',
         'VECTOR_SEARCH': 'AI Search',
         'MODEL_SERVING': 'Model Serving',
+        'AI_RUNTIME': 'AI Runtime',
         'FMAPI_DATABRICKS': 'Foundation Models (Databricks)',
         'FMAPI_PROPRIETARY': 'Foundation Models (Proprietary)',
         'LAKEBASE': 'Lakebase',
@@ -73,6 +74,26 @@ def _get_workload_config_details(item) -> str:
         details.extend(_vector_search_details(item))
     elif wt == 'MODEL_SERVING':
         details.extend(_model_serving_details(item))
+    elif wt == 'AI_RUNTIME':
+        from app.services.ai_runtime_pricing import (
+            get_ai_runtime_accelerator,
+        )
+
+        accelerator = _get_json_backed_value(
+            item,
+            'ai_runtime_accelerator_type',
+            'GPU_1xA10',
+        )
+        try:
+            profile = get_ai_runtime_accelerator(
+                'aws',
+                accelerator,
+            )
+            details.append(
+                f"Accelerator: {profile['display_name']}"
+            )
+        except ValueError:
+            details.append(f"Accelerator: {accelerator}")
     elif wt in ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY'):
         details.extend(_fmapi_details(item))
     elif wt == 'LAKEBASE':

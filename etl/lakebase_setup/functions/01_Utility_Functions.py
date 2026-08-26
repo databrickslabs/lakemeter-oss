@@ -259,6 +259,9 @@ BEGIN
         WHEN 'AGENT_EVALUATION' THEN
             v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
 
+        WHEN 'AI_RUNTIME' THEN
+            v_product_type := 'MODEL_TRAINING';
+
         WHEN 'SHUTTERSTOCK_IMAGEAI' THEN
             v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
 

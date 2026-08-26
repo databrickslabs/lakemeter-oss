@@ -11,6 +11,8 @@
  * - Cached in memory for app lifetime
  */
 
+import { getAIRuntimeAccelerators } from './aiRuntime'
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -448,7 +450,6 @@ const SKU_TO_WORKLOAD_MAP: Record<string, string> = {
   
   // Foundation Models - Databricks
   'FOUNDATION_MODEL_TRAINING': 'FMAPI_DATABRICKS',
-  'MODEL_TRAINING': 'FMAPI_DATABRICKS',
   'MOSAIC_AI_FOUNDATION_MODEL_SERVING': 'FMAPI_DATABRICKS',
   'DATABRICKS_FOUNDATION_MODEL_TRAINING': 'FMAPI_DATABRICKS',
   
@@ -470,7 +471,7 @@ const SKU_TO_WORKLOAD_MAP: Record<string, string> = {
 const ALL_WORKLOAD_TYPES = [
   'JOBS', 'ALL_PURPOSE', 'DLT', 'DBSQL',
   'VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE',
-  'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'AGENT_EVALUATION', 'SHUTTERSTOCK_IMAGEAI'
+  'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'AGENT_EVALUATION', 'AI_RUNTIME', 'SHUTTERSTOCK_IMAGEAI'
 ]
 
 /**
@@ -514,6 +515,13 @@ export function getAvailableWorkloadTypesForRegion(
     if (workloadType) {
       availableWorkloads.add(workloadType)
     }
+  }
+
+  if (
+    productTypes.MODEL_TRAINING !== undefined
+    && getAIRuntimeAccelerators(cloudLower).length > 0
+  ) {
+    availableWorkloads.add('AI_RUNTIME')
   }
   
   // Check serverless workloads which are in separate bundle files

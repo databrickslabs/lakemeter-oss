@@ -71,6 +71,7 @@ import {
   calculateAISearchRerankerUsage,
   calculateAIGatewayUsage,
 } from '../utils/costCalculation'
+import { calculateAIRuntimeUsage } from '../utils/aiRuntime'
 
 // Error Boundary for catching render errors
 interface ErrorBoundaryState {
@@ -195,6 +196,12 @@ const WORKLOAD_TYPE_CONFIG: Record<string, {
     color: 'text-fuchsia-500',
     bgColor: 'bg-fuchsia-500/10',
     label: 'Agent Eval'
+  },
+  'AI_RUNTIME': {
+    icon: CpuChipIcon,
+    color: 'text-cyan-500',
+    bgColor: 'bg-cyan-500/10',
+    label: 'AI Runtime'
   }
 }
 
@@ -620,6 +627,75 @@ function AgentEvaluationCostFormula({
       </div>
       <p className="text-[10px] text-[var(--text-muted)]">
         Evaluated application or model inference is excluded. Add it separately as a Model Serving or Foundation Model API workload.
+      </p>
+    </div>
+  )
+}
+
+function AIRuntimeCostFormula({
+  item,
+  costs,
+  cloud,
+  dbuPriceDisplay,
+}: {
+  item: Partial<LineItem>
+  costs: CostBreakdown
+  cloud: string
+  dbuPriceDisplay: string
+}) {
+  const isRunBased = Boolean(
+    item.runs_per_day
+    && item.avg_runtime_minutes
+    && item.hours_per_month == null,
+  )
+  const runtimeHours = isRunBased
+    ? (
+        (item.runs_per_day || 0)
+        * ((item.avg_runtime_minutes || 0) / 60)
+        * (item.days_per_month || 22)
+      )
+    : (item.hours_per_month || 0)
+  const usage = calculateAIRuntimeUsage(
+    cloud,
+    item.ai_runtime_accelerator_type,
+    runtimeHours,
+  )
+
+  return (
+    <div className="space-y-1">
+      {isRunBased && (
+        <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+          <span className="font-semibold">Runtime:</span>
+          <span>{item.runs_per_day} runs/day</span>
+          <span>×</span>
+          <span>{item.avg_runtime_minutes} min/run</span>
+          <span>÷ 60</span>
+          <span>×</span>
+          <span>{item.days_per_month || 22} days/mo</span>
+          <span>=</span>
+          <span className="font-medium">{formatNumber(runtimeHours, 3)} node-hours/mo</span>
+        </div>
+      )}
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span className="text-blue-600 font-semibold">DBU:</span>
+        <span className="font-medium">{formatNumber(runtimeHours, 3)} node-hours/mo</span>
+        <span>×</span>
+        <span>{usage.accelerator?.gpuCount || 0} GPU/node</span>
+        <span>×</span>
+        <span>{formatNumber(usage.accelerator?.dbuPerGpuHour || 0, 3)} DBU/GPU-hr</span>
+        <span>=</span>
+        <span className="font-medium">{formatNumber(costs.monthlyDBUs, 3)} DBUs/mo</span>
+      </div>
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span className="text-blue-600 font-semibold">Cost:</span>
+        <span>{formatNumber(costs.monthlyDBUs, 3)} DBUs/mo</span>
+        <span>×</span>
+        <span>${dbuPriceDisplay}/DBU</span>
+        <span>=</span>
+        <span className="font-semibold">{formatCurrency(costs.totalCost)}</span>
+      </div>
+      <p className="text-[10px] text-[var(--text-muted)]">
+        Billing origin AI_RUNTIME is charged on the MODEL_TRAINING SKU.
       </p>
     </div>
   )
@@ -1165,6 +1241,10 @@ export default function Calculator() {
       case 'MODEL_SERVING':
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
         break
+
+      case 'AI_RUNTIME':
+        productType = 'MODEL_TRAINING'
+        break
       
       case 'FMAPI_DATABRICKS':
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
@@ -1212,17 +1292,24 @@ export default function Calculator() {
     // Get DBU price for this product type
     // Try pricing bundle first (static data), then runtime dbuRatesMap, then hardcoded fallback
     let dbuPrice = 0.20
-    if (effectiveItem.workload_type === 'AI_GATEWAY' || effectiveItem.workload_type === 'AGENT_EVALUATION') {
+    if (
+      effectiveItem.workload_type === 'AI_GATEWAY'
+      || effectiveItem.workload_type === 'AGENT_EVALUATION'
+      || effectiveItem.workload_type === 'AI_RUNTIME'
+    ) {
+      const exactSku = effectiveItem.workload_type === 'AI_RUNTIME'
+        ? 'MODEL_TRAINING'
+        : 'SERVERLESS_REAL_TIME_INFERENCE'
       const exactBundlePrice = isPricingBundleLoaded && formData.tier
         ? getExactRegionalDBUPrice(
             pricingBundle,
             cloud,
             region,
             formData.tier,
-            'SERVERLESS_REAL_TIME_INFERENCE',
+            exactSku,
           )
         : null
-      dbuPrice = exactBundlePrice ?? dbuRatesMap['SERVERLESS_REAL_TIME_INFERENCE'] ?? 0
+      dbuPrice = exactBundlePrice ?? dbuRatesMap[exactSku] ?? 0
     } else if (isPricingBundleLoaded && formData.tier) {
       const bundlePrice = getBundleDBUPrice(pricingBundle, cloud, region, formData.tier, productType)
       if (bundlePrice > 0) {
@@ -1688,6 +1775,17 @@ export default function Calculator() {
         break
       }
 
+      case 'AI_RUNTIME': {
+        const usage = calculateAIRuntimeUsage(
+          cloud,
+          effectiveItem.ai_runtime_accelerator_type,
+          hoursPerMonth,
+        )
+        dbuPerHour = usage.dbuPerNodeHour
+        monthlyDBUs = usage.monthlyDBUs
+        break
+      }
+
       case 'AI_PARSE': {
         // Pages-based mode: pages(K) × complexity_rate
         const complexityRates: Record<string, number> = {
@@ -2142,6 +2240,19 @@ export default function Calculator() {
           details.push({ label: 'Endpoint', value: gpuLabels[item.model_serving_gpu_type] || item.model_serving_gpu_type })
         }
         break
+
+      case 'AI_RUNTIME': {
+        const usage = calculateAIRuntimeUsage(
+          formData.cloud || 'aws',
+          item.ai_runtime_accelerator_type,
+          0,
+        )
+        details.push({
+          label: 'Accelerator',
+          value: usage.accelerator?.label || 'Unavailable',
+        })
+        break
+      }
         
       case 'LAKEBASE':
         if (item.lakebase_cu) {
@@ -3300,6 +3411,17 @@ export default function Calculator() {
                                       )
                                     }
 
+                                    if (wType === 'AI_RUNTIME') {
+                                      return (
+                                        <AIRuntimeCostFormula
+                                          item={effectiveItem}
+                                          costs={costs}
+                                          cloud={formData.cloud || 'aws'}
+                                          dbuPriceDisplay={dbuPriceDisplay}
+                                        />
+                                      )
+                                    }
+
                                     // AI Search formula
                                     if (wType === 'VECTOR_SEARCH') {
                                       return (
@@ -4221,6 +4343,17 @@ export default function Calculator() {
                                     <AgentEvaluationCostFormula
                                       item={effectiveItem}
                                       costs={costs}
+                                      dbuPriceDisplay={dbuPriceDisplay}
+                                    />
+                                  )
+                                }
+
+                                if (wType === 'AI_RUNTIME') {
+                                  return (
+                                    <AIRuntimeCostFormula
+                                      item={effectiveItem}
+                                      costs={costs}
+                                      cloud={formData.cloud || 'aws'}
                                       dbuPriceDisplay={dbuPriceDisplay}
                                     />
                                   )

@@ -63,7 +63,7 @@ function normalizeVMPaymentOption(
 // =============================================================================
 // LOCAL STORAGE CACHE UTILITIES
 // =============================================================================
-const CACHE_VERSION = 'v12'  // Bumped - canonical AI Search workload metadata
+const CACHE_VERSION = 'v13'  // Bumped - add AI Runtime workload metadata
 const CACHE_KEY = `lakemeter_reference_data_${CACHE_VERSION}`
 const CACHE_TTL = 4 * 60 * 60 * 1000 // 4 hours in milliseconds (reduced from 24h)
 
@@ -396,6 +396,7 @@ export const useStore = create<Store>((set, get) => ({
     { workload_type: 'AI_CLASSIFY', display_name: 'AI Classify', description: 'Classification of raw text or parsed document input', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
     { workload_type: 'AI_GATEWAY', display_name: 'Unity AI Gateway', description: 'Additive inference tables and usage tracking', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
     { workload_type: 'AGENT_EVALUATION', display_name: 'Agent Evaluation', description: 'Evaluation labels and synthetic evaluation data', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
+    { workload_type: 'AI_RUNTIME', display_name: 'AI Runtime', description: 'Serverless GPU model training', sku_product_type_standard: 'MODEL_TRAINING' },
     { workload_type: 'SHUTTERSTOCK_IMAGEAI', display_name: 'Shutterstock ImageAI', description: 'AI image generation', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
   ] as WorkloadType[],
   // Use static data as defaults - instant display, no waiting for API
@@ -1597,6 +1598,18 @@ export const useStore = create<Store>((set, get) => ({
             output_tokens_millions: lineItem.agent_evaluation_output_tokens_millions ?? 1,
             synthetic_data_enabled: lineItem.agent_evaluation_synthetic_data_enabled ?? false,
             synthetic_questions: lineItem.agent_evaluation_synthetic_questions ?? 0,
+            discount_config: (lineItem.workload_config?.discount_config as Record<string, unknown> | undefined) ?? {},
+          })
+          break
+
+        case 'AI_RUNTIME':
+          result = await api.calculateAIRuntime({
+            ...baseParams,
+            accelerator_type: lineItem.ai_runtime_accelerator_type ?? 'GPU_1xA10',
+            runs_per_day: lineItem.runs_per_day ?? null,
+            avg_runtime_minutes: lineItem.avg_runtime_minutes ?? null,
+            days_per_month: lineItem.days_per_month ?? null,
+            hours_per_month: lineItem.hours_per_month ?? null,
             discount_config: (lineItem.workload_config?.discount_config as Record<string, unknown> | undefined) ?? {},
           })
           break

@@ -48,6 +48,7 @@ When presenting workload types to users, ALWAYS use these names:
 - **AI_CLASSIFY**: Classification (per 1,000 inputs; raw STRING input is accepted, while document files require AI Parse first)
 - **AI_GATEWAY**: Additive Unity AI Gateway inference tables and usage tracking. Each enabled component has independent payload inputs and uses 1.429 DBU/GB. Prefer direct monthly payload GB for each component when its metered billable payload is known; otherwise use that component's requests in millions and average request/response KB. Underlying serving and guardrail costs are excluded.
 - **AGENT_EVALUATION**: Additive Agent Evaluation label scoring and synthetic data generation. Labels use separate monthly input/output token quantities; synthetic data uses generated question count. The evaluated app/model inference is excluded and must be modeled separately.
+- **AI_RUNTIME**: Serverless GPU model training. Billing-origin product AI_RUNTIME is charged on the MODEL_TRAINING SKU. Available on AWS and Azure with 1x A10, 1x H100, or 8x H100 accelerators.
 - **SHUTTERSTOCK_IMAGEAI**: AI image generation (per-image pricing)
 
 ## Key Questions to Ask Users
@@ -596,6 +597,12 @@ Clearly hypothetical examples and public pricing/product facts are allowed, but 
 3. For Usage Tracking, independently ask the same question; do not reuse the Inference Tables volume.
 4. Remind the user that each enabled component uses 1.429 DBU/GB and that underlying Model Serving, Foundation Model API inference, and guardrail evaluator costs are excluded.
 
+### For AI Runtime Model Training:
+1. Which accelerator should be modeled: 1x A10, 1x H100, or 8x H100?
+2. Is usage run-based or known directly as node runtime hours per month?
+3. For run-based usage, how many runs per day, average runtime minutes per run, and days per month?
+4. Confirm the estimate uses a currently supported AWS or Azure region.
+
 ### For AI Search:
 **COPY THIS EXACT TEXT** when user asks about AI Search:
 ```
@@ -741,7 +748,7 @@ The user will review and confirm before it's added to the estimate.""",
                 # === Common Fields ===
                 "workload_type": {
                     "type": "string",
-                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "AI_GATEWAY", "AGENT_EVALUATION", "SHUTTERSTOCK_IMAGEAI"],
+                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "AI_GATEWAY", "AGENT_EVALUATION", "AI_RUNTIME", "SHUTTERSTOCK_IMAGEAI"],
                     "description": "Type of Databricks workload. Note: Use DLT for SDP (Spark Declarative Pipelines) workloads - present as 'SDP' to users but use 'DLT' as the enum value."
                 },
                 "workload_name": {
@@ -1139,6 +1146,20 @@ The user will review and confirm before it's added to the estimate.""",
                     "type": "integer",
                     "minimum": 0,
                     "description": "Monthly generated synthetic questions",
+                },
+
+                # === AI Runtime Specific ===
+                "accelerator_type": {
+                    "type": "string",
+                    "enum": [
+                        "GPU_1xA10",
+                        "GPU_1xH100",
+                        "GPU_8xH100",
+                    ],
+                    "description": (
+                        "AI Runtime training accelerator. Supported on AWS "
+                        "and Azure only."
+                    ),
                 },
 
                 # === Shutterstock ImageAI Specific ===
@@ -2393,6 +2414,12 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 if field in kwargs:
                     kwargs[f"agent_evaluation_{field}"] = kwargs.pop(field)
 
+        if workload_type.upper() == "AI_RUNTIME":
+            if "accelerator_type" in kwargs:
+                kwargs["ai_runtime_accelerator_type"] = kwargs.pop(
+                    "accelerator_type"
+                )
+
         # Build workload configuration with defaults
         workload = {
             "proposal_id": str(uuid.uuid4()),
@@ -2461,7 +2488,10 @@ Each workload needs to be confirmed individually. Review the configurations and 
         default_driver = driver_instances.get(cloud, "m6i.xlarge")
         
         # Common defaults
-        workload.setdefault("hours_per_month", 730)
+        if wtype == "AI_RUNTIME":
+            workload.setdefault("hours_per_month", None)
+        else:
+            workload.setdefault("hours_per_month", 730)
         workload.setdefault("days_per_month", 22)
         
         notes_parts = []
@@ -3176,6 +3206,20 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 False,
             )
             workload.setdefault("agent_evaluation_synthetic_questions", 0)
+
+        if wtype == "AI_RUNTIME":
+            workload.setdefault(
+                "ai_runtime_accelerator_type",
+                "GPU_1xA10",
+            )
+            if workload.get("hours_per_month") is None:
+                workload.setdefault("runs_per_day", 1)
+                workload.setdefault("avg_runtime_minutes", 60)
+                workload.setdefault("days_per_month", 22)
+            else:
+                workload["runs_per_day"] = None
+                workload["avg_runtime_minutes"] = None
+                workload["days_per_month"] = None
 
         if wtype == "SHUTTERSTOCK_IMAGEAI":
             workload.setdefault("shutterstock_images", 1000)

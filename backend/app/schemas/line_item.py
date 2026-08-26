@@ -45,11 +45,16 @@ AI_SEARCH_CONFIG_FIELDS = (
     "ai_search_reranker_requests_thousands",
 )
 
+AI_RUNTIME_CONFIG_FIELDS = (
+    "ai_runtime_accelerator_type",
+)
+
 JSON_BACKED_CONFIG_FIELDS = (
     *AI_FUNCTION_CONFIG_FIELDS,
     *AI_GATEWAY_CONFIG_FIELDS,
     *AGENT_EVALUATION_CONFIG_FIELDS,
     *AI_SEARCH_CONFIG_FIELDS,
+    *AI_RUNTIME_CONFIG_FIELDS,
 )
 
 
@@ -117,6 +122,8 @@ def map_ai_parse_api_fields(
             fields_to_remove.extend(AGENT_EVALUATION_CONFIG_FIELDS)
         if workload_type != "VECTOR_SEARCH":
             fields_to_remove.extend(AI_SEARCH_CONFIG_FIELDS)
+        if workload_type != "AI_RUNTIME":
+            fields_to_remove.extend(AI_RUNTIME_CONFIG_FIELDS)
         original_config = dict(config)
         for field in fields_to_remove:
             config.pop(field, None)
@@ -366,6 +373,28 @@ def validate_ai_search_workload_config(
         )
 
 
+def validate_ai_runtime_workload_config(
+    workload_type: Optional[str],
+    workload_config: Optional[Dict[str, Any]],
+) -> None:
+    """Validate the JSON-backed AI Runtime accelerator."""
+    if (workload_type or "").upper() != "AI_RUNTIME":
+        return
+    accelerator = (workload_config or {}).get(
+        "ai_runtime_accelerator_type"
+    )
+    allowed = {
+        "GPU_1xA10",
+        "GPU_1xH100",
+        "GPU_8xH100",
+    }
+    if accelerator not in allowed:
+        raise ValueError(
+            "ai_runtime_accelerator_type must be one of: "
+            f"{', '.join(sorted(allowed))}"
+        )
+
+
 class LineItemBase(BaseModel):
     """Base line item schema."""
     workload_name: str
@@ -407,6 +436,11 @@ class LineItemBase(BaseModel):
     model_serving_concurrency: Optional[int] = None
     model_serving_scale_out: Optional[str] = None
     model_servings_number_endpoints: Optional[int] = None
+
+    # AI Runtime Configuration (stored in workload_config)
+    ai_runtime_accelerator_type: Optional[
+        Literal["GPU_1xA10", "GPU_1xH100", "GPU_8xH100"]
+    ] = None
 
     # Foundation Model API Configuration (Proprietary)
     fmapi_provider: Optional[str] = None
@@ -605,6 +639,11 @@ class LineItemUpdate(BaseModel):
     model_serving_concurrency: Optional[int] = None
     model_serving_scale_out: Optional[str] = None
     model_servings_number_endpoints: Optional[int] = None
+
+    # AI Runtime Configuration (stored in workload_config)
+    ai_runtime_accelerator_type: Optional[
+        Literal["GPU_1xA10", "GPU_1xH100", "GPU_8xH100"]
+    ] = None
 
     # Foundation Model API Configuration (Proprietary)
     fmapi_provider: Optional[str] = None

@@ -54,6 +54,28 @@ def _calculate_dbu_per_hour(item, cloud: str = 'aws', tier: str = 'PREMIUM') -> 
         return _calc_vector_search_dbu(item, cloud, warnings)
     elif wt == 'MODEL_SERVING':
         return _calc_model_serving_dbu(item, cloud, warnings)
+    elif wt == 'AI_RUNTIME':
+        from app.services.ai_runtime_pricing import (
+            get_ai_runtime_accelerator,
+        )
+
+        config = getattr(item, 'workload_config', None) or {}
+        accelerator_type = config.get(
+            'ai_runtime_accelerator_type',
+            'GPU_1xA10',
+        )
+        try:
+            profile = get_ai_runtime_accelerator(
+                cloud,
+                accelerator_type,
+            )
+        except ValueError as exc:
+            warnings.append(str(exc))
+            return 0, warnings
+        return (
+            profile['gpu_count'] * profile['dbu_per_gpu_hour'],
+            warnings,
+        )
     elif wt in ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY'):
         return 0, warnings  # FMAPI uses token-based, not hour-based
     elif wt == 'LAKEBASE':
@@ -215,7 +237,7 @@ def _is_serverless_workload(item) -> bool:
     """Check if workload is serverless (no VM costs)."""
     wt = (item.workload_type or '').upper()
     if wt in ('VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY',
-              'LAKEBASE', 'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY',
+              'AI_RUNTIME', 'LAKEBASE', 'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY',
               'AI_GATEWAY', 'AGENT_EVALUATION',
               'SHUTTERSTOCK_IMAGEAI', 'LAKEFLOW_CONNECT'):
         return True

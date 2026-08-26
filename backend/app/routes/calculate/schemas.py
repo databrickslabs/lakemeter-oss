@@ -403,6 +403,35 @@ class AgentEvaluationCalculationRequest(BaseModel):
         return self
 
 
+class AIRuntimeCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    accelerator_type: Literal[
+        "GPU_1xA10",
+        "GPU_1xH100",
+        "GPU_8xH100",
+    ] = Field(default="GPU_1xA10")
+    runs_per_day: Optional[float] = Field(default=None, ge=0)
+    avg_runtime_minutes: Optional[float] = Field(default=None, ge=0)
+    days_per_month: Optional[int] = Field(default=None, ge=1, le=31)
+    hours_per_month: Optional[float] = Field(default=None, ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def validate_usage_configuration(self):
+        if self.hours_per_month is not None:
+            return self
+        if self.runs_per_day is None or self.avg_runtime_minutes is None:
+            raise ValueError(
+                "Provide hours_per_month or both runs_per_day and "
+                "avg_runtime_minutes"
+            )
+        return self
+
+
 class ShutterstockImageAICalculationRequest(BaseModel):
     cloud: str = Field(...)
     region: str = Field(...)

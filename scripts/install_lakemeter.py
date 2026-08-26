@@ -788,6 +788,9 @@ def _create_tables_inline(cur):
         ("AGENT_EVALUATION", "Agent Evaluation", "Additive label evaluation and synthetic data generation",
          False, False, False, False, False, False, False, False, False, False, False, False, False, False,
          "SERVERLESS_REAL_TIME_INFERENCE", None, None, 16),
+        ("AI_RUNTIME", "AI Runtime", "Serverless GPU model training",
+         False, False, False, False, False, False, False, False, False, False, False, True, True, False,
+         "MODEL_TRAINING", None, None, 17),
     ]
     for wt in workload_seeds:
         cur.execute(

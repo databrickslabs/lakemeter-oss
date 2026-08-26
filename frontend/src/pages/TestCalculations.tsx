@@ -187,6 +187,7 @@ interface TestConfig {
   includeLakebase: boolean
   includeAIGateway: boolean
   includeAgentEvaluation: boolean
+  includeAIRuntime: boolean
   // Manual environment override (tests only this environment when enabled)
   manualEnvironment: ManualTestEnvironment
 }
@@ -606,6 +607,30 @@ function generateTestsForEnvironment(
       })
     }
   }
+
+  if (
+    config.includeAIRuntime
+    && env.tier.toUpperCase() !== 'STANDARD'
+    && isAvailable('AI_RUNTIME')
+  ) {
+    for (const accelerator of [
+      'GPU_1xA10',
+      'GPU_1xH100',
+      'GPU_8xH100',
+    ] as const) {
+      testCases.push({
+        id: `${++idCounter}`,
+        name: `AI Runtime - ${accelerator}`,
+        category: 'AI Runtime',
+        workloadType: 'AI_RUNTIME',
+        environment: env,
+        config: {
+          ai_runtime_accelerator_type: accelerator,
+          hours_per_month: 10,
+        },
+      })
+    }
+  }
   
   return testCases
 }
@@ -698,6 +723,8 @@ function getAPIEndpoint(workloadType: string, config: Partial<LineItem>): string
       return '/api/v1/calculate/ai-gateway'
     case 'AGENT_EVALUATION':
       return '/api/v1/calculate/agent-evaluation'
+    case 'AI_RUNTIME':
+      return '/api/v1/calculate/ai-runtime'
     default:
       return '/api/v1/calculate/jobs-classic'
   }
@@ -894,6 +921,14 @@ function buildAPIRequest(testCase: TestCase): Record<string, unknown> {
         synthetic_questions: config.agent_evaluation_synthetic_questions ?? 0,
         discount_config: {},
       }
+
+    case 'AI_RUNTIME':
+      return {
+        ...base,
+        accelerator_type: config.ai_runtime_accelerator_type ?? 'GPU_1xA10',
+        ...getTimeParams(),
+        discount_config: {},
+      }
       
     default:
       return base
@@ -997,6 +1032,7 @@ export default function TestCalculations() {
     includeLakebase: true,
     includeAIGateway: true,
     includeAgentEvaluation: true,
+    includeAIRuntime: true,
     manualEnvironment: {
       enabled: false,
       cloud: 'aws',
@@ -1945,7 +1981,8 @@ export default function TestCalculations() {
                   { key: 'includeFMAPIProp', label: 'FMAPI Proprietary' },
                   { key: 'includeLakebase', label: 'Lakebase' },
                   { key: 'includeAIGateway', label: 'Unity AI Gateway' },
-                  { key: 'includeAgentEvaluation', label: 'Agent Evaluation' }
+                  { key: 'includeAgentEvaluation', label: 'Agent Evaluation' },
+                  { key: 'includeAIRuntime', label: 'AI Runtime' }
                 ].map(({ key, label }) => (
                   <label key={key} className="flex items-center gap-2 text-sm">
                     <input
