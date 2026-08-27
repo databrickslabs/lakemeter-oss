@@ -31,6 +31,11 @@ For current Databricks product capabilities and availability, refer to the [offi
 | Transactional database capacity | [Lakebase](./lakebase) | Compute range, usage, nodes, storage protection |
 | Databricks-hosted applications | [Databricks Apps](./databricks-apps) | App size, app count, active hours |
 | Document parsing | [AI Parse](./ai-parse) | Estimation mode, document complexity, page volume |
+| Structured field extraction | [AI Extract](./ai-extract) | Document type, monthly input volume |
+| Document classification | [AI Classify](./ai-classify) | Document type, monthly document volume |
+| Gateway inference tables and usage tracking | [Unity AI Gateway](./ai-gateway) | Components enabled, input method, request or payload volume |
+| Agent evaluation service usage | [Agent Evaluation](./agent-evaluation) | Features enabled, evaluation token volume, synthetic questions |
+| Serverless GPU model training | [AI Runtime](./ai-runtime) | Accelerator, monthly runtime |
 | Image generation | [Shutterstock ImageAI](./shutterstock-imageai) | Monthly image volume |
 
 ## Shared sizing principles
