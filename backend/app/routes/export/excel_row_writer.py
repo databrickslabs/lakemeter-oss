@@ -48,14 +48,17 @@ def write_data_row(sheet, row, row_data, is_fmapi_token, is_serverless, fmt,
     # Col 16-21: DBU calculations with formulas
     _write_dbu_costs(sheet, row, r, row_data, is_fmapi_token, is_storage_row, fmt)
 
-    # Col 22-26: VM costs
+    # Col 22-25: DSU calculations
+    _write_dsu_costs(sheet, row, r, row_data, fmt)
+
+    # Col 26-30: VM costs
     _write_vm_costs(sheet, row, r, row_data, is_serverless, is_storage_row, fmt)
 
-    # Col 27-28: Total costs
+    # Col 31-32: Total costs
     _write_total_costs(sheet, row, r, row_data, is_serverless, is_storage_row, fmt)
 
-    # Col 29: Notes
-    sheet.write(row, 29, row_data.get('notes', ''), fmt['cell'])
+    # Col 33: Notes
+    sheet.write(row, 33, row_data.get('notes', ''), fmt['cell'])
 
 
 def _write_hours(sheet, row, row_data, is_fmapi_token, is_storage_row, fmt):
@@ -106,20 +109,21 @@ def _write_dbu_costs(sheet, row, r, row_data, is_fmapi_token, is_storage_row, fm
         sheet.write_formula(row, 16, formula, fmt['number'], total_dbus_month)
 
     # Col 17: DBU Rate (List)
-    sheet.write(row, 17, dbu_rate, fmt['currency'])
+    sheet.write(row, 17, 0 if is_storage_row else dbu_rate, fmt['currency'])
     # Col 18: Discount %
     sheet.write(row, 18, discount_pct, fmt['pct'])
 
     # Col 19: DBU Rate (Disc.) — FORMULA: =R*(1-S)
-    discounted_rate = dbu_rate * (1 - discount_pct)
+    discounted_rate = (
+        0 if is_storage_row else dbu_rate * (1 - discount_pct)
+    )
     formula = f'={_col(17)}{r}*(1-{_col(18)}{r})'
     sheet.write_formula(row, 19, formula, fmt['currency'], discounted_rate)
 
     # Col 20: DBU Cost (List)
     dbu_cost_list = total_dbus_month * dbu_rate
     if is_storage_row:
-        storage_cost = row_data.get('storage_cost_monthly', 0)
-        sheet.write(row, 20, storage_cost, fmt['dbu_currency'])
+        sheet.write(row, 20, 0, fmt['dbu_currency'])
     else:
         formula = f'={_col(16)}{r}*{_col(17)}{r}'
         sheet.write_formula(row, 20, formula, fmt['dbu_currency'], dbu_cost_list)
@@ -127,13 +131,36 @@ def _write_dbu_costs(sheet, row, r, row_data, is_fmapi_token, is_storage_row, fm
     # Col 21: DBU Cost (Disc.)
     dbu_cost_disc = total_dbus_month * discounted_rate
     if is_storage_row:
-        storage_cost = row_data.get('storage_cost_monthly', 0)
-        formula = f'={_col(20)}{r}*(1-{_col(18)}{r})'
-        sheet.write_formula(row, 21, formula, fmt['discount_currency'],
-                            storage_cost * (1 - discount_pct))
+        sheet.write(row, 21, 0, fmt['discount_currency'])
     else:
         formula = f'={_col(16)}{r}*{_col(19)}{r}'
         sheet.write_formula(row, 21, formula, fmt['discount_currency'], dbu_cost_disc)
+
+
+def _write_dsu_costs(sheet, row, r, row_data, fmt):
+    """Write monthly DSUs and their list/discounted cost formulas."""
+    monthly_dsus = row_data.get('monthly_dsus', 0)
+    dsu_rate = row_data.get('dsu_rate', 0)
+    discount_pct = row_data.get('discount_pct', 0)
+    dsu_cost_list = monthly_dsus * dsu_rate
+    dsu_cost_disc = dsu_cost_list * (1 - discount_pct)
+
+    sheet.write(row, 22, monthly_dsus, fmt['decimal3'])
+    sheet.write(row, 23, dsu_rate, fmt['currency'])
+    sheet.write_formula(
+        row,
+        24,
+        f'={_col(22)}{r}*{_col(23)}{r}',
+        fmt['dsu_currency'],
+        dsu_cost_list,
+    )
+    sheet.write_formula(
+        row,
+        25,
+        f'={_col(24)}{r}*(1-{_col(18)}{r})',
+        fmt['discount_currency'],
+        dsu_cost_disc,
+    )
 
 
 def _write_vm_costs(sheet, row, r, row_data, is_serverless, is_storage_row, fmt):
@@ -143,19 +170,19 @@ def _write_vm_costs(sheet, row, r, row_data, is_serverless, is_storage_row, fmt)
     nw = row_data.get('num_workers', 0)
 
     if is_serverless or is_storage_row:
-        for c in range(22, 27):
+        for c in range(26, 31):
             sheet.write(row, c, 0, fmt['vm_currency'])
     else:
-        sheet.write(row, 22, driver_vm_hr, fmt['currency'])
-        sheet.write(row, 23, worker_vm_hr, fmt['currency'])
+        sheet.write(row, 26, driver_vm_hr, fmt['currency'])
+        sheet.write(row, 27, worker_vm_hr, fmt['currency'])
         driver_vm_total = driver_vm_hr * hours
-        formula = f'={_col(22)}{r}*{_col(11)}{r}'
-        sheet.write_formula(row, 24, formula, fmt['vm_currency'], driver_vm_total)
+        formula = f'={_col(26)}{r}*{_col(11)}{r}'
+        sheet.write_formula(row, 28, formula, fmt['vm_currency'], driver_vm_total)
         worker_vm_total = worker_vm_hr * hours * nw
-        formula = f'={_col(23)}{r}*{_col(11)}{r}*{_col(8)}{r}'
-        sheet.write_formula(row, 25, formula, fmt['vm_currency'], worker_vm_total)
-        formula = f'={_col(24)}{r}+{_col(25)}{r}'
-        sheet.write_formula(row, 26, formula, fmt['vm_currency'],
+        formula = f'={_col(27)}{r}*{_col(11)}{r}*{_col(8)}{r}'
+        sheet.write_formula(row, 29, formula, fmt['vm_currency'], worker_vm_total)
+        formula = f'={_col(28)}{r}+{_col(29)}{r}'
+        sheet.write_formula(row, 30, formula, fmt['vm_currency'],
                             driver_vm_total + worker_vm_total)
 
 
@@ -167,30 +194,33 @@ def _write_total_costs(sheet, row, r, row_data, is_serverless, is_storage_row, f
     dbu_rate = row_data['dbu_rate']
     discount_pct = row_data['discount_pct']
     total_dbus_month = row_data.get('total_dbus_month', 0)
+    monthly_dsus = row_data.get('monthly_dsus', 0)
+    dsu_rate = row_data.get('dsu_rate', 0)
     discounted_rate = dbu_rate * (1 - discount_pct)
     dbu_cost_list = total_dbus_month * dbu_rate
     dbu_cost_disc = total_dbus_month * discounted_rate
+    dsu_cost_list = monthly_dsus * dsu_rate
+    dsu_cost_disc = dsu_cost_list * (1 - discount_pct)
     vm_total = 0
     if not is_serverless and not is_storage_row:
         vm_total = driver_vm_hr * hours + worker_vm_hr * hours * nw
 
-    # Col 27: Total Cost (List)
-    if is_storage_row:
-        storage_cost = row_data.get('storage_cost_monthly', 0)
-        formula = f'={_col(20)}{r}+{_col(26)}{r}'
-        sheet.write_formula(row, 27, formula, fmt['total_currency'], storage_cost)
-    else:
-        formula = f'={_col(20)}{r}+{_col(26)}{r}'
-        sheet.write_formula(row, 27, formula, fmt['total_currency'],
-                            dbu_cost_list + vm_total)
+    # Col 31: Total Cost (List)
+    formula = f'={_col(20)}{r}+{_col(24)}{r}+{_col(30)}{r}'
+    sheet.write_formula(
+        row,
+        31,
+        formula,
+        fmt['total_currency'],
+        dbu_cost_list + dsu_cost_list + vm_total,
+    )
 
-    # Col 28: Total Cost (Disc.)
-    if is_storage_row:
-        storage_cost = row_data.get('storage_cost_monthly', 0)
-        formula = f'={_col(21)}{r}+{_col(26)}{r}'
-        sheet.write_formula(row, 28, formula, fmt['total_currency'],
-                            storage_cost * (1 - discount_pct))
-    else:
-        formula = f'={_col(21)}{r}+{_col(26)}{r}'
-        sheet.write_formula(row, 28, formula, fmt['total_currency'],
-                            dbu_cost_disc + vm_total)
+    # Col 32: Total Cost (Disc.)
+    formula = f'={_col(21)}{r}+{_col(25)}{r}+{_col(30)}{r}'
+    sheet.write_formula(
+        row,
+        32,
+        formula,
+        fmt['total_currency'],
+        dbu_cost_disc + dsu_cost_disc + vm_total,
+    )

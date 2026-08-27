@@ -29,7 +29,6 @@ def _get_be_results(item):
 
 def _get_be_storage(item):
     """Get backend storage sub-row values for AI Search."""
-    from app.routes.export.excel_item_helpers import write_storage_subrow
     storage_gb = float(item.vector_search_storage_gb or 0)
     capacity_m = float(item.vector_capacity_millions or 1)
     mode = (item.vector_search_mode or 'standard').lower()
@@ -37,10 +36,12 @@ def _get_be_storage(item):
     units = math.ceil(capacity_m * 1_000_000 / divisor) if divisor else 0
     free_gb = 30 if units > 0 else 0
     billable_gb = max(0, storage_gb - free_gb)
-    price_per_gb = 0.023
-    storage_cost = billable_gb * price_per_gb
+    dsu_per_gb = 2 if mode == "storage_optimized" else 10
+    storage_dsu = billable_gb * dsu_per_gb
+    storage_cost = storage_dsu * 0.023
     return dict(storage_gb=storage_gb, units=units, free_gb=free_gb,
-                billable_gb=billable_gb, storage_cost=storage_cost)
+                billable_gb=billable_gb, storage_dsu=storage_dsu,
+                storage_cost=storage_cost)
 
 
 class TestVectorSearchStandard:
@@ -272,7 +273,7 @@ class TestVectorSearchStorage:
         assert be_storage['units'] == 3
         assert be_storage['free_gb'] == 30
         assert be_storage['billable_gb'] == 70
-        expected_cost = 70 * 0.023  # $1.61
+        expected_cost = 70 * 10 * 0.023
         assert be_storage['storage_cost'] == pytest.approx(fe_cost, abs=TOL)
         assert be_storage['storage_cost'] == pytest.approx(expected_cost, abs=TOL)
 
@@ -296,11 +297,32 @@ class TestVectorSearchStorage:
             hours_per_month=730,
         )
         be_storage = _get_be_storage(item)
-        fe_cost = fe_vector_search_storage_cost(storage_gb=30, units_used=2)
+        fe_cost = fe_vector_search_storage_cost(
+            storage_gb=30,
+            units_used=2,
+            mode="storage_optimized",
+        )
         assert be_storage['units'] == 2
         assert be_storage['free_gb'] == 30
         assert be_storage['billable_gb'] == 0
         assert be_storage['storage_cost'] == pytest.approx(fe_cost, abs=TOL)
+
+    def test_storage_optimized_uses_two_dsu_per_gb(self, pricing):
+        item = make_item(
+            workload_type="VECTOR_SEARCH",
+            vector_search_mode="storage_optimized",
+            vector_capacity_millions=64,
+            vector_search_storage_gb=100,
+            hours_per_month=730,
+        )
+        be_storage = _get_be_storage(item)
+        fe_cost = fe_vector_search_storage_cost(
+            storage_gb=100,
+            units_used=1,
+            mode="storage_optimized",
+        )
+        assert be_storage["storage_dsu"] == 140
+        assert be_storage["storage_cost"] == pytest.approx(fe_cost)
 
     def test_storage_large_billable(self, pricing):
         """1M standard → 1 unit → 30 GB free → 500 GB → 470 GB billable."""
@@ -314,7 +336,7 @@ class TestVectorSearchStorage:
         assert be_storage['units'] == 1
         assert be_storage['free_gb'] == 30
         assert be_storage['billable_gb'] == 470
-        expected_cost = 470 * 0.023  # $10.81
+        expected_cost = 470 * 10 * 0.023
         assert be_storage['storage_cost'] == pytest.approx(fe_cost, abs=TOL)
         assert be_storage['storage_cost'] == pytest.approx(expected_cost, abs=TOL)
 

@@ -1152,6 +1152,20 @@ export const calculateAIRuntime = async (request: AIRuntimeRequest): Promise<Cos
   return data
 }
 
+// Databricks Default Storage
+export interface GeneralStorageRequest extends BaseCalculationRequest {
+  quantity: number
+  unit: 'gb' | 'tb'
+  tier_1_operations_thousands: number
+  tier_2_operations_thousands: number
+  discount_config?: Record<string, unknown>
+}
+
+export const calculateGeneralStorage = async (request: GeneralStorageRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/general-storage', request)
+  return data
+}
+
 // Shutterstock ImageAI
 export interface ShutterstockImageAIRequest extends BaseCalculationRequest {
   images_per_month: number

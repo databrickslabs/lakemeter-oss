@@ -360,6 +360,10 @@ workload_seeds = [
     ("AI_RUNTIME", "AI Runtime", "Serverless GPU model training",
      False, False, False, False, False, False, False, False, False, False, False, True, True, False,
      "MODEL_TRAINING", None, None, 17),
+    ("GENERAL_STORAGE", "Databricks Default Storage",
+     "Managed storage for Unity Catalog data and workspace assets",
+     False, False, False, False, False, False, False, False, False, False, False, False, False, False,
+     "DATABRICKS_STORAGE", None, None, 18),
 ]
 
 for wt in workload_seeds:

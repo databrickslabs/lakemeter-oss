@@ -123,6 +123,8 @@ def _get_sku_type(item, cloud: str = 'aws') -> str:
         return 'SERVERLESS_REAL_TIME_INFERENCE'
     elif wt == 'AI_RUNTIME':
         return 'MODEL_TRAINING'
+    elif wt == 'GENERAL_STORAGE':
+        return 'DATABRICKS_STORAGE'
     elif wt == 'FMAPI_DATABRICKS':
         return _get_fmapi_sku(item, cloud)
     elif wt == 'FMAPI_PROPRIETARY':

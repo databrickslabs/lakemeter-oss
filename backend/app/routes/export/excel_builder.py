@@ -23,6 +23,7 @@ from .excel_item_helpers import (
     get_ai_search_reranker_usage,
     get_agent_evaluation_usage,
     get_ai_gateway_usage,
+    write_general_storage_row,
     write_storage_subrow,
 )
 from app.routes.vm_pricing import DEFAULT_VM_PRICING
@@ -318,6 +319,7 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         'AI_GATEWAY',
         'AGENT_EVALUATION',
         'AI_RUNTIME',
+        'GENERAL_STORAGE',
     )
     dbu_rate, dbu_rate_found = _get_dbu_price(
         cloud,
@@ -369,6 +371,16 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
             item,
             dbu_rate,
             auto_notes,
+        )
+    if wt == 'GENERAL_STORAGE':
+        return write_general_storage_row(
+            sheet,
+            fmt,
+            row,
+            item,
+            idx,
+            cloud,
+            dbu_rate,
         )
     if not dbu_rate_found:
         auto_notes.append(f"DBU rate not found for {sku}, using fallback ${dbu_rate:.2f}")

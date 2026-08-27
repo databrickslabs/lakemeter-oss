@@ -1,7 +1,7 @@
 """Excel column layout constants and header definitions."""
 
-# 30-column layout constants
-NUM_COLS = 30
+# 34-column layout constants
+NUM_COLS = 34
 COLUMN_WIDTHS = [
     4,   # 0: #
     22,  # 1: Name
@@ -25,14 +25,18 @@ COLUMN_WIDTHS = [
     10,  # 19: DBU Rate (Disc.)
     14,  # 20: DBU Cost (List)
     14,  # 21: DBU Cost (Disc.)
-    12,  # 22: Driver VM $/Hr
-    12,  # 23: Worker VM $/Hr
-    12,  # 24: Driver VM Cost
-    12,  # 25: Worker VM Cost
-    12,  # 26: Total VM Cost
-    14,  # 27: Total Cost (List)
-    14,  # 28: Total Cost (Disc.)
-    25,  # 29: Notes
+    12,  # 22: DSUs/Mo
+    10,  # 23: DSU Rate (List)
+    14,  # 24: DSU Cost (List)
+    14,  # 25: DSU Cost (Disc.)
+    12,  # 26: Driver VM $/Hr
+    12,  # 27: Worker VM $/Hr
+    12,  # 28: Driver VM Cost
+    12,  # 29: Worker VM Cost
+    12,  # 30: Total VM Cost
+    14,  # 31: Total Cost (List)
+    14,  # 32: Total Cost (Disc.)
+    25,  # 33: Notes
 ]
 
 
@@ -61,6 +65,10 @@ def get_headers(fmt):
         ('DBU Rate\n(Disc.)', fmt['header_discount']),
         ('DBU Cost\n(List)', fmt['header_dbu']),
         ('DBU Cost\n(Disc.)', fmt['header_discount']),
+        ('DSUs/Mo', fmt['header_dsu']),
+        ('DSU Rate\n(List)', fmt['header_dsu']),
+        ('DSU Cost\n(List)', fmt['header_dsu']),
+        ('DSU Cost\n(Disc.)', fmt['header_discount']),
         ('Driver\nVM $/Hr', fmt['header_vm']),
         ('Worker\nVM $/Hr', fmt['header_vm']),
         ('Driver\nVM Cost', fmt['header_vm']),

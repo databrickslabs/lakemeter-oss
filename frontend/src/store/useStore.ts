@@ -283,7 +283,7 @@ interface Store {
   
   // Cost Calculations (NEW)
   workloadCosts: Record<string, CostCalculationResponse>  // Map of line_item_id -> cost (API results)
-  localCalculatedCosts: Record<string, { total: number; dbu: number; vm: number; dbus: number }>  // Map of line_item_id -> local calculation
+  localCalculatedCosts: Record<string, { total: number; dbu: number; dsu: number; vm: number; dbus: number; dsus: number }>  // Map of line_item_id -> local calculation
   isCalculatingCost: boolean
   calculatingCostIds: Set<string>  // Track which individual line items are calculating
   
@@ -353,7 +353,7 @@ interface Store {
   clearWorkloadCosts: () => void
   clearSingleWorkloadCost: (lineItemId: string) => void
   markItemCalculating: (lineItemId: string) => void
-  setLocalCalculatedCosts: (costs: Record<string, { total: number; dbu: number; vm: number; dbus: number }>) => void
+  setLocalCalculatedCosts: (costs: Record<string, { total: number; dbu: number; dsu: number; vm: number; dbus: number; dsus: number }>) => void
   isItemCalculating: (lineItemId: string) => boolean
   
   // Actions - Clone
@@ -397,6 +397,7 @@ export const useStore = create<Store>((set, get) => ({
     { workload_type: 'AI_GATEWAY', display_name: 'Unity AI Gateway', description: 'Additive inference tables and usage tracking', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
     { workload_type: 'AGENT_EVALUATION', display_name: 'Agent Evaluation', description: 'Evaluation labels and synthetic evaluation data', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
     { workload_type: 'AI_RUNTIME', display_name: 'AI Runtime', description: 'Serverless GPU model training', sku_product_type_standard: 'MODEL_TRAINING' },
+    { workload_type: 'GENERAL_STORAGE', display_name: 'Databricks Default Storage', description: 'Managed storage for Unity Catalog data and workspace assets', sku_product_type_standard: 'DATABRICKS_STORAGE' },
     { workload_type: 'SHUTTERSTOCK_IMAGEAI', display_name: 'Shutterstock ImageAI', description: 'AI image generation', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
   ] as WorkloadType[],
   // Use static data as defaults - instant display, no waiting for API
@@ -1611,6 +1612,19 @@ export const useStore = create<Store>((set, get) => ({
             avg_runtime_minutes: lineItem.avg_runtime_minutes ?? null,
             days_per_month: lineItem.days_per_month ?? null,
             hours_per_month: lineItem.hours_per_month ?? null,
+            discount_config: (lineItem.workload_config?.discount_config as Record<string, unknown> | undefined) ?? {},
+          })
+          break
+
+        case 'GENERAL_STORAGE':
+          result = await api.calculateGeneralStorage({
+            ...baseParams,
+            quantity: lineItem.general_storage_quantity ?? 0,
+            unit: lineItem.general_storage_unit ?? 'gb',
+            tier_1_operations_thousands:
+              lineItem.general_storage_tier1_operations_thousands ?? 0,
+            tier_2_operations_thousands:
+              lineItem.general_storage_tier2_operations_thousands ?? 0,
             discount_config: (lineItem.workload_config?.discount_config as Record<string, unknown> | undefined) ?? {},
           })
           break

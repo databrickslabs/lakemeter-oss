@@ -262,6 +262,9 @@ BEGIN
         WHEN 'AI_RUNTIME' THEN
             v_product_type := 'MODEL_TRAINING';
 
+        WHEN 'GENERAL_STORAGE' THEN
+            v_product_type := 'DATABRICKS_STORAGE';
+
         WHEN 'SHUTTERSTOCK_IMAGEAI' THEN
             v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
 

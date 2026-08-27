@@ -166,6 +166,8 @@ def get_sku_type(
         return "SERVERLESS_REAL_TIME_INFERENCE"
     if wt == "AI_RUNTIME":
         return "MODEL_TRAINING"
+    if wt == "GENERAL_STORAGE":
+        return "DATABRICKS_STORAGE"
     if wt == "FMAPI_DATABRICKS":
         return "SERVERLESS_REAL_TIME_INFERENCE"
     if wt == "FMAPI_PROPRIETARY":

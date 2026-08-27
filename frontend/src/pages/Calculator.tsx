@@ -66,11 +66,13 @@ import {
   AGENT_EVALUATION_COMPONENT_RATES,
   AI_SEARCH_INCLUDED_STORAGE_GB,
   AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS,
-  AI_SEARCH_STORAGE_PRICE_PER_GB,
   calculateAgentEvaluationUsage,
   calculateAISearchRerankerUsage,
   calculateAIGatewayUsage,
+  calculateGeneralStorageDSU,
   calculateModelServingDBUPerHour,
+  getAISearchStorageDSUPerGB,
+  getGeneralStorageGB,
   getModelServingBillingCapacityUnits,
   isModelServingGPUType,
 } from '../utils/costCalculation'
@@ -274,6 +276,12 @@ const WORKLOAD_TYPE_CONFIG: Record<string, {
     color: 'text-cyan-500',
     bgColor: 'bg-cyan-500/10',
     label: 'AI Runtime'
+  },
+  'GENERAL_STORAGE': {
+    icon: CircleStackIcon,
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
+    label: 'Storage'
   }
 }
 
@@ -332,8 +340,10 @@ const formatNumber = (num: number, decimals: number = 2) => {
 interface CostBreakdown {
   totalCost: number
   dbuCost: number
+  dsuCost: number
   vmCost: number
   monthlyDBUs: number
+  monthlyDSUs: number
   unitsUsed?: number
 }
 
@@ -435,6 +445,11 @@ const WorkloadCostDisplay: React.FC<WorkloadCostDisplayProps> = React.memo(({
           {formatNumber(costs.monthlyDBUs)} DBUs/mo
         </span>
       )}
+      {costs.monthlyDSUs > 0 && (
+        <span className={clsx("text-purple-600 dark:text-purple-400 tabular-nums", sizeClasses[size].dbu)}>
+          {formatNumber(costs.monthlyDSUs)} DSUs/mo
+        </span>
+      )}
     </div>
   )
 })
@@ -532,6 +547,8 @@ const DBSQL_DBU_RATES: Record<string, number> = {
 interface CostBreakdown {
   monthlyDBUs: number
   dbuCost: number
+  monthlyDSUs: number
+  dsuCost: number
   vmCost: number
   totalCost: number
   // Optional fields for specific workload types
@@ -540,6 +557,7 @@ interface CostBreakdown {
   dbuPrice?: number   // $/DBU rate for display
   // Storage costs for AI Search and Lakebase
   storageCost?: number
+  dsuPrice?: number
   storageDetails?: {
     totalStorageGB: number
     freeStorageGB?: number  // AI Search only
@@ -779,6 +797,70 @@ function AIRuntimeCostFormula({
   )
 }
 
+function GeneralStorageCostFormula({
+  item,
+  costs,
+  cloud,
+  unitPrice,
+}: {
+  item: Partial<LineItem>
+  costs: CostBreakdown
+  cloud: string
+  unitPrice: number
+}) {
+  const quantity = item.general_storage_quantity ?? 0
+  const unit = (item.general_storage_unit ?? 'gb').toUpperCase()
+  const billableGB = getGeneralStorageGB(item)
+  const usage = calculateGeneralStorageDSU(item, cloud)
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span>{quantity.toLocaleString()} {unit}/month</span>
+        {unit === 'TB' && (
+          <>
+            <span>=</span>
+            <span>{billableGB.toLocaleString()} GB-month</span>
+          </>
+        )}
+      </div>
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span className="text-purple-600 font-semibold">Stored Data:</span>
+        <span>{billableGB.toLocaleString()} GB-month</span>
+        <span>×</span>
+        <span>1 DSU/GB-month</span>
+        <span>=</span>
+        <span>{formatNumber(usage.storedDataDSU, 4)} DSUs</span>
+      </div>
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span className="text-purple-600 font-semibold">Tier 1:</span>
+        <span>{formatNumber(usage.tier1OperationsThousands, 3)}K operations</span>
+        <span>×</span>
+        <span>{usage.tier1DSUPerThousand} DSU/1K</span>
+        <span>=</span>
+        <span>{formatNumber(usage.tier1OperationsDSU, 4)} DSUs</span>
+      </div>
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span className="text-purple-600 font-semibold">Tier 2:</span>
+        <span>{formatNumber(usage.tier2OperationsThousands, 3)}K operations</span>
+        <span>×</span>
+        <span>{usage.tier2DSUPerThousand} DSU/1K</span>
+        <span>=</span>
+        <span>{formatNumber(usage.tier2OperationsDSU, 4)} DSUs</span>
+      </div>
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap pt-1 border-t border-dashed border-[var(--border-primary)]">
+        <span>{formatNumber(costs.monthlyDSUs, 4)} DSUs</span>
+        <span>×</span>
+        <span>${unitPrice.toFixed(3)}/DSU</span>
+        <span>=</span>
+        <span className="font-semibold">{formatCurrency(costs.dsuCost)}</span>
+      </div>
+      <p className="text-[10px] text-[var(--text-muted)]">
+        Tier 1 includes PUT, COPY, POST, and LIST. Tier 2 includes other API operations.
+      </p>
+    </div>
+  )
+}
+
 function AISearchCostFormula({
   item,
   costs,
@@ -802,7 +884,10 @@ function AISearchCostFormula({
   const storageGB = item.vector_search_storage_gb || 0
   const freeStorageGB = unitsUsed > 0 ? AI_SEARCH_INCLUDED_STORAGE_GB : 0
   const billableStorageGB = Math.max(0, storageGB - freeStorageGB)
-  const storageCost = billableStorageGB * AI_SEARCH_STORAGE_PRICE_PER_GB
+  const storageDSUPerGB = getAISearchStorageDSUPerGB(mode)
+  const storageDSUs = billableStorageGB * storageDSUPerGB
+  const dsuPrice = costs.dsuPrice || 0
+  const storageCost = storageDSUs * dsuPrice
 
   return (
     <div className="space-y-1">
@@ -846,7 +931,11 @@ function AISearchCostFormula({
           <span>=</span>
           <span>{billableStorageGB} GB</span>
           <span>×</span>
-          <span>${AI_SEARCH_STORAGE_PRICE_PER_GB}/GB</span>
+          <span>{storageDSUPerGB} DSU/GB</span>
+          <span>=</span>
+          <span>{formatNumber(storageDSUs, 3)} DSUs</span>
+          <span>×</span>
+          <span>${dsuPrice.toFixed(3)}/DSU</span>
           <span>=</span>
           <span className="text-purple-500 font-semibold">{formatCurrency(storageCost)}</span>
         </div>
@@ -857,7 +946,7 @@ function AISearchCostFormula({
         {storageGB > 0 && (
           <>
             <span>+</span>
-            <span>{formatCurrency(storageCost)} storage</span>
+            <span>{formatCurrency(storageCost)} DSU</span>
           </>
         )}
         <span>=</span>
@@ -1242,7 +1331,14 @@ export default function Calculator() {
     
     // If no region selected, return zero costs
     if (!region) {
-      return { monthlyDBUs: 0, dbuCost: 0, vmCost: 0, totalCost: 0 }
+      return {
+        monthlyDBUs: 0,
+        dbuCost: 0,
+        monthlyDSUs: 0,
+        dsuCost: 0,
+        vmCost: 0,
+        totalCost: 0,
+      }
     }
     
     // ========================================
@@ -1323,6 +1419,10 @@ export default function Calculator() {
       case 'AI_RUNTIME':
         productType = 'MODEL_TRAINING'
         break
+
+      case 'GENERAL_STORAGE':
+        productType = 'DATABRICKS_STORAGE'
+        break
       
       case 'FMAPI_DATABRICKS':
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
@@ -1374,10 +1474,13 @@ export default function Calculator() {
       effectiveItem.workload_type === 'AI_GATEWAY'
       || effectiveItem.workload_type === 'AGENT_EVALUATION'
       || effectiveItem.workload_type === 'AI_RUNTIME'
+      || effectiveItem.workload_type === 'GENERAL_STORAGE'
     ) {
       const exactSku = effectiveItem.workload_type === 'AI_RUNTIME'
         ? 'MODEL_TRAINING'
-        : 'SERVERLESS_REAL_TIME_INFERENCE'
+        : effectiveItem.workload_type === 'GENERAL_STORAGE'
+          ? 'DATABRICKS_STORAGE'
+          : 'SERVERLESS_REAL_TIME_INFERENCE'
       const exactBundlePrice = isPricingBundleLoaded && formData.tier
         ? getExactRegionalDBUPrice(
             pricingBundle,
@@ -1398,6 +1501,20 @@ export default function Calculator() {
     } else {
       dbuPrice = pricing[productType] || 0.20
     }
+    let dsuPrice = isPricingBundleLoaded && formData.tier
+      ? (
+          getExactRegionalDBUPrice(
+            pricingBundle,
+            cloud,
+            region,
+            formData.tier,
+            'DATABRICKS_STORAGE',
+          ) ?? dbuRatesMap.DATABRICKS_STORAGE ?? 0
+        )
+      : (dbuRatesMap.DATABRICKS_STORAGE ?? 0)
+    if (effectiveItem.workload_type === 'GENERAL_STORAGE') {
+      dsuPrice = dbuPrice
+    }
     
     // ========================================
     // Step 3: Calculate DBU per hour based on workload type
@@ -1405,6 +1522,8 @@ export default function Calculator() {
     // ========================================
     let dbuPerHour = 0
     let monthlyDBUs = 0
+    let monthlyDSUs = 0
+    let dsuCost = 0
     let vmCost = 0
     let unitsUsed: number | undefined = undefined  // For AI Search
     let storageCost: number | undefined = undefined  // For AI Search and Lakebase
@@ -1657,22 +1776,28 @@ export default function Calculator() {
         // Storage calculation for AI Search
         // The first 30 GB of storage is included
         // Billable Storage = MAX(0, storage_gb - free_storage_gb)
-        // Storage Cost = billable_storage_gb × price_per_gb_per_month ($0.023/GB/month)
+        // Storage Cost = billable GB × 10 DSU/GB × exact regional $/DSU.
         const vectorStorageGB = effectiveItem.vector_search_storage_gb || 0
         const vectorFreeStorageGB = vectorUnitsUsed > 0
           ? AI_SEARCH_INCLUDED_STORAGE_GB
           : 0
         const vectorBillableStorageGB = Math.max(0, vectorStorageGB - vectorFreeStorageGB)
-        const vectorStoragePricePerGB = AI_SEARCH_STORAGE_PRICE_PER_GB
-        const vectorStorageCost = vectorBillableStorageGB * vectorStoragePricePerGB
+        const vectorStorageDSUPerGB = getAISearchStorageDSUPerGB(
+          effectiveItem.vector_search_mode,
+        )
+        monthlyDSUs = vectorBillableStorageGB * vectorStorageDSUPerGB
+        const vectorStorageCost = monthlyDSUs * dsuPrice
 
         if (vectorStorageGB > 0) {
+          dsuCost = vectorStorageCost
           storageCost = vectorStorageCost
           storageDetails = {
             totalStorageGB: vectorStorageGB,
             freeStorageGB: vectorFreeStorageGB,
             billableStorageGB: vectorBillableStorageGB,
-            pricePerGB: vectorStoragePricePerGB
+            dsuPerGB: vectorStorageDSUPerGB,
+            totalDSU: monthlyDSUs,
+            pricePerDSU: dsuPrice,
           }
         }
         break
@@ -1736,24 +1861,32 @@ export default function Calculator() {
         
         // Storage calculation for Lakebase (DSU-based pricing)
         // Storage: 15x DSU/GB, PITR: 8.7x DSU/GB, Snapshots: 3.91x DSU/GB
-        // Cost = GB × DSU_multiplier × $/DSU ($0.023/DSU/month)
+        // Cost = GB × DSU multiplier × exact regional $/DSU.
         const lakebaseStorageGB = Math.min(effectiveItem.lakebase_storage_gb || 0, 8192)
         const lakebasePitrGB = effectiveItem.lakebase_pitr_gb || 0
         const lakebaseSnapshotGB = effectiveItem.lakebase_snapshot_gb || 0
-        const lakebasePricePerDSU = 0.023
-        const lakebaseStorageCost = lakebaseStorageGB * 15 * lakebasePricePerDSU
-        const lakebasePitrCost = lakebasePitrGB * 8.7 * lakebasePricePerDSU
-        const lakebaseSnapshotCost = lakebaseSnapshotGB * 3.91 * lakebasePricePerDSU
+        const lakebaseStorageDSU = lakebaseStorageGB * 15
+        const lakebasePitrDSU = lakebasePitrGB * 8.7
+        const lakebaseSnapshotDSU = lakebaseSnapshotGB * 3.91
+        monthlyDSUs = (
+          lakebaseStorageDSU
+          + lakebasePitrDSU
+          + lakebaseSnapshotDSU
+        )
+        const lakebaseStorageCost = lakebaseStorageDSU * dsuPrice
+        const lakebasePitrCost = lakebasePitrDSU * dsuPrice
+        const lakebaseSnapshotCost = lakebaseSnapshotDSU * dsuPrice
         const lakebaseTotalStorageCost = lakebaseStorageCost + lakebasePitrCost + lakebaseSnapshotCost
 
         if (lakebaseTotalStorageCost > 0) {
+          dsuCost = lakebaseTotalStorageCost
           storageCost = lakebaseTotalStorageCost
           storageDetails = {
             totalStorageGB: lakebaseStorageGB,
             billableStorageGB: lakebaseStorageGB,
             dsuPerGB: 15,
-            totalDSU: lakebaseStorageGB * 15,
-            pricePerDSU: lakebasePricePerDSU
+            totalDSU: monthlyDSUs,
+            pricePerDSU: dsuPrice
           }
         }
         break
@@ -1868,6 +2001,22 @@ export default function Calculator() {
         break
       }
 
+      case 'GENERAL_STORAGE': {
+        const storageGB = getGeneralStorageGB(effectiveItem)
+        const usage = calculateGeneralStorageDSU(effectiveItem, cloud)
+        monthlyDSUs = usage.totalDSU
+        dsuCost = monthlyDSUs * dsuPrice
+        storageCost = dsuCost
+        storageDetails = {
+          totalStorageGB: storageGB,
+          billableStorageGB: storageGB,
+          dsuPerGB: 1,
+          totalDSU: monthlyDSUs,
+          pricePerDSU: dsuPrice,
+        }
+        break
+      }
+
       case 'AI_PARSE': {
         // Pages-based mode: pages(K) × complexity_rate
         const complexityRates: Record<string, number> = {
@@ -1935,20 +2084,25 @@ export default function Calculator() {
     // ========================================
     const safeDbuPrice = isNaN(dbuPrice) || dbuPrice === undefined ? 0 : dbuPrice
     const safeMonthlyDBUs = isNaN(monthlyDBUs) || monthlyDBUs === undefined ? 0 : monthlyDBUs
+    const safeMonthlyDSUs = isNaN(monthlyDSUs) || monthlyDSUs === undefined ? 0 : monthlyDSUs
+    const safeDSUCost = isNaN(dsuCost) || dsuCost === undefined ? 0 : dsuCost
     const safeVmCost = isNaN(vmCost) || vmCost === undefined ? 0 : vmCost
     const safeStorageCost = storageCost !== undefined && !isNaN(storageCost) ? storageCost : 0
     
     const dbuCost = safeMonthlyDBUs * safeDbuPrice
-    const totalCost = dbuCost + safeVmCost + safeStorageCost
+    const totalCost = dbuCost + safeVmCost + safeDSUCost
     
     return { 
       monthlyDBUs: safeMonthlyDBUs, 
       dbuCost: isNaN(dbuCost) ? 0 : dbuCost, 
+      monthlyDSUs: safeMonthlyDSUs,
+      dsuCost: safeDSUCost,
       vmCost: safeVmCost, 
       totalCost: isNaN(totalCost) ? 0 : totalCost,
       unitsUsed,  // For AI Search
       dbuPerHour, // For display
       dbuPrice: safeDbuPrice,  // $/DBU rate for display
+      dsuPrice,
       storageCost: safeStorageCost > 0 ? safeStorageCost : undefined,
       storageDetails
     }
@@ -1958,6 +2112,8 @@ export default function Calculator() {
   const totalCosts = useMemo(() => {
     let totalDBUs = 0
     let totalDBUCost = 0
+    let totalDSUs = 0
+    let totalDSUCost = 0
     let totalVMCost = 0
     let totalCost = 0
     
@@ -1966,23 +2122,34 @@ export default function Calculator() {
       // Guard against NaN values propagating
       totalDBUs += isNaN(costs.monthlyDBUs) ? 0 : costs.monthlyDBUs
       totalDBUCost += isNaN(costs.dbuCost) ? 0 : costs.dbuCost
+      totalDSUs += isNaN(costs.monthlyDSUs) ? 0 : costs.monthlyDSUs
+      totalDSUCost += isNaN(costs.dsuCost) ? 0 : costs.dsuCost
       totalVMCost += isNaN(costs.vmCost) ? 0 : costs.vmCost
       totalCost += isNaN(costs.totalCost) ? 0 : costs.totalCost
     })
     
-    return { totalDBUs, totalDBUCost, totalVMCost, totalCost }
+    return {
+      totalDBUs,
+      totalDBUCost,
+      totalDSUs,
+      totalDSUCost,
+      totalVMCost,
+      totalCost,
+    }
   }, [lineItems, formData.cloud, formData.region, formData.tier, workloadTypes, getVMPrice, vmPricingMap, getInstanceDbuRate, instanceDbuRateMap, instanceTypes, photonMultipliers, dbuRatesMap, dbsqlSizes, modelServingGPUTypes, vectorSearchModes, getVectorSearchRate, getFMAPIDatabricksRate, getFMAPIProprietaryRate, pricingBundle, isPricingBundleLoaded])
   
   // Sync local calculated costs to the store for AI Assistant
   useEffect(() => {
-    const costs: Record<string, { total: number; dbu: number; vm: number; dbus: number }> = {}
+    const costs: Record<string, { total: number; dbu: number; dsu: number; vm: number; dbus: number; dsus: number }> = {}
     lineItems.forEach(item => {
       const itemCosts = calculateItemCost(item, pendingFormEdits[item.line_item_id])
       costs[item.line_item_id] = {
         total: isNaN(itemCosts.totalCost) ? 0 : itemCosts.totalCost,
         dbu: isNaN(itemCosts.dbuCost) ? 0 : itemCosts.dbuCost,
+        dsu: isNaN(itemCosts.dsuCost) ? 0 : itemCosts.dsuCost,
         vm: isNaN(itemCosts.vmCost) ? 0 : itemCosts.vmCost,
-        dbus: isNaN(itemCosts.monthlyDBUs) ? 0 : itemCosts.monthlyDBUs
+        dbus: isNaN(itemCosts.monthlyDBUs) ? 0 : itemCosts.monthlyDBUs,
+        dsus: isNaN(itemCosts.monthlyDSUs) ? 0 : itemCosts.monthlyDSUs,
       }
     })
     setLocalCalculatedCosts(costs)
@@ -2265,7 +2432,7 @@ export default function Calculator() {
   const getUsageSummary = (item: LineItem) => {
     // Quantity-based workloads don't use run/hour usage
     const wt = item.workload_type || ''
-    if (['AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'AGENT_EVALUATION', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
+    if (['AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'AGENT_EVALUATION', 'GENERAL_STORAGE', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
     if (item.hours_per_month) {
       return `${item.hours_per_month}h/month`
     }
@@ -2332,6 +2499,30 @@ export default function Calculator() {
         details.push({
           label: 'Accelerator',
           value: usage.accelerator?.label || 'Unavailable',
+        })
+        break
+      }
+
+      case 'GENERAL_STORAGE': {
+        const quantity = item.general_storage_quantity ?? 0
+        const unit = (item.general_storage_unit ?? 'gb').toUpperCase()
+        details.push({
+          label: 'Stored Capacity',
+          value: `${quantity.toLocaleString()} ${unit}/month`,
+        })
+        if (unit === 'TB') {
+          details.push({
+            label: 'Billable Capacity',
+            value: `${getGeneralStorageGB(item).toLocaleString()} GB-month`,
+          })
+        }
+        details.push({
+          label: 'Tier 1 Operations',
+          value: `${(item.general_storage_tier1_operations_thousands ?? 0).toLocaleString()}K/month`,
+        })
+        details.push({
+          label: 'Tier 2 Operations',
+          value: `${(item.general_storage_tier2_operations_thousands ?? 0).toLocaleString()}K/month`,
         })
         break
       }
@@ -3283,6 +3474,7 @@ export default function Calculator() {
                               <WorkloadCostDisplay 
                                 costs={costs} 
                                 size="sm"
+                                showDBUs={effectiveItem.workload_type !== 'GENERAL_STORAGE'}
                                 isLoading={(() => {
                                   const needsVMCosts = (
                                     !effectiveItem.serverless_enabled &&
@@ -3393,19 +3585,17 @@ export default function Calculator() {
                                   <span className="text-[var(--text-muted)]">DBU Cost</span>
                                   <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.dbuCost)}</p>
                                 </div>
+                                {costs.dsuCost > 0 && (
+                                  <div>
+                                    <span className="text-[var(--text-muted)]">DSU Cost</span>
+                                    <p className="font-semibold text-purple-600 dark:text-purple-400">{formatCurrency(costs.dsuCost)}</p>
+                                  </div>
+                                )}
                                 {/* Hide VM Cost for serverless workloads */}
                                 {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY', 'AGENT_EVALUATION'].includes(wType) && (
                                   <div>
                                     <span className="text-[var(--text-muted)]">VM Cost</span>
                                     <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.vmCost)}</p>
-                                  </div>
-                                )}
-                                
-                                {/* Lakebase: Storage Cost */}
-                                {wType === 'LAKEBASE' && costs.storageCost !== undefined && costs.storageCost > 0 && (
-                                  <div>
-                                    <span className="text-[var(--text-muted)]">Storage Cost</span>
-                                    <p className="font-semibold text-purple-600 dark:text-purple-400">{formatCurrency(costs.storageCost)}</p>
                                   </div>
                                 )}
                                 
@@ -3517,6 +3707,17 @@ export default function Calculator() {
                                       )
                                     }
 
+                                    if (wType === 'GENERAL_STORAGE') {
+                                      return (
+                                        <GeneralStorageCostFormula
+                                          item={effectiveItem}
+                                          costs={costs}
+                                          cloud={formData.cloud || 'aws'}
+                                          unitPrice={costs.dsuPrice || 0}
+                                        />
+                                      )
+                                    }
+
                                     // AI Search formula
                                     if (wType === 'VECTOR_SEARCH') {
                                       return (
@@ -3582,7 +3783,7 @@ export default function Calculator() {
                                     const storageGB = effectiveItem.lakebase_storage_gb || 0
                                     const pitrGB = effectiveItem.lakebase_pitr_gb || 0
                                     const snapshotGB = effectiveItem.lakebase_snapshot_gb || 0
-                                    const pricePerDSU = 0.023
+                                    const pricePerDSU = costs.dsuPrice || 0
                                     const localStorageCost = storageGB * 15 * pricePerDSU
                                     const localPitrCost = pitrGB * 8.7 * pricePerDSU
                                     const localSnapshotCost = snapshotGB * 3.91 * pricePerDSU
@@ -3704,7 +3905,7 @@ export default function Calculator() {
                                           {hasStorageCosts && (
                                             <>
                                               <span>+</span>
-                                              <span className="text-purple-500">{formatCurrency(localTotalStorageCost)}</span>
+                                              <span className="text-purple-500">{formatCurrency(costs.dsuCost)}</span>
                                             </>
                                           )}
                                           <span>=</span>
@@ -4311,6 +4512,7 @@ export default function Calculator() {
                           <WorkloadCostDisplay 
                             costs={costs}
                             size={workloadsViewMode === 'cards' && !isExpanded ? 'md' : 'lg'}
+                            showDBUs={effectiveItem.workload_type !== 'GENERAL_STORAGE'}
                             isLoading={(() => {
                               const wType = effectiveItem.workload_type || ''
                               const needsVMCosts = (
@@ -4371,6 +4573,12 @@ export default function Calculator() {
                                 <span className="text-[var(--text-muted)]">DBU Cost</span>
                                 <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.dbuCost)}</p>
                               </div>
+                            {costs.dsuCost > 0 && (
+                              <div>
+                                <span className="text-[var(--text-muted)]">DSU Cost</span>
+                                <p className="font-semibold text-purple-600 dark:text-purple-400">{formatCurrency(costs.dsuCost)}</p>
+                              </div>
+                            )}
                               {/* Hide VM Cost for serverless workloads */}
                               {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY', 'AGENT_EVALUATION'].includes(item.workload_type || '') && (
                                 <div>
@@ -4495,6 +4703,17 @@ export default function Calculator() {
                                       costs={costs}
                                       cloud={formData.cloud || 'aws'}
                                       dbuPriceDisplay={dbuPriceDisplay}
+                                    />
+                                  )
+                                }
+
+                                if (wType === 'GENERAL_STORAGE') {
+                                  return (
+                                    <GeneralStorageCostFormula
+                                      item={effectiveItem}
+                                      costs={costs}
+                                      cloud={formData.cloud || 'aws'}
+                                      unitPrice={costs.dsuPrice || 0}
                                     />
                                   )
                                 }
@@ -4663,7 +4882,7 @@ export default function Calculator() {
                                   const storageGB = effectiveItem.lakebase_storage_gb || 0
                                   const pitrGB = effectiveItem.lakebase_pitr_gb || 0
                                   const snapshotGB = effectiveItem.lakebase_snapshot_gb || 0
-                                  const pricePerDSU = 0.023
+                                  const pricePerDSU = costs.dsuPrice || 0
                                   const localStorageCost = storageGB * 15 * pricePerDSU
                                   const localPitrCost = pitrGB * 8.7 * pricePerDSU
                                   const localSnapshotCost = snapshotGB * 3.91 * pricePerDSU
@@ -5246,14 +5465,18 @@ export default function Calculator() {
                     </p>
                   </div>
                   
-                  {/* Cost Breakdown Grid - DBU + VM only */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Cost Breakdown Grid */}
+                  <div className="grid grid-cols-3 gap-2">
                     <div className="text-center p-2 sm:p-3 rounded-xl bg-gradient-to-br from-blue-500/5 to-blue-500/10 border border-blue-500/20 min-w-0">
                       <p className="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-wider font-medium mb-1">DBU Cost</p>
                       <p className="text-xs font-bold text-[var(--text-primary)] tabular-nums truncate" title={formatCurrency(totalCosts.totalDBUCost)}>{formatCurrencyCompact(totalCosts.totalDBUCost)}</p>
                     </div>
                     <div className="text-center p-2 sm:p-3 rounded-xl bg-gradient-to-br from-purple-500/5 to-purple-500/10 border border-purple-500/20 min-w-0">
-                      <p className="text-[10px] text-purple-600 dark:text-purple-400 uppercase tracking-wider font-medium mb-1">VM Cost</p>
+                      <p className="text-[10px] text-purple-600 dark:text-purple-400 uppercase tracking-wider font-medium mb-1">DSU Cost</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)] tabular-nums truncate" title={formatCurrency(totalCosts.totalDSUCost)}>{formatCurrencyCompact(totalCosts.totalDSUCost)}</p>
+                    </div>
+                    <div className="text-center p-2 sm:p-3 rounded-xl bg-gradient-to-br from-teal-500/5 to-teal-500/10 border border-teal-500/20 min-w-0">
+                      <p className="text-[10px] text-teal-600 dark:text-teal-400 uppercase tracking-wider font-medium mb-1">VM Cost</p>
                       <p className="text-xs font-bold text-[var(--text-primary)] tabular-nums truncate" title={isLoadingVMCosts ? 'Loading...' : formatCurrency(totalCosts.totalVMCost)}>{isLoadingVMCosts ? '...' : formatCurrencyCompact(totalCosts.totalVMCost)}</p>
                     </div>
                   </div>
@@ -5427,9 +5650,15 @@ export default function Calculator() {
                     <span className="font-bold text-[var(--text-primary)] text-xs sm:text-sm md:text-base truncate">{formatCurrency(totalCosts.totalDBUCost)}</span>
                   </div>
                   
-                  {/* VM Cost - purple label, responsive text */}
+                  {/* DSU Cost */}
                   <div className="flex items-center gap-1 min-w-0">
-                    <span className="text-purple-600 dark:text-purple-400 font-semibold text-xs sm:text-sm flex-shrink-0">VM:</span>
+                    <span className="text-purple-600 dark:text-purple-400 font-semibold text-xs sm:text-sm flex-shrink-0">DSU:</span>
+                    <span className="font-bold text-[var(--text-primary)] text-xs sm:text-sm md:text-base truncate">{formatCurrency(totalCosts.totalDSUCost)}</span>
+                  </div>
+
+                  {/* VM Cost */}
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="text-teal-600 dark:text-teal-400 font-semibold text-xs sm:text-sm flex-shrink-0">VM:</span>
                     <span className="font-bold text-[var(--text-primary)] text-xs sm:text-sm md:text-base truncate">{formatCurrency(totalCosts.totalVMCost)}</span>
                   </div>
                 </div>

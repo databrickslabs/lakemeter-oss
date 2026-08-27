@@ -48,6 +48,7 @@ def _get_workload_display_name(workload_type: str) -> str:
         'VECTOR_SEARCH': 'AI Search',
         'MODEL_SERVING': 'Model Serving',
         'AI_RUNTIME': 'AI Runtime',
+        'GENERAL_STORAGE': 'Databricks Default Storage',
         'FMAPI_DATABRICKS': 'Foundation Models (Databricks)',
         'FMAPI_PROPRIETARY': 'Foundation Models (Proprietary)',
         'LAKEBASE': 'Lakebase',
@@ -98,6 +99,30 @@ def _get_workload_config_details(item) -> str:
             )
         except ValueError:
             details.append(f"Accelerator: {accelerator}")
+    elif wt == 'GENERAL_STORAGE':
+        quantity = float(_get_json_backed_value(
+            item,
+            'general_storage_quantity',
+            0,
+        ) or 0)
+        unit = str(_get_json_backed_value(
+            item,
+            'general_storage_unit',
+            'gb',
+        ) or 'gb').upper()
+        details.append(f"Stored capacity: {quantity:g} {unit}/mo")
+        tier1 = float(_get_json_backed_value(
+            item,
+            'general_storage_tier1_operations_thousands',
+            0,
+        ) or 0)
+        tier2 = float(_get_json_backed_value(
+            item,
+            'general_storage_tier2_operations_thousands',
+            0,
+        ) or 0)
+        details.append(f"Tier 1 operations: {tier1:g}K/mo")
+        details.append(f"Tier 2 operations: {tier2:g}K/mo")
     elif wt in ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY'):
         details.extend(_fmapi_details(item))
     elif wt == 'LAKEBASE':

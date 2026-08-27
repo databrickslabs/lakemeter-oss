@@ -1318,18 +1318,33 @@ export default function TestCalculations() {
           data.total_cost?.breakdown?.vm_cost ??
           data.vm_cost_per_month ?? 
           data.vm_cost ?? 0
+        const monthlyDSUs = data.dsu_calculation?.total_dsu ??
+          data.storage_calculation?.total_dsu ??
+          0
+        const dsuCost = data.total_cost?.breakdown?.dsu_cost ??
+          data.dsu_calculation?.monthly_dsu_cost ??
+          0
         
         // Handle totalCost - be careful with 'total_cost' as object vs number
         let totalCost = 0
         if (typeof data.total_cost === 'object' && data.total_cost !== null) {
-          totalCost = data.total_cost.cost_per_month ?? (dbuCost + vmCost)
+          totalCost = data.total_cost.cost_per_month ??
+            (dbuCost + dsuCost + vmCost)
         } else if (typeof data.total_cost === 'number') {
           totalCost = data.total_cost
         } else {
-          totalCost = data.total_cost_per_month ?? (dbuCost + vmCost)
+          totalCost = data.total_cost_per_month ??
+            (dbuCost + dsuCost + vmCost)
         }
         
-        apiResult = { monthlyDBUs, dbuCost, vmCost, totalCost }
+        apiResult = {
+          monthlyDBUs,
+          dbuCost,
+          monthlyDSUs,
+          dsuCost,
+          vmCost,
+          totalCost,
+        }
         
         // Debug logging for first few tests
         if (testCase.name.includes('Serverless')) {

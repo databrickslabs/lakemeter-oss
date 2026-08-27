@@ -97,6 +97,12 @@ export interface LineItem {
   // AI Runtime Configuration
   ai_runtime_accelerator_type?: 'GPU_1xA10' | 'GPU_1xH100' | 'GPU_8xH100' | null
 
+  // Databricks Default Storage Configuration
+  general_storage_quantity?: number | null
+  general_storage_unit?: 'gb' | 'tb' | null
+  general_storage_tier1_operations_thousands?: number | null
+  general_storage_tier2_operations_thousands?: number | null
+
   // Databricks Apps Configuration
   databricks_apps_size?: string | null  // medium, large
 

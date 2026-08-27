@@ -474,6 +474,19 @@ class AIRuntimeCalculationRequest(BaseModel):
         return self
 
 
+class GeneralStorageCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    quantity: float = Field(default=0, ge=0)
+    unit: Literal["gb", "tb"] = Field(default="gb")
+    tier_1_operations_thousands: float = Field(default=0, ge=0)
+    tier_2_operations_thousands: float = Field(default=0, ge=0)
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+
 class ShutterstockImageAICalculationRequest(BaseModel):
     cloud: str = Field(...)
     region: str = Field(...)

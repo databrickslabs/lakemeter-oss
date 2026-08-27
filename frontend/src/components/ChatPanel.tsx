@@ -79,7 +79,14 @@ interface ChatPanelProps {
   currentEstimate?: any
   currentWorkloads?: any[]
   // Calculated costs for each workload (keyed by item_id)
-  itemCosts?: Record<string, { total: number; dbu: number; vm: number }>
+  itemCosts?: Record<string, {
+    total: number
+    dbu: number
+    dsu: number
+    vm: number
+    dbus: number
+    dsus: number
+  }>
   // Controlled panel width for push layout
   panelWidth?: number
   onWidthChange?: (width: number) => void
@@ -457,6 +464,7 @@ I can assist you with:
           ...w,
           total_cost: costs?.total || w.total_cost || 0,
           dbu_cost: costs?.dbu || w.dbu_cost || 0,
+          dsu_cost: costs?.dsu || w.dsu_cost || 0,
           vm_cost: costs?.vm || w.vm_cost || 0
         }
       })
@@ -1017,6 +1025,23 @@ I can assist you with:
                                   {proposal.hours_per_month != null
                                     ? `${proposal.hours_per_month} node-hours/mo`
                                     : `${proposal.runs_per_day ?? 1} runs/day · ${proposal.avg_runtime_minutes ?? 60} min/run`}
+                                </span>
+                              </>
+                            )}
+                            {proposal.workload_type === 'GENERAL_STORAGE' && (
+                              <>
+                                <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded">
+                                  Default Storage
+                                </span>
+                                <span>
+                                  {(proposal.general_storage_quantity ?? 100).toLocaleString()}{' '}
+                                  {(proposal.general_storage_unit ?? 'gb').toUpperCase()}/mo
+                                </span>
+                                <span>
+                                  {(proposal.general_storage_tier1_operations_thousands ?? 0).toLocaleString()}K Tier 1
+                                </span>
+                                <span>
+                                  {(proposal.general_storage_tier2_operations_thousands ?? 0).toLocaleString()}K Tier 2
                                 </span>
                               </>
                             )}

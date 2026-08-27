@@ -27,7 +27,7 @@ COL_DBU_HR = 16
 COL_DBUS_MO = 17
 COL_DBU_RATE = 18
 COL_DBU_COST_L = 21
-COL_TOTAL_L = 28
+COL_TOTAL_L = 32
 
 
 def _make_estimate():

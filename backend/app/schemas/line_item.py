@@ -49,12 +49,20 @@ AI_RUNTIME_CONFIG_FIELDS = (
     "ai_runtime_accelerator_type",
 )
 
+GENERAL_STORAGE_CONFIG_FIELDS = (
+    "general_storage_quantity",
+    "general_storage_unit",
+    "general_storage_tier1_operations_thousands",
+    "general_storage_tier2_operations_thousands",
+)
+
 JSON_BACKED_CONFIG_FIELDS = (
     *AI_FUNCTION_CONFIG_FIELDS,
     *AI_GATEWAY_CONFIG_FIELDS,
     *AGENT_EVALUATION_CONFIG_FIELDS,
     *AI_SEARCH_CONFIG_FIELDS,
     *AI_RUNTIME_CONFIG_FIELDS,
+    *GENERAL_STORAGE_CONFIG_FIELDS,
 )
 
 
@@ -124,6 +132,8 @@ def map_ai_parse_api_fields(
             fields_to_remove.extend(AI_SEARCH_CONFIG_FIELDS)
         if workload_type != "AI_RUNTIME":
             fields_to_remove.extend(AI_RUNTIME_CONFIG_FIELDS)
+        if workload_type != "GENERAL_STORAGE":
+            fields_to_remove.extend(GENERAL_STORAGE_CONFIG_FIELDS)
         original_config = dict(config)
         for field in fields_to_remove:
             config.pop(field, None)
@@ -395,6 +405,31 @@ def validate_ai_runtime_workload_config(
         )
 
 
+def validate_general_storage_workload_config(
+    workload_type: Optional[str],
+    workload_config: Optional[Dict[str, Any]],
+) -> None:
+    """Validate JSON-backed Databricks Default Storage usage."""
+    if (workload_type or "").upper() != "GENERAL_STORAGE":
+        return
+    from app.services.general_storage_pricing import (
+        calculate_general_storage_usage,
+    )
+
+    config = workload_config or {}
+    if "general_storage_quantity" not in config:
+        raise ValueError("general_storage_quantity is required")
+    if "general_storage_unit" not in config:
+        raise ValueError("general_storage_unit is required")
+    calculate_general_storage_usage(
+        config["general_storage_quantity"],
+        config["general_storage_unit"],
+        "aws",
+        config.get("general_storage_tier1_operations_thousands", 0),
+        config.get("general_storage_tier2_operations_thousands", 0),
+    )
+
+
 def validate_compute_workload_config(
     workload_type: Optional[str],
     driver_node_type: Optional[str],
@@ -465,6 +500,18 @@ class LineItemBase(BaseModel):
     ai_runtime_accelerator_type: Optional[
         Literal["GPU_1xA10", "GPU_1xH100", "GPU_8xH100"]
     ] = None
+
+    # Databricks Default Storage (stored in workload_config)
+    general_storage_quantity: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    general_storage_unit: Optional[Literal["gb", "tb"]] = None
+    general_storage_tier1_operations_thousands: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    general_storage_tier2_operations_thousands: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
 
     # Foundation Model API Configuration (Proprietary)
     fmapi_provider: Optional[str] = None
@@ -668,6 +715,18 @@ class LineItemUpdate(BaseModel):
     ai_runtime_accelerator_type: Optional[
         Literal["GPU_1xA10", "GPU_1xH100", "GPU_8xH100"]
     ] = None
+
+    # Databricks Default Storage (stored in workload_config)
+    general_storage_quantity: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    general_storage_unit: Optional[Literal["gb", "tb"]] = None
+    general_storage_tier1_operations_thousands: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+    general_storage_tier2_operations_thousands: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
 
     # Foundation Model API Configuration (Proprietary)
     fmapi_provider: Optional[str] = None
