@@ -11,7 +11,7 @@ from .excel_sections import (
     write_totals, write_cost_summary, write_dbu_summary,
     write_legend, write_assumptions, write_footer,
 )
-from .pricing import _get_dbu_price, _get_sku_type
+from .pricing import _get_dbu_price, _get_sku_type, _is_fmapi_hourly
 from .helpers import (
     _get_workload_display_name, _get_workload_config_details,
     _get_pricing_tier_display,
@@ -334,11 +334,12 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
     dbu_per_hour, dbu_warnings = _calculate_dbu_per_hour(item, cloud, tier)
     is_serverless = _is_serverless_workload(item)
     is_fmapi = wt in ('FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY')
-    is_fmapi_token = is_fmapi and item.fmapi_rate_type in (
-        'input_token', 'output_token', 'input', 'output',
-        'cache_read', 'cache_write', 'batch_inference')
-    is_fmapi_provisioned = is_fmapi and item.fmapi_rate_type in (
-        'provisioned_scaling', 'provisioned_entry')
+    is_fmapi_provisioned = is_fmapi and _is_fmapi_hourly(
+        item,
+        cloud,
+        region,
+    )
+    is_fmapi_token = is_fmapi and not is_fmapi_provisioned
     is_quantity_based = wt in (
         'AI_PARSE',
         'AI_EXTRACT',
@@ -373,7 +374,16 @@ def _write_single_item(sheet, fmt, row, idx, item, cloud, region, tier, db=None)
         auto_notes.append(f"DBU rate not found for {sku}, using fallback ${dbu_rate:.2f}")
 
     hours, token_qty, dbu_per_m, total_dbus, token_type = calc_item_values(
-        item, is_fmapi_token, is_fmapi_provisioned, dbu_per_hour, cloud, auto_notes)
+        item,
+        is_fmapi_token,
+        is_fmapi_provisioned,
+        dbu_per_hour,
+        cloud,
+        auto_notes,
+        region,
+    )
+    if is_fmapi_provisioned and hours > 0:
+        dbu_per_hour = total_dbus / hours
 
     num_workers = int(item.num_workers or 0)
     dbsql_driver_inst = ''

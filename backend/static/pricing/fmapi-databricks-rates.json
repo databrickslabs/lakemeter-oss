@@ -1,920 +1,2144 @@
 {
   "aws:bge-large-en:input_token": {
+    "alias_for": "bge-large",
     "dbu_rate": 1.429,
+    "display_name": "BGE Large",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "aws:bge-large-en:provisioned_entry": {
+    "alias_for": "bge-large",
     "dbu_rate": 24.0,
+    "display_name": "BGE Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired",
+    "supported_region_group": "americas"
   },
   "aws:bge-large-en:provisioned_scaling": {
+    "alias_for": "bge-large",
     "dbu_rate": 24.0,
+    "display_name": "BGE Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "aws:bge-large:input_token": {
     "dbu_rate": 1.429,
+    "display_name": "BGE Large",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:bge-large:provisioned_entry": {
     "dbu_rate": 24.0,
+    "display_name": "BGE Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:bge-large:provisioned_scaling": {
     "dbu_rate": 24.0,
+    "display_name": "BGE Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:deepseek-v4-flash-0731:cache_read": {
+    "dbu_rate": 0.4,
+    "display_name": "DeepSeek V4 Flash (0731)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:deepseek-v4-flash-0731:input_token": {
+    "dbu_rate": 2.0,
+    "display_name": "DeepSeek V4 Flash (0731)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:deepseek-v4-flash-0731:output_token": {
+    "dbu_rate": 4.0,
+    "display_name": "DeepSeek V4 Flash (0731)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:deepseek-v4-pro-0813:cache_read": {
+    "dbu_rate": 1.886,
+    "display_name": "DeepSeek V4 Pro (0813)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:deepseek-v4-pro-0813:input_token": {
+    "dbu_rate": 18.857,
+    "display_name": "DeepSeek V4 Pro (0813)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:deepseek-v4-pro-0813:output_token": {
+    "dbu_rate": 56.571,
+    "display_name": "DeepSeek V4 Pro (0813)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gemma-3-12b:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gemma-3-12b:output_token": {
     "dbu_rate": 7.143,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gemma-3-12b:provisioned_entry": {
     "dbu_rate": 71.429,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:gemma-3-12b:provisioned_scaling": {
     "dbu_rate": 71.429,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:glm-5-2-priority:cache_read": {
+    "dbu_rate": 6.5,
+    "display_name": "GLM-5.2 (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:glm-5-2-priority:input_token": {
+    "dbu_rate": 35.0,
+    "display_name": "GLM-5.2 (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:glm-5-2-priority:output_token": {
+    "dbu_rate": 110.0,
+    "display_name": "GLM-5.2 (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:glm-5-2:cache_read": {
+    "dbu_rate": 3.714,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:glm-5-2:input_token": {
+    "dbu_rate": 20.0,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:glm-5-2:output_token": {
+    "dbu_rate": 62.857,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:glm-5-2:provisioned_entry_1_month": {
+    "dbu_rate": 142.857,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1,
+    "is_hourly": true,
+    "reservation_months": 1,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
+  },
+  "aws:glm-5-2:provisioned_entry_3_month": {
+    "dbu_rate": 121.429,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1,
+    "is_hourly": true,
+    "reservation_months": 3,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
+  },
+  "aws:glm-5-2:provisioned_scaling_1_month": {
+    "dbu_rate": 142.857,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1,
+    "is_hourly": true,
+    "reservation_months": 1,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:glm-5-2:provisioned_scaling_3_month": {
+    "dbu_rate": 121.429,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1,
+    "is_hourly": true,
+    "reservation_months": 3,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gpt-oss-120b:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gpt-oss-120b:output_token": {
     "dbu_rate": 8.571,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gpt-oss-120b:provisioned_entry": {
     "dbu_rate": 71.429,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:gpt-oss-120b:provisioned_scaling": {
     "dbu_rate": 71.429,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gpt-oss-20b:input_token": {
     "dbu_rate": 1.0,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gpt-oss-20b:output_token": {
     "dbu_rate": 4.286,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gpt-oss-20b:provisioned_entry": {
     "dbu_rate": 53.571,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:gpt-oss-20b:provisioned_scaling": {
     "dbu_rate": 53.571,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gte-large-en:input_token": {
+    "alias_for": "gte",
     "dbu_rate": 1.857,
+    "display_name": "GTE",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "aws:gte-large-en:provisioned_entry": {
+    "alias_for": "gte",
     "dbu_rate": 20.0,
+    "display_name": "GTE",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired",
+    "supported_region_group": "americas"
   },
   "aws:gte-large-en:provisioned_scaling": {
+    "alias_for": "gte",
     "dbu_rate": 20.0,
+    "display_name": "GTE",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "aws:gte:input_token": {
     "dbu_rate": 1.857,
+    "display_name": "GTE",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:gte:provisioned_entry": {
     "dbu_rate": 20.0,
+    "display_name": "GTE",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:gte:provisioned_scaling": {
     "dbu_rate": 20.0,
+    "display_name": "GTE",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:inkling:cache_read": {
+    "dbu_rate": 2.429,
+    "display_name": "Inkling",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:inkling:input_token": {
+    "dbu_rate": 14.286,
+    "display_name": "Inkling",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:inkling:output_token": {
+    "dbu_rate": 57.857,
+    "display_name": "Inkling",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:kimi-k2-7:cache_read": {
+    "dbu_rate": 2.714,
+    "display_name": "Kimi K2.7",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:kimi-k2-7:input_token": {
+    "dbu_rate": 13.571,
+    "display_name": "Kimi K2.7",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:kimi-k2-7:output_token": {
+    "dbu_rate": 57.143,
+    "display_name": "Kimi K2.7",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:kimi-k3:cache_read": {
+    "dbu_rate": 4.286,
+    "display_name": "Kimi K3",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "regional_uplift_percent": 10,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:kimi-k3:input_token": {
+    "dbu_rate": 42.857,
+    "display_name": "Kimi K3",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "regional_uplift_percent": 10,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:kimi-k3:output_token": {
+    "dbu_rate": 214.286,
+    "display_name": "Kimi K3",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "regional_uplift_percent": 10,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-3-1-8b:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-3-1-8b:output_token": {
     "dbu_rate": 6.429,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-3-1-8b:provisioned_entry": {
     "dbu_rate": 53.571,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:llama-3-1-8b:provisioned_scaling": {
     "dbu_rate": 106.0,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-3-2-1b:provisioned_entry": {
     "dbu_rate": 42.857,
+    "display_name": "Llama 3.2 1B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:llama-3-2-1b:provisioned_scaling": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 3.2 1B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-3-2-3b:provisioned_entry": {
     "dbu_rate": 46.429,
+    "display_name": "Llama 3.2 3B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:llama-3-2-3b:provisioned_scaling": {
     "dbu_rate": 92.857,
+    "display_name": "Llama 3.2 3B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-3-3-70b:input_token": {
     "dbu_rate": 7.143,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-3-3-70b:output_token": {
     "dbu_rate": 21.429,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-3-3-70b:provisioned_entry": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:llama-3-3-70b:provisioned_scaling": {
     "dbu_rate": 342.857,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-4-maverick:input_token": {
     "dbu_rate": 7.143,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-4-maverick:output_token": {
     "dbu_rate": 21.429,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:llama-4-maverick:provisioned_entry": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:llama-4-maverick:provisioned_scaling": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:qwen3-embedding-0-6b:input_token": {
     "dbu_rate": 0.286,
+    "display_name": "Qwen 3 0.6B Embedding",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:qwen3-embedding-0-6b:provisioned_entry": {
     "dbu_rate": 25.0,
+    "display_name": "Qwen 3 0.6B Embedding",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:qwen3-embedding-0-6b:provisioned_scaling": {
     "dbu_rate": 25.0,
+    "display_name": "Qwen 3 0.6B Embedding",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:qwen3-next-80b-a3b-instruct:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:qwen3-next-80b-a3b-instruct:output_token": {
     "dbu_rate": 17.143,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:qwen3-next-80b-a3b-instruct:provisioned_entry": {
     "dbu_rate": 78.571,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:qwen3-next-80b-a3b-instruct:provisioned_scaling": {
     "dbu_rate": 78.571,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:qwen35-122b-a10b-priority:input_token": {
+    "dbu_rate": 6.286,
+    "display_name": "Qwen 3.5 122B (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "aws:qwen35-122b-a10b-priority:output_token": {
+    "dbu_rate": 62.858,
+    "display_name": "Qwen 3.5 122B (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:qwen35-122b-a10b:input_token": {
     "dbu_rate": 3.143,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:qwen35-122b-a10b:output_token": {
     "dbu_rate": 31.429,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "aws:qwen35-122b-a10b:provisioned_entry": {
     "dbu_rate": 85.714,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "aws:qwen35-122b-a10b:provisioned_scaling": {
     "dbu_rate": 85.714,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:bge-large-en:input_token": {
+    "alias_for": "bge-large",
     "dbu_rate": 1.429,
+    "display_name": "BGE Large",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "azure:bge-large-en:provisioned_entry": {
+    "alias_for": "bge-large",
     "dbu_rate": 24.0,
+    "display_name": "BGE Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired",
+    "supported_region_group": "americas"
   },
   "azure:bge-large-en:provisioned_scaling": {
+    "alias_for": "bge-large",
     "dbu_rate": 24.0,
+    "display_name": "BGE Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "azure:bge-large:input_token": {
     "dbu_rate": 1.429,
+    "display_name": "BGE Large",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:bge-large:provisioned_entry": {
     "dbu_rate": 24.0,
+    "display_name": "BGE Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:bge-large:provisioned_scaling": {
     "dbu_rate": 24.0,
+    "display_name": "BGE Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:deepseek-v4-flash-0731:cache_read": {
+    "dbu_rate": 0.4,
+    "display_name": "DeepSeek V4 Flash (0731)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:deepseek-v4-flash-0731:input_token": {
+    "dbu_rate": 2.0,
+    "display_name": "DeepSeek V4 Flash (0731)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:deepseek-v4-flash-0731:output_token": {
+    "dbu_rate": 4.0,
+    "display_name": "DeepSeek V4 Flash (0731)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:deepseek-v4-pro-0813:cache_read": {
+    "dbu_rate": 1.886,
+    "display_name": "DeepSeek V4 Pro (0813)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:deepseek-v4-pro-0813:input_token": {
+    "dbu_rate": 18.857,
+    "display_name": "DeepSeek V4 Pro (0813)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:deepseek-v4-pro-0813:output_token": {
+    "dbu_rate": 56.571,
+    "display_name": "DeepSeek V4 Pro (0813)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gemma-3-12b:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gemma-3-12b:output_token": {
     "dbu_rate": 7.143,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gemma-3-12b:provisioned_entry": {
     "dbu_rate": 71.429,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:gemma-3-12b:provisioned_scaling": {
     "dbu_rate": 71.429,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:glm-5-2-priority:cache_read": {
+    "dbu_rate": 6.5,
+    "display_name": "GLM-5.2 (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:glm-5-2-priority:input_token": {
+    "dbu_rate": 35.0,
+    "display_name": "GLM-5.2 (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:glm-5-2-priority:output_token": {
+    "dbu_rate": 110.0,
+    "display_name": "GLM-5.2 (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:glm-5-2:cache_read": {
+    "dbu_rate": 3.714,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:glm-5-2:input_token": {
+    "dbu_rate": 20.0,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:glm-5-2:output_token": {
+    "dbu_rate": 62.857,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:glm-5-2:provisioned_entry_1_month": {
+    "dbu_rate": 142.857,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1,
+    "is_hourly": true,
+    "reservation_months": 1,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
+  },
+  "azure:glm-5-2:provisioned_entry_3_month": {
+    "dbu_rate": 121.429,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1,
+    "is_hourly": true,
+    "reservation_months": 3,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
+  },
+  "azure:glm-5-2:provisioned_scaling_1_month": {
+    "dbu_rate": 142.857,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1,
+    "is_hourly": true,
+    "reservation_months": 1,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:glm-5-2:provisioned_scaling_3_month": {
+    "dbu_rate": 121.429,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1,
+    "is_hourly": true,
+    "reservation_months": 3,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gpt-oss-120b:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gpt-oss-120b:output_token": {
     "dbu_rate": 8.571,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gpt-oss-120b:provisioned_entry": {
     "dbu_rate": 71.429,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:gpt-oss-120b:provisioned_scaling": {
     "dbu_rate": 71.429,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gpt-oss-20b:input_token": {
     "dbu_rate": 1.0,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gpt-oss-20b:output_token": {
     "dbu_rate": 4.286,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gpt-oss-20b:provisioned_entry": {
     "dbu_rate": 53.571,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:gpt-oss-20b:provisioned_scaling": {
     "dbu_rate": 53.571,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gte-large-en:input_token": {
+    "alias_for": "gte",
     "dbu_rate": 1.857,
+    "display_name": "GTE",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "azure:gte-large-en:provisioned_entry": {
+    "alias_for": "gte",
     "dbu_rate": 20.0,
+    "display_name": "GTE",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired",
+    "supported_region_group": "americas"
   },
   "azure:gte-large-en:provisioned_scaling": {
+    "alias_for": "gte",
     "dbu_rate": 20.0,
+    "display_name": "GTE",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "azure:gte:input_token": {
     "dbu_rate": 1.857,
+    "display_name": "GTE",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:gte:provisioned_entry": {
     "dbu_rate": 20.0,
+    "display_name": "GTE",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:gte:provisioned_scaling": {
     "dbu_rate": 20.0,
+    "display_name": "GTE",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:inkling:cache_read": {
+    "dbu_rate": 2.429,
+    "display_name": "Inkling",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:inkling:input_token": {
+    "dbu_rate": 14.286,
+    "display_name": "Inkling",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:inkling:output_token": {
+    "dbu_rate": 57.857,
+    "display_name": "Inkling",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:kimi-k2-7:cache_read": {
+    "dbu_rate": 2.714,
+    "display_name": "Kimi K2.7",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:kimi-k2-7:input_token": {
+    "dbu_rate": 13.571,
+    "display_name": "Kimi K2.7",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:kimi-k2-7:output_token": {
+    "dbu_rate": 57.143,
+    "display_name": "Kimi K2.7",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:kimi-k3:cache_read": {
+    "dbu_rate": 4.286,
+    "display_name": "Kimi K3",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "regional_uplift_percent": 10,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:kimi-k3:input_token": {
+    "dbu_rate": 42.857,
+    "display_name": "Kimi K3",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "regional_uplift_percent": 10,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:kimi-k3:output_token": {
+    "dbu_rate": 214.286,
+    "display_name": "Kimi K3",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "regional_uplift_percent": 10,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-3-1-8b:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-3-1-8b:output_token": {
     "dbu_rate": 6.429,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-3-1-8b:provisioned_entry": {
     "dbu_rate": 53.571,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:llama-3-1-8b:provisioned_scaling": {
     "dbu_rate": 106.0,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-3-2-1b:provisioned_entry": {
     "dbu_rate": 42.857,
+    "display_name": "Llama 3.2 1B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:llama-3-2-1b:provisioned_scaling": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 3.2 1B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-3-2-3b:provisioned_entry": {
     "dbu_rate": 46.429,
+    "display_name": "Llama 3.2 3B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:llama-3-2-3b:provisioned_scaling": {
     "dbu_rate": 92.857,
+    "display_name": "Llama 3.2 3B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-3-3-70b:input_token": {
     "dbu_rate": 7.143,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-3-3-70b:output_token": {
     "dbu_rate": 21.429,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-3-3-70b:provisioned_entry": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:llama-3-3-70b:provisioned_scaling": {
     "dbu_rate": 342.857,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-4-maverick:input_token": {
     "dbu_rate": 7.143,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-4-maverick:output_token": {
     "dbu_rate": 21.429,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:llama-4-maverick:provisioned_entry": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:llama-4-maverick:provisioned_scaling": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:qwen3-embedding-0-6b:input_token": {
     "dbu_rate": 0.286,
+    "display_name": "Qwen 3 0.6B Embedding",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:qwen3-embedding-0-6b:provisioned_entry": {
     "dbu_rate": 25.0,
+    "display_name": "Qwen 3 0.6B Embedding",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:qwen3-embedding-0-6b:provisioned_scaling": {
     "dbu_rate": 25.0,
+    "display_name": "Qwen 3 0.6B Embedding",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:qwen3-next-80b-a3b-instruct:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:qwen3-next-80b-a3b-instruct:output_token": {
     "dbu_rate": 17.143,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:qwen3-next-80b-a3b-instruct:provisioned_entry": {
     "dbu_rate": 78.571,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:qwen3-next-80b-a3b-instruct:provisioned_scaling": {
     "dbu_rate": 78.571,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:qwen35-122b-a10b-priority:input_token": {
+    "dbu_rate": 6.286,
+    "display_name": "Qwen 3.5 122B (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "azure:qwen35-122b-a10b-priority:output_token": {
+    "dbu_rate": 62.858,
+    "display_name": "Qwen 3.5 122B (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:qwen35-122b-a10b:input_token": {
     "dbu_rate": 3.143,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:qwen35-122b-a10b:output_token": {
     "dbu_rate": 31.429,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "azure:qwen35-122b-a10b:provisioned_entry": {
     "dbu_rate": 85.714,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active",
+    "supported_region_group": "americas"
   },
   "azure:qwen35-122b-a10b:provisioned_scaling": {
     "dbu_rate": 85.714,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:bge-large-en:input_token": {
+    "alias_for": "bge-large",
     "dbu_rate": 1.429,
+    "display_name": "BGE Large",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "gcp:bge-large-en:provisioned_entry": {
     "dbu_rate": 24.0,
+    "display_name": "Bge Large En",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:bge-large-en:provisioned_scaling": {
+    "alias_for": "bge-large",
     "dbu_rate": 24.0,
+    "display_name": "BGE Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "gcp:bge-large:input_token": {
     "dbu_rate": 1.429,
+    "display_name": "BGE Large",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:bge-large:provisioned_entry": {
     "dbu_rate": 24.0,
+    "display_name": "Bge Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:bge-large:provisioned_scaling": {
     "dbu_rate": 24.0,
+    "display_name": "BGE Large",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:deepseek-v4-flash-0731:cache_read": {
+    "dbu_rate": 0.4,
+    "display_name": "DeepSeek V4 Flash (0731)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:deepseek-v4-flash-0731:input_token": {
+    "dbu_rate": 2.0,
+    "display_name": "DeepSeek V4 Flash (0731)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:deepseek-v4-flash-0731:output_token": {
+    "dbu_rate": 4.0,
+    "display_name": "DeepSeek V4 Flash (0731)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:deepseek-v4-pro-0813:cache_read": {
+    "dbu_rate": 1.886,
+    "display_name": "DeepSeek V4 Pro (0813)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:deepseek-v4-pro-0813:input_token": {
+    "dbu_rate": 18.857,
+    "display_name": "DeepSeek V4 Pro (0813)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:deepseek-v4-pro-0813:output_token": {
+    "dbu_rate": 56.571,
+    "display_name": "DeepSeek V4 Pro (0813)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gemma-3-12b:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gemma-3-12b:output_token": {
     "dbu_rate": 7.143,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gemma-3-12b:provisioned_entry": {
     "dbu_rate": 71.429,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:gemma-3-12b:provisioned_scaling": {
     "dbu_rate": 71.429,
+    "display_name": "Gemma 3 12B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:glm-5-2-priority:cache_read": {
+    "dbu_rate": 6.5,
+    "display_name": "GLM-5.2 (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:glm-5-2-priority:input_token": {
+    "dbu_rate": 35.0,
+    "display_name": "GLM-5.2 (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:glm-5-2-priority:output_token": {
+    "dbu_rate": 110.0,
+    "display_name": "GLM-5.2 (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:glm-5-2:cache_read": {
+    "dbu_rate": 3.714,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:glm-5-2:input_token": {
+    "dbu_rate": 20.0,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:glm-5-2:output_token": {
+    "dbu_rate": 62.857,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:glm-5-2:provisioned_scaling_1_month": {
+    "dbu_rate": 142.857,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1,
+    "is_hourly": true,
+    "reservation_months": 1,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:glm-5-2:provisioned_scaling_3_month": {
+    "dbu_rate": 121.429,
+    "display_name": "GLM-5.2",
+    "input_divisor": 1,
+    "is_hourly": true,
+    "reservation_months": 3,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gpt-oss-120b:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gpt-oss-120b:output_token": {
     "dbu_rate": 8.571,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gpt-oss-120b:provisioned_entry": {
     "dbu_rate": 71.429,
+    "display_name": "Gpt Oss 120B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:gpt-oss-120b:provisioned_scaling": {
     "dbu_rate": 71.429,
+    "display_name": "GPT OSS 120B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gpt-oss-20b:input_token": {
     "dbu_rate": 1.0,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gpt-oss-20b:output_token": {
     "dbu_rate": 4.286,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gpt-oss-20b:provisioned_entry": {
     "dbu_rate": 53.571,
+    "display_name": "Gpt Oss 20B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:gpt-oss-20b:provisioned_scaling": {
     "dbu_rate": 53.571,
+    "display_name": "GPT OSS 20B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gte-large-en:input_token": {
+    "alias_for": "gte",
     "dbu_rate": 1.857,
+    "display_name": "GTE",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "gcp:gte-large-en:provisioned_entry": {
     "dbu_rate": 20.0,
+    "display_name": "Gte Large En",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:gte-large-en:provisioned_scaling": {
+    "alias_for": "gte",
     "dbu_rate": 20.0,
+    "display_name": "GTE",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "retired"
   },
   "gcp:gte:input_token": {
     "dbu_rate": 1.857,
+    "display_name": "GTE",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:gte:provisioned_entry": {
     "dbu_rate": 20.0,
+    "display_name": "Gte",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:gte:provisioned_scaling": {
     "dbu_rate": 20.0,
+    "display_name": "GTE",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:inkling:cache_read": {
+    "dbu_rate": 2.429,
+    "display_name": "Inkling",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:inkling:input_token": {
+    "dbu_rate": 14.286,
+    "display_name": "Inkling",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:inkling:output_token": {
+    "dbu_rate": 57.857,
+    "display_name": "Inkling",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:kimi-k2-7:cache_read": {
+    "dbu_rate": 2.714,
+    "display_name": "Kimi K2.7",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:kimi-k2-7:input_token": {
+    "dbu_rate": 13.571,
+    "display_name": "Kimi K2.7",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:kimi-k2-7:output_token": {
+    "dbu_rate": 57.143,
+    "display_name": "Kimi K2.7",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:kimi-k3:cache_read": {
+    "dbu_rate": 4.286,
+    "display_name": "Kimi K3",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "regional_uplift_percent": 10,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:kimi-k3:input_token": {
+    "dbu_rate": 42.857,
+    "display_name": "Kimi K3",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "regional_uplift_percent": 10,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:kimi-k3:output_token": {
+    "dbu_rate": 214.286,
+    "display_name": "Kimi K3",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "regional_uplift_percent": 10,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-3-1-8b:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-3-1-8b:output_token": {
     "dbu_rate": 6.429,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-3-1-8b:provisioned_entry": {
     "dbu_rate": 106.0,
+    "display_name": "Llama 3 1 8B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:llama-3-1-8b:provisioned_scaling": {
     "dbu_rate": 106.0,
+    "display_name": "Llama 3.1 8B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-3-2-1b:provisioned_entry": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 3 2 1B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:llama-3-2-1b:provisioned_scaling": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 3.2 1B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-3-2-3b:provisioned_entry": {
     "dbu_rate": 92.857,
+    "display_name": "Llama 3 2 3B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:llama-3-2-3b:provisioned_scaling": {
     "dbu_rate": 92.857,
+    "display_name": "Llama 3.2 3B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-3-3-70b:input_token": {
     "dbu_rate": 7.143,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-3-3-70b:output_token": {
     "dbu_rate": 21.429,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-3-3-70b:provisioned_entry": {
     "dbu_rate": 342.857,
+    "display_name": "Llama 3 3 70B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:llama-3-3-70b:provisioned_scaling": {
     "dbu_rate": 342.857,
+    "display_name": "Llama 3.3 70B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-4-maverick:input_token": {
     "dbu_rate": 7.143,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-4-maverick:output_token": {
     "dbu_rate": 21.429,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:llama-4-maverick:provisioned_entry": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:llama-4-maverick:provisioned_scaling": {
     "dbu_rate": 85.714,
+    "display_name": "Llama 4 Maverick",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:qwen3-embedding-0-6b:input_token": {
     "dbu_rate": 0.286,
+    "display_name": "Qwen 3 0.6B Embedding",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:qwen3-embedding-0-6b:provisioned_entry": {
     "dbu_rate": 25.0,
+    "display_name": "Qwen3 Embedding 0 6B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:qwen3-embedding-0-6b:provisioned_scaling": {
     "dbu_rate": 25.0,
+    "display_name": "Qwen 3 0.6B Embedding",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:qwen3-next-80b-a3b-instruct:input_token": {
     "dbu_rate": 2.143,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:qwen3-next-80b-a3b-instruct:output_token": {
     "dbu_rate": 17.143,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:qwen3-next-80b-a3b-instruct:provisioned_entry": {
     "dbu_rate": 78.571,
+    "display_name": "Qwen3 Next 80B A3B Instruct",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:qwen3-next-80b-a3b-instruct:provisioned_scaling": {
     "dbu_rate": 78.571,
+    "display_name": "Qwen 3 Next 80B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:qwen35-122b-a10b-priority:input_token": {
+    "dbu_rate": 6.286,
+    "display_name": "Qwen 3.5 122B (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
+  },
+  "gcp:qwen35-122b-a10b-priority:output_token": {
+    "dbu_rate": 62.858,
+    "display_name": "Qwen 3.5 122B (Priority)",
+    "input_divisor": 1000000,
+    "is_hourly": false,
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:qwen35-122b-a10b:input_token": {
     "dbu_rate": 3.143,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:qwen35-122b-a10b:output_token": {
     "dbu_rate": 31.429,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1000000,
     "is_hourly": false,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   },
   "gcp:qwen35-122b-a10b:provisioned_entry": {
     "dbu_rate": 85.714,
+    "display_name": "Qwen35 122B A10B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "status": "retired"
   },
   "gcp:qwen35-122b-a10b:provisioned_scaling": {
     "dbu_rate": 85.714,
+    "display_name": "Qwen 3.5 122B",
     "input_divisor": 1,
     "is_hourly": true,
-    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE"
+    "sku_product_type": "SERVERLESS_REAL_TIME_INFERENCE",
+    "source": "databricks_foundation_model_serving",
+    "status": "active"
   }
 }

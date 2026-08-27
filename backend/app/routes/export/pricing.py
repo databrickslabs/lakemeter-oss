@@ -1,6 +1,12 @@
 """Pricing data loading and lookup functions for export."""
 import json, logging, os
 
+from app.services.fmapi_pricing import (
+    FMAPIRateNotFound,
+    get_databricks_rate,
+    get_proprietary_rate,
+)
+
 logger = logging.getLogger(__name__)
 
 # ========== LOAD PRICING DATA FROM STATIC JSON ==========
@@ -153,20 +159,52 @@ def _get_fmapi_sku(item, cloud: str) -> str:
     wt = item.workload_type or ''
 
     if wt == 'FMAPI_DATABRICKS':
-        key = f"{cloud}:{model}:{rate_type}"
-        info = FMAPI_DB_RATES.get(key, {})
-        return info.get('sku_product_type', 'SERVERLESS_REAL_TIME_INFERENCE')
+        try:
+            info = get_databricks_rate(
+                cloud,
+                model,
+                rate_type,
+                processing_type=(
+                    getattr(item, 'fmapi_endpoint_type', 'global') or 'global'
+                ),
+                allow_retired=True,
+            )
+            return info['sku_product_type']
+        except FMAPIRateNotFound:
+            return 'SERVERLESS_REAL_TIME_INFERENCE'
     elif wt == 'FMAPI_PROPRIETARY':
         provider = item.fmapi_provider or ''
         endpoint = getattr(item, 'fmapi_endpoint_type', 'global') or 'global'
         context = getattr(item, 'fmapi_context_length', 'all') or 'all'
-        key = f"{cloud}:{provider}:{model}:{endpoint}:{context}:{rate_type}"
-        info = FMAPI_PROP_RATES.get(key, {})
-        return info.get('sku_product_type', 'OPENAI_MODEL_SERVING')
+        try:
+            info = get_proprietary_rate(
+                cloud,
+                provider,
+                model,
+                endpoint,
+                context,
+                rate_type,
+                allow_retired=True,
+            )
+            return info['sku_product_type']
+        except FMAPIRateNotFound:
+            provider_mapping = {
+                'google': 'GEMINI',
+                'anthropic': 'ANTHROPIC',
+                'openai': 'OPENAI',
+            }
+            return (
+                f"{provider_mapping.get(provider.lower(), provider.upper())}"
+                "_MODEL_SERVING"
+            )
     return 'SERVERLESS_REAL_TIME_INFERENCE'
 
 
-def _get_fmapi_dbu_per_million(item, cloud: str) -> tuple:
+def _get_fmapi_dbu_per_million(
+    item,
+    cloud: str,
+    region: str | None = None,
+) -> tuple:
     """Get DBU per 1M tokens (or DBU/hr for provisioned) from pricing JSON.
 
     Returns (dbu_rate, found) tuple. found=False means no match in pricing data.
@@ -176,41 +214,37 @@ def _get_fmapi_dbu_per_million(item, cloud: str) -> tuple:
     wt = item.workload_type or ''
 
     if wt == 'FMAPI_DATABRICKS':
-        key = f"{cloud}:{model}:{rate_type}"
-        info = FMAPI_DB_RATES.get(key, {})
-        if 'dbu_rate' in info:
+        try:
+            info = get_databricks_rate(
+                cloud,
+                model,
+                rate_type,
+                region=region,
+                processing_type=(
+                    getattr(item, 'fmapi_endpoint_type', 'global') or 'global'
+                ),
+                allow_retired=True,
+            )
             return info['dbu_rate'], True
-        key_lower = key.lower().strip()
-        for k, v in FMAPI_DB_RATES.items():
-            if k.lower().strip() == key_lower:
-                return v.get('dbu_rate', 0), True
-        return 0, False
+        except FMAPIRateNotFound:
+            return 0, False
     elif wt == 'FMAPI_PROPRIETARY':
         provider = item.fmapi_provider or ''
         endpoint = getattr(item, 'fmapi_endpoint_type', 'global') or 'global'
-        # Default to 'all' context matching the API's default (fmapi_calc.py)
         context = getattr(item, 'fmapi_context_length', 'all') or 'all'
-        key = f"{cloud}:{provider}:{model}:{endpoint}:{context}:{rate_type}"
-        info = FMAPI_PROP_RATES.get(key, {})
-        if 'dbu_rate' in info:
+        try:
+            info = get_proprietary_rate(
+                cloud,
+                provider,
+                model,
+                endpoint,
+                context,
+                rate_type,
+                allow_retired=True,
+            )
             return info['dbu_rate'], True
-        # Try case-insensitive match
-        key_lower = key.lower().strip()
-        for k, v in FMAPI_PROP_RATES.items():
-            if k.lower().strip() == key_lower:
-                return v.get('dbu_rate', 0), True
-        # Try alternate context as fallback (OpenAI uses 'all', Google uses 'long'/'short')
-        alt_contexts = []
-        if context != 'all':
-            alt_contexts.append('all')
-        if context != 'long':
-            alt_contexts.append('long')
-        for alt_ctx in alt_contexts:
-            alt_key = f"{cloud}:{provider}:{model}:{endpoint}:{alt_ctx}:{rate_type}"
-            info = FMAPI_PROP_RATES.get(alt_key, {})
-            if 'dbu_rate' in info:
-                return info['dbu_rate'], True
-        return 0, False
+        except FMAPIRateNotFound:
+            return 0, False
     return 0, False
 
 # Fallback DBU/1M token rates matching frontend costCalculation.ts
@@ -221,9 +255,39 @@ FMAPI_PROP_FALLBACK_RATES = {
 }
 
 
-def _is_fmapi_hourly(item, cloud: str) -> bool:
-    """Check if FMAPI rate is hourly (provisioned) vs token-based.
-    Only provisioned_scaling/provisioned_entry are hourly — matches frontend.
-    """
+def _is_fmapi_hourly(
+    item,
+    cloud: str,
+    region: str | None = None,
+) -> bool:
+    """Check whether an exact catalog rate is billed hourly."""
     rate_type = item.fmapi_rate_type or 'input_token'
-    return rate_type in ('provisioned_scaling', 'provisioned_entry')
+    model = item.fmapi_model or ''
+    wt = item.workload_type or ''
+    try:
+        if wt == 'FMAPI_DATABRICKS':
+            info = get_databricks_rate(
+                cloud,
+                model,
+                rate_type,
+                region=region,
+                processing_type=(
+                    getattr(item, 'fmapi_endpoint_type', 'global') or 'global'
+                ),
+                allow_retired=True,
+            )
+        elif wt == 'FMAPI_PROPRIETARY':
+            info = get_proprietary_rate(
+                cloud,
+                item.fmapi_provider or '',
+                model,
+                getattr(item, 'fmapi_endpoint_type', 'global') or 'global',
+                getattr(item, 'fmapi_context_length', 'all') or 'all',
+                rate_type,
+                allow_retired=True,
+            )
+        else:
+            return False
+        return bool(info.get('is_hourly'))
+    except FMAPIRateNotFound:
+        return rate_type.startswith('provisioned_') or rate_type == 'batch_inference'

@@ -1,5 +1,5 @@
 """Item-level calculation and storage sub-row helpers for Excel export."""
-from .pricing import _get_dbu_price, _get_fmapi_dbu_per_million, FMAPI_PROP_FALLBACK_RATES
+from .pricing import _get_dbu_price, _get_fmapi_dbu_per_million
 from .calculations import _calculate_hours_per_month
 from .excel_row_writer import write_data_row
 
@@ -11,20 +11,6 @@ TOKEN_TYPE_DISPLAY = {
     'cache_read': 'Cache Read', 'cache_write': 'Cache Write',
     'batch_inference': 'Batch',
 }
-
-# Fallback DBU/1M token rates for FMAPI_DATABRICKS — matches frontend costCalculation.ts
-# These are much lower than proprietary rates (Databricks OSS models are cheaper)
-FMAPI_DB_FALLBACK_RATES = {
-    'input_token': 1.0, 'input': 1.0,
-    'output_token': 3.0, 'output': 3.0,
-}
-
-# Fallback DBU/hr rates for FMAPI_DATABRICKS provisioned — matches frontend costCalculation.ts
-FMAPI_DB_PROVISIONED_FALLBACK = {
-    'provisioned_scaling': 200,
-    'provisioned_entry': 50,
-}
-
 
 def _get_json_backed_value(item, field, default=None):
     """Read a public field from an attribute or workload_config."""
@@ -129,39 +115,31 @@ def get_ai_search_reranker_usage(item):
 
 
 def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
-                     dbu_per_hour, cloud, auto_notes):
+                     dbu_per_hour, cloud, auto_notes, region=None):
     """Calculate hours, tokens, DBUs for a line item.
 
     Returns (hours, token_qty, dbu_per_m, total_dbus, token_type).
     """
     if is_fmapi_token:
         token_qty = float(item.fmapi_quantity or 0)
-        dbu_per_m, found = _get_fmapi_dbu_per_million(item, cloud)
+        dbu_per_m, found = _get_fmapi_dbu_per_million(item, cloud, region)
         if not found:
-            # Use workload-appropriate fallback rates matching frontend
-            rate_type = item.fmapi_rate_type or 'input_token'
-            wt = item.workload_type or ''
-            if wt == 'FMAPI_DATABRICKS':
-                dbu_per_m = FMAPI_DB_FALLBACK_RATES.get(rate_type, 1.0)
-            else:
-                dbu_per_m = FMAPI_PROP_FALLBACK_RATES.get(rate_type, 21.43)
+            dbu_per_m = 0
             auto_notes.append(
-                f"FMAPI rate not found for {item.fmapi_model or 'unknown model'}, using fallback {dbu_per_m}")
+                f"Unsupported FMAPI pricing combination for "
+                f"{item.fmapi_model or 'unknown model'}; no fallback rate applied"
+            )
         token_type = TOKEN_TYPE_DISPLAY.get(item.fmapi_rate_type, 'Input')
         return 0, token_qty, dbu_per_m, token_qty * dbu_per_m, token_type
     elif is_fmapi_provisioned:
         hours = float(item.fmapi_quantity or 0)
-        dbu_hr, found = _get_fmapi_dbu_per_million(item, cloud)
+        dbu_hr, found = _get_fmapi_dbu_per_million(item, cloud, region)
         if not found:
-            # Use workload-appropriate provisioned fallback matching frontend
-            rate_type = item.fmapi_rate_type or 'provisioned_scaling'
-            wt = item.workload_type or ''
-            if wt == 'FMAPI_DATABRICKS':
-                dbu_hr = FMAPI_DB_PROVISIONED_FALLBACK.get(rate_type, 200)
-            else:
-                dbu_hr = 150  # Frontend proprietary provisioned fallback
+            dbu_hr = 0
             auto_notes.append(
-                f"FMAPI rate not found for {item.fmapi_model or 'unknown model'}, using fallback {dbu_hr}")
+                f"Unsupported FMAPI pricing combination for "
+                f"{item.fmapi_model or 'unknown model'}; no fallback rate applied"
+            )
         return hours, 0, 0, dbu_hr * hours, ''
     else:
         wt = (item.workload_type or '').upper()

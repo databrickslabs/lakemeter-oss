@@ -8,7 +8,9 @@ import type { LineItem, WorkloadType } from '../types'
 import { 
   getDBSQLWarehouseConfig,
   getAvailableWorkloadTypesForRegion,
-  type PricingBundle 
+  isFMAPIProvisionedEntryRegionSupported,
+  type FMAPIRate,
+  type PricingBundle,
 } from '../utils/pricingBundle'
 import { getAIRuntimeAccelerators } from '../utils/aiRuntime'
 
@@ -257,7 +259,8 @@ function getAvailableContextLengths(
   const contextLengths = new Set<string>()
   const prefix = `${cloud.toLowerCase()}:${provider.toLowerCase()}:${model.toLowerCase()}:`
   
-  Object.keys(bundle.fmapiProprietaryRates).forEach(key => {
+  Object.entries(bundle.fmapiProprietaryRates).forEach(([key, rate]) => {
+    if (rate.status === 'retired') return
     if (key.startsWith(prefix)) {
       // Key format: cloud:provider:model:endpoint:context:rate_type
       const parts = key.split(':')
@@ -288,7 +291,8 @@ function getAvailableRateTypes(
   const rateTypes = new Set<string>()
   const prefix = `${cloud.toLowerCase()}:${provider.toLowerCase()}:${model.toLowerCase()}:${endpointType}:${contextLength}:`
   
-  Object.keys(bundle.fmapiProprietaryRates).forEach(key => {
+  Object.entries(bundle.fmapiProprietaryRates).forEach(([key, rate]) => {
+    if (rate.status === 'retired') return
     if (key.startsWith(prefix)) {
       const parts = key.split(':')
       if (parts.length >= 6) {
@@ -297,8 +301,93 @@ function getAvailableRateTypes(
     }
   })
   
-  const result = Array.from(rateTypes)
+  const result = sortFMAPIRateTypes(Array.from(rateTypes))
   return result.length > 0 ? result : ['input_token', 'output_token', 'cache_read', 'cache_write']
+}
+
+function sortFMAPIRateTypes(rateTypes: string[]): string[] {
+  const preferredOrder = [
+    'input_token',
+    'output_token',
+    'cache_write',
+    'cache_read',
+    'batch_inference',
+    'provisioned_entry',
+    'provisioned_scaling',
+    'provisioned_entry_1_month',
+    'provisioned_entry_3_month',
+    'provisioned_scaling_1_month',
+    'provisioned_scaling_3_month',
+  ]
+  return [...rateTypes].sort((left, right) => {
+    const leftIndex = preferredOrder.indexOf(left)
+    const rightIndex = preferredOrder.indexOf(right)
+    if (leftIndex === -1 && rightIndex === -1) return left.localeCompare(right)
+    if (leftIndex === -1) return 1
+    if (rightIndex === -1) return -1
+    return leftIndex - rightIndex
+  })
+}
+
+function getAvailableDatabricksRateTypes(
+  bundle: PricingBundle,
+  cloud: string,
+  model: string,
+  region?: string,
+): string[] {
+  if (!bundle.isLoaded || !bundle.fmapiDatabricksRates || !model) {
+    return ['input_token', 'output_token', 'provisioned_scaling']
+  }
+  const prefix = `${cloud.toLowerCase()}:${model.toLowerCase()}:`
+  return sortFMAPIRateTypes(Object.entries(bundle.fmapiDatabricksRates)
+    .filter(([key, rate]) => {
+      if (!key.startsWith(prefix) || rate.status === 'retired') return false
+      const rateType = key.split(':')[2]
+      return !rateType.startsWith('provisioned_entry')
+        || !region
+        || isFMAPIProvisionedEntryRegionSupported(cloud, region)
+    })
+    .map(([key]) => key.split(':')[2]))
+}
+
+function getSelectedFMAPIRate(
+  bundle: PricingBundle,
+  key: string
+): FMAPIRate | null {
+  return bundle.isLoaded ? bundle.fmapiDatabricksRates[key] ?? bundle.fmapiProprietaryRates[key] ?? null : null
+}
+
+function getDatabricksRegionalUplift(
+  bundle: PricingBundle,
+  cloud: string,
+  model: string,
+): number | undefined {
+  if (!bundle.isLoaded || !model) return undefined
+  const prefix = `${cloud.toLowerCase()}:${model.toLowerCase()}:`
+  return Object.entries(bundle.fmapiDatabricksRates).find(
+    ([key, rate]) => (
+      key.startsWith(prefix)
+      && rate.status !== 'retired'
+      && Boolean(rate.regional_uplift_percent)
+    ),
+  )?.[1].regional_uplift_percent
+}
+
+function formatFMAPIRateType(rateType: string): string {
+  const labels: Record<string, string> = {
+    input_token: 'Input Token',
+    output_token: 'Output Token',
+    cache_read: 'Cache Read',
+    cache_write: 'Cache Write',
+    batch_inference: 'Batch Inference',
+    provisioned_scaling: 'Provisioned Scaling',
+    provisioned_entry: 'Provisioned Entry',
+    provisioned_scaling_1_month: 'Provisioned Scaling (1-month reservation)',
+    provisioned_scaling_3_month: 'Provisioned Scaling (3-month reservation)',
+    provisioned_entry_1_month: 'Provisioned Entry (1-month reservation)',
+    provisioned_entry_3_month: 'Provisioned Entry (3-month reservation)',
+  }
+  return labels[rateType] || rateType.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())
 }
 
 // ===== TIER-BASED WORKLOAD RESTRICTIONS =====
@@ -587,6 +676,16 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     ],
     models: {
       llm: [
+        { id: 'kimi-k3', name: 'Kimi K3' },
+        { id: 'kimi-k2-7', name: 'Kimi K2.7' },
+        { id: 'glm-5-2', name: 'GLM-5.2' },
+        { id: 'glm-5-2-priority', name: 'GLM-5.2 (Priority)' },
+        { id: 'inkling', name: 'Inkling' },
+        { id: 'deepseek-v4-pro-0813', name: 'DeepSeek V4 Pro (0813)' },
+        { id: 'deepseek-v4-flash-0731', name: 'DeepSeek V4 Flash (0731)' },
+        { id: 'qwen35-122b-a10b', name: 'Qwen 3.5 122B' },
+        { id: 'qwen35-122b-a10b-priority', name: 'Qwen 3.5 122B (Priority)' },
+        { id: 'qwen3-next-80b-a3b-instruct', name: 'Qwen 3 Next 80B' },
         { id: 'llama-4-maverick', name: 'Llama 4 Maverick' },
         { id: 'llama-3-3-70b', name: 'Llama 3.3 70B' },
         { id: 'llama-3-1-8b', name: 'Llama 3.1 8B' },
@@ -597,6 +696,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         { id: 'gemma-3-12b', name: 'Gemma 3 12B' },
       ],
       embedding: [
+        { id: 'qwen3-embedding-0-6b', name: 'Qwen 3 0.6B Embedding' },
         { id: 'bge-large', name: 'BGE Large' },
         { id: 'gte', name: 'GTE' },
       ],
@@ -619,24 +719,34 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         id: 'anthropic',
         name: 'Anthropic',
         models: [
+          { id: 'claude-fable-5', name: 'Claude Fable 5' },
+          { id: 'claude-opus-5', name: 'Claude Opus 5' },
+          { id: 'claude-sonnet-5', name: 'Claude Sonnet 5' },
+          { id: 'claude-opus-4-8', name: 'Claude Opus 4.8' },
+          { id: 'claude-opus-4-7', name: 'Claude Opus 4.7' },
           { id: 'claude-opus-4-6', name: 'Claude Opus 4.6' },
           { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
           { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
           { id: 'claude-opus-4-5', name: 'Claude Opus 4.5' },
           { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
           { id: 'claude-opus-4-1', name: 'Claude Opus 4.1' },
-          { id: 'claude-sonnet-4-1', name: 'Claude Sonnet 4.1' },
           { id: 'claude-opus-4', name: 'Claude Opus 4' },
           { id: 'claude-sonnet-4', name: 'Claude Sonnet 4' },
-          { id: 'claude-sonnet-3-7', name: 'Claude Sonnet 3.7' },
         ],
       },
       {
         id: 'openai',
         name: 'OpenAI',
         models: [
+          { id: 'gpt-5-6-sol', name: 'GPT 5.6 Sol' },
+          { id: 'gpt-5-6-terra', name: 'GPT 5.6 Terra' },
+          { id: 'gpt-5-6-luna', name: 'GPT 5.6 Luna' },
+          { id: 'gpt-5-5-pro', name: 'GPT 5.5 Pro' },
+          { id: 'gpt-5-5', name: 'GPT 5.5' },
           { id: 'gpt-5-4-pro', name: 'GPT-5.4 Pro' },
           { id: 'gpt-5-4', name: 'GPT-5.4' },
+          { id: 'gpt-5-4-mini', name: 'GPT 5.4 Mini' },
+          { id: 'gpt-5-4-nano', name: 'GPT 5.4 Nano' },
           { id: 'gpt-5-2-5-3-codex', name: 'GPT-5.2/5.3 Codex' },
           { id: 'gpt-5-2', name: 'GPT-5.2' },
           { id: 'gpt-5-1', name: 'GPT-5.1' },
@@ -651,10 +761,16 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         id: 'google',
         name: 'Google',
         models: [
+          { id: 'gemini-3-6-flash', name: 'Gemini 3.6 Flash' },
+          { id: 'gemini-3-5-flash', name: 'Gemini 3.5 Flash' },
+          { id: 'gemini-3-5-flash-lite', name: 'Gemini 3.5 Flash Lite' },
+          { id: 'gemini-3-1-flash-lite', name: 'Gemini 3.1 Flash Lite' },
+          { id: 'gemini-3-0-pro', name: 'Gemini 3.0 Pro' },
           { id: 'gemini-3-1-pro', name: 'Gemini 3.1 Pro' },
           { id: 'gemini-3-0-flash', name: 'Gemini 3.0 Flash' },
           { id: 'gemini-2-5-pro', name: 'Gemini 2.5 Pro' },
           { id: 'gemini-2-5-flash', name: 'Gemini 2.5 Flash' },
+          { id: 'gemini-2-5-flash-lite', name: 'Gemini 2.5 Flash Lite' },
         ],
       },
     ],
@@ -862,6 +978,59 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       notes: ''
     }
   })
+  const fmapiDatabricksRateTypes = getAvailableDatabricksRateTypes(
+    pricingBundle,
+    selectedCloud || 'aws',
+    form.fmapi_model || '',
+    selectedRegion,
+  )
+  const selectedFmapiDatabricksRate = getSelectedFMAPIRate(
+    pricingBundle,
+    `${(selectedCloud || 'aws').toLowerCase()}:${form.fmapi_model || ''}:${form.fmapi_rate_type || 'input_token'}`
+  )
+  const fmapiDatabricksRegionalUplift = getDatabricksRegionalUplift(
+    pricingBundle,
+    selectedCloud || 'aws',
+    form.fmapi_model || '',
+  )
+  const selectedFmapiProprietaryRate = getSelectedFMAPIRate(
+    pricingBundle,
+    `${(selectedCloud || 'aws').toLowerCase()}:${form.fmapi_provider || ''}:${form.fmapi_model || ''}:${form.fmapi_endpoint_type || 'global'}:${form.fmapi_context_length || 'all'}:${form.fmapi_rate_type || 'input_token'}`
+  )
+  const fmapiDatabricksIsHourly = selectedFmapiDatabricksRate?.is_hourly
+    ?? (form.fmapi_rate_type || '').startsWith('provisioned_')
+  const fmapiProprietaryIsHourly = selectedFmapiProprietaryRate?.is_hourly
+    ?? form.fmapi_rate_type === 'batch_inference'
+
+  useEffect(() => {
+    if (
+      form.workload_type === 'FMAPI_DATABRICKS'
+      && !fmapiDatabricksRateTypes.includes(form.fmapi_rate_type)
+    ) {
+      setForm(current => ({
+        ...current,
+        fmapi_rate_type: fmapiDatabricksRateTypes[0] || 'input_token',
+      }))
+    }
+  }, [
+    form.workload_type,
+    form.fmapi_rate_type,
+    fmapiDatabricksRateTypes.join(':'),
+  ])
+
+  useEffect(() => {
+    if (
+      form.workload_type === 'FMAPI_DATABRICKS'
+      && !fmapiDatabricksRegionalUplift
+      && form.fmapi_endpoint_type === 'regional'
+    ) {
+      setForm(current => ({ ...current, fmapi_endpoint_type: 'global' }))
+    }
+  }, [
+    form.workload_type,
+    form.fmapi_endpoint_type,
+    fmapiDatabricksRegionalUplift,
+  ])
 
   // Default form values for new workloads
   const defaultFormValues = {
@@ -2570,7 +2739,22 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Model</label>
               <select
                 value={form.fmapi_model}
-                onChange={(e) => setForm(f => ({ ...f, fmapi_model: e.target.value }))}
+                onChange={(e) => {
+                  const model = e.target.value
+                  const availableRateTypes = getAvailableDatabricksRateTypes(
+                    pricingBundle,
+                    selectedCloud || 'aws',
+                    model,
+                    selectedRegion,
+                  )
+                  setForm(f => ({
+                    ...f,
+                    fmapi_model: model,
+                    fmapi_rate_type: availableRateTypes.includes(f.fmapi_rate_type)
+                      ? f.fmapi_rate_type
+                      : availableRateTypes[0] || 'input_token',
+                  }))
+                }}
                 className="w-full text-sm"
               >
                 <optgroup label="LLMs">
@@ -2592,54 +2776,76 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 onChange={(e) => setForm(f => ({ ...f, fmapi_rate_type: e.target.value }))}
                 className="w-full text-sm"
               >
-                <optgroup label="Token-based">
-                  <option value="input_token">Input Token</option>
-                  {/* Only show output tokens for LLMs, not embedding models */}
-                  {!['gte', 'bge-large'].includes(form.fmapi_model) && (
-                    <option value="output_token">Output Token</option>
-                  )}
-                </optgroup>
-                <optgroup label="Provisioned">
-                  <option value="provisioned_scaling">Provisioned Scaling</option>
-                  <option value="provisioned_entry">Provisioned Entry</option>
-                </optgroup>
+                {fmapiDatabricksRateTypes.map(rateType => (
+                  <option key={rateType} value={rateType}>
+                    {formatFMAPIRateType(rateType)}
+                  </option>
+                ))}
               </select>
             </div>
             
             {/* Row 2: Quantity - different label based on rate type */}
             <div>
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
-                {['provisioned_scaling', 'provisioned_entry'].includes(form.fmapi_rate_type) 
+                {fmapiDatabricksIsHourly
                   ? 'Hours/Month' 
                   : 'Quantity (M tokens/month)'}
               </label>
               <input
                 type="number"
                 min={0}
-                step={['provisioned_scaling', 'provisioned_entry'].includes(form.fmapi_rate_type) ? 1 : 0.1}
+                step={fmapiDatabricksIsHourly ? 1 : 0.1}
                 value={form.fmapi_quantity}
                 onChange={(e) => setForm(f => ({ ...f, fmapi_quantity: parseFloat(e.target.value) || 0 }))}
                 className="w-full text-sm"
-                placeholder={['provisioned_scaling', 'provisioned_entry'].includes(form.fmapi_rate_type) 
+                placeholder={fmapiDatabricksIsHourly
                   ? 'e.g., 730 = 24/7' 
                   : 'e.g., 10'}
               />
-              {!['provisioned_scaling', 'provisioned_entry'].includes(form.fmapi_rate_type) && (
+              {!fmapiDatabricksIsHourly && (
                 <p className="text-xs text-[var(--text-muted)] mt-1">
                   Enter in millions: 1 = 1M, 5 = 5M, 10 = 10M tokens
                 </p>
               )}
             </div>
+
+            {fmapiDatabricksRegionalUplift && (
+              <div>
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
+                  Processing Type
+                </label>
+                <select
+                  value={form.fmapi_endpoint_type || 'global'}
+                  onChange={(e) => setForm(current => ({
+                    ...current,
+                    fmapi_endpoint_type: e.target.value,
+                  }))}
+                  className="w-full text-sm"
+                >
+                  <option value="global">Global processing</option>
+                  <option value="regional">
+                    Regional processing (+{fmapiDatabricksRegionalUplift}%)
+                  </option>
+                </select>
+              </div>
+            )}
             
             {/* Info: Add multiple line items for complete endpoint cost */}
             <div className="col-span-full p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
               <p className="text-xs text-blue-700 dark:text-blue-300">
-                {['provisioned_scaling', 'provisioned_entry'].includes(form.fmapi_rate_type) ? (
+                {fmapiDatabricksIsHourly ? (
                   <><strong>Provisioned Throughput:</strong> Cost = hours × DBU/hour × DBU price</>
                 ) : (
                   <><strong>Tip:</strong> Add separate workloads for Input Token and Output Token to calculate total cost.</>
                 )}
               </p>
+              {fmapiDatabricksRegionalUplift && (
+                <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+                  {form.fmapi_endpoint_type === 'regional'
+                    ? `The ${fmapiDatabricksRegionalUplift}% regional-processing uplift is included in this estimate.`
+                    : `Regional processing is available with a ${fmapiDatabricksRegionalUplift}% DBU uplift.`}
+                </p>
+              )}
             </div>
           </>
         )}
@@ -2682,7 +2888,22 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                   const newCtxLength = availableCtxLengths.includes(form.fmapi_context_length) 
                     ? form.fmapi_context_length 
                     : availableCtxLengths[0] || 'all'
-                  setForm(f => ({ ...f, fmapi_model: newModel, fmapi_context_length: newCtxLength }))
+                  const availableRateTypes = getAvailableRateTypes(
+                    pricingBundle,
+                    selectedCloud || 'aws',
+                    form.fmapi_provider,
+                    newModel,
+                    form.fmapi_endpoint_type,
+                    newCtxLength
+                  )
+                  setForm(f => ({
+                    ...f,
+                    fmapi_model: newModel,
+                    fmapi_context_length: newCtxLength,
+                    fmapi_rate_type: availableRateTypes.includes(f.fmapi_rate_type)
+                      ? f.fmapi_rate_type
+                      : availableRateTypes[0] || 'input_token',
+                  }))
                 }}
                 className="w-full text-sm"
               >
@@ -2701,7 +2922,24 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Endpoint Type</label>
               <select
                 value={form.fmapi_endpoint_type}
-                onChange={(e) => setForm(f => ({ ...f, fmapi_endpoint_type: e.target.value }))}
+                onChange={(e) => {
+                  const endpointType = e.target.value
+                  const availableRateTypes = getAvailableRateTypes(
+                    pricingBundle,
+                    selectedCloud || 'aws',
+                    form.fmapi_provider,
+                    form.fmapi_model,
+                    endpointType,
+                    form.fmapi_context_length
+                  )
+                  setForm(f => ({
+                    ...f,
+                    fmapi_endpoint_type: endpointType,
+                    fmapi_rate_type: availableRateTypes.includes(f.fmapi_rate_type)
+                      ? f.fmapi_rate_type
+                      : availableRateTypes[0] || 'input_token',
+                  }))
+                }}
                 className="w-full text-sm"
               >
                 {fmapiProprietaryModels.endpoint_types.map(type => (
@@ -2713,7 +2951,24 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
               <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Context Length</label>
               <select
                 value={form.fmapi_context_length}
-                onChange={(e) => setForm(f => ({ ...f, fmapi_context_length: e.target.value }))}
+                onChange={(e) => {
+                  const contextLength = e.target.value
+                  const availableRateTypes = getAvailableRateTypes(
+                    pricingBundle,
+                    selectedCloud || 'aws',
+                    form.fmapi_provider,
+                    form.fmapi_model,
+                    form.fmapi_endpoint_type,
+                    contextLength
+                  )
+                  setForm(f => ({
+                    ...f,
+                    fmapi_context_length: contextLength,
+                    fmapi_rate_type: availableRateTypes.includes(f.fmapi_rate_type)
+                      ? f.fmapi_rate_type
+                      : availableRateTypes[0] || 'input_token',
+                  }))
+                }}
                 className="w-full text-sm"
               >
                 {(() => {
@@ -2759,46 +3014,52 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                       )
                     : ['input_token', 'output_token', 'cache_read', 'cache_write']
                   
-                  // Map to display names
-                  const rateTypeNames: Record<string, string> = {
-                    'input_token': 'Input Token',
-                    'output_token': 'Output Token',
-                    'cache_read': 'Cache Read',
-                    'cache_write': 'Cache Write',
-                    'batch_inference': 'Batch Inference',
-                    'provisioned_scaling': 'Provisioned Scaling'
-                  }
-                  
                   return availableRateTypes.map(type => (
                     <option key={type} value={type}>
-                      {rateTypeNames[type] || type}
+                      {formatFMAPIRateType(type)}
                     </option>
                   ))
                 })()}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Quantity (M tokens/month)</label>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
+                {fmapiProprietaryIsHourly ? 'Hours/Month' : 'Quantity (M tokens/month)'}
+              </label>
               <input
                 type="number"
                 min={0}
-                step={0.1}
+                step={fmapiProprietaryIsHourly ? 1 : 0.1}
                 value={form.fmapi_quantity}
                 onChange={(e) => setForm(f => ({ ...f, fmapi_quantity: parseFloat(e.target.value) || 0 }))}
                 className="w-full text-sm"
-                placeholder="e.g., 10"
+                placeholder={fmapiProprietaryIsHourly ? 'e.g., 730 = 24/7' : 'e.g., 10'}
               />
-              <p className="text-xs text-[var(--text-muted)] mt-1">
-                Enter in millions: 1 = 1M, 5 = 5M, 10 = 10M tokens
-              </p>
+              {!fmapiProprietaryIsHourly && (
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  Enter in millions: 1 = 1M, 5 = 5M, 10 = 10M tokens
+                </p>
+              )}
             </div>
             
             {/* Info: Add multiple line items for complete endpoint cost */}
             <div className="col-span-full p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
               <p className="text-xs text-blue-700 dark:text-blue-300">
-                <strong>Tip:</strong> Add separate workloads for each rate type (Input Token, Output Token, Cache Read, Cache Write) 
-                to calculate the total cost of your Foundation Model endpoint.
+                {fmapiProprietaryIsHourly ? (
+                  <><strong>Batch Inference:</strong> Cost = hours × DBU/hour × DBU price.</>
+                ) : (
+                  <><strong>Tip:</strong> Add separate workloads for each token rate type to calculate the total endpoint cost.</>
+                )}
               </p>
+              {selectedFmapiProprietaryRate?.promotional_dbu_rate !== undefined
+                && selectedFmapiProprietaryRate.promotion_end_date
+                && new Date().toISOString().slice(0, 10) <= selectedFmapiProprietaryRate.promotion_end_date && (
+                <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+                  {selectedFmapiProprietaryRate.promotion_label}: {selectedFmapiProprietaryRate.promotional_dbu_rate} DBU
+                  {fmapiProprietaryIsHourly ? '/hour' : '/1M tokens'} through {selectedFmapiProprietaryRate.promotion_end_date}
+                  {' '}(list rate {selectedFmapiProprietaryRate.dbu_rate}).
+                </p>
+              )}
             </div>
           </>
         )}

@@ -337,7 +337,7 @@ class TestFMAPIDbSKU:
 # ── Edge case and fallback tests ─────────────────────────────────────────
 
 class TestFMAPIDbEdgeCases:
-    """Edge cases: zero quantity, unknown model, fallback rates."""
+    """Edge cases: zero quantity and unsupported combinations."""
 
     def test_zero_quantity_token(self, pricing):
         item = make_item(
@@ -356,45 +356,39 @@ class TestFMAPIDbEdgeCases:
         be = _get_be_fmapi_results(item)
         assert be['total_dbus'] == pytest.approx(0, abs=TOL)
 
-    def test_unknown_model_token_fallback(self, pricing):
-        """Unknown model should use Databricks fallback rate (1.0 for input)."""
+    def test_unknown_model_token_is_not_priced(self, pricing):
         item = make_item(
             workload_type='FMAPI_DATABRICKS', fmapi_model='nonexistent-model',
             fmapi_rate_type='input_token', fmapi_quantity=10,
         )
         be = _get_be_fmapi_results(item)
-        # Frontend fallback: input_token = 1.0 for Databricks
-        assert be['dbu_per_m'] == pytest.approx(1.0, abs=TOL)
-        assert be['total_dbus'] == pytest.approx(10 * 1.0, abs=TOL)
+        assert be['dbu_per_m'] == 0
+        assert be['total_dbus'] == 0
 
-    def test_unknown_model_output_fallback(self, pricing):
-        """Unknown model output should use Databricks fallback rate (3.0)."""
+    def test_unknown_model_output_is_not_priced(self, pricing):
         item = make_item(
             workload_type='FMAPI_DATABRICKS', fmapi_model='nonexistent-model',
             fmapi_rate_type='output_token', fmapi_quantity=10,
         )
         be = _get_be_fmapi_results(item)
-        # Frontend fallback: output_token = 3.0 for Databricks
-        assert be['dbu_per_m'] == pytest.approx(3.0, abs=TOL)
-        assert be['total_dbus'] == pytest.approx(10 * 3.0, abs=TOL)
+        assert be['dbu_per_m'] == 0
+        assert be['total_dbus'] == 0
 
-    def test_unknown_model_provisioned_scaling_fallback(self, pricing):
-        """Unknown model provisioned_scaling should fallback to 200 DBU/hr."""
+    def test_unknown_model_provisioned_scaling_is_not_priced(self, pricing):
         item = make_item(
             workload_type='FMAPI_DATABRICKS', fmapi_model='nonexistent-model',
             fmapi_rate_type='provisioned_scaling', fmapi_quantity=10,
         )
         be = _get_be_fmapi_results(item)
-        assert be['total_dbus'] == pytest.approx(10 * 200, abs=TOL)
+        assert be['total_dbus'] == 0
 
-    def test_unknown_model_provisioned_entry_fallback(self, pricing):
-        """Unknown model provisioned_entry should fallback to 50 DBU/hr."""
+    def test_unknown_model_provisioned_entry_is_not_priced(self, pricing):
         item = make_item(
             workload_type='FMAPI_DATABRICKS', fmapi_model='nonexistent-model',
             fmapi_rate_type='provisioned_entry', fmapi_quantity=10,
         )
         be = _get_be_fmapi_results(item)
-        assert be['total_dbus'] == pytest.approx(10 * 50, abs=TOL)
+        assert be['total_dbus'] == 0
 
     def test_large_quantity(self, pricing):
         """Large token quantity should calculate correctly."""

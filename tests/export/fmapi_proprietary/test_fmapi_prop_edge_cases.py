@@ -20,29 +20,29 @@ from tests.export.fmapi_proprietary.conftest import make_line_item
 
 
 class TestGoogleContextLength:
-    """BUG-S7-4 regression: Google uses 'long' default, not 'all'."""
+    """Current all-length Google models use the published all context."""
 
     def test_google_default_context_finds_rate(self):
         """Google with default context_length should find rates."""
         item = make_line_item(
             fmapi_provider="google", fmapi_model="gemini-2-5-flash",
-            fmapi_context_length="long", fmapi_rate_type="input_token")
+            fmapi_context_length="all", fmapi_rate_type="input_token")
         rate, found = _get_fmapi_dbu_per_million(item, "aws")
-        assert found, "Google with context_length='long' should find rate"
+        assert found
         assert rate > 0
 
-    def test_google_all_context_not_found(self):
-        """Google with context_length='all' should NOT find rate."""
+    def test_google_historical_long_context_remains_exportable(self):
+        item = make_line_item(
+            fmapi_provider="google", fmapi_model="gemini-2-5-flash",
+            fmapi_context_length="long", fmapi_rate_type="input_token")
+        rate, found = _get_fmapi_dbu_per_million(item, "aws")
+        assert found
+        assert rate > 0
+
+    def test_google_sku_with_all_context(self):
         item = make_line_item(
             fmapi_provider="google", fmapi_model="gemini-2-5-flash",
             fmapi_context_length="all", fmapi_rate_type="input_token")
-        rate, found = _get_fmapi_dbu_per_million(item, "aws")
-        assert not found, "Google with 'all' context should not find rate"
-
-    def test_google_sku_with_long_context(self):
-        item = make_line_item(
-            fmapi_provider="google", fmapi_model="gemini-2-5-flash",
-            fmapi_context_length="long", fmapi_rate_type="input_token")
         sku = _get_fmapi_sku(item, "aws")
         assert sku == "GEMINI_MODEL_SERVING"
 
@@ -86,16 +86,14 @@ class TestDisplayNames:
 
 
 class TestUnknownProviderFallback:
-    """SUG-S7-002 regression: unknown provider should fallback gracefully."""
+    """Unknown providers remain identifiable without borrowing OpenAI pricing."""
 
     def test_unknown_provider_sku_fallback(self):
-        """Unknown provider should return OPENAI_MODEL_SERVING fallback."""
         item = make_line_item(
             fmapi_provider="meta", fmapi_model="llama-3",
             fmapi_rate_type="input_token")
         sku = _get_fmapi_sku(item, "aws")
-        assert sku == "OPENAI_MODEL_SERVING", (
-            f"Unknown provider should fallback to OPENAI_MODEL_SERVING, got {sku}")
+        assert sku == "META_MODEL_SERVING"
 
     def test_unknown_provider_rate_not_found(self):
         """Unknown provider should return found=False from rate lookup."""

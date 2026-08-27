@@ -256,7 +256,11 @@ export interface CostCalculationContext {
   modelServingGPUTypes: ModelServingGPUType[]
   vectorSearchModes: VectorSearchMode[]
   getVMPrice: (cloud: string, region: string, instanceType: string, pricingTier: string, paymentOption: string) => number
-  getFMAPIDatabricksRate: (model: string, rateType: string) => { dbu_per_1M_tokens?: number, dbu_per_hour?: number } | null
+  getFMAPIDatabricksRate: (model: string, rateType: string) => {
+    dbu_per_1M_tokens?: number
+    dbu_per_hour?: number
+    regional_uplift_percent?: number
+  } | null
   getFMAPIProprietaryRate: (provider: string, model: string, rateType: string, endpointType?: string, contextLength?: string) => { dbu_per_1M_tokens?: number, dbu_per_hour?: number } | null
   getVectorSearchRate: (mode: string) => { dbu_per_hour?: number, input_divisor?: number } | null
   getDBSQLWarehouseConfig?: (warehouseType: string, warehouseSize: string) => DBSQLWarehouseConfig | null
@@ -722,27 +726,37 @@ export function calculateWorkloadCost(
     case 'FMAPI_DATABRICKS':
       const fmapiDbxQuantity = item.fmapi_quantity || 0
       const fmapiDbxRateType = item.fmapi_rate_type || 'input_token'
-      const fmapiDbxIsProvisioned = ['provisioned_scaling', 'provisioned_entry'].includes(fmapiDbxRateType)
+      const fmapiDbxIsProvisioned = fmapiDbxRateType.startsWith('provisioned_')
       
       const dbxRateData = item.fmapi_model 
         ? getFMAPIDatabricksRate(item.fmapi_model, fmapiDbxRateType) 
         : null
+      const useRegionalProcessing = item.fmapi_endpoint_type === 'regional'
+      const regionalMultiplier = useRegionalProcessing
+        ? (
+            dbxRateData?.regional_uplift_percent
+              ? 1 + dbxRateData.regional_uplift_percent / 100
+              : 0
+          )
+        : 1
       
       if (fmapiDbxIsProvisioned) {
-        const provisionedDbxDbuPerHour = dbxRateData?.dbu_per_hour || 
-          (fmapiDbxRateType === 'provisioned_scaling' ? 200 : 50)
-        monthlyDBUs = fmapiDbxQuantity * provisionedDbxDbuPerHour
+        const provisionedDbxDbuPerHour = dbxRateData?.dbu_per_hour || 0
+        monthlyDBUs = (
+          fmapiDbxQuantity
+          * provisionedDbxDbuPerHour
+          * regionalMultiplier
+        )
       } else {
-        const tokenDbxRate = dbxRateData?.dbu_per_1M_tokens || 
-          (fmapiDbxRateType === 'output_token' ? 3.0 : 1.0)
-        monthlyDBUs = fmapiDbxQuantity * tokenDbxRate
+        const tokenDbxRate = dbxRateData?.dbu_per_1M_tokens || 0
+        monthlyDBUs = fmapiDbxQuantity * tokenDbxRate * regionalMultiplier
       }
       break
     
     case 'FMAPI_PROPRIETARY':
       const fmapiPropQuantity = item.fmapi_quantity || 0
       const fmapiPropRateType = item.fmapi_rate_type || 'input_token'
-      const fmapiPropIsProvisioned = fmapiPropRateType === 'provisioned_scaling'
+      const fmapiPropIsProvisioned = fmapiPropRateType === 'batch_inference'
       const fmapiEndpointType = item.fmapi_endpoint_type || 'global'
       const fmapiContextLength = item.fmapi_context_length || 'long'
       
@@ -751,19 +765,10 @@ export function calculateWorkloadCost(
         : null
       
       if (fmapiPropIsProvisioned) {
-        const provisionedPropDbuPerHour = propRateData?.dbu_per_hour || 150
+        const provisionedPropDbuPerHour = propRateData?.dbu_per_hour || 0
         monthlyDBUs = fmapiPropQuantity * provisionedPropDbuPerHour
       } else {
-        let tokenPropRate = propRateData?.dbu_per_1M_tokens
-        if (!tokenPropRate) {
-          // Fallback rates based on model complexity and rate type
-          switch (fmapiPropRateType) {
-            case 'output_token': tokenPropRate = 321.43; break  // Claude Sonnet 4.5 output
-            case 'cache_read': tokenPropRate = 8.57; break
-            case 'cache_write': tokenPropRate = 85.71; break
-            default: tokenPropRate = 21.43  // input_token
-          }
-        }
+        const tokenPropRate = propRateData?.dbu_per_1M_tokens || 0
         monthlyDBUs = fmapiPropQuantity * tokenPropRate
       }
       break

@@ -1027,6 +1027,7 @@ export const calculateFMAPI = async (request: FMAPIRequest): Promise<CostCalcula
 // FMAPI Databricks
 export interface FMAPIDatabricksRequest extends BaseCalculationRequest {
   model: string
+  endpoint_type?: string
   rate_type: string
   quantity: number
 }

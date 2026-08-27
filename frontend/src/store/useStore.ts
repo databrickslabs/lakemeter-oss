@@ -63,7 +63,7 @@ function normalizeVMPaymentOption(
 // =============================================================================
 // LOCAL STORAGE CACHE UTILITIES
 // =============================================================================
-const CACHE_VERSION = 'v13'  // Bumped - add AI Runtime workload metadata
+const CACHE_VERSION = 'v14'  // Bumped - refresh Foundation Model catalogs
 const CACHE_KEY = `lakemeter_reference_data_${CACHE_VERSION}`
 const CACHE_TTL = 4 * 60 * 60 * 1000 // 4 hours in milliseconds (reduced from 24h)
 
@@ -1501,6 +1501,7 @@ export const useStore = create<Store>((set, get) => ({
           result = await api.calculateFMAPIDatabricks({
             ...baseParams,
             model: lineItem.fmapi_model || 'llama-3-3-70b',
+            endpoint_type: lineItem.fmapi_endpoint_type || 'global',
             rate_type: lineItem.fmapi_rate_type || 'input_token',
             quantity: lineItem.fmapi_quantity || 1000000
           })
