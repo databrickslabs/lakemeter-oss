@@ -23,7 +23,7 @@ Enabled by default. Bills the tokens the evaluation service consumes when produc
 - **Input Tokens/Month (millions)**: 2.143 DBUs per million tokens. Defaults to `1`.
 - **Output Tokens/Month (millions)**: 8.571 DBUs per million tokens. Defaults to `1`.
 
-Output tokens cost about four times as much per million as input tokens, so an evaluation program that produces long written critiques is dominated by the output figure.
+Output tokens convert at about four times the rate of input tokens, so the output figure usually dominates the cost of this component.
 
 ### Synthetic data generation
 
@@ -31,7 +31,7 @@ Disabled by default. Bills per generated question:
 
 - **Synthetic Questions/Month**: 5 DBUs per question. Defaults to `0`, and must be a whole number.
 
-These DBU conversions reproduce the published per-unit prices for Agent Evaluation at the US serverless real-time inference rate.
+These DBU conversions are the values Lakemeter applies. They are anchored to the published Agent Evaluation per-unit prices at the US serverless real-time inference rate, so confirm them against current Databricks pricing before relying on an estimate.
 
 ## Expected monthly quantity
 

@@ -20,8 +20,8 @@ Inference Tables and Usage Tracking are billed independently. Each is enabled se
 
 Both features are enabled by default and both convert payload at 1.429 DBUs per GB.
 
-- **Inference Tables**: logs request and response payloads to a Delta table.
-- **Usage Tracking**: records usage metadata for the traffic passing through the gateway.
+- **Inference Tables**: logs requests and responses to Unity Catalog Delta tables for monitoring and debugging.
+- **Usage Tracking**: tracks requests, token usage, and latency using system tables.
 
 Enable only the features the workload actually uses. A feature that is turned off contributes nothing to the estimate.
 

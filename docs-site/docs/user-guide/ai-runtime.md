@@ -12,7 +12,7 @@ For current product guidance, start from the [official Databricks documentation]
 
 ## Cloud availability
 
-Lakemeter offers AI Runtime on AWS and Azure. The form does not offer GCP, because the accelerator rates needed to price it are not currently published for that cloud and Lakemeter does not substitute another cloud's rate.
+Lakemeter offers AI Runtime on AWS and Azure. The form does not offer GCP: Lakemeter prices this workload from per-cloud accelerator rates and does not substitute another cloud's rate when one is unavailable.
 
 Accelerator rates also differ between AWS and Azure, so changing the estimate's cloud can change the cost of an otherwise unchanged workload.
 
@@ -26,7 +26,7 @@ Select the GPU configuration for the training workload. Defaults to `1x A10 (24 
 - **1x H100 (80 GB)**: 1 GPU. About 10.77 DBUs per GPU-hour on both clouds.
 - **8x H100 (640 GB total)**: 8 GPUs. Same per-GPU rate as the single H100.
 
-These conversions reproduce the published GPU-hour prices for AI Runtime at the `MODEL_TRAINING` SKU rate in the reference US regions.
+These conversions are the values Lakemeter applies. They are anchored to the published AI Runtime GPU-hour prices at the `MODEL_TRAINING` SKU rate in the reference US regions, so confirm them against current Databricks pricing before relying on an estimate.
 
 The multi-GPU option bills per GPU, so an 8x H100 node consumes eight times the GPU-hours of a single H100 for the same runtime, and costs roughly eight times as much.
 
