@@ -144,7 +144,7 @@ def get_sku_type(
 
     if wt == "ALL_PURPOSE":
         if serverless_enabled:
-            return "INTERACTIVE_SERVERLESS_COMPUTE"
+            return "ALL_PURPOSE_SERVERLESS_COMPUTE"
         return "ALL_PURPOSE_COMPUTE_(PHOTON)" if photon_enabled else "ALL_PURPOSE_COMPUTE"
 
     if wt == "DLT":

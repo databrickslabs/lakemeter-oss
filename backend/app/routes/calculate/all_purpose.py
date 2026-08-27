@@ -12,6 +12,7 @@ from app.routes.calculate.discount import (
 )
 from app.routes.calculate.jobs import normalize_usage_params, _validate_classic_inputs, _validate_serverless_inputs
 from app.routes.calculate.schemas import AllPurposeClassicCalculationRequest, AllPurposeServerlessCalculationRequest
+from app.services.serverless_pricing import normalize_serverless_mode
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -118,6 +119,10 @@ def calculate_all_purpose_serverless_cost(
     db: Session = Depends(get_db),
 ):
     usage = normalize_usage_params(request, mode="daily_or_monthly")
+    serverless_mode = normalize_serverless_mode(
+        "ALL_PURPOSE",
+        request.serverless_mode,
+    )
 
     _validate_serverless_inputs(request, db)
 
@@ -131,7 +136,7 @@ def calculate_all_purpose_serverless_cost(
             "p13": 0, "p14": 0,
             "p15": usage.days_per_month,
             "p16": usage.hours_per_month,
-            "p17": request.serverless_mode, "p18": None, "p19": None, "p20": 1,
+            "p17": serverless_mode, "p18": None, "p19": None, "p20": 1,
             "p21": "on_demand", "p22": None, "p23": 0, "p24": None, "p25": None, "p26": None,
             "p27": "global", "p28": "all", "p29": "input_token", "p30": 0, "p31": 0, "p32": 1,
             "p33": "NA", "p34": "NA", "p35": "NA",
@@ -156,7 +161,7 @@ def calculate_all_purpose_serverless_cost(
                 "workload_type": "ALL_PURPOSE_SERVERLESS", "sku_type": sku_type,
                 "configuration": {
                     "cloud": request.cloud.upper(), "region": request.region, "tier": request.tier.upper(),
-                    "serverless_mode": request.serverless_mode,
+                    "serverless_mode": serverless_mode,
                 },
                 "usage": {"hours_per_month": float(row.hours_per_month or 0)},
                 "dbu_calculation": {

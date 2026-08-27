@@ -114,8 +114,10 @@ BEGIN
         TRUE   -- serverless_enabled = TRUE
     );
     
-    -- Serverless mode multiplier (standard vs performance)
-    v_mode_multiplier := CASE 
+    -- Interactive notebooks do not support Standard mode, so All-Purpose
+    -- Serverless always uses the Performance Optimized multiplier.
+    v_mode_multiplier := CASE
+        WHEN UPPER(COALESCE(p_workload_type, '')) = 'ALL_PURPOSE' THEN 2.0
         WHEN LOWER(COALESCE(p_serverless_mode, 'standard')) = 'performance' THEN 2.0
         ELSE 1.0
     END;
@@ -135,7 +137,8 @@ COMMENT ON FUNCTION lakemeter.calculate_serverless_compute_dbu IS
 'Calculate DBU per hour for serverless compute workloads (JOBS/ALL_PURPOSE/DLT Serverless).
 Formula: (driver_dbu + worker_dbu × num_workers) × photon_multiplier × serverless_mode_multiplier
 Photon is MANDATORY for serverless, and the multiplier still applies.
-Serverless mode: standard (1x) or performance (2x)';
+Serverless mode: All-Purpose always uses performance (2x); Jobs and DLT use
+standard (1x) or performance (2x) according to the selected mode';
 """
 
 try:

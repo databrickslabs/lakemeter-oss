@@ -28,8 +28,13 @@
       "id": "024-ai-runtime",
       "path": "scripts/upgrades/data_updates/024_ai_runtime.sql",
       "sha256": "383461791b2c74bb98bcfbf97fbdaa5ae972d33fcd50c3aff2201407edf15ef4"
+    },
+    {
+      "id": "025-all-purpose-serverless-parity",
+      "path": "scripts/upgrades/data_updates/025_all_purpose_serverless_parity.sql",
+      "sha256": "efd7df3c87df530f114d08b1a7a04e41bca094fa0148deab9eee7ad303e6d747"
     }
   ],
   "migrations": [],
-  "runtime_sha256": "d54c0f49faca0391dd66623535a99b927c648215a69355eaa7aedb936ae47c12"
+  "runtime_sha256": "e66ac6978bb27be0cda40f6a35e912052829ca86ef8fe07e5afdf42e931d0526"
 }

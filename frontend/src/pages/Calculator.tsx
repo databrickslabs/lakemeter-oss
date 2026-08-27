@@ -120,6 +120,75 @@ class WorkloadErrorBoundary extends Component<{ children: ReactNode; onReset?: (
   }
 }
 
+interface ServerlessComputeDbuBreakdownProps {
+  workloadType: string
+  serverlessMode?: string | null
+  driverNode: string
+  workerNode: string
+  driverDBURate: number
+  workerDBURate: number
+  numWorkers: number
+  dbuPerHour: number
+}
+
+const ServerlessComputeDbuBreakdown: React.FC<ServerlessComputeDbuBreakdownProps> = ({
+  workloadType,
+  serverlessMode,
+  driverNode,
+  workerNode,
+  driverDBURate,
+  workerDBURate,
+  numWorkers,
+  dbuPerHour,
+}) => {
+  const baseDBUPerHour = driverDBURate + (workerDBURate * numWorkers)
+  const performanceOptimized = workloadType === 'ALL_PURPOSE'
+    || serverlessMode === 'performance'
+  const modeMultiplier = performanceOptimized ? 2 : 1
+  const calculatedPhotonMultiplier = baseDBUPerHour > 0
+    ? dbuPerHour / (baseDBUPerHour * modeMultiplier)
+    : 0
+  const photonMultiplier = Number.isFinite(calculatedPhotonMultiplier)
+    ? calculatedPhotonMultiplier
+    : 0
+
+  return (
+    <>
+      <span>(</span>
+      <span className="font-medium text-[var(--text-primary)]">Driver</span>
+      <span>{driverNode || 'Not selected'}</span>
+      <span className="text-[var(--text-muted)]">
+        ({driverDBURate.toFixed(2)} DBU/hr)
+      </span>
+      {numWorkers > 0 ? (
+        <>
+          <span>+</span>
+          <span className="font-medium text-[var(--text-primary)]">
+            {numWorkers} worker{numWorkers !== 1 ? 's' : ''}
+          </span>
+          <span>{workerNode || 'Not selected'}</span>
+          <span className="text-[var(--text-muted)]">
+            ({workerDBURate.toFixed(2)} DBU/hr each)
+          </span>
+        </>
+      ) : (
+        <span className="text-[var(--text-muted)]">Single node — driver only</span>
+      )}
+      <span>)</span>
+      <span>×</span>
+      <span className="text-[var(--text-muted)]">
+        Photon {photonMultiplier.toFixed(2)}×
+      </span>
+      <span>×</span>
+      <span className="text-[var(--text-muted)]">
+        {performanceOptimized ? 'Performance Optimized' : 'Standard'} {modeMultiplier}×
+      </span>
+      <span>=</span>
+      <span className="font-semibold">{dbuPerHour.toFixed(2)} DBU/hr</span>
+    </>
+  )
+}
+
 // Cloud provider visual options
 const CLOUD_PROVIDERS = [
   { id: 'aws', name: 'AWS', logo: '/aws.svg', bgClass: 'from-amber-600/20 to-amber-900/10' },
@@ -3989,10 +4058,16 @@ export default function Calculator() {
                                       <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                         <span className="text-blue-600 font-semibold">DBU:</span>
                                         {isServerless ? (
-                                          <>
-                                            <span>{dbuPerHour.toFixed(2)} DBU/hr</span>
-                                            <span className="text-[var(--text-muted)] text-[9px]">(Serverless{photonEnabled ? ' + Photon' : ''})</span>
-                                          </>
+                                          <ServerlessComputeDbuBreakdown
+                                            workloadType={wType}
+                                            serverlessMode={effectiveItem.serverless_mode}
+                                            driverNode={driverNode}
+                                            workerNode={workerNode}
+                                            driverDBURate={driverDBURate}
+                                            workerDBURate={workerDBURate}
+                                            numWorkers={numWorkers}
+                                            dbuPerHour={dbuPerHour}
+                                          />
                                         ) : (
                                           <>
                                             <span>(</span>
@@ -4918,10 +4993,16 @@ export default function Calculator() {
                                     <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                       <span className="text-blue-600 font-semibold">DBU:</span>
                                       {isServerless ? (
-                                        <>
-                                          <span>{dbuPerHour.toFixed(2)} DBU/hr</span>
-                                          <span className="text-[var(--text-muted)] text-[9px]">(Serverless{photonEnabled ? ' + Photon' : ''})</span>
-                                        </>
+                                        <ServerlessComputeDbuBreakdown
+                                          workloadType={wType}
+                                          serverlessMode={effectiveItem.serverless_mode}
+                                          driverNode={driverNode}
+                                          workerNode={workerNode}
+                                          driverDBURate={driverDBURate}
+                                          workerDBURate={workerDBURate}
+                                          numWorkers={numWorkers}
+                                          dbuPerHour={dbuPerHour}
+                                        />
                                       ) : (
                                         <>
                                           <span>(</span>

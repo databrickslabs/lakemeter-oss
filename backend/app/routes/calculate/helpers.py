@@ -24,7 +24,7 @@ def get_sku_type(
 
     elif workload_upper == "ALL_PURPOSE":
         if serverless_enabled:
-            return "INTERACTIVE_SERVERLESS_COMPUTE"
+            return "ALL_PURPOSE_SERVERLESS_COMPUTE"
         elif photon_enabled:
             return "ALL_PURPOSE_COMPUTE_(PHOTON)"
         else:
