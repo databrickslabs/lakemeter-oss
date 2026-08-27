@@ -105,7 +105,12 @@ class TestAllProvidersHaveRates:
     ])
     @pytest.mark.parametrize("cloud", ["aws", "azure", "gcp"])
     def test_provider_has_input_rates(self, provider, model, cloud):
-        ctx = "long" if provider == "google" else "all"
-        rate = get_dbu_rate(cloud, provider, model,
-                            "global", ctx, "input_token")
+        rate = get_dbu_rate(
+            cloud,
+            provider,
+            model,
+            "global",
+            "all",
+            "input_token",
+        )
         assert rate > 0, f"{provider}/{model} on {cloud} should have input_token rate"

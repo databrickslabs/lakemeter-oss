@@ -1,4 +1,4 @@
-import type { FMAPIRate } from './pricingBundle'
+import { getEffectiveFMAPIRate, type FMAPIRate } from './pricingBundle'
 
 export const TOKEN_RATE_UNIT = 'DBUs / 1M tokens'
 export const HOURLY_RATE_UNIT = 'DBUs / hour'
@@ -46,6 +46,7 @@ export function reshapeFmapiProprietary(rates: Record<string, FMAPIRate | null>)
   const unrecognizedKeys: string[] = []
 
   for (const [key, value] of Object.entries(rates ?? {})) {
+    if (value?.status === 'retired') continue
     const parsed = parseFmapiKey(key)
     if (!parsed) {
       unrecognizedKeys.push(key)
@@ -70,13 +71,15 @@ export function reshapeFmapiProprietary(rates: Record<string, FMAPIRate | null>)
 }
 
 export function formatTokenRate(rate: FMAPIRate | null | undefined): string {
-  if (rate == null) return EM_DASH
-  return rate.dbu_rate.toLocaleString('en-US', { maximumFractionDigits: 3 })
+  const effectiveRate = getEffectiveFMAPIRate(rate)
+  if (effectiveRate == null) return EM_DASH
+  return effectiveRate.dbu_rate.toLocaleString('en-US', { maximumFractionDigits: 3 })
 }
 
 export function formatHourlyRate(rate: FMAPIRate | null | undefined): string {
-  if (rate == null) return EM_DASH
-  return rate.dbu_rate.toLocaleString('en-US', { maximumFractionDigits: 3 })
+  const effectiveRate = getEffectiveFMAPIRate(rate)
+  if (effectiveRate == null) return EM_DASH
+  return effectiveRate.dbu_rate.toLocaleString('en-US', { maximumFractionDigits: 3 })
 }
 
 export function formatDollarCell(costLocal: number, currencySymbol: string): string {

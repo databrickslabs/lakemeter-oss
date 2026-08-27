@@ -483,7 +483,7 @@ workload_type_inserts = [
     ON CONFLICT (workload_type) DO NOTHING""",
     
     """INSERT INTO lakemeter.ref_workload_types VALUES
-    ('FMAPI_DATABRICKS', 'Foundation Models (Databricks)', 'Databricks-hosted LLMs (Llama, DBRX)',
+    ('FMAPI_DATABRICKS', 'Foundation Models (Databricks)', 'Databricks-hosted foundation models (Kimi, GLM, DeepSeek, Qwen, Llama, and embeddings)',
      false, false, false, false, false, false, false, true, false, false, false, false, false, true,
      NULL, NULL, 'SERVERLESS_REAL_TIME_INFERENCE', 7)
     ON CONFLICT (workload_type) DO NOTHING""",

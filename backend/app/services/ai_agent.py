@@ -185,25 +185,27 @@ When presenting workload types to users, ALWAYS use these names:
    **FMAPI_PROPRIETARY (Anthropic, OpenAI, Google):**
    | Provider | Model ID | Display Name | Best For |
    |----------|----------|--------------|----------|
-   | anthropic | claude-sonnet-4-5 | Claude Sonnet 4.5 | General purpose, coding, reasoning |
-   | anthropic | claude-sonnet-4-1 | Claude Sonnet 4.1 | Balanced performance |
-   | anthropic | claude-sonnet-4 | Claude Sonnet 4 | Cost-effective |
-   | anthropic | claude-sonnet-3-7 | Claude Sonnet 3.7 | Legacy support |
-   | anthropic | claude-opus-4-5 | Claude Opus 4.5 | **Most capable**, complex reasoning |
-   | anthropic | claude-opus-4-1 | Claude Opus 4.1 | Advanced reasoning |
-   | anthropic | claude-opus-4 | Claude Opus 4 | Complex tasks |
+   | anthropic | claude-sonnet-5 | Claude Sonnet 5 | Latest balanced model |
+   | anthropic | claude-opus-5 | Claude Opus 5 | Complex reasoning |
+   | anthropic | claude-fable-5 | Claude Fable 5 | Highest-capability tier |
    | anthropic | claude-haiku-4-5 | Claude Haiku 4.5 | **Fastest**, simple tasks |
-   | openai | gpt-5 | GPT-5 | General purpose, multimodal |
-   | openai | gpt-5-1 | GPT-5.1 | Latest OpenAI model |
-   | openai | gpt-5-mini | GPT-5 Mini | Cost-effective |
-   | openai | gpt-5-nano | GPT-5 Nano | Lightest, fastest |
-   | google | gemini-2-5-pro | Gemini 2.5 Pro | Complex reasoning, multimodal |
-   | google | gemini-2-5-flash | Gemini 2.5 Flash | Fast, cost-effective |
+   | openai | gpt-5-6-sol | GPT 5.6 Sol | Highest-capability tier |
+   | openai | gpt-5-6-terra | GPT 5.6 Terra | Balanced reasoning |
+   | openai | gpt-5-6-luna | GPT 5.6 Luna | Fast, cost-effective |
+   | google | gemini-3-1-pro | Gemini 3.1 Pro | Complex reasoning, multimodal |
+   | google | gemini-3-6-flash | Gemini 3.6 Flash | Latest Flash model |
+   | google | gemini-3-5-flash-lite | Gemini 3.5 Flash Lite | Cost-effective |
 
    **FMAPI_DATABRICKS (Databricks-hosted open models):**
    | Provider | Model ID | Display Name | Best For |
    |----------|----------|--------------|----------|
-   | meta | llama-4-maverick | Llama 4 Maverick | Latest Llama, general purpose |
+   | moonshot | kimi-k3 | Kimi K3 | Advanced reasoning |
+   | moonshot | kimi-k2-7 | Kimi K2.7 | Balanced reasoning |
+   | zhipu | glm-5-2 | GLM-5.2 | General purpose |
+   | databricks | inkling | Inkling | General purpose |
+   | deepseek | deepseek-v4-pro-0813 | DeepSeek V4 Pro | Advanced reasoning |
+   | qwen | qwen35-122b-a10b | Qwen 3.5 122B | General purpose |
+   | meta | llama-4-maverick | Llama 4 Maverick | General purpose |
    | meta | llama-3-3-70b | Llama 3.3 70B | Large, capable |
    | meta | llama-3-1-8b | Llama 3.1 8B | Efficient, fast |
    | meta | llama-3-2-3b | Llama 3.2 3B | Lightweight |
@@ -211,15 +213,16 @@ When presenting workload types to users, ALWAYS use these names:
    | databricks | gpt-oss-120b | GPT-OSS 120B | Large open model |
    | databricks | gpt-oss-20b | GPT-OSS 20B | Medium open model |
    | databricks | gemma-3-12b | Gemma 3 12B | Efficient Google model |
+   | qwen | qwen3-embedding-0-6b | Qwen 3 0.6B | **Embeddings only** |
    | databricks | bge-large | BGE Large | **Embeddings only** |
    | databricks | gte | GTE | **Embeddings only** |
 
    **Model recommendations by use case:**
-   - **Best overall**: claude-sonnet-4-5 or gpt-5-1
-   - **Cost-sensitive**: claude-haiku-4-5, gpt-5-mini, or llama-3-1-8b
-   - **Complex reasoning**: claude-opus-4-5 or gemini-2-5-pro
-   - **Open source preference**: llama-4-maverick or llama-3-3-70b
-   - **Embeddings**: bge-large or gte (FMAPI_DATABRICKS only)
+   - **Best overall**: claude-sonnet-5 or gpt-5-6-terra
+   - **Cost-sensitive**: claude-haiku-4-5, gpt-5-6-luna, or deepseek-v4-flash-0731
+   - **Complex reasoning**: claude-opus-5, gpt-5-6-sol, or gemini-3-1-pro
+   - **Open model preference**: kimi-k3, glm-5-2, or qwen35-122b-a10b
+   - **Embeddings**: qwen3-embedding-0-6b, bge-large, or gte (FMAPI_DATABRICKS only)
 
 3. Expected volume?
    - Calculate: Users/day × Requests/user × Avg tokens/request
@@ -267,7 +270,9 @@ When presenting workload types to users, ALWAYS use these names:
    - What's the average query/context size?
    
 5. Other settings:
-   - fmapi_endpoint_type: "global" (default) or "in_geo" (regional)
+   - fmapi_endpoint_type: "global" (default), "in_geo" for proprietary
+     endpoints, or "regional" when a Databricks-hosted model publishes a
+     regional-processing uplift
    - fmapi_context_length: "all" (most common), "short", or "long"
 
 ### For Lakebase:
@@ -912,27 +917,27 @@ The user will review and confirm before it's added to the estimate.""",
                 # === Foundation Model API Specific ===
                 "fmapi_provider": {
                     "type": "string",
-                    "enum": ["anthropic", "openai", "google", "meta", "databricks"],
+                    "enum": ["anthropic", "openai", "google", "meta", "databricks", "moonshot", "zhipu", "deepseek", "qwen"],
                     "description": "FMAPI provider (for proprietary: anthropic/openai/google, for databricks: meta/databricks)"
                 },
                 "fmapi_model": {
                     "type": "string",
-                    "description": "Model ID. Use EXACT IDs: Anthropic (claude-sonnet-4-5, claude-sonnet-4-1, claude-opus-4-5, claude-haiku-4-5), OpenAI (gpt-5, gpt-5-1, gpt-5-mini), Google (gemini-2-5-pro, gemini-2-5-flash), Meta (llama-4-maverick, llama-3-3-70b, llama-3-1-8b), Databricks (bge-large, gte for embeddings)"
+                    "description": "Model ID. Use an exact current catalog ID. Preferred current examples: claude-sonnet-5, claude-opus-5, claude-haiku-4-5, gpt-5-6-sol, gpt-5-6-terra, gpt-5-6-luna, gemini-3-1-pro, gemini-3-6-flash, kimi-k3, kimi-k2-7, glm-5-2, inkling, deepseek-v4-pro-0813, deepseek-v4-flash-0731, qwen35-122b-a10b, qwen3-next-80b-a3b-instruct, qwen3-embedding-0-6b, llama-4-maverick, bge-large, gte."
                 },
                 "fmapi_endpoint_type": {
                     "type": "string",
-                    "enum": ["global", "regional"],
-                    "description": "Endpoint type: global (multi-region) or regional (single region)"
+                    "enum": ["global", "in_geo", "regional"],
+                    "description": "Use global/in_geo for proprietary endpoints. Use regional only for a Databricks-hosted model that publishes a regional-processing uplift."
                 },
                 "fmapi_context_length": {
                     "type": "string",
                     "enum": ["all", "short", "long"],
-                    "description": "Context length tier: 'all' (any context), 'short' (up to 8K tokens), 'long' (up to 200K tokens). Use 'long' for RAG/document processing."
+                    "description": "Context pricing tier: all, short (up to 200K tokens), or long (over 200K tokens). Use only a tier published for the selected model."
                 },
                 "fmapi_rate_type": {
                     "type": "string",
-                    "enum": ["input_token", "output_token", "cache_read", "cache_write"],
-                    "description": "REQUIRED for FMAPI. Token billing type. ALWAYS create SEPARATE workloads for input_token and output_token. Chatbots need BOTH input (prompts/context) AND output (responses) workloads."
+                    "enum": ["input_token", "output_token", "cache_read", "cache_write", "batch_inference", "provisioned_entry", "provisioned_scaling", "provisioned_entry_1_month", "provisioned_entry_3_month", "provisioned_scaling_1_month", "provisioned_scaling_3_month"],
+                    "description": "REQUIRED for FMAPI. Use only a rate type published for the selected model, endpoint, context, and cloud. Token rates use millions of tokens; batch and provisioned rates use hours."
                 },
                 "fmapi_quantity": {
                     "type": "number",

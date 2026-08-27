@@ -1,17 +1,15 @@
 {
-  "generated_at": "2026-04-10T09:20:30.571090",
-  "format": "csv",
-  "total_files": 10,
+  "generated_at": "2026-08-27T00:00:00",
+  "total_entries": 2529,
   "files": [
-    "dbsql-rates.csv",
-    "dbsql-warehouse-config.csv",
-    "dbu-multipliers.csv",
-    "dbu-rates.csv",
-    "fmapi-databricks-rates.csv",
-    "fmapi-proprietary-rates.csv",
-    "instance-dbu-rates.csv",
-    "serverless-rates.csv",
-    "sku-region-map.csv",
-    "vm-costs.csv"
+    "instance-dbu-rates.json",
+    "dbu-multipliers.json",
+    "dbu-rates.json",
+    "dbsql-rates.json",
+    "dbsql-warehouse-config.json",
+    "vector-search-rates.json",
+    "model-serving-rates.json",
+    "fmapi-databricks-rates.json",
+    "fmapi-proprietary-rates.json"
   ]
 }

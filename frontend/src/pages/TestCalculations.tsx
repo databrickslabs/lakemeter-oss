@@ -25,6 +25,7 @@ import {
   getExactRegionalDBUPrice,
   getDBSQLWarehouseConfig,
   getAvailableWorkloadTypesForRegion,
+  getEffectiveFMAPIRate,
   type PricingBundle
 } from '../utils/pricingBundle'
 import type { LineItem } from '../types'
@@ -93,11 +94,14 @@ function getTiersForCloud(cloud: string): string[] {
 // LLMs support both input_token and output_token
 // Embedding models only support input_token
 const FMAPI_DATABRICKS_LLM_MODELS = [
+  'kimi-k3', 'kimi-k2-7', 'glm-5-2', 'inkling',
+  'deepseek-v4-pro-0813', 'deepseek-v4-flash-0731',
+  'qwen35-122b-a10b', 'qwen3-next-80b-a3b-instruct',
   'llama-3-3-70b', 'llama-3-1-8b', 'llama-4-maverick',
-  'gpt-oss-120b', 'gpt-oss-20b', 'gemma-3-12b'
+  'gpt-oss-120b', 'gpt-oss-20b', 'gemma-3-12b',
 ]
 const FMAPI_DATABRICKS_EMBEDDING_MODELS = [
-  'bge-large', 'gte'
+  'qwen3-embedding-0-6b', 'bge-large', 'gte',
 ]
 
 // FMAPI Proprietary configurations (validated against pricing bundle)
@@ -1110,11 +1114,12 @@ export default function TestCalculations() {
       getFMAPIDatabricksRate: (model: string, rateType: string) => {
         if (isPricingBundleLoaded && pricingBundle.fmapiDatabricksRates) {
           const key = `${cloud.toLowerCase()}:${model}:${rateType}`
-          const data = pricingBundle.fmapiDatabricksRates[key]
+          const data = getEffectiveFMAPIRate(pricingBundle.fmapiDatabricksRates[key])
           if (data) {
             return {
               dbu_per_1M_tokens: data.is_hourly ? undefined : data.dbu_rate,
-              dbu_per_hour: data.is_hourly ? data.dbu_rate : undefined
+              dbu_per_hour: data.is_hourly ? data.dbu_rate : undefined,
+              regional_uplift_percent: data.regional_uplift_percent,
             }
           }
         }
@@ -1126,7 +1131,7 @@ export default function TestCalculations() {
           const ep = endpointType || 'global'
           const ctx = contextLength || 'all'
           const key = `${cloud.toLowerCase()}:${provider.toLowerCase()}:${model.toLowerCase()}:${ep}:${ctx}:${rateType}`
-          const data = pricingBundle.fmapiProprietaryRates[key]
+          const data = getEffectiveFMAPIRate(pricingBundle.fmapiProprietaryRates[key])
           if (data) {
             return {
               dbu_per_1M_tokens: data.is_hourly ? undefined : data.dbu_rate,

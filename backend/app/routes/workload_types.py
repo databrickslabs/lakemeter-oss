@@ -152,7 +152,7 @@ DEFAULT_WORKLOAD_TYPES = [
     {
         "workload_type": "FMAPI_DATABRICKS",
         "display_name": "Foundation Models (Databricks)",
-        "description": "Databricks-hosted LLMs (Llama, DBRX)",
+        "description": "Databricks-hosted foundation models (Kimi, GLM, DeepSeek, Qwen, Llama, and embeddings)",
         "show_compute_config": False,
         "show_serverless_toggle": False,
         "show_serverless_performance_mode": False,

@@ -61,6 +61,15 @@ export interface FMAPIRate {
   input_divisor: number
   is_hourly: boolean
   sku_product_type: string
+  display_name?: string
+  status?: 'active' | 'retired'
+  promotional_dbu_rate?: number
+  promotion_end_date?: string
+  promotion_label?: string
+  regional_uplift_percent?: number
+  supported_region_group?: 'americas'
+  reservation_months?: number
+  batch_status?: 'coming_soon'
 }
 
 export interface PricingBundle {
@@ -378,10 +387,28 @@ export function getFMAPIDatabricksRate(
   bundle: PricingBundle,
   cloud: string,
   model: string,
-  rateType: string
+  rateType: string,
+  region?: string,
+  processingType = 'global',
 ): FMAPIRate | null {
   const key = `${cloud.toLowerCase()}:${model}:${rateType}`
-  return bundle.fmapiDatabricksRates[key] ?? null
+  const rate = getEffectiveFMAPIRate(bundle.fmapiDatabricksRates[key])
+  if (!rate) return null
+  if (
+    region
+    && rateType.startsWith('provisioned_entry')
+    && !isFMAPIProvisionedEntryRegionSupported(cloud, region)
+  ) {
+    return null
+  }
+  if (processingType === 'regional') {
+    if (!rate.regional_uplift_percent) return null
+    return {
+      ...rate,
+      dbu_rate: rate.dbu_rate * (1 + rate.regional_uplift_percent / 100),
+    }
+  }
+  return processingType === 'global' ? rate : null
 }
 
 /**
@@ -397,7 +424,61 @@ export function getFMAPIProprietaryRate(
   rateType: string
 ): FMAPIRate | null {
   const key = `${cloud.toLowerCase()}:${provider}:${model}:${endpointType}:${contextLength}:${rateType}`
-  return bundle.fmapiProprietaryRates[key] ?? null
+  return getEffectiveFMAPIRate(bundle.fmapiProprietaryRates[key])
+}
+
+/**
+ * Resolve the currently billable rate while retaining list-price metadata.
+ */
+export function getEffectiveFMAPIRate(
+  rate: FMAPIRate | null | undefined,
+  asOf = new Date().toISOString().slice(0, 10)
+): FMAPIRate | null {
+  if (!rate) return null
+  const promotionIsActive = rate.promotional_dbu_rate !== undefined
+    && rate.promotion_end_date !== undefined
+    && asOf <= rate.promotion_end_date
+  if (!promotionIsActive) return rate
+  return {
+    ...rate,
+    dbu_rate: rate.promotional_dbu_rate!,
+  }
+}
+
+const FMAPI_PROVISIONED_ENTRY_REGIONS: Record<string, Set<string>> = {
+  aws: new Set([
+    'us-east-1',
+    'us-east-2',
+    'us-west-1',
+    'us-west-2',
+    'ca-central-1',
+    'ca-west-1',
+    'sa-east-1',
+  ]),
+  azure: new Set([
+    'brazilsouth',
+    'brazilsoutheast',
+    'canadacentral',
+    'canadaeast',
+    'centralus',
+    'eastus',
+    'eastus2',
+    'northcentralus',
+    'southcentralus',
+    'westcentralus',
+    'westus',
+    'westus2',
+    'westus3',
+  ]),
+}
+
+export function isFMAPIProvisionedEntryRegionSupported(
+  cloud: string,
+  region: string,
+): boolean {
+  return FMAPI_PROVISIONED_ENTRY_REGIONS[cloud.toLowerCase()]?.has(
+    region.toLowerCase(),
+  ) ?? false
 }
 
 // ============================================================================

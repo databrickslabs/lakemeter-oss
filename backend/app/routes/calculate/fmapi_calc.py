@@ -20,6 +20,11 @@ from app.routes.calculate.discount import (
     apply_discount_to_sku_breakdown, calculate_total_discount_summary, enhance_total_cost_with_discount,
 )
 from app.routes.calculate.schemas import FMAPIDatabricksCalculationRequest, FMAPIProprietaryCalculationRequest
+from app.services.fmapi_pricing import (
+    FMAPIRateNotFound,
+    get_databricks_rate,
+    get_proprietary_rate,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -35,9 +40,6 @@ def _load_json(filename: str) -> dict:
             return json.load(f)
     return {}
 
-
-FMAPI_DB_RATES = _load_json('fmapi-databricks-rates.json')
-FMAPI_PROP_RATES = _load_json('fmapi-proprietary-rates.json')
 
 # DBU price ($/DBU) for FMAPI SKUs — looked up from dbu-rates.json or fallback
 DBU_RATES_BY_REGION = _load_json('dbu-rates.json')
@@ -89,25 +91,29 @@ def _build_fmapi_line_items_direct(request, workload_type, cloud, region, tier,
     cloud_lc = cloud.lower()
 
     for rate_type, quantity in token_types:
-        # Look up rate from static JSON
-        if workload_type == "FMAPI_DATABRICKS":
-            key = f"{cloud_lc}:{request.model}:{rate_type}"
-            info = FMAPI_DB_RATES.get(key, {})
-        else:
-            key = f"{cloud_lc}:{provider}:{request.model}:{endpoint_type}:{context_length}:{rate_type}"
-            info = FMAPI_PROP_RATES.get(key, {})
-
-        if not info:
-            logger.warning(f"FMAPI rate not found for key={key}")
-            line_items.append({
-                "rate_type": rate_type, "quantity": quantity,
-                "dbu_quantity": 0, "dbu_price": 0, "dbu_per_hour": 0, "cost": 0,
-                "unit": "million_tokens" if rate_type in ("input_token", "output_token") else "hours",
-            })
-            continue
+        try:
+            if workload_type == "FMAPI_DATABRICKS":
+                info = get_databricks_rate(
+                    cloud_lc,
+                    request.model,
+                    rate_type,
+                    region=region,
+                    processing_type=getattr(request, "endpoint_type", "global"),
+                )
+            else:
+                info = get_proprietary_rate(
+                    cloud_lc,
+                    provider,
+                    request.model,
+                    endpoint_type,
+                    context_length,
+                    rate_type,
+                )
+        except FMAPIRateNotFound as exc:
+            logger.warning("%s", exc)
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         dbu_rate = info.get('dbu_rate', 0)
-        input_divisor = info.get('input_divisor', 1_000_000)
         is_hourly = info.get('is_hourly', False)
         sku_product_type = info.get('sku_product_type', 'SERVERLESS_REAL_TIME_INFERENCE')
 
@@ -135,6 +141,16 @@ def _build_fmapi_line_items_direct(request, workload_type, cloud, region, tier,
             "dbu_per_hour": dbu_rate if is_hourly else 0,
             "cost": round(cost, 2),
             "unit": "million_tokens" if is_token else "hours",
+            "sku_product_type": sku_product_type,
+            "list_dbu_rate": info.get("list_dbu_rate", dbu_rate),
+            "promotion_label": info.get("promotion_label"),
+            "promotion_end_date": info.get("promotion_end_date"),
+            "regional_uplift_percent": (
+                info.get("regional_uplift_percent")
+                if info.get("regional_uplift_applied")
+                else None
+            ),
+            "reservation_months": info.get("reservation_months"),
         })
 
     return line_items
@@ -163,7 +179,13 @@ def calculate_fmapi_databricks_cost(
             request, "FMAPI_DATABRICKS", cloud_upper, request.region, tier_upper,
         )
 
-        sku_type = get_product_type_for_pricing(db, "FMAPI_DATABRICKS", True, False, None, None, None)
+        sku_type = (
+            line_items[0]["sku_product_type"]
+            if line_items
+            else get_product_type_for_pricing(
+                db, "FMAPI_DATABRICKS", True, False, None, None, None
+            )
+        )
         total_cost = sum(item["cost"] for item in line_items)
 
         sku_breakdown = []
@@ -171,7 +193,7 @@ def calculate_fmapi_databricks_cost(
             if item["cost"] > 0:
                 sku_breakdown.append({
                     "type": "dbu",
-                    "sku": sku_type or "SERVERLESS_REAL_TIME_INFERENCE",
+                    "sku": item["sku_product_type"],
                     "cost": round(item["cost"], 2),
                     "qty": round(item["dbu_quantity"], 6),
                     "usage_unit": item["unit"],
@@ -193,6 +215,7 @@ def calculate_fmapi_databricks_cost(
                 "configuration": {
                     "cloud": cloud_upper, "region": request.region, "tier": tier_upper,
                     "model": request.model,
+                    "endpoint_type": request.endpoint_type,
                 },
                 "line_items": line_items,
                 "total_cost": {"cost_per_month": round(total_cost, 2)},
@@ -239,8 +262,12 @@ def calculate_fmapi_proprietary_cost(
             context_length=request.context_length or "all",
         )
 
-        sku_type = get_product_type_for_pricing(
-            db, "FMAPI_PROPRIETARY", True, False, None, None, request.provider
+        sku_type = (
+            line_items[0]["sku_product_type"]
+            if line_items
+            else get_product_type_for_pricing(
+                db, "FMAPI_PROPRIETARY", True, False, None, None, request.provider
+            )
         )
         total_cost = sum(item["cost"] for item in line_items)
 
@@ -249,7 +276,7 @@ def calculate_fmapi_proprietary_cost(
             if item["cost"] > 0:
                 sku_breakdown.append({
                     "type": "dbu",
-                    "sku": sku_type or f"{request.provider.upper()}_MODEL_SERVING",
+                    "sku": item["sku_product_type"],
                     "cost": round(item["cost"], 2),
                     "qty": round(item["dbu_quantity"], 6),
                     "usage_unit": item["unit"],

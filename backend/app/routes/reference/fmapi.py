@@ -6,6 +6,14 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services.cache import ref_cache
+from app.services.fmapi_pricing import (
+    FMAPI_DATABRICKS_RATES,
+    FMAPI_PROPRIETARY_RATES,
+    FMAPIRateNotFound,
+    active_databricks_models,
+    active_proprietary_models,
+    get_proprietary_rate,
+)
 from app.services.validators import (
     validate_cloud,
     validate_fmapi_databricks_model,
@@ -30,16 +38,10 @@ def list_fmapi_databricks_models(db: Session = Depends(get_db)):
     if cached is not None:
         return cached
 
-    try:
-        query = text("SELECT DISTINCT model FROM lakemeter.sync_product_fmapi_databricks ORDER BY model")
-        models = [r.model for r in db.execute(query).fetchall()]
-
-        response = {"success": True, "data": {"count": len(models), "models": models}}
-        ref_cache.set("fmapi_db_models_list", response)
-        return response
-    except Exception as e:
-        logger.error(f"Error fetching Databricks FMAPI model list: {e}")
-        return {"success": False, "error": {"message": str(e), "code": "DATABASE_ERROR"}}
+    models = [model["id"] for model in active_databricks_models()]
+    response = {"success": True, "data": {"count": len(models), "models": models}}
+    ref_cache.set("fmapi_db_models_list", response)
+    return response
 
 
 @router.get("/fmapi/databricks-models", tags=["FMAPI - Databricks"])
@@ -132,24 +134,14 @@ def list_fmapi_proprietary_models(
     if cached is not None:
         return cached
 
-    try:
-        query = text("""
-            SELECT DISTINCT model
-            FROM lakemeter.sync_product_fmapi_proprietary
-            WHERE provider = :provider
-            ORDER BY model
-        """)
-        models = [r.model for r in db.execute(query, {"provider": provider.lower()}).fetchall()]
-
-        response = {
-            "success": True,
-            "data": {"provider": provider, "count": len(models), "models": models},
-        }
-        ref_cache.set("fmapi_prop_models_list", response, provider=provider)
-        return response
-    except Exception as e:
-        logger.error(f"Error fetching proprietary FMAPI model list: {e}")
-        return {"success": False, "error": {"message": str(e), "code": "DATABASE_ERROR"}}
+    provider_models = active_proprietary_models().get(provider.lower(), [])
+    models = [model["id"] for model in provider_models]
+    response = {
+        "success": True,
+        "data": {"provider": provider, "count": len(models), "models": models},
+    }
+    ref_cache.set("fmapi_prop_models_list", response, provider=provider)
+    return response
 
 
 @router.get("/fmapi/proprietary-models/options", tags=["FMAPI - Proprietary"])
@@ -292,6 +284,19 @@ def get_fmapi_proprietary_models(
 
         models_dict = {}
         for r in results:
+            try:
+                current_rate = get_proprietary_rate(
+                    cloud=r.cloud.lower(),
+                    provider=r.provider,
+                    model=r.model,
+                    endpoint_type=r.endpoint_type,
+                    context_length=r.context_length,
+                    rate_type=r.rate_type,
+                )
+            except FMAPIRateNotFound:
+                # Do not expose retired database rows as current catalog options.
+                continue
+
             key = f"{r.cloud}:{r.provider}:{r.model}"
             if key not in models_dict:
                 models_dict[key] = {"cloud": r.cloud, "provider": r.provider, "model": r.model, "pricing": []}
@@ -301,13 +306,18 @@ def get_fmapi_proprietary_models(
                 "context_length": r.context_length,
                 "rate_type": r.rate_type,
             }
-            if r.is_hourly:
-                pricing_entry["dbu_per_hour"] = float(r.dbu_rate) if r.dbu_rate else None
-            elif r.input_divisor == 1000000:
-                pricing_entry["dbu_per_1M_tokens"] = float(r.dbu_rate) if r.dbu_rate else None
+            effective_rate = current_rate["effective_dbu_rate"]
+            if current_rate.get("is_hourly"):
+                pricing_entry["dbu_per_hour"] = effective_rate
+            elif current_rate.get("input_divisor") == 1000000:
+                pricing_entry["dbu_per_1M_tokens"] = effective_rate
             else:
-                pricing_entry["dbu_rate"] = float(r.dbu_rate) if r.dbu_rate else None
-                pricing_entry["input_divisor"] = float(r.input_divisor) if r.input_divisor else None
+                pricing_entry["dbu_rate"] = effective_rate
+                pricing_entry["input_divisor"] = current_rate.get("input_divisor")
+            if current_rate.get("promotion_applied"):
+                pricing_entry["list_dbu_rate"] = current_rate["dbu_rate"]
+                pricing_entry["promotion_label"] = current_rate.get("promotion_label")
+                pricing_entry["promotion_end_date"] = current_rate.get("promotion_end_date")
 
             models_dict[key]["pricing"].append(pricing_entry)
 
@@ -339,40 +349,37 @@ def get_fmapi_databricks_config(db: Session = Depends(get_db)):
     if cached is not None:
         return cached
 
-    try:
-        query = text("""
-            SELECT DISTINCT model, rate_type
-            FROM lakemeter.sync_product_fmapi_databricks
-            ORDER BY model, rate_type
-        """)
-        results = db.execute(query).fetchall()
-
-        # Group models and collect rate types
-        models = sorted(set(r.model for r in results))
-        rate_types = sorted(set(r.rate_type for r in results))
-
-        # Infer model types from model names
-        model_type_map = {}
-        for m in models:
-            if any(k in m.lower() for k in ["embed", "bge", "gte"]):
-                model_type_map.setdefault("embedding", []).append(m)
-            elif any(k in m.lower() for k in ["rerank"]):
-                model_type_map.setdefault("reranking", []).append(m)
-            else:
-                model_type_map.setdefault("chat", []).append(m)
-
-        response = {
-            "model_types": [
-                {"id": mt, "name": mt.title(), "models": [{"id": m, "name": m} for m in ms]}
-                for mt, ms in model_type_map.items()
-            ],
-            "inference_types": [{"id": rt, "name": rt.replace("_", " ").title()} for rt in rate_types],
+    models = active_databricks_models()
+    embedding = [
+        model
+        for model in models
+        if any(key in model["id"].lower() for key in ("embed", "bge", "gte"))
+    ]
+    llm = [model for model in models if model not in embedding]
+    rate_types = sorted(
+        {
+            key.split(":")[2]
+            for key, rate in FMAPI_DATABRICKS_RATES.items()
+            if rate.get("status", "active") == "active"
         }
-        ref_cache.set("fmapi_databricks_config", response)
-        return response
-    except Exception as e:
-        logger.error(f"Error fetching FMAPI Databricks config: {e}")
-        return {"model_types": [], "inference_types": []}
+    )
+    response = {
+        "model_types": [
+            {"id": "llm", "name": "LLMs", "has_output_tokens": True},
+            {
+                "id": "embedding",
+                "name": "Embedding Models",
+                "has_output_tokens": False,
+            },
+        ],
+        "models": {"llm": llm, "embedding": embedding},
+        "inference_types": [
+            {"id": rate_type, "name": rate_type.replace("_", " ").title()}
+            for rate_type in rate_types
+        ],
+    }
+    ref_cache.set("fmapi_databricks_config", response)
+    return response
 
 
 @router.get("/fmapi-proprietary", tags=["FMAPI - Proprietary"])
@@ -382,51 +389,43 @@ def get_fmapi_proprietary_config(db: Session = Depends(get_db)):
     if cached is not None:
         return cached
 
-    try:
-        query = text("""
-            SELECT DISTINCT provider, model, endpoint_type, context_length
-            FROM lakemeter.sync_product_fmapi_proprietary
-            ORDER BY provider, model
-        """)
-        results = db.execute(query).fetchall()
-
-        # Build provider → models map
-        provider_models: dict = {}
-        endpoint_types_set: set = set()
-        context_lengths_set: set = set()
-
-        for r in results:
-            p = r.provider.lower()
-            if p not in provider_models:
-                provider_models[p] = set()
-            provider_models[p].add(r.model)
-            if r.endpoint_type:
-                endpoint_types_set.add(r.endpoint_type)
-            if r.context_length:
-                context_lengths_set.add(r.context_length)
-
-        provider_names = {"openai": "OpenAI", "anthropic": "Anthropic", "google": "Google"}
-
-        response = {
-            "providers": [
-                {
-                    "id": p,
-                    "name": provider_names.get(p, p.title()),
-                    "models": [{"id": m, "name": m} for m in sorted(models)],
-                }
-                for p, models in sorted(provider_models.items())
-            ],
-            "endpoint_types": [
-                {"id": et, "name": et.replace("_", " ").title()}
-                for et in sorted(endpoint_types_set)
-            ],
-            "context_lengths": [
-                {"id": cl, "name": cl.replace("_", " ").title()}
-                for cl in sorted(context_lengths_set)
-            ],
+    provider_models = active_proprietary_models()
+    endpoint_types = sorted(
+        {
+            key.split(":")[3]
+            for key, rate in FMAPI_PROPRIETARY_RATES.items()
+            if rate.get("status", "active") == "active"
         }
-        ref_cache.set("fmapi_proprietary_config", response)
-        return response
-    except Exception as e:
-        logger.error(f"Error fetching FMAPI Proprietary config: {e}")
-        return {"providers": [], "endpoint_types": [], "context_lengths": []}
+    )
+    context_lengths = sorted(
+        {
+            key.split(":")[4]
+            for key, rate in FMAPI_PROPRIETARY_RATES.items()
+            if rate.get("status", "active") == "active"
+        }
+    )
+    provider_names = {
+        "openai": "OpenAI",
+        "anthropic": "Anthropic",
+        "google": "Google",
+    }
+    response = {
+        "providers": [
+            {
+                "id": provider,
+                "name": provider_names.get(provider, provider.title()),
+                "models": models,
+            }
+            for provider, models in provider_models.items()
+        ],
+        "endpoint_types": [
+            {"id": endpoint, "name": endpoint.replace("_", " ").title()}
+            for endpoint in endpoint_types
+        ],
+        "context_lengths": [
+            {"id": context, "name": context.replace("_", " ").title()}
+            for context in context_lengths
+        ],
+    }
+    ref_cache.set("fmapi_proprietary_config", response)
+    return response

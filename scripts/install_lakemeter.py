@@ -767,7 +767,7 @@ def _create_tables_inline(cur):
         ("MODEL_SERVING", "Model Serving", "Real-time model inference endpoints",
          False, False, False, False, False, False, True, False, False, False, False, True, False, False,
          None, None, "SERVERLESS_REAL_TIME_INFERENCE", 6),
-        ("FMAPI_DATABRICKS", "Foundation Models (Databricks)", "Databricks-hosted LLMs (Llama, DBRX)",
+        ("FMAPI_DATABRICKS", "Foundation Models (Databricks)", "Databricks-hosted foundation models (Kimi, GLM, DeepSeek, Qwen, Llama, and embeddings)",
          False, False, False, False, False, False, False, True, False, False, False, False, False, True,
          None, None, "SERVERLESS_REAL_TIME_INFERENCE", 7),
         ("FMAPI_PROPRIETARY", "Foundation Models (Proprietary)", "OpenAI, Anthropic, Google models served by Databricks",

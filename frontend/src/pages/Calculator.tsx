@@ -1762,20 +1762,31 @@ export default function Calculator() {
         // Foundation Models (Databricks) - llama, gpt-oss, gemma, bge, gte, etc.
         const fmapiDbxQuantity = effectiveItem.fmapi_quantity || 0
         const fmapiDbxRateType = effectiveItem.fmapi_rate_type || 'input_token'
-        const fmapiDbxIsProvisioned = ['provisioned_scaling', 'provisioned_entry'].includes(fmapiDbxRateType)
+        const fmapiDbxIsProvisioned = fmapiDbxRateType.startsWith('provisioned_')
         
         // Try pricing bundle first
         let dbxDbuRate: number | null = null
         
         if (isPricingBundleLoaded && effectiveItem.fmapi_model) {
-          const bundleDbxRate = getBundleFMAPIDatabricksRate(pricingBundle, cloud, effectiveItem.fmapi_model, fmapiDbxRateType)
+          const bundleDbxRate = getBundleFMAPIDatabricksRate(
+            pricingBundle,
+            cloud,
+            effectiveItem.fmapi_model,
+            fmapiDbxRateType,
+            region,
+            effectiveItem.fmapi_endpoint_type || 'global',
+          )
           if (bundleDbxRate) {
             dbxDbuRate = bundleDbxRate.dbu_rate
           }
         }
         
         // Fall back to store's cached rate
-        if (dbxDbuRate === null && effectiveItem.fmapi_model) {
+        if (
+          dbxDbuRate === null
+          && !isPricingBundleLoaded
+          && effectiveItem.fmapi_model
+        ) {
           const dbxRateData = getFMAPIDatabricksRate(effectiveItem.fmapi_model, fmapiDbxRateType)
           if (dbxRateData) {
             if (fmapiDbxIsProvisioned) {
@@ -1786,14 +1797,8 @@ export default function Calculator() {
           }
         }
         
-        // Apply defaults if still no rate found
-        if (dbxDbuRate === null) {
-          if (fmapiDbxIsProvisioned) {
-            dbxDbuRate = fmapiDbxRateType === 'provisioned_scaling' ? 200 : 50
-          } else {
-            dbxDbuRate = fmapiDbxRateType === 'output_token' ? 3.0 : 1.0
-          }
-        }
+        // Unsupported combinations must not silently use another model's rate.
+        if (dbxDbuRate === null) dbxDbuRate = 0
         
         monthlyDBUs = fmapiDbxQuantity * dbxDbuRate
         break
@@ -1802,7 +1807,7 @@ export default function Calculator() {
         // Foundation Models (Proprietary) - OpenAI, Anthropic, Google
         const fmapiPropQuantity = effectiveItem.fmapi_quantity || 0
         const fmapiPropRateType = effectiveItem.fmapi_rate_type || 'input_token'
-        const fmapiPropIsProvisioned = fmapiPropRateType === 'provisioned_scaling'
+        const fmapiPropIsProvisioned = fmapiPropRateType === 'batch_inference'
         
         // Try pricing bundle first
         let propDbuRate: number | null = null
@@ -1822,7 +1827,12 @@ export default function Calculator() {
         }
         
         // Fall back to store's cached rate
-        if (propDbuRate === null && effectiveItem.fmapi_provider && effectiveItem.fmapi_model) {
+        if (
+          propDbuRate === null
+          && !isPricingBundleLoaded
+          && effectiveItem.fmapi_provider
+          && effectiveItem.fmapi_model
+        ) {
           const propRateData = getFMAPIProprietaryRate(effectiveItem.fmapi_provider, effectiveItem.fmapi_model, fmapiPropRateType)
           if (propRateData) {
             if (fmapiPropIsProvisioned) {
@@ -1833,19 +1843,8 @@ export default function Calculator() {
           }
         }
         
-        // Apply defaults if still no rate found
-        if (propDbuRate === null) {
-          if (fmapiPropIsProvisioned) {
-            propDbuRate = 150
-          } else {
-            switch (fmapiPropRateType) {
-              case 'output_token': propDbuRate = 6.0; break
-              case 'cache_read': propDbuRate = 0.5; break
-              case 'cache_write': propDbuRate = 1.0; break
-              default: propDbuRate = 2.0 // input_token
-            }
-          }
-        }
+        // Unsupported combinations must not silently use another model's rate.
+        if (propDbuRate === null) propDbuRate = 0
         
         monthlyDBUs = fmapiPropQuantity * propDbuRate
         break
@@ -2358,12 +2357,17 @@ export default function Calculator() {
             'input_token': 'Input Tokens',
             'output_token': 'Output Tokens',
             'provisioned_scaling': 'Provisioned Scaling',
-            'provisioned_entry': 'Provisioned Entry'
+            'provisioned_entry': 'Provisioned Entry',
+            'provisioned_scaling_1_month': 'Provisioned Scaling (1 month)',
+            'provisioned_scaling_3_month': 'Provisioned Scaling (3 months)',
+            'provisioned_entry_1_month': 'Provisioned Entry (1 month)',
+            'provisioned_entry_3_month': 'Provisioned Entry (3 months)',
           }
           details.push({ label: 'Rate', value: rateLabels[item.fmapi_rate_type] || item.fmapi_rate_type })
         }
         if (item.fmapi_quantity) {
-          const isProvisioned = ['provisioned_scaling', 'provisioned_entry'].includes(item.fmapi_rate_type || '')
+          const isProvisioned = (item.fmapi_rate_type || '').startsWith('provisioned_')
+            || item.fmapi_rate_type === 'batch_inference'
           details.push({ 
             label: isProvisioned ? 'Hours' : 'Quantity', 
             value: isProvisioned ? `${item.fmapi_quantity}h/mo` : `${item.fmapi_quantity}M` 
@@ -2380,12 +2384,19 @@ export default function Calculator() {
             'input_token': 'Input',
             'output_token': 'Output',
             'cache_read': 'Cache Read',
-            'cache_write': 'Cache Write'
+            'cache_write': 'Cache Write',
+            'batch_inference': 'Batch Inference',
           }
           details.push({ label: 'Rate', value: rateLabels[item.fmapi_rate_type] || item.fmapi_rate_type })
         }
         if (item.fmapi_quantity) {
-          details.push({ label: 'Quantity', value: `${item.fmapi_quantity}M tokens` })
+          const isHourly = item.fmapi_rate_type === 'batch_inference'
+          details.push({
+            label: isHourly ? 'Hours' : 'Quantity',
+            value: isHourly
+              ? `${item.fmapi_quantity}h/mo`
+              : `${item.fmapi_quantity}M tokens`,
+          })
         }
         break
         
@@ -3116,8 +3127,9 @@ export default function Calculator() {
                         } else if (wType === 'FMAPI_DATABRICKS' || wType === 'FMAPI_PROPRIETARY') {
                           // Foundation Model API - check rate_type for provisioned vs token
                           if (effectiveItem.fmapi_rate_type) {
-                            const isProvisioned = ['provisioned_scaling', 'provisioned_entry'].includes(effectiveItem.fmapi_rate_type)
-                            config.badges.push({ text: isProvisioned ? 'Provisioned' : 'Token' })
+                            const isHourly = effectiveItem.fmapi_rate_type.startsWith('provisioned_')
+                              || effectiveItem.fmapi_rate_type === 'batch_inference'
+                            config.badges.push({ text: isHourly ? 'Hourly' : 'Token' })
                           }
                           if (effectiveItem.fmapi_provider && wType === 'FMAPI_PROPRIETARY') {
                             config.details.push(effectiveItem.fmapi_provider)
@@ -3520,10 +3532,13 @@ export default function Calculator() {
                                   if (wType === 'FMAPI_DATABRICKS' || wType === 'FMAPI_PROPRIETARY') {
                                     const quantity = effectiveItem.fmapi_quantity || 1
                                     const rateType = effectiveItem.fmapi_rate_type || 'input_token'
-                                    const isProvisioned = ['provisioned_scaling', 'provisioned_entry'].includes(rateType)
+                                    const isProvisioned = rateType.startsWith('provisioned_')
+                                      || rateType === 'batch_inference'
                                     const dbuPerUnit = quantity > 0 ? costs.monthlyDBUs / quantity : 0
                                     const model = effectiveItem.fmapi_model || 'model'
-                                    const provider = effectiveItem.fmapi_provider || ''
+                                    const provider = wType === 'FMAPI_PROPRIETARY'
+                                      ? effectiveItem.fmapi_provider || ''
+                                      : ''
                                     
                                     return (
                                       <div className="space-y-1">

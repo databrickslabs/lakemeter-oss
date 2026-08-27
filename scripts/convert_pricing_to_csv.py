@@ -39,6 +39,8 @@ def convert_dbu_rates():
     now = datetime.utcnow().isoformat()
     rows = []
     for key, rate in data.items():
+        if isinstance(rate, dict) and rate.get("status") == "retired":
+            continue
         parts = key.split(":")
         if len(parts) < 3:
             continue
@@ -283,6 +285,8 @@ def convert_fmapi_databricks():
                 "sku_product_type": "",
             })
         elif isinstance(rate, dict):
+            if rate.get("status", "active") != "active":
+                continue
             rows.append({
                 "cloud": cloud, "model": model, "rate_type": rate_type,
                 "dbu_rate": rate.get("dbu_rate", 0),
@@ -306,38 +310,25 @@ def convert_fmapi_proprietary():
 
     rows = []
     for key, rate in data.items():
-        parts = key.split(":")
-        if len(parts) < 3:
+        if isinstance(rate, dict) and rate.get("status") == "retired":
             continue
-        cloud_or_provider = parts[0]
-        model = parts[1]
-        rate_type = parts[2]
+        parts = key.split(":")
+        if len(parts) != 6:
+            continue
+        cloud, provider, model, endpoint_type, context_length, rate_type = parts
 
         if isinstance(rate, dict):
             rows.append({
-                "provider": rate.get("provider", cloud_or_provider),
+                "provider": provider,
                 "model": model,
-                "endpoint_type": rate.get("endpoint_type", ""),
-                "context_length": rate.get("context_length", ""),
+                "endpoint_type": endpoint_type,
+                "context_length": context_length,
                 "rate_type": rate_type,
                 "dbu_rate": rate.get("dbu_rate", 0),
                 "input_divisor": rate.get("input_divisor", ""),
                 "is_hourly": rate.get("is_hourly", False),
                 "sku_product_type": rate.get("sku_product_type", ""),
-                "cloud": rate.get("cloud", cloud_or_provider.upper()),
-            })
-        elif isinstance(rate, (int, float)):
-            rows.append({
-                "provider": cloud_or_provider,
-                "model": model,
-                "endpoint_type": "",
-                "context_length": "",
-                "rate_type": rate_type,
-                "dbu_rate": rate,
-                "input_divisor": "",
-                "is_hourly": False,
-                "sku_product_type": "",
-                "cloud": cloud_or_provider.upper(),
+                "cloud": cloud.upper(),
             })
 
     cols = ["provider", "model", "endpoint_type", "context_length", "rate_type",

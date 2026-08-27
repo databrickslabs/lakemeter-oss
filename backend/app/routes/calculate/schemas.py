@@ -224,9 +224,20 @@ class FMAPIDatabricksCalculationRequest(BaseModel):
     region: str = Field(...)
     tier: str = Field(...)
     model: str = Field(...)
+    endpoint_type: str = Field(
+        default="global",
+        description="Processing type: global or regional when published for the model",
+    )
     # Frontend sends quantity + rate_type (single rate per request)
-    quantity: Optional[float] = Field(None, ge=0, description="Token quantity (in millions) or hours")
-    rate_type: Optional[str] = Field(None, description="input_token, output_token, cache_read, cache_write, batch_inference")
+    quantity: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Token quantity (in millions) or provisioned hours",
+    )
+    rate_type: Optional[str] = Field(
+        None,
+        description="Exact token or provisioned rate type published for the model",
+    )
     # Legacy fields (still supported for backward compat)
     input_tokens_per_month: Optional[float] = Field(None, ge=0)
     output_tokens_per_month: Optional[float] = Field(None, ge=0)
@@ -240,10 +251,14 @@ class FMAPIProprietaryCalculationRequest(BaseModel):
     tier: str = Field(...)
     provider: str = Field(...)
     model: str = Field(...)
-    endpoint_type: str = Field(default="in_geo")
-    context_length: Optional[str] = Field(None)
+    endpoint_type: str = Field(default="global")
+    context_length: Optional[str] = Field(default="all")
     # Frontend sends quantity + rate_type (single rate per request)
-    quantity: Optional[float] = Field(None, ge=0, description="Token quantity (in millions) or hours")
+    quantity: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Token quantity (in millions) or batch inference hours",
+    )
     rate_type: Optional[str] = Field(None, description="input_token, output_token, cache_read, cache_write, batch_inference")
     # Legacy fields (still supported for backward compat)
     input_tokens_per_month: Optional[float] = Field(None, ge=0)

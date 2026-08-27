@@ -241,8 +241,15 @@ def _fmapi_details(item) -> list:
             'batch_inference': 'Batch Inference',
             'provisioned_scaling': 'Provisioned Scaling',
             'provisioned_entry': 'Provisioned Entry',
+            'provisioned_scaling_1_month': 'Provisioned Scaling (1-month reservation)',
+            'provisioned_scaling_3_month': 'Provisioned Scaling (3-month reservation)',
+            'provisioned_entry_1_month': 'Provisioned Entry (1-month reservation)',
+            'provisioned_entry_3_month': 'Provisioned Entry (3-month reservation)',
         }
-        details.append(f"Rate: {rate_type_display.get(item.fmapi_rate_type, item.fmapi_rate_type)}")
+        fallback_label = item.fmapi_rate_type.replace('_', ' ').title()
+        details.append(
+            f"Rate: {rate_type_display.get(item.fmapi_rate_type, fallback_label)}"
+        )
     if item.fmapi_quantity:
         token_types = ('input_token', 'output_token', 'cache_read', 'cache_write')
         if item.fmapi_rate_type in token_types:
