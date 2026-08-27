@@ -54,7 +54,7 @@ DEFAULT_WORKLOAD_TYPES = [
         "show_usage_tokens": False,
         "sku_product_type_standard": "ALL_PURPOSE_COMPUTE",
         "sku_product_type_photon": "ALL_PURPOSE_COMPUTE_(PHOTON)",
-        "sku_product_type_serverless": "INTERACTIVE_SERVERLESS_COMPUTE",
+        "sku_product_type_serverless": "ALL_PURPOSE_SERVERLESS_COMPUTE",
         "display_order": 2
     },
     {

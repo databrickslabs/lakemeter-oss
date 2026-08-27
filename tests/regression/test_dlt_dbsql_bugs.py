@@ -174,6 +174,115 @@ class TestBugS2_1_AllPurposeServerlessModeFixed:
         assert dbu_perf == pytest.approx(dbu_std * 2), \
             f"Jobs: performance={dbu_perf} should be 2x standard={dbu_std}"
 
+    def test_allpurpose_api_normalizes_legacy_standard_input(
+        self,
+        monkeypatch,
+    ):
+        from types import SimpleNamespace
+
+        from app.routes.calculate import all_purpose
+        from app.routes.calculate.schemas import (
+            AllPurposeServerlessCalculationRequest,
+        )
+
+        captured_params = {}
+
+        def fake_calculate(_db, params):
+            captured_params.update(params)
+            return SimpleNamespace(
+                dbu_cost_per_month=900,
+                dbu_per_month=1200,
+                dbu_price=0.75,
+                hours_per_month=100,
+                dbu_per_hour=12,
+                cost_per_month=900,
+            )
+
+        monkeypatch.setattr(
+            all_purpose,
+            "_validate_serverless_inputs",
+            lambda *_args: None,
+        )
+        monkeypatch.setattr(
+            all_purpose,
+            "call_calculate_line_item_costs",
+            fake_calculate,
+        )
+        monkeypatch.setattr(
+            all_purpose,
+            "get_product_type_for_pricing",
+            lambda *_args: "ALL_PURPOSE_SERVERLESS_COMPUTE",
+        )
+
+        request = AllPurposeServerlessCalculationRequest(
+            cloud="AWS",
+            region="us-east-1",
+            tier="PREMIUM",
+            driver_node_type="i3.xlarge",
+            worker_node_type="i3.xlarge",
+            num_workers=2,
+            hours_per_month=100,
+            serverless_mode="standard",
+        )
+        result = all_purpose.calculate_all_purpose_serverless_cost(
+            request,
+            db=object(),
+        )
+
+        assert captured_params["p17"] == "performance"
+        assert result["data"]["configuration"]["serverless_mode"] == "performance"
+        assert result["data"]["sku_type"] == "ALL_PURPOSE_SERVERLESS_COMPUTE"
+
+    def test_allpurpose_api_defaults_to_performance(self):
+        from app.routes.calculate.schemas import (
+            AllPurposeServerlessCalculationRequest,
+        )
+
+        request = AllPurposeServerlessCalculationRequest(
+            cloud="AWS",
+            region="us-east-1",
+            tier="PREMIUM",
+        )
+
+        assert request.serverless_mode == "performance"
+
+    def test_allpurpose_uses_canonical_serverless_sku(self):
+        from app.routes.calculate.helpers import get_sku_type as route_sku
+        from app.routes.workload_types import DEFAULT_WORKLOAD_TYPES
+        from app.services.lakebase_queries import get_sku_type as service_sku
+
+        expected = "ALL_PURPOSE_SERVERLESS_COMPUTE"
+        assert route_sku("ALL_PURPOSE", serverless_enabled=True) == expected
+        assert service_sku("ALL_PURPOSE", serverless_enabled=True) == expected
+
+        all_purpose = next(
+            workload
+            for workload in DEFAULT_WORKLOAD_TYPES
+            if workload["workload_type"] == "ALL_PURPOSE"
+        )
+        assert all_purpose["sku_product_type_serverless"] == expected
+
+    def test_upgrade_updates_existing_serverless_calculator(self):
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2]
+        upgrade_sql = (
+            root
+            / "scripts"
+            / "upgrades"
+            / "data_updates"
+            / "025_all_purpose_serverless_parity.sql"
+        ).read_text()
+
+        assert (
+            "WHEN UPPER(COALESCE(p_workload_type, '')) = 'ALL_PURPOSE' "
+            "THEN 2.0"
+        ) in upgrade_sql
+        assert (
+            "sku_product_type_serverless = "
+            "'ALL_PURPOSE_SERVERLESS_COMPUTE'"
+        ) in upgrade_sql
+
 
 class TestBugS2_3_FallbackPricingAligned:
     """BUG-S2-3: Frontend fallback price for ALL_PURPOSE_COMPUTE was $0.40/DBU

@@ -10,6 +10,7 @@ from app.services.lakebase_pricing import (
 from app.services.model_serving_pricing import (
     calculate_model_serving_dbu_per_hour,
 )
+from app.services.serverless_pricing import get_serverless_mode_multiplier
 
 
 def _calculate_hours_per_month(item) -> float:
@@ -163,7 +164,10 @@ def _calc_compute_dbu(item, cloud, wt, warnings):
     if item.serverless_enabled:
         photon_mult = _get_photon_multiplier(cloud, sku_base)
         base_dbu *= photon_mult
-        mode_multiplier = 2 if (item.serverless_mode or '').lower() == 'performance' else 1
+        mode_multiplier = get_serverless_mode_multiplier(
+            wt,
+            item.serverless_mode,
+        )
         return base_dbu * mode_multiplier, warnings
 
     if item.photon_enabled:

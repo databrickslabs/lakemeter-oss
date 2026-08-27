@@ -128,7 +128,10 @@ class AllPurposeServerlessCalculationRequest(BaseModel):
     hours_per_day: Optional[float] = Field(None, ge=0)
     days_per_month: Optional[int] = Field(None, ge=1, le=31)
     hours_per_month: Optional[float] = Field(None, ge=0)
-    serverless_mode: str = Field(default="standard")
+    serverless_mode: str = Field(
+        default="performance",
+        description="All-Purpose Serverless always uses Performance Optimized mode",
+    )
     discount_config: Optional[DiscountConfig] = Field(None)
 
 
