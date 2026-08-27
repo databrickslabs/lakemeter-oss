@@ -60,17 +60,23 @@ def fe_vector_search_dbu_per_hour(*, capacity_millions=1, mode='standard',
     return units * dbu_rate
 
 
-def fe_vector_search_storage_cost(*, storage_gb, units_used):
+def fe_vector_search_storage_cost(
+    *,
+    storage_gb,
+    units_used,
+    mode="standard",
+    price_per_dsu=0.023,
+):
     """Frontend AI Search storage cost (matches costCalculation.ts).
 
     The first 30 GB is free when an endpoint unit is provisioned.
     Billable = max(0, total - free)
-    Cost = billable × $0.023/GB/month
+    Cost = billable × mode-specific DSU/GB × regional $/DSU
     """
     free_gb = 30 if units_used > 0 else 0
     billable_gb = max(0, storage_gb - free_gb)
-    price_per_gb = 0.023
-    return billable_gb * price_per_gb
+    dsu_per_gb = 2 if mode == "storage_optimized" else 10
+    return billable_gb * dsu_per_gb * price_per_dsu
 
 
 def fe_model_serving_dbu_per_hour(
@@ -105,11 +111,35 @@ def fe_lakebase_dbu_per_hour(*, cu, ha_nodes=1):
     return float(cu) * float(ha_nodes) * 0.230 * 0.75
 
 
-def fe_lakebase_storage_cost(*, storage_gb):
-    """Frontend Lakebase storage: GB * 15 DSU/GB * $0.023/DSU."""
+def fe_lakebase_storage_cost(*, storage_gb, price_per_dsu=0.023):
+    """Frontend Lakebase storage: GB * 15 DSU/GB * regional $/DSU."""
     dsu_per_gb = 15
-    price_per_dsu = 0.023
     return float(storage_gb) * dsu_per_gb * price_per_dsu
+
+
+def fe_general_storage_cost(
+    *,
+    quantity,
+    unit,
+    cloud="aws",
+    tier1_operations_thousands=0,
+    tier2_operations_thousands=0,
+    price_per_dsu,
+):
+    """Frontend Default Storage DSUs × exact regional rate."""
+    billable_gb = float(quantity) * 1024 if unit.lower() == "tb" else float(quantity)
+    operation_rates = {
+        "aws": (0.2174, 0.0174),
+        "azure": (0.3535, 0.0226),
+        "gcp": (0.2174, 0.0174),
+    }
+    tier1_rate, tier2_rate = operation_rates[cloud.lower()]
+    total_dsu = (
+        billable_gb
+        + float(tier1_operations_thousands) * tier1_rate
+        + float(tier2_operations_thousands) * tier2_rate
+    )
+    return total_dsu * float(price_per_dsu)
 
 
 def fe_monthly_dbu_cost(*, dbu_per_hour, hours_per_month, dbu_price):

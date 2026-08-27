@@ -32,14 +32,18 @@ COL_DISCOUNT = 19
 COL_DBU_RATE_DISC = 20
 COL_DBU_COST_L = 21
 COL_DBU_COST_D = 22
-COL_DRIVER_VM_HR = 23
-COL_WORKER_VM_HR = 24
-COL_DRIVER_VM_COST = 25
-COL_WORKER_VM_COST = 26
-COL_TOTAL_VM = 27
-COL_TOTAL_L = 28
-COL_TOTAL_D = 29
-COL_NOTES = 30
+COL_DSUS_MO = 23
+COL_DSU_RATE = 24
+COL_DSU_COST_L = 25
+COL_DSU_COST_D = 26
+COL_DRIVER_VM_HR = 27
+COL_WORKER_VM_HR = 28
+COL_DRIVER_VM_COST = 29
+COL_WORKER_VM_COST = 30
+COL_TOTAL_VM = 31
+COL_TOTAL_L = 32
+COL_TOTAL_D = 33
+COL_NOTES = 34
 
 # Expected workload types in order
 WORKLOAD_TYPES = [
@@ -61,9 +65,15 @@ def make_estimate(**kw):
     return SimpleNamespace(**d)
 
 
-def generate_xlsx(line_items=None, cloud='aws', region='us-east-1',
+def generate_xlsx(line_items=None, cloud='aws', region=None,
                   tier='PREMIUM'):
     """Generate Excel workbook from line items. Returns openpyxl Workbook."""
+    if region is None:
+        region = {
+            'aws': 'us-east-1',
+            'azure': 'eastus',
+            'gcp': 'us-central1',
+        }[cloud]
     if line_items is None:
         line_items = make_all_nine_items()
     estimate = make_estimate()

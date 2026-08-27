@@ -49,6 +49,7 @@ When presenting workload types to users, ALWAYS use these names:
 - **AI_GATEWAY**: Additive Unity AI Gateway inference tables and usage tracking. Each enabled component has independent payload inputs and uses 1.429 DBU/GB. Prefer direct monthly payload GB for each component when its metered billable payload is known; otherwise use that component's requests in millions and average request/response KB. Underlying serving and guardrail costs are excluded.
 - **AGENT_EVALUATION**: Additive Agent Evaluation label scoring and synthetic data generation. Labels use separate monthly input/output token quantities; synthetic data uses generated question count. The evaluated app/model inference is excluded and must be modeled separately.
 - **AI_RUNTIME**: Serverless GPU model training. Billing-origin product AI_RUNTIME is charged on the MODEL_TRAINING SKU. Available on AWS and Azure with 1x A10, 1x H100, or 8x H100 accelerators.
+- **GENERAL_STORAGE**: Databricks Default Storage for Unity Catalog data and workspace assets. Estimate monthly capacity in GB or TB plus Tier 1 (PUT, COPY, POST, LIST) and Tier 2 API operations in thousands. Convert each component to DSUs and use exact regional DATABRICKS_STORAGE pricing. Customer-managed object storage, backups, and data transfer are excluded.
 - **SHUTTERSTOCK_IMAGEAI**: AI image generation (per-image pricing)
 
 ## Key Questions to Ask Users
@@ -753,7 +754,7 @@ The user will review and confirm before it's added to the estimate.""",
                 # === Common Fields ===
                 "workload_type": {
                     "type": "string",
-                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "AI_GATEWAY", "AGENT_EVALUATION", "AI_RUNTIME", "SHUTTERSTOCK_IMAGEAI"],
+                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "AI_GATEWAY", "AGENT_EVALUATION", "AI_RUNTIME", "GENERAL_STORAGE", "SHUTTERSTOCK_IMAGEAI"],
                     "description": "Type of Databricks workload. Note: Use DLT for SDP (Spark Declarative Pipelines) workloads - present as 'SDP' to users but use 'DLT' as the enum value."
                 },
                 "workload_name": {
@@ -902,7 +903,7 @@ The user will review and confirm before it's added to the estimate.""",
                 },
                 "vector_search_storage_gb": {
                     "type": "integer",
-                    "description": "Storage in GB for AI Search. The first 30 GB is free. Billable storage = max(0, storage_gb - 30). Cost: $0.023/GB/month for storage above the free tier."
+                    "description": "Storage in GB for AI Search. The first 30 GB is free. Billable storage uses 10 DSU/GB for Standard or 2 DSU/GB for Storage Optimized, priced with the exact regional DATABRICKS_STORAGE rate."
                 },
                 "ai_search_reranker_enabled": {
                     "type": "boolean",
@@ -975,15 +976,15 @@ The user will review and confirm before it's added to the estimate.""",
                 },
                 "lakebase_storage_gb": {
                     "type": "integer",
-                    "description": "Database storage in GB (0-8192 GB, 8TB max). 15x DSU multiplier. Example: 500GB × 15 DSU/GB × $0.023/DSU = $172.50/month."
+                    "description": "Database storage in GB (0-8192 GB, 8TB max). Uses 15 DSU/GB, priced with the exact regional DATABRICKS_STORAGE rate."
                 },
                 "lakebase_pitr_gb": {
                     "type": "integer",
-                    "description": "Point-in-time restore (PITR) storage in GB. 8.7x DSU multiplier. Example: 500GB × 8.7 DSU/GB × $0.023/DSU = $100.05/month."
+                    "description": "Point-in-time restore (PITR) storage in GB. Uses 8.7 DSU/GB, priced with the exact regional DATABRICKS_STORAGE rate."
                 },
                 "lakebase_snapshot_gb": {
                     "type": "integer",
-                    "description": "Snapshot storage in GB. 3.91x DSU multiplier. Example: 500GB × 3.91 DSU/GB × $0.023/DSU = $44.97/month."
+                    "description": "Snapshot storage in GB. Uses 3.91 DSU/GB, priced with the exact regional DATABRICKS_STORAGE rate."
                 },
 
                 # === Databricks Apps Specific ===
@@ -1164,6 +1165,36 @@ The user will review and confirm before it's added to the estimate.""",
                     "description": (
                         "AI Runtime training accelerator. Supported on AWS "
                         "and Azure only."
+                    ),
+                },
+
+                # === Databricks Default Storage Specific ===
+                "general_storage_quantity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Average stored capacity per month",
+                },
+                "general_storage_unit": {
+                    "type": "string",
+                    "enum": ["gb", "tb"],
+                    "description": (
+                        "Capacity unit. One TB is converted to 1,024 binary GB."
+                    ),
+                },
+                "general_storage_tier1_operations_thousands": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": (
+                        "Monthly PUT, COPY, POST, and LIST operations in "
+                        "thousands"
+                    ),
+                },
+                "general_storage_tier2_operations_thousands": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": (
+                        "Monthly GET, SELECT, and other API operations in "
+                        "thousands"
                     ),
                 },
 
@@ -2493,7 +2524,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
         default_driver = driver_instances.get(cloud, "m6i.xlarge")
         
         # Common defaults
-        if wtype == "AI_RUNTIME":
+        if wtype in ("AI_RUNTIME", "GENERAL_STORAGE"):
             workload.setdefault("hours_per_month", None)
         else:
             workload.setdefault("hours_per_month", 730)
@@ -2911,8 +2942,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
             notes_parts.append("  - Incremental writes: Use for updates/inserts")
             notes_parts.append("  - Reads: Can distribute across replicas for horizontal scaling")
             
-            # Storage / PITR / Snapshot cost info (DSU multipliers per SKU page)
-            price_per_dsu = 0.023
+            # Storage / PITR / Snapshot DSUs (priced regionally by calculator)
             storage_gb = workload.get("lakebase_storage_gb", 0)
             pitr_gb = workload.get("lakebase_pitr_gb", 0)
             snapshot_gb = workload.get("lakebase_snapshot_gb", 0)
@@ -2921,14 +2951,18 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 notes_parts.append("")
                 notes_parts.append(f"**Storage Costs (Databricks Storage SKU):**")
                 if storage_gb > 0:
-                    s_cost = storage_gb * 15 * price_per_dsu
-                    notes_parts.append(f"• **Database Storage**: {storage_gb} GB × 15 DSU/GB × ${price_per_dsu}/DSU = ${s_cost:.2f}/mo")
+                    storage_dsu = storage_gb * 15
+                    notes_parts.append(f"• **Database Storage**: {storage_gb} GB × 15 DSU/GB = {storage_dsu:g} DSU/mo")
                 if pitr_gb > 0:
-                    p_cost = pitr_gb * 8.7 * price_per_dsu
-                    notes_parts.append(f"• **PITR**: {pitr_gb} GB × 8.7 DSU/GB × ${price_per_dsu}/DSU = ${p_cost:.2f}/mo")
+                    pitr_dsu = pitr_gb * 8.7
+                    notes_parts.append(f"• **PITR**: {pitr_gb} GB × 8.7 DSU/GB = {pitr_dsu:g} DSU/mo")
                 if snapshot_gb > 0:
-                    sn_cost = snapshot_gb * 3.91 * price_per_dsu
-                    notes_parts.append(f"• **Snapshots**: {snapshot_gb} GB × 3.91 DSU/GB × ${price_per_dsu}/DSU = ${sn_cost:.2f}/mo")
+                    snapshot_dsu = snapshot_gb * 3.91
+                    notes_parts.append(f"• **Snapshots**: {snapshot_gb} GB × 3.91 DSU/GB = {snapshot_dsu:g} DSU/mo")
+                notes_parts.append(
+                    "• **Cost**: DSUs × exact regional "
+                    "DATABRICKS_STORAGE rate"
+                )
                 workload["lakebase_storage_gb"] = storage_gb
                 workload["lakebase_pitr_gb"] = pitr_gb
                 workload["lakebase_snapshot_gb"] = snapshot_gb
@@ -3032,13 +3066,23 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 units_used = (capacity_millions + divisor - 1) // divisor  # ceiling division
                 free_storage_gb = 30 if units_used > 0 else 0
                 billable_storage_gb = max(0, storage_gb - free_storage_gb)
-                storage_cost = billable_storage_gb * 0.023
+                storage_dsu_per_gb = (
+                    2 if mode == "storage_optimized" else 10
+                )
+                storage_dsu = billable_storage_gb * storage_dsu_per_gb
                 notes_parts.append("")
                 notes_parts.append("**💾 Storage Configuration:**")
                 notes_parts.append(f"• **Total Storage**: {storage_gb} GB")
                 notes_parts.append(f"• **Free Storage**: First {free_storage_gb} GB")
                 notes_parts.append(f"• **Billable Storage**: {billable_storage_gb} GB")
-                notes_parts.append(f"• **Storage Cost**: ${storage_cost:.2f}/month ($0.023/GB/month)")
+                notes_parts.append(
+                    f"• **Storage DSUs**: {billable_storage_gb} GB × "
+                    f"{storage_dsu_per_gb} DSU/GB = {storage_dsu:g} DSU/mo"
+                )
+                notes_parts.append(
+                    "• **Storage Cost**: DSUs × exact regional "
+                    "DATABRICKS_STORAGE rate"
+                )
             if workload.get("ai_search_reranker_enabled"):
                 reranker_requests = float(
                     workload.get(
@@ -3225,6 +3269,18 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 workload["runs_per_day"] = None
                 workload["avg_runtime_minutes"] = None
                 workload["days_per_month"] = None
+
+        if wtype == "GENERAL_STORAGE":
+            workload.setdefault("general_storage_quantity", 100)
+            workload.setdefault("general_storage_unit", "gb")
+            workload.setdefault(
+                "general_storage_tier1_operations_thousands",
+                0,
+            )
+            workload.setdefault(
+                "general_storage_tier2_operations_thousands",
+                0,
+            )
 
         if wtype == "SHUTTERSTOCK_IMAGEAI":
             workload.setdefault("shutterstock_images", 1000)

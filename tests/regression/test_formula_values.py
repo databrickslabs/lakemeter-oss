@@ -135,7 +135,7 @@ class TestVmCostFormulas:
         for r in find_all_data_rows(ws):
             driver_val = ws.cell(row=r, column=COL_DRIVER_VM_COST).value
             if isinstance(driver_val, str) and driver_val.startswith('='):
-                assert 'W' in driver_val and 'L' in driver_val, \
+                assert 'AA' in driver_val and 'L' in driver_val, \
                     f"Row {r}: driver VM formula wrong: {driver_val}"
 
     def test_worker_vm_total_formula(self, ws):
@@ -143,7 +143,7 @@ class TestVmCostFormulas:
         for r in find_all_data_rows(ws):
             worker_val = ws.cell(row=r, column=COL_WORKER_VM_COST).value
             if isinstance(worker_val, str) and worker_val.startswith('='):
-                assert 'X' in worker_val and 'L' in worker_val and 'I' in worker_val, \
+                assert 'AB' in worker_val and 'L' in worker_val and 'I' in worker_val, \
                     f"Row {r}: worker VM formula wrong: {worker_val}"
 
     def test_total_vm_formula(self, ws):
@@ -151,7 +151,7 @@ class TestVmCostFormulas:
         for r in find_all_data_rows(ws):
             vm_val = ws.cell(row=r, column=COL_TOTAL_VM).value
             if isinstance(vm_val, str) and vm_val.startswith('='):
-                assert 'Y' in vm_val and 'Z' in vm_val, \
+                assert 'AC' in vm_val and 'AD' in vm_val, \
                     f"Row {r}: total VM formula wrong: {vm_val}"
 
 
@@ -164,7 +164,7 @@ class TestTotalCostFormulas:
             val = ws.cell(row=r, column=COL_TOTAL_L).value
             assert isinstance(val, str) and val.startswith('='), \
                 f"Row {r}: Total List should be formula"
-            assert 'U' in val and 'AA' in val, \
+            assert 'U' in val and 'Y' in val and 'AE' in val, \
                 f"Row {r}: Total List formula wrong: {val}"
 
     def test_total_disc_formula(self, ws):
@@ -173,7 +173,7 @@ class TestTotalCostFormulas:
             val = ws.cell(row=r, column=COL_TOTAL_D).value
             assert isinstance(val, str) and val.startswith('='), \
                 f"Row {r}: Total Disc should be formula"
-            assert 'V' in val and 'AA' in val, \
+            assert 'V' in val and 'Z' in val and 'AE' in val, \
                 f"Row {r}: Total Disc formula wrong: {val}"
 
 
@@ -182,7 +182,7 @@ class TestNoNanOrErrors:
 
     def test_no_nan_in_data(self, ws):
         for r in find_all_data_rows(ws):
-            for c in range(1, 31):
+            for c in range(1, ws.max_column + 1):
                 v = ws.cell(row=r, column=c).value
                 if isinstance(v, str):
                     low = v.lower()

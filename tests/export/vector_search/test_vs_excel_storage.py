@@ -10,6 +10,7 @@ from tests.export.vector_search.conftest import make_line_item
 from tests.export.vector_search.excel_helpers import (
     generate_xlsx, find_data_rows, find_storage_row,
     COL_TYPE, COL_CONFIG, COL_SKU, COL_DBU_COST_L, COL_NOTES,
+    COL_DSUS_MO, COL_DSU_RATE, COL_DSU_COST_L,
 )
 
 
@@ -58,16 +59,17 @@ class TestStorageSubRow:
 
     def test_storage_cost_positive(self):
         """AC-13: Storage cost = storage_gb * rate > 0 (billable > free)."""
-        # 10M vectors, standard mode: units=5, free=5*30=150GB
-        # Set storage_gb=200 so billable=50GB and cost=$1.15
+        # First 30 GB is free. Standard storage uses 10 DSU/GB.
         items = [make_line_item(vector_capacity_millions=10, vector_search_storage_gb=200)]
         wb = generate_xlsx(items)
         ws = wb.active
         row = find_storage_row(ws)
         assert row is not None
-        cost = ws.cell(row=row, column=COL_DBU_COST_L).value
-        if isinstance(cost, (int, float)):
-            assert cost > 0, f"Storage cost should be > 0, got {cost}"
+        assert ws.cell(row=row, column=COL_DBU_COST_L).value == 0
+        assert ws.cell(row=row, column=COL_DSUS_MO).value == 1700
+        assert ws.cell(row=row, column=COL_DSU_RATE).value == 0.023
+        cost = ws.cell(row=row, column=COL_DSU_COST_L).value
+        assert cost == f"=W{row}*X{row}"
 
     def test_storage_notes_mention_rate(self):
         """Notes should mention $/GB/month rate."""
@@ -77,7 +79,7 @@ class TestStorageSubRow:
         row = find_storage_row(ws)
         assert row is not None
         notes = ws.cell(row=row, column=COL_NOTES).value
-        assert notes and '/GB' in str(notes)
+        assert notes and '10 DSU/GB' in str(notes)
 
 
 class TestExcelTotals:
@@ -126,7 +128,7 @@ class TestExcelNoNaN:
         wb = generate_xlsx(items)
         ws = wb.active
         for row_idx in range(1, ws.max_row + 1):
-            for col_idx in range(1, 31):
+            for col_idx in range(1, ws.max_column + 1):
                 val = ws.cell(row=row_idx, column=col_idx).value
                 if isinstance(val, float):
                     assert not math.isnan(val), (
@@ -141,7 +143,7 @@ class TestExcelNoNaN:
         wb = generate_xlsx(items)
         ws = wb.active
         for row_idx in range(1, ws.max_row + 1):
-            for col_idx in range(1, 31):
+            for col_idx in range(1, ws.max_column + 1):
                 val = ws.cell(row=row_idx, column=col_idx).value
                 if isinstance(val, float):
                     assert not math.isnan(val), (

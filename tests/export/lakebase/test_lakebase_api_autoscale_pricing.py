@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from fastapi import HTTPException
 
 from app.routes.calculate import lakebase_calc
 from app.routes.calculate.lakebase_calc import calculate_lakebase_cost
@@ -23,6 +24,12 @@ class _FakeDb:
 class _MissingPriceDb:
     def execute(self, *_args, **_kwargs):
         return _Result(None)
+
+
+class _DifferentPriceDb:
+    def execute(self, _statement, params):
+        price = 0.041 if params.get("pt") == "DATABRICKS_STORAGE" else 0.63
+        return _Result(SimpleNamespace(price_per_dbu=price))
 
 
 @pytest.fixture(autouse=True)
@@ -140,3 +147,36 @@ def test_api_falls_back_to_static_lookup_when_database_price_is_missing():
     assert calc["baseline_effective_dbu_per_cu_hour"] == pytest.approx(0.230 * 0.75)
     assert calc["baseline_cu_hour_price"] == pytest.approx(0.230 * 0.75 * 0.412)
     assert calc["dbu_cost_per_month"] == pytest.approx(1 * 0.230 * 0.75 * 730 * 0.412, abs=0.01)
+
+
+def test_api_uses_exact_regional_dsu_price_for_all_storage_components():
+    data = _calculate(
+        _db=_DifferentPriceDb(),
+        storage_gb=100,
+        pitr_gb=10,
+        snapshot_gb=5,
+    )
+    storage = data["storage_calculation"]
+    expected_dsu = 100 * 15 + 10 * 8.7 + 5 * 3.91
+    assert storage["dsu_price"] == 0.041
+    assert storage["total_dsu"] == pytest.approx(expected_dsu)
+    dsu_lines = [
+        line for line in data["sku_breakdown"] if line["type"] == "dsu"
+    ]
+    assert len(dsu_lines) == 3
+    assert sum(line["qty"] for line in dsu_lines) == pytest.approx(
+        expected_dsu
+    )
+    assert all(
+        line["unit_price_before_discount"] == 0.041
+        for line in dsu_lines
+    )
+
+
+def test_api_rejects_missing_exact_dsu_price_when_storage_is_used():
+    with pytest.raises(HTTPException, match="pricing is not available"):
+        _calculate(
+            _db=_MissingPriceDb(),
+            region="not-a-region",
+            storage_gb=1,
+        )

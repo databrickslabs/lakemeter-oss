@@ -11,6 +11,7 @@ from tests.export.lakebase.excel_helpers import (
     COL_SKU, COL_MODE, COL_HOURS, COL_DBU_HR,
     COL_DBUS_MO, COL_DBU_RATE, COL_DISCOUNT, COL_DBU_RATE_DISC,
     COL_DBU_COST_L, COL_DBU_COST_D,
+    COL_DSUS_MO, COL_DSU_RATE, COL_DSU_COST_L, COL_DSU_COST_D,
     COL_TOTAL_L, COL_NOTES, COL_CONFIG,
 )
 
@@ -77,10 +78,13 @@ class TestStorageCostValues:
         row = find_storage_row(ws)
         assert row is not None
         cost = ws.cell(row=row, column=COL_DBU_COST_L).value
-        if isinstance(cost, (int, float)):
-            assert abs(cost - expected_cost) < 0.01, (
+        dsu_cost = ws.cell(row=row, column=COL_DSU_COST_L).value
+        assert cost == 0
+        if isinstance(dsu_cost, (int, float)):
+            assert abs(dsu_cost - expected_cost) < 0.01, (
                 f"Storage {gb}GB: expected ${expected_cost:.2f}, "
-                f"got ${cost:.2f}")
+                f"got ${dsu_cost:.2f}")
+        assert ws.cell(row=row, column=COL_DSUS_MO).value == gb * 15
 
     def test_zero_storage_zero_cost(self):
         items = [make_line_item(lakebase_storage_gb=0)]
@@ -88,21 +92,22 @@ class TestStorageCostValues:
         ws = wb.active
         row = find_storage_row(ws)
         assert row is not None
-        cost = ws.cell(row=row, column=COL_DBU_COST_L).value
+        cost = ws.cell(row=row, column=COL_DSU_COST_L).value
         if isinstance(cost, (int, float)):
             assert cost == 0
 
 
-class TestStorageDBURate:
+class TestStorageDSURate:
     """Verify storage rate in Excel matches pricing data."""
 
-    def test_storage_dbu_rate(self):
+    def test_storage_dsu_rate(self):
         items = [make_line_item(lakebase_storage_gb=100)]
         wb = generate_xlsx(items)
         ws = wb.active
         row = find_storage_row(ws)
         assert row is not None
-        rate = ws.cell(row=row, column=COL_DBU_RATE).value
+        assert ws.cell(row=row, column=COL_DBU_RATE).value == 0
+        rate = ws.cell(row=row, column=COL_DSU_RATE).value
         if isinstance(rate, (int, float)):
             assert rate == pytest.approx(0.023)
 
@@ -144,8 +149,8 @@ class TestStorageDiscountPropagation:
         ws = wb.active
         row = find_storage_row(ws)
         assert row is not None
-        list_cost = ws.cell(row=row, column=COL_DBU_COST_L).value
-        disc_cost = ws.cell(row=row, column=COL_DBU_COST_D).value
+        list_cost = ws.cell(row=row, column=COL_DSU_COST_L).value
+        disc_cost = ws.cell(row=row, column=COL_DSU_COST_D).value
         if isinstance(list_cost, (int, float)) and isinstance(disc_cost, (int, float)):
             assert abs(disc_cost - list_cost) < 0.01, (
                 f"Storage {gb}GB: disc cost ${disc_cost:.2f} != "
@@ -161,17 +166,18 @@ class TestStorageDiscountPropagation:
         discount = ws.cell(row=row, column=COL_DISCOUNT).value
         assert discount == 0 or discount is None or discount == 0.0
 
-    def test_storage_discounted_rate_equals_list_rate(self):
-        """At 0% discount, discounted DBU rate == list rate."""
+    def test_storage_uses_single_list_dsu_rate(self):
+        """DSU rows leave DBU rates at zero and use the DSU rate column."""
         items = [make_line_item(lakebase_storage_gb=100)]
         wb = generate_xlsx(items)
         ws = wb.active
         row = find_storage_row(ws)
         assert row is not None
-        list_rate = ws.cell(row=row, column=COL_DBU_RATE).value
-        disc_rate = ws.cell(row=row, column=COL_DBU_RATE_DISC).value
-        if isinstance(list_rate, (int, float)) and isinstance(disc_rate, (int, float)):
-            assert abs(disc_rate - list_rate) < 0.001
+        assert ws.cell(row=row, column=COL_DBU_RATE).value == 0
+        assert ws.cell(row=row, column=COL_DBU_RATE_DISC).value == (
+            f"=R{row}*(1-S{row})"
+        )
+        assert ws.cell(row=row, column=COL_DSU_RATE).value == 0.023
 
 
 class TestStorageNotes:

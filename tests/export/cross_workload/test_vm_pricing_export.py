@@ -83,10 +83,10 @@ def test_excel_uses_exact_reserved_and_spot_rates():
     sheet = workbook.active
     row = _find_row(sheet, "Exact VM Rates")
 
-    assert sheet.cell(row=row, column=23).value == pytest.approx(0.229909)
-    assert sheet.cell(row=row, column=24).value == pytest.approx(0.123604)
+    assert sheet.cell(row=row, column=27).value == pytest.approx(0.229909)
+    assert sheet.cell(row=row, column=28).value == pytest.approx(0.123604)
     assert "conservative fallback" not in (
-        sheet.cell(row=row, column=30).value or ""
+        sheet.cell(row=row, column=34).value or ""
     )
     workbook.close()
 
@@ -120,9 +120,9 @@ def test_all_classic_compute_exports_use_selected_vm_rates(factory, workload_nam
     sheet = workbook.active
     row = _find_row(sheet, workload_name)
 
-    assert sheet.cell(row=row, column=23).value == pytest.approx(0.229909)
-    assert sheet.cell(row=row, column=24).value == pytest.approx(0.123604)
-    assert sheet.cell(row=row, column=27).value == pytest.approx(5.248287)
+    assert sheet.cell(row=row, column=27).value == pytest.approx(0.229909)
+    assert sheet.cell(row=row, column=28).value == pytest.approx(0.123604)
+    assert sheet.cell(row=row, column=31).value == pytest.approx(5.248287)
     workbook.close()
 
 
@@ -141,9 +141,9 @@ def test_missing_azure_spot_rate_is_not_synthetically_discounted():
     sheet = workbook.active
     row = _find_row(sheet, "Azure Spot Fallback")
 
-    assert sheet.cell(row=row, column=23).value == pytest.approx(0.293)
-    assert sheet.cell(row=row, column=24).value == pytest.approx(0.293)
-    assert "conservative fallback" in sheet.cell(row=row, column=30).value
+    assert sheet.cell(row=row, column=27).value == pytest.approx(0.293)
+    assert sheet.cell(row=row, column=28).value == pytest.approx(0.293)
+    assert "conservative fallback" in sheet.cell(row=row, column=34).value
     workbook.close()
 
 
@@ -198,9 +198,9 @@ def test_dbsql_export_prefers_current_driver_worker_tiers_over_legacy_tier():
 
     assert sheet.cell(row=row, column=10).value == "On-Demand"
     assert sheet.cell(row=row, column=11).value == "Spot"
-    assert sheet.cell(row=row, column=23).value == pytest.approx(1.248)
-    assert sheet.cell(row=row, column=24).value == pytest.approx(0.3072)
-    assert sheet.cell(row=row, column=27).value == pytest.approx(27.2448)
+    assert sheet.cell(row=row, column=27).value == pytest.approx(1.248)
+    assert sheet.cell(row=row, column=28).value == pytest.approx(0.3072)
+    assert sheet.cell(row=row, column=31).value == pytest.approx(27.2448)
     assert {call["pricing_tier"] for call in db.calls} == {"on_demand", "spot"}
     workbook.close()
 
@@ -228,8 +228,8 @@ def test_dbsql_export_defaults_reserved_worker_na_to_aws_no_upfront():
 
     assert sheet.cell(row=row, column=10).value == "1-Year Reserved"
     assert sheet.cell(row=row, column=11).value == "1-Year Reserved"
-    assert sheet.cell(row=row, column=23).value == pytest.approx(0.794977)
-    assert sheet.cell(row=row, column=24).value == pytest.approx(0.405854)
-    assert sheet.cell(row=row, column=27).value == pytest.approx(26.602323)
+    assert sheet.cell(row=row, column=27).value == pytest.approx(0.794977)
+    assert sheet.cell(row=row, column=28).value == pytest.approx(0.405854)
+    assert sheet.cell(row=row, column=31).value == pytest.approx(26.602323)
     assert {call["payment_option"] for call in db.calls} == {"no_upfront"}
     workbook.close()

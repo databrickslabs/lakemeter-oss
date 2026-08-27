@@ -247,7 +247,8 @@ def _is_serverless_workload(item) -> bool:
     """Check if workload is serverless (no VM costs)."""
     wt = (item.workload_type or '').upper()
     if wt in ('VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY',
-              'AI_RUNTIME', 'LAKEBASE', 'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY',
+              'AI_RUNTIME', 'GENERAL_STORAGE', 'LAKEBASE', 'DATABRICKS_APPS',
+              'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY',
               'AI_GATEWAY', 'AGENT_EVALUATION',
               'SHUTTERSTOCK_IMAGEAI', 'LAKEFLOW_CONNECT'):
         return True

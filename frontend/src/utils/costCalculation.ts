@@ -21,9 +21,57 @@ export const AGENT_EVALUATION_COMPONENT_RATES = {
 } as const
 
 export const AI_SEARCH_INCLUDED_STORAGE_GB = 30
-export const AI_SEARCH_STORAGE_PRICE_PER_GB = 0.023
+export const AI_SEARCH_STANDARD_STORAGE_DSU_PER_GB = 10
+export const AI_SEARCH_STORAGE_OPTIMIZED_DSU_PER_GB = 2
 export const AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS = 28.571
 export const MODEL_SERVING_GPU_CONCURRENCY_PER_REPLICA = 4
+export const GENERAL_STORAGE_GB_PER_TB = 1024
+export const GENERAL_STORAGE_STORED_DATA_DSU_PER_GB = 1
+export const GENERAL_STORAGE_OPERATION_DSU_RATES = {
+  aws: { tier1: 0.2174, tier2: 0.0174 },
+  azure: { tier1: 0.3535, tier2: 0.0226 },
+  gcp: { tier1: 0.2174, tier2: 0.0174 },
+} as const
+
+export function getGeneralStorageGB(item: Partial<LineItem>): number {
+  const quantity = item.general_storage_quantity ?? 0
+  return (item.general_storage_unit ?? 'gb') === 'tb'
+    ? quantity * GENERAL_STORAGE_GB_PER_TB
+    : quantity
+}
+
+export function getAISearchStorageDSUPerGB(mode?: string | null): number {
+  return mode === 'storage_optimized'
+    ? AI_SEARCH_STORAGE_OPTIMIZED_DSU_PER_GB
+    : AI_SEARCH_STANDARD_STORAGE_DSU_PER_GB
+}
+
+export function calculateGeneralStorageDSU(
+  item: Partial<LineItem>,
+  cloud: string,
+) {
+  const normalizedCloud = cloud.toLowerCase() as keyof typeof GENERAL_STORAGE_OPERATION_DSU_RATES
+  const rates = GENERAL_STORAGE_OPERATION_DSU_RATES[normalizedCloud]
+    ?? GENERAL_STORAGE_OPERATION_DSU_RATES.aws
+  const storedDataDSU = getGeneralStorageGB(item)
+    * GENERAL_STORAGE_STORED_DATA_DSU_PER_GB
+  const tier1OperationsThousands =
+    item.general_storage_tier1_operations_thousands ?? 0
+  const tier2OperationsThousands =
+    item.general_storage_tier2_operations_thousands ?? 0
+  const tier1OperationsDSU = tier1OperationsThousands * rates.tier1
+  const tier2OperationsDSU = tier2OperationsThousands * rates.tier2
+  return {
+    storedDataDSU,
+    tier1OperationsThousands,
+    tier2OperationsThousands,
+    tier1DSUPerThousand: rates.tier1,
+    tier2DSUPerThousand: rates.tier2,
+    tier1OperationsDSU,
+    tier2OperationsDSU,
+    totalDSU: storedDataDSU + tier1OperationsDSU + tier2OperationsDSU,
+  }
+}
 
 export function isModelServingGPUType(workloadType?: string | null): boolean {
   return !(workloadType || 'cpu').trim().toLowerCase().startsWith('cpu')
@@ -219,6 +267,8 @@ export const DBSQL_DBU_RATES: Record<string, number> = {
 export interface CostBreakdown {
   monthlyDBUs: number
   dbuCost: number
+  monthlyDSUs: number
+  dsuCost: number
   vmCost: number
   totalCost: number
   // Optional fields for specific workload types
@@ -227,6 +277,7 @@ export interface CostBreakdown {
   dbuPrice?: number   // $/DBU rate for display
   // Storage costs for AI Search and Lakebase
   storageCost?: number
+  dsuPrice?: number
   storageDetails?: {
     totalStorageGB: number
     freeStorageGB?: number  // AI Search only
@@ -288,7 +339,14 @@ export function calculateWorkloadCost(
   
   // If no region selected, return zero costs
   if (!region) {
-    return { monthlyDBUs: 0, dbuCost: 0, vmCost: 0, totalCost: 0 }
+    return {
+      monthlyDBUs: 0,
+      dbuCost: 0,
+      monthlyDSUs: 0,
+      dsuCost: 0,
+      vmCost: 0,
+      totalCost: 0,
+    }
   }
   
   // Try to use dynamic DBU rates first, fall back to hardcoded
@@ -371,6 +429,10 @@ export function calculateWorkloadCost(
     case 'AI_RUNTIME':
       productType = 'MODEL_TRAINING'
       break
+
+    case 'GENERAL_STORAGE':
+      productType = 'DATABRICKS_STORAGE'
+      break
     
     case 'FMAPI_DATABRICKS':
       // FMAPI uses SERVERLESS_REAL_TIME_INFERENCE pricing
@@ -420,6 +482,7 @@ export function calculateWorkloadCost(
     item.workload_type === 'AI_GATEWAY'
     || item.workload_type === 'AGENT_EVALUATION'
     || item.workload_type === 'AI_RUNTIME'
+    || item.workload_type === 'GENERAL_STORAGE'
   ) {
     dbuPrice = getExactDBUPrice?.(productType) ?? dbuRatesMap[productType] ?? 0
   } else if (getDBUPrice) {
@@ -440,6 +503,9 @@ export function calculateWorkloadCost(
   let dbuPerHour = 0
   let monthlyDBUs = 0
   let vmCost = 0
+  let monthlyDSUs = 0
+  let dsuCost = 0
+  let dsuPrice = 0
   let unitsUsed: number | undefined = undefined  // For AI Search
   let storageCost: number | undefined = undefined  // For AI Search and Lakebase
   let storageDetails: CostBreakdown['storageDetails'] = undefined
@@ -633,22 +699,31 @@ export function calculateWorkloadCost(
       // Storage calculation for AI Search
       // The first 30 GB of storage is included
       // Billable Storage = MAX(0, storage_gb - free_storage_gb)
-      // Storage Cost = billable_storage_gb × price_per_gb_per_month ($0.023/GB/month)
+      // Storage cost = billable GB × 10 DSU/GB × exact regional $/DSU.
       const vectorStorageGB = item.vector_search_storage_gb || 0
       const vectorFreeStorageGB = vectorUnitsUsed > 0
         ? AI_SEARCH_INCLUDED_STORAGE_GB
         : 0
       const vectorBillableStorageGB = Math.max(0, vectorStorageGB - vectorFreeStorageGB)
-      const vectorStoragePricePerGB = AI_SEARCH_STORAGE_PRICE_PER_GB
-      const vectorStorageCost = vectorBillableStorageGB * vectorStoragePricePerGB
+      dsuPrice = getExactDBUPrice?.('DATABRICKS_STORAGE')
+        ?? dbuRatesMap.DATABRICKS_STORAGE
+        ?? 0
+      const vectorStorageDSUPerGB = getAISearchStorageDSUPerGB(
+        item.vector_search_mode,
+      )
+      monthlyDSUs = vectorBillableStorageGB * vectorStorageDSUPerGB
+      const vectorStorageCost = monthlyDSUs * dsuPrice
 
       if (vectorStorageGB > 0) {
+        dsuCost = vectorStorageCost
         storageCost = vectorStorageCost
         storageDetails = {
           totalStorageGB: vectorStorageGB,
           freeStorageGB: vectorFreeStorageGB,
           billableStorageGB: vectorBillableStorageGB,
-          pricePerGB: vectorStoragePricePerGB
+          dsuPerGB: vectorStorageDSUPerGB,
+          totalDSU: monthlyDSUs,
+          pricePerDSU: dsuPrice,
         }
       }
       break
@@ -693,32 +768,38 @@ export function calculateWorkloadCost(
       
       // Storage calculation for Lakebase
       // Total DSU = storage_gb × 15 (each GB consumes 15 DSU)
-      // Storage Cost = Total DSU × price_per_dsu ($0.023/DSU/month)
+      // Storage Cost = Total DSU × exact regional price_per_dsu
       // Max storage: 8192 GB (8 TB)
       const lakebaseStorageGB = Math.min(item.lakebase_storage_gb || 0, 8192)
       const lakebaseDSUPerGB = 15
       const lakebaseTotalDSU = lakebaseStorageGB * lakebaseDSUPerGB
-      const lakebasePricePerDSU = 0.023  // $0.023 per DSU per month
-      const lakebaseStorageCost = lakebaseTotalDSU * lakebasePricePerDSU
+      dsuPrice = getExactDBUPrice?.('DATABRICKS_STORAGE')
+        ?? dbuRatesMap.DATABRICKS_STORAGE
+        ?? 0
+      const lakebaseStorageCost = lakebaseTotalDSU * dsuPrice
       
       // PITR: 8.7x DSU multiplier
       const pitrGB = item.lakebase_pitr_gb || 0
       const pitrDSUPerGB = 8.7
-      const pitrCost = pitrGB * pitrDSUPerGB * lakebasePricePerDSU
+      const pitrDSU = pitrGB * pitrDSUPerGB
+      const pitrCost = pitrDSU * dsuPrice
 
       // Snapshots: 3.91x DSU multiplier
       const snapshotGB = item.lakebase_snapshot_gb || 0
       const snapshotDSUPerGB = 3.91
-      const snapshotCost = snapshotGB * snapshotDSUPerGB * lakebasePricePerDSU
+      const snapshotDSU = snapshotGB * snapshotDSUPerGB
+      const snapshotCost = snapshotDSU * dsuPrice
 
       if (lakebaseStorageGB > 0 || pitrGB > 0 || snapshotGB > 0) {
+        monthlyDSUs = lakebaseTotalDSU + pitrDSU + snapshotDSU
+        dsuCost = lakebaseStorageCost + pitrCost + snapshotCost
         storageCost = lakebaseStorageCost + pitrCost + snapshotCost
         storageDetails = {
           totalStorageGB: lakebaseStorageGB,
           billableStorageGB: lakebaseStorageGB,
           dsuPerGB: lakebaseDSUPerGB,
-          totalDSU: lakebaseTotalDSU,
-          pricePerDSU: lakebasePricePerDSU
+          totalDSU: monthlyDSUs,
+          pricePerDSU: dsuPrice
         }
       }
       break
@@ -791,6 +872,23 @@ export function calculateWorkloadCost(
       break
     }
 
+    case 'GENERAL_STORAGE': {
+      const storageGB = getGeneralStorageGB(item)
+      const usage = calculateGeneralStorageDSU(item, cloud)
+      monthlyDSUs = usage.totalDSU
+      dsuPrice = dbuPrice
+      dsuCost = monthlyDSUs * dsuPrice
+      storageCost = dsuCost
+      storageDetails = {
+        totalStorageGB: storageGB,
+        billableStorageGB: storageGB,
+        dsuPerGB: GENERAL_STORAGE_STORED_DATA_DSU_PER_GB,
+        totalDSU: monthlyDSUs,
+        pricePerDSU: dsuPrice,
+      }
+      break
+    }
+
     case 'AI_PARSE': {
       const complexityRates: Record<string, number> = {
         low_text: 12.5, low_images: 22.5, medium: 62.5, high: 87.5
@@ -853,8 +951,9 @@ export function calculateWorkloadCost(
   // Step 4: Calculate final costs with NaN guards
   // ========================================
   const rawDbuCost = monthlyDBUs * dbuPrice
+  const safeDSUCost = !isNaN(dsuCost) ? dsuCost : 0
   const safeStorageCost = storageCost !== undefined && !isNaN(storageCost) ? storageCost : 0
-  const rawTotalCost = rawDbuCost + vmCost + safeStorageCost
+  const rawTotalCost = rawDbuCost + vmCost + safeDSUCost
   
   // NaN guards - ensure we never return NaN values
   const safeDbuCost = isNaN(rawDbuCost) ? 0 : rawDbuCost
@@ -867,11 +966,14 @@ export function calculateWorkloadCost(
   return { 
     monthlyDBUs: safeMonthlyDBUs, 
     dbuCost: safeDbuCost, 
+    monthlyDSUs: isNaN(monthlyDSUs) ? 0 : monthlyDSUs,
+    dsuCost: safeDSUCost,
     vmCost: safeVmCost, 
     totalCost: safeTotalCost,
     unitsUsed,  // For AI Search
     dbuPerHour: safeDbuPerHour, // For display
     dbuPrice: safeDbuPrice,    // $/DBU rate for display
+    dsuPrice,
     storageCost: safeStorageCost > 0 ? safeStorageCost : undefined,
     storageDetails
   }

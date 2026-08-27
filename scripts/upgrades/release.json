@@ -33,8 +33,13 @@
       "id": "025-all-purpose-serverless-parity",
       "path": "scripts/upgrades/data_updates/025_all_purpose_serverless_parity.sql",
       "sha256": "efd7df3c87df530f114d08b1a7a04e41bca094fa0148deab9eee7ad303e6d747"
+    },
+    {
+      "id": "026-general-storage",
+      "path": "scripts/upgrades/data_updates/026_general_storage.sql",
+      "sha256": "4b70bb9543b19dd4224cc86f73029fa02c1d4e99bc57a1c16962b4506bf24481"
     }
   ],
   "migrations": [],
-  "runtime_sha256": "286ba97f1c54cfe5cdd360e21e593aef3195146cd7b80828fc100ee110b4d6a4"
+  "runtime_sha256": "228d97f884580662c52b6aa7a091633d870e90cddb27738179ae30eb1217fe44"
 }

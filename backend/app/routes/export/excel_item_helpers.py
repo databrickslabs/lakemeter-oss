@@ -114,6 +114,126 @@ def get_ai_search_reranker_usage(item):
     }
 
 
+def write_general_storage_row(
+    sheet,
+    fmt,
+    row,
+    item,
+    idx,
+    cloud,
+    dsu_price,
+):
+    """Write stored-data and operation components as separate DSU rows."""
+    from app.services.general_storage_pricing import (
+        calculate_general_storage_usage,
+    )
+
+    usage = calculate_general_storage_usage(
+        _get_json_backed_value(item, 'general_storage_quantity', 0),
+        _get_json_backed_value(item, 'general_storage_unit', 'gb'),
+        cloud,
+        _get_json_backed_value(
+            item,
+            'general_storage_tier1_operations_thousands',
+            0,
+        ),
+        _get_json_backed_value(
+            item,
+            'general_storage_tier2_operations_thousands',
+            0,
+        ),
+    )
+    quantity = usage['quantity']
+    unit = usage['unit'].upper()
+    billable_gb = usage['billable_gb_months']
+    workload_name = getattr(
+        item,
+        'workload_name',
+        f'Workload {idx + 1}',
+    ) or f'Workload {idx + 1}'
+    components = [
+        {
+            'label': 'Stored Data',
+            'input': (
+                f'{quantity:g} {unit}/mo = {billable_gb:g} GB-month'
+            ),
+            'multiplier': usage['dsu_rates']['stored_data_per_gb_month'],
+            'multiplier_unit': 'DSU/GB-month',
+            'dsus': usage['stored_data_dsu'],
+        },
+        {
+            'label': 'Tier 1 Operations',
+            'input': (
+                f"{usage['tier_1_operations_thousands']:g}K operations"
+            ),
+            'multiplier': usage['dsu_rates']['tier_1_per_thousand'],
+            'multiplier_unit': 'DSU/1K',
+            'dsus': usage['tier_1_operations_dsu'],
+        },
+        {
+            'label': 'Tier 2 Operations',
+            'input': (
+                f"{usage['tier_2_operations_thousands']:g}K operations"
+            ),
+            'multiplier': usage['dsu_rates']['tier_2_per_thousand'],
+            'multiplier_unit': 'DSU/1K',
+            'dsus': usage['tier_2_operations_dsu'],
+        },
+    ]
+    for component_index, component in enumerate(components, start=1):
+        cost = component['dsus'] * dsu_price
+        config = (
+            f"{component['input']} × {component['multiplier']:g} "
+            f"{component['multiplier_unit']}"
+        )
+        notes = (
+            f"{component['dsus']:.4f} DSU × ${dsu_price:.3f}/DSU "
+            f"= ${cost:.2f}/mo"
+        )
+        if component_index == 3:
+            notes += (
+                '. Excludes customer-managed object storage, backups, '
+                'and data transfer. '
+                'https://www.databricks.com/product/pricing/storage'
+            )
+        dsu_row = {
+            'idx': f'{idx + 1}.{component_index}',
+            'name': f"{workload_name} – {component['label']}",
+            'type_display': 'Databricks Default Storage',
+            'config': config,
+            'sku': 'DATABRICKS_STORAGE',
+            'driver_node': '-',
+            'worker_node': '-',
+            'num_workers': 0,
+            'driver_tier': '-',
+            'worker_tier': '-',
+            'hours_per_month': 0,
+            'token_type': '',
+            'token_quantity_millions': 0,
+            'dbu_per_million': 0,
+            'dbu_per_hour': 0,
+            'total_dbus_month': 0,
+            'dbu_rate': 0,
+            'monthly_dsus': component['dsus'],
+            'dsu_rate': dsu_price,
+            'discount_pct': 0.0,
+            'driver_vm_cost_per_hour': 0,
+            'worker_vm_cost_per_hour': 0,
+            'notes': notes,
+        }
+        write_data_row(
+            sheet,
+            row,
+            dsu_row,
+            False,
+            True,
+            fmt,
+            is_storage_row=True,
+        )
+        row += 1
+    return row
+
+
 def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
                      dbu_per_hour, cloud, auto_notes, region=None):
     """Calculate hours, tokens, DBUs for a line item.
@@ -223,7 +343,7 @@ def write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
       - Database Storage: 15x DSU/GB
       - PITR: 8.7x DSU/GB
       - Snapshots: 3.91x DSU/GB
-    AI Search uses standard storage pricing above its included allowance.
+    AI Search uses mode-specific DSUs above its included allowance.
     """
     # DSU multipliers per Databricks SKU page
     DSU_MULTIPLIERS = {
@@ -237,13 +357,24 @@ def write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
         'lakebase_snapshot_gb': 'Snapshots',
     }
 
+    price_per_dsu, found = _get_dbu_price(
+        cloud,
+        region,
+        tier,
+        'DATABRICKS_STORAGE',
+        allow_cross_region=False,
+    )
+    if not found:
+        raise ValueError(
+            "DATABRICKS_STORAGE pricing is not available for "
+            f"{cloud.upper()} {region} {tier.upper()}"
+        )
+
     if size_attr in DSU_MULTIPLIERS:
         storage_gb = float(getattr(item, size_attr, 0) or 0)
         dsu_per_gb = DSU_MULTIPLIERS[size_attr]
         total_dsu = storage_gb * dsu_per_gb
-        price_per_dsu = 0.023
         storage_cost = total_dsu * price_per_dsu
-        storage_rate = price_per_dsu
         label = DSU_LABELS[size_attr]
         config = f'{label}: {storage_gb:.0f} GB'
         notes = f'{storage_gb:.0f} GB × {dsu_per_gb} DSU/GB × ${price_per_dsu}/DSU = ${storage_cost:.2f}/mo'
@@ -256,14 +387,18 @@ def write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
         units = math.ceil(capacity_m * 1_000_000 / divisor) if divisor else 0
         free_gb = 30 if units > 0 else 0
         billable_gb = max(0, storage_gb - free_gb)
-        price_per_gb = 0.023
-        storage_cost = billable_gb * price_per_gb
-        storage_rate = price_per_gb
+        dsu_per_gb = 2 if mode == 'storage_optimized' else 10
+        total_dsu = billable_gb * dsu_per_gb
+        storage_cost = total_dsu * price_per_dsu
         config = f'Storage: {storage_gb:.0f} GB (free: {free_gb} GB)'
-        notes = f'{storage_gb:.0f} GB total, first {free_gb} GB free, {billable_gb:.0f} GB billable × ${price_per_gb}/GB = ${storage_cost:.2f}/mo'
+        notes = (
+            f'{storage_gb:.0f} GB total, first {free_gb} GB free, '
+            f'{billable_gb:.0f} GB billable × {dsu_per_gb} DSU/GB '
+            f'× ${price_per_dsu}/DSU = ${storage_cost:.2f}/mo'
+        )
     else:
         storage_gb = 0
-        storage_rate = 0.023
+        total_dsu = 0
         storage_cost = 0
         config = 'Storage: 0 GB'
         notes = ''
@@ -282,11 +417,12 @@ def write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
         'token_type': '', 'token_quantity_millions': 0,
         'dbu_per_million': 0, 'dbu_per_hour': 0,
         'total_dbus_month': 0,
-        'dbu_rate': storage_rate,
+        'dbu_rate': 0,
+        'monthly_dsus': total_dsu,
+        'dsu_rate': price_per_dsu,
         'discount_pct': 0.0,
         'driver_vm_cost_per_hour': 0, 'worker_vm_cost_per_hour': 0,
         'notes': notes,
-        'storage_cost_monthly': storage_cost,
     }
     write_data_row(sheet, row, storage_row, False, True, fmt, is_storage_row=True)
     return row + 1

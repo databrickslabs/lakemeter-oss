@@ -499,10 +499,16 @@ workload_type_inserts = [
      false, false, false, false, false, false, false, false, true, false, false, true, true, false,
      NULL, NULL, 'DATABASE_SERVERLESS_COMPUTE', 9)
     ON CONFLICT (workload_type) DO NOTHING""",
+
+    """INSERT INTO lakemeter.ref_workload_types VALUES
+    ('GENERAL_STORAGE', 'Databricks Default Storage', 'Managed storage for Unity Catalog data and workspace assets',
+     false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+     'DATABRICKS_STORAGE', NULL, NULL, 18)
+    ON CONFLICT (workload_type) DO NOTHING""",
 ]
 
 for i, sql in enumerate(workload_type_inserts, 1):
-    execute_sql(sql, f"  {i}/9 workload types")
+    execute_sql(sql, f"  {i}/{len(workload_type_inserts)} workload types")
 
 print("✅ All workload types populated")
 

@@ -143,7 +143,7 @@ class TestNoNanOrBroken:
 
     def test_no_nan_in_data_rows(self, ws):
         for row_idx in find_all_data_rows(ws):
-            for col in range(1, 31):
+            for col in range(1, ws.max_column + 1):
                 val = ws.cell(row=row_idx, column=col).value
                 if isinstance(val, str):
                     assert 'nan' not in val.lower(), \

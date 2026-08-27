@@ -44,6 +44,7 @@ def build_test_excel(line_items, cloud='aws', region='us-east-1', tier='PREMIUM'
         'Hours/Mo', 'Token Type', 'Tokens/Mo(M)', 'DBU/1M',
         'DBU/Hr', 'DBUs/Mo', 'DBU Rate(List)', 'Discount%',
         'DBU Rate(Disc)', 'DBU Cost(List)', 'DBU Cost(Disc)',
+        'DSUs/Mo', 'DSU Rate(List)', 'DSU Cost(List)', 'DSU Cost(Disc)',
         'Driver VM$/Hr', 'Worker VM$/Hr', 'Driver VM Cost',
         'Worker VM Cost', 'Total VM Cost', 'Total Cost(List)',
         'Total Cost(Disc)', 'Notes'
@@ -112,30 +113,39 @@ def build_test_excel(line_items, cloud='aws', region='us-east-1', tier='PREMIUM'
         formula = f'={_col(16)}{r}*{_col(19)}{r}'
         sheet.write_formula(row, 21, formula, cur_fmt, dbu_cost_disc)
 
+        sheet.write(row, 22, 0, dec_fmt)
+        sheet.write(row, 23, 0, cur_fmt)
+        sheet.write_formula(
+            row, 24, f'={_col(22)}{r}*{_col(23)}{r}', cur_fmt, 0
+        )
+        sheet.write_formula(
+            row, 25, f'={_col(24)}{r}*(1-{_col(18)}{r})', cur_fmt, 0
+        )
+
         if is_serverless:
-            for c in range(22, 27):
+            for c in range(26, 31):
                 sheet.write(row, c, 0, cur_fmt)
         else:
-            sheet.write(row, 22, driver_vm_hr, cur_fmt)
-            sheet.write(row, 23, worker_vm_hr, cur_fmt)
+            sheet.write(row, 26, driver_vm_hr, cur_fmt)
+            sheet.write(row, 27, worker_vm_hr, cur_fmt)
             driver_vm_total = driver_vm_hr * hours
-            formula = f'={_col(22)}{r}*{_col(11)}{r}'
-            sheet.write_formula(row, 24, formula, cur_fmt, driver_vm_total)
+            formula = f'={_col(26)}{r}*{_col(11)}{r}'
+            sheet.write_formula(row, 28, formula, cur_fmt, driver_vm_total)
             worker_vm_total = worker_vm_hr * hours * num_workers
-            formula = f'={_col(23)}{r}*{_col(11)}{r}*{_col(8)}{r}'
-            sheet.write_formula(row, 25, formula, cur_fmt, worker_vm_total)
-            formula = f'={_col(24)}{r}+{_col(25)}{r}'
-            sheet.write_formula(row, 26, formula, cur_fmt, driver_vm_total + worker_vm_total)
+            formula = f'={_col(27)}{r}*{_col(11)}{r}*{_col(8)}{r}'
+            sheet.write_formula(row, 29, formula, cur_fmt, worker_vm_total)
+            formula = f'={_col(28)}{r}+{_col(29)}{r}'
+            sheet.write_formula(row, 30, formula, cur_fmt, driver_vm_total + worker_vm_total)
 
         vm_total = 0
         if not is_serverless:
             vm_total = driver_vm_hr * hours + worker_vm_hr * hours * num_workers
-        formula = f'={_col(20)}{r}+{_col(26)}{r}'
-        sheet.write_formula(row, 27, formula, cur_fmt, dbu_cost_list + vm_total)
-        formula = f'={_col(21)}{r}+{_col(26)}{r}'
-        sheet.write_formula(row, 28, formula, cur_fmt, dbu_cost_disc + vm_total)
+        formula = f'={_col(20)}{r}+{_col(24)}{r}+{_col(30)}{r}'
+        sheet.write_formula(row, 31, formula, cur_fmt, dbu_cost_list + vm_total)
+        formula = f'={_col(21)}{r}+{_col(25)}{r}+{_col(30)}{r}'
+        sheet.write_formula(row, 32, formula, cur_fmt, dbu_cost_disc + vm_total)
 
-        sheet.write(row, 29, notes)
+        sheet.write(row, 33, notes)
 
     data_end_row = data_start_row + len(line_items) - 1
     totals_row = data_end_row + 2
@@ -145,11 +155,14 @@ def build_test_excel(line_items, cloud='aws', region='us-east-1', tier='PREMIUM'
     sheet.write_formula(totals_row, 16, f'=SUM({_col(16)}{ds}:{_col(16)}{de})', num_fmt)
     sheet.write_formula(totals_row, 20, f'=SUM({_col(20)}{ds}:{_col(20)}{de})', cur_fmt)
     sheet.write_formula(totals_row, 21, f'=SUM({_col(21)}{ds}:{_col(21)}{de})', cur_fmt)
+    sheet.write_formula(totals_row, 22, f'=SUM({_col(22)}{ds}:{_col(22)}{de})', dec_fmt)
     sheet.write_formula(totals_row, 24, f'=SUM({_col(24)}{ds}:{_col(24)}{de})', cur_fmt)
     sheet.write_formula(totals_row, 25, f'=SUM({_col(25)}{ds}:{_col(25)}{de})', cur_fmt)
-    sheet.write_formula(totals_row, 26, f'=SUM({_col(26)}{ds}:{_col(26)}{de})', cur_fmt)
-    sheet.write_formula(totals_row, 27, f'=SUM({_col(27)}{ds}:{_col(27)}{de})', cur_fmt)
     sheet.write_formula(totals_row, 28, f'=SUM({_col(28)}{ds}:{_col(28)}{de})', cur_fmt)
+    sheet.write_formula(totals_row, 29, f'=SUM({_col(29)}{ds}:{_col(29)}{de})', cur_fmt)
+    sheet.write_formula(totals_row, 30, f'=SUM({_col(30)}{ds}:{_col(30)}{de})', cur_fmt)
+    sheet.write_formula(totals_row, 31, f'=SUM({_col(31)}{ds}:{_col(31)}{de})', cur_fmt)
+    sheet.write_formula(totals_row, 32, f'=SUM({_col(32)}{ds}:{_col(32)}{de})', cur_fmt)
 
     wb.close()
     output.seek(0)
@@ -193,25 +206,25 @@ class TestAllPurposeClassicFormulas:
     def test_driver_vm_cost_formula(self, classic_excel):
         """Col 24 (Driver VM Cost) should be a formula for classic."""
         sheet, ds, _ = classic_excel
-        cell = sheet.cell(row=ds + 1, column=25)
+        cell = sheet.cell(row=ds + 1, column=29)
         assert isinstance(cell.value, str) and cell.value.startswith('=')
 
     def test_worker_vm_cost_formula(self, classic_excel):
         """Col 25 (Worker VM Cost) should be a formula for classic."""
         sheet, ds, _ = classic_excel
-        cell = sheet.cell(row=ds + 1, column=26)
+        cell = sheet.cell(row=ds + 1, column=30)
         assert isinstance(cell.value, str) and cell.value.startswith('=')
 
     def test_total_vm_cost_formula(self, classic_excel):
         """Col 26 (Total VM Cost) should be a formula."""
         sheet, ds, _ = classic_excel
-        cell = sheet.cell(row=ds + 1, column=27)
+        cell = sheet.cell(row=ds + 1, column=31)
         assert isinstance(cell.value, str) and cell.value.startswith('=')
 
     def test_total_cost_formula(self, classic_excel):
         """Col 27 (Total Cost List) should be a formula."""
         sheet, ds, _ = classic_excel
-        cell = sheet.cell(row=ds + 1, column=28)
+        cell = sheet.cell(row=ds + 1, column=32)
         assert isinstance(cell.value, str) and cell.value.startswith('=')
 
 
@@ -243,7 +256,7 @@ class TestAllPurposeServerlessFormulas:
     def test_vm_cost_columns_zero(self, serverless_excel):
         """VM cost columns (22-26) should be 0 for serverless."""
         sheet, ds, _ = serverless_excel
-        for col in [23, 24, 25, 26, 27]:  # openpyxl 1-indexed = cols 22-26
+        for col in [27, 28, 29, 30, 31]:
             cell = sheet.cell(row=ds + 1, column=col)
             assert cell.value == 0, f"Col {col-1} should be 0 for serverless, got {cell.value}"
 
@@ -299,13 +312,13 @@ class TestAllPurposeTotalsRow:
     def test_totals_total_cost_sum(self, multi_item_excel):
         """Totals Total Cost (List) should be a SUM formula."""
         sheet, _, totals = multi_item_excel
-        cell = sheet.cell(row=totals + 1, column=28)
+        cell = sheet.cell(row=totals + 1, column=32)
         assert isinstance(cell.value, str) and cell.value.startswith('=SUM')
 
     def test_totals_vm_cost_sum(self, multi_item_excel):
         """Totals VM Cost should be a SUM formula."""
         sheet, _, totals = multi_item_excel
-        cell = sheet.cell(row=totals + 1, column=27)
+        cell = sheet.cell(row=totals + 1, column=31)
         assert isinstance(cell.value, str) and cell.value.startswith('=SUM')
 
 

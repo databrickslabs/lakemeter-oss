@@ -1,11 +1,15 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from fastapi import HTTPException
 
+from app.routes.calculate import vector_search_calc
 from app.routes.calculate.schemas import VectorSearchCalculationRequest
 from app.routes.calculate.vector_search_calc import (
     AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS,
     calculate_ai_search_addons,
+    calculate_vector_search_cost,
 )
 from app.routes.export.helpers import _get_workload_display_name
 from app.routes.workload_types import DEFAULT_WORKLOAD_TYPES, get_workload_type
@@ -15,16 +19,77 @@ from app.schemas.line_item import (
     validate_ai_search_workload_config,
 )
 from tests.export.vector_search.conftest import make_line_item
-from tests.export.vector_search.excel_helpers import generate_xlsx
+from tests.export.vector_search.excel_helpers import (
+    COL_DSU_COST_L,
+    COL_DSU_RATE,
+    COL_DSUS_MO,
+    generate_xlsx,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_ai_search_addons_use_30_gb_free_tier_and_reranker_rate():
+class _Result:
+    def __init__(self, row):
+        self._row = row
+
+    def fetchone(self):
+        return self._row
+
+
+class _StoragePriceDb:
+    def __init__(self, price):
+        self.price = price
+
+    def execute(self, *_args, **_kwargs):
+        row = (
+            None
+            if self.price is None
+            else SimpleNamespace(price_per_dbu=self.price)
+        )
+        return _Result(row)
+
+
+def _patch_vector_route(monkeypatch):
+    monkeypatch.setattr(vector_search_calc, "validate_cloud", lambda *_: None)
+    monkeypatch.setattr(vector_search_calc, "validate_region", lambda *_: None)
+    monkeypatch.setattr(vector_search_calc, "validate_tier", lambda *_: None)
+    monkeypatch.setattr(
+        vector_search_calc,
+        "get_product_type_for_pricing",
+        lambda *_: "SERVERLESS_REAL_TIME_INFERENCE",
+    )
+    monkeypatch.setattr(
+        vector_search_calc,
+        "call_calculate_line_item_costs",
+        lambda *_: SimpleNamespace(
+            dbu_cost_per_month=100,
+            dbu_per_month=200,
+            dbu_price=0.5,
+            hours_per_month=100,
+            dbu_per_hour=2,
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("mode", "dsu_per_gb", "expected_cost"),
+    [
+        ("standard", 10, 16.1),
+        ("storage_optimized", 2, 3.22),
+    ],
+)
+def test_ai_search_addons_use_mode_dsu_rate_and_reranker(
+    mode,
+    dsu_per_gb,
+    expected_cost,
+):
     usage = calculate_ai_search_addons(
         units_used=3,
+        mode=mode,
         storage_gb=100,
+        storage_price_per_dsu=0.023,
         reranker_enabled=True,
         reranker_requests_thousands=12.5,
     )
@@ -33,12 +98,49 @@ def test_ai_search_addons_use_30_gb_free_tier_and_reranker_rate():
         "total_gb": 100,
         "free_gb": 30,
         "billable_gb": 70,
-        "price_per_gb": 0.023,
-        "cost_per_month": pytest.approx(1.61),
+        "dsu_per_gb": dsu_per_gb,
+        "dsu_per_month": 70 * dsu_per_gb,
+        "price_per_dsu": 0.023,
+        "cost_per_month": pytest.approx(expected_cost),
     }
     assert usage["reranker"]["dbu_per_month"] == pytest.approx(
         12.5 * AI_SEARCH_RERANKER_DBU_PER_THOUSAND_REQUESTS
     )
+
+
+def test_route_uses_exact_regional_dsu_price(monkeypatch):
+    _patch_vector_route(monkeypatch)
+    request = VectorSearchCalculationRequest(
+        cloud="aws",
+        region="us-east-1",
+        tier="PREMIUM",
+        mode="standard",
+        num_vectors_millions=2,
+        storage_gb=100,
+        hours_per_month=730,
+    )
+    data = calculate_vector_search_cost(
+        request,
+        db=_StoragePriceDb(0.041),
+    )["data"]
+    assert data["components"]["storage"]["dsu_per_month"] == 700
+    assert data["components"]["storage"]["price_per_dsu"] == 0.041
+    assert data["total_cost"]["breakdown"]["dsu_cost"] == 28.7
+
+
+def test_route_rejects_missing_exact_storage_price(monkeypatch):
+    _patch_vector_route(monkeypatch)
+    request = VectorSearchCalculationRequest(
+        cloud="aws",
+        region="not-a-region",
+        tier="PREMIUM",
+        mode="standard",
+        num_vectors_millions=2,
+        storage_gb=100,
+        hours_per_month=730,
+    )
+    with pytest.raises(HTTPException, match="pricing is not available"):
+        calculate_vector_search_cost(request, db=_StoragePriceDb(None))
 
 
 def test_calculation_request_accepts_legacy_and_frontend_capacity_names():
@@ -157,11 +259,11 @@ def test_frontend_invalidates_and_normalizes_cached_ai_search_metadata():
         ROOT / "frontend/src/components/WorkloadForm.tsx"
     ).read_text(encoding="utf-8")
 
-    assert "const CACHE_VERSION = 'v12'" in store_source
+    assert "const CACHE_VERSION = 'v14'" in store_source
     assert "function canonicalizeWorkloadType" in store_source
     assert "display_name: 'AI Search'" in store_source
     assert (
-        "wt.workload_type === 'VECTOR_SEARCH' ? 'AI Search' : wt.display_name"
+        "existingType.workload_type === 'VECTOR_SEARCH' ? 'AI Search' : existingType.display_name"
         in form_source
     )
 
@@ -205,6 +307,28 @@ def test_excel_writes_separate_dbu_month_reranker_and_30_gb_storage():
     )
     assert sheet.cell(storage_row, 3).value == "AI Search (Storage)"
     assert "free: 30 GB" in sheet.cell(storage_row, 5).value
+    assert sheet.cell(storage_row, COL_DSUS_MO).value == 100
+    assert sheet.cell(storage_row, COL_DSU_RATE).value == 0.023
+    assert sheet.cell(storage_row, COL_DSU_COST_L).value == (
+        f"=W{storage_row}*X{storage_row}"
+    )
+
+
+def test_storage_optimized_excel_uses_two_dsu_per_billable_gb():
+    item = make_line_item(
+        workload_name="Optimized Search",
+        vector_search_mode="storage_optimized",
+        vector_capacity_millions=64,
+        vector_search_storage_gb=40,
+    )
+    sheet = generate_xlsx([item]).active
+    storage_row = next(
+        row
+        for row in range(1, sheet.max_row + 1)
+        if sheet.cell(row, 6).value == "DATABRICKS_STORAGE"
+    )
+    assert sheet.cell(storage_row, COL_DSUS_MO).value == 20
+    assert "2 DSU/GB" in sheet.cell(storage_row, 34).value
 
 
 def test_data_update_is_idempotent_and_has_no_schema_migration():

@@ -82,7 +82,7 @@ class TestCostSummarySection:
 
         totals_1idx = totals  # already 1-indexed
         # Check that at least the first value column references the totals row
-        for c in range(2, 9):
+        for c in range(2, 11):
             cell_val = ws.cell(row=monthly_row, column=c).value
             if isinstance(cell_val, str) and cell_val.startswith('='):
                 assert str(totals_1idx) in cell_val, \
@@ -96,7 +96,7 @@ class TestCostSummarySection:
         annual_val = ws.cell(row=annual_row, column=1).value
         assert annual_val == 'Annual', \
             f"Expected 'Annual' at row {annual_row}, got {annual_val}"
-        for c in range(2, 9):
+        for c in range(2, 11):
             cell_val = ws.cell(row=annual_row, column=c).value
             if isinstance(cell_val, str) and cell_val.startswith('='):
                 assert '*12' in cell_val, \
@@ -127,6 +127,15 @@ class TestDbuSummary:
         assert expected in val, \
             f"DBU summary: expected range {expected} in {val}"
 
+    def test_dsu_summary_uses_dsu_column(self, ws):
+        for row in range(1, ws.max_row + 1):
+            if ws.cell(row=row, column=1).value == "Total DSUs/Month:":
+                value = ws.cell(row=row, column=3).value
+                assert isinstance(value, str)
+                assert value.startswith("=SUM(W")
+                return
+        pytest.fail("DSU summary not found")
+
 
 class TestCrossCloudExcelGeneration:
     """Excel generation works for all 3 clouds with all 26 items."""
@@ -151,7 +160,7 @@ class TestCrossCloudExcelGeneration:
         wb = generate_xlsx(cloud=cloud)
         ws = wb.active
         totals = find_totals_row(ws)
-        for c in range(1, 31):
+        for c in range(1, ws.max_column + 1):
             v = ws.cell(row=totals, column=c).value
             if isinstance(v, str):
                 assert 'nan' not in v.lower(), \

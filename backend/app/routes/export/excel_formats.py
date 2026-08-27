@@ -26,6 +26,11 @@ def create_formats(workbook):
         'bg_color': '#3b82f6', 'border': 1, 'align': 'center',
         'valign': 'vcenter', 'text_wrap': True
     })
+    f['header_dsu'] = workbook.add_format({
+        'bold': True, 'font_size': 10, 'font_color': 'white',
+        'bg_color': '#7c3aed', 'border': 1, 'align': 'center',
+        'valign': 'vcenter', 'text_wrap': True
+    })
     f['header_token'] = workbook.add_format({
         'bold': True, 'font_size': 10, 'font_color': 'white',
         'bg_color': '#06b6d4', 'border': 1, 'align': 'center',
@@ -76,6 +81,10 @@ def create_formats(workbook):
         'border': 1, 'valign': 'vcenter', 'num_format': '$#,##0.00',
         'align': 'right', 'bg_color': '#fdf2f8'
     })
+    f['dsu_currency'] = workbook.add_format({
+        'border': 1, 'valign': 'vcenter', 'num_format': '$#,##0.00',
+        'align': 'right', 'bg_color': '#f5f3ff'
+    })
     f['vm_currency'] = workbook.add_format({
         'border': 1, 'valign': 'vcenter', 'num_format': '$#,##0.00',
         'align': 'right', 'bg_color': '#ecfdf5'
@@ -107,6 +116,10 @@ def create_formats(workbook):
         'bold': True, 'border': 1, 'bg_color': '#d1fae5',
         'num_format': '$#,##0.00', 'align': 'right'
     })
+    f['total_dsu_value'] = workbook.add_format({
+        'bold': True, 'border': 1, 'bg_color': '#ede9fe',
+        'num_format': '$#,##0.00', 'align': 'right'
+    })
     f['total_grand_value'] = workbook.add_format({
         'bold': True, 'border': 1, 'bg_color': '#ede9fe',
         'num_format': '$#,##0.00', 'align': 'right'
@@ -114,6 +127,10 @@ def create_formats(workbook):
     f['total_dbu_num'] = workbook.add_format({
         'bold': True, 'border': 1, 'bg_color': '#f1f5f9',
         'num_format': '#,##0', 'align': 'right'
+    })
+    f['total_dsu_num'] = workbook.add_format({
+        'bold': True, 'border': 1, 'bg_color': '#ede9fe',
+        'num_format': '#,##0.000', 'align': 'right'
     })
 
     f['label'] = workbook.add_format({'bold': True, 'font_color': '#64748b', 'align': 'right'})

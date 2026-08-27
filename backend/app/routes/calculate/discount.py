@@ -12,7 +12,10 @@ def infer_discount_category(sku: str) -> str:
     sku_upper = sku.upper()
     if sku_upper.startswith("VM_"):
         return "vm"
-    if sku_upper.startswith("STORAGE_"):
+    if (
+        sku_upper.startswith("STORAGE_")
+        or "DATABRICKS_STORAGE" in sku_upper
+    ):
         return "storage"
     if "SUPPORT" in sku_upper:
         return "support"

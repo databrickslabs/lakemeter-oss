@@ -16,6 +16,7 @@ from app.services.lakebase_queries import get_product_type_for_pricing
 from app.routes.calculate.discount import (
     apply_discount_to_sku_breakdown, calculate_total_discount_summary, enhance_total_cost_with_discount,
 )
+from app.routes.calculate.helpers import get_required_regional_dbu_price
 from app.routes.calculate.schemas import LakebaseCalculationRequest
 from app.services.lakebase_pricing import (
     LAKEBASE_AUTOSCALE_CU_VALUES,
@@ -59,21 +60,6 @@ def _load_dbu_rates() -> dict:
 
 
 DBU_RATES_BY_REGION = _load_dbu_rates()
-
-
-def _get_dsu_price(cloud: str, region: str, tier: str) -> float:
-    """Look up DATABRICKS_STORAGE $/DSU price from static pricing data."""
-    key = f"{cloud.lower()}:{region}:{tier.upper()}"
-    region_rates = DBU_RATES_BY_REGION.get(key, {})
-    if 'DATABRICKS_STORAGE' in region_rates:
-        return region_rates['DATABRICKS_STORAGE']
-    # Fallback: try without exact region match
-    for k, v in DBU_RATES_BY_REGION.items():
-        parts = k.split(':')
-        if len(parts) == 3 and parts[0] == cloud.lower() and parts[2] == tier.upper():
-            if 'DATABRICKS_STORAGE' in v:
-                return v['DATABRICKS_STORAGE']
-    return 0.023  # default fallback
 
 
 @router.post("/calculate/lakebase", tags=["Cost Calculation"])
@@ -224,43 +210,57 @@ def calculate_lakebase_cost(
             })
 
         # ── Storage / PITR / Snapshot costs ───────────────────────────
-        dsu_price = _get_dsu_price(cloud_upper, request.region, tier_upper)
         storage_gb = request.storage_gb or 0
         pitr_gb = request.pitr_gb or 0
         snapshot_gb = request.snapshot_gb or 0
+        storage_dsu = storage_gb * STORAGE_DSU_MULTIPLIER
+        pitr_dsu = pitr_gb * PITR_DSU_MULTIPLIER
+        snapshot_dsu = snapshot_gb * SNAPSHOT_DSU_MULTIPLIER
+        total_dsu = storage_dsu + pitr_dsu + snapshot_dsu
+        dsu_price = (
+            get_required_regional_dbu_price(
+                db,
+                request.cloud,
+                request.region,
+                request.tier,
+                "DATABRICKS_STORAGE",
+            )
+            if total_dsu > 0
+            else 0
+        )
 
-        storage_cost = storage_gb * STORAGE_DSU_MULTIPLIER * dsu_price
-        pitr_cost = pitr_gb * PITR_DSU_MULTIPLIER * dsu_price
-        snapshot_cost = snapshot_gb * SNAPSHOT_DSU_MULTIPLIER * dsu_price
+        storage_cost = storage_dsu * dsu_price
+        pitr_cost = pitr_dsu * dsu_price
+        snapshot_cost = snapshot_dsu * dsu_price
 
         if storage_cost > 0:
             sku_breakdown.append({
-                "type": "storage",
+                "type": "dsu",
                 "sku": "DATABRICKS_STORAGE",
                 "cost": round(storage_cost, 2),
-                "qty": round(storage_gb, 2),
-                "usage_unit": "GB-month",
-                "unit_price_before_discount": round(dsu_price * STORAGE_DSU_MULTIPLIER, 6),
+                "qty": round(storage_dsu, 6),
+                "usage_unit": "DSU",
+                "unit_price_before_discount": round(dsu_price, 6),
                 "rate_type": "database_storage",
             })
         if pitr_cost > 0:
             sku_breakdown.append({
-                "type": "storage",
+                "type": "dsu",
                 "sku": "DATABRICKS_STORAGE",
                 "cost": round(pitr_cost, 2),
-                "qty": round(pitr_gb, 2),
-                "usage_unit": "GB-month",
-                "unit_price_before_discount": round(dsu_price * PITR_DSU_MULTIPLIER, 6),
+                "qty": round(pitr_dsu, 6),
+                "usage_unit": "DSU",
+                "unit_price_before_discount": round(dsu_price, 6),
                 "rate_type": "pitr",
             })
         if snapshot_cost > 0:
             sku_breakdown.append({
-                "type": "storage",
+                "type": "dsu",
                 "sku": "DATABRICKS_STORAGE",
                 "cost": round(snapshot_cost, 2),
-                "qty": round(snapshot_gb, 2),
-                "usage_unit": "GB-month",
-                "unit_price_before_discount": round(dsu_price * SNAPSHOT_DSU_MULTIPLIER, 6),
+                "qty": round(snapshot_dsu, 6),
+                "usage_unit": "DSU",
+                "unit_price_before_discount": round(dsu_price, 6),
                 "rate_type": "snapshots",
             })
 
@@ -321,15 +321,28 @@ def calculate_lakebase_cost(
                     "dsu_price": dsu_price,
                     "storage_gb": storage_gb,
                     "storage_dsu_multiplier": STORAGE_DSU_MULTIPLIER,
+                    "storage_dsu": round(storage_dsu, 6),
                     "storage_cost": round(storage_cost, 2),
                     "pitr_gb": pitr_gb,
                     "pitr_dsu_multiplier": PITR_DSU_MULTIPLIER,
+                    "pitr_dsu": round(pitr_dsu, 6),
                     "pitr_cost": round(pitr_cost, 2),
                     "snapshot_gb": snapshot_gb,
                     "snapshot_dsu_multiplier": SNAPSHOT_DSU_MULTIPLIER,
+                    "snapshot_dsu": round(snapshot_dsu, 6),
                     "snapshot_cost": round(snapshot_cost, 2),
+                    "total_dsu": round(total_dsu, 6),
                 },
-                "total_cost": {"cost_per_month": round(total_cost, 2)},
+                "total_cost": {
+                    "cost_per_month": round(total_cost, 2),
+                    "breakdown": {
+                        "dbu_cost": round(compute_cost, 2),
+                        "dsu_cost": round(
+                            storage_cost + pitr_cost + snapshot_cost,
+                            2,
+                        ),
+                    },
+                },
                 "sku_breakdown": sku_breakdown,
             },
         }

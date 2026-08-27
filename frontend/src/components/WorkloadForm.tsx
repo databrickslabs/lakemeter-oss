@@ -31,6 +31,10 @@ const WORKLOAD_TYPE_GROUPS: ReadonlyArray<{
     workloadTypes: ['ALL_PURPOSE', 'DATABRICKS_APPS'],
   },
   {
+    label: 'Storage',
+    workloadTypes: ['GENERAL_STORAGE'],
+  },
+  {
     label: 'Operational Database',
     workloadTypes: ['LAKEBASE'],
   },
@@ -857,6 +861,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         agent_evaluation_synthetic_data_enabled: lineItem.agent_evaluation_synthetic_data_enabled ?? false,
         agent_evaluation_synthetic_questions: lineItem.agent_evaluation_synthetic_questions ?? 0,
         ai_runtime_accelerator_type: lineItem.ai_runtime_accelerator_type ?? 'GPU_1xA10',
+        general_storage_quantity: lineItem.general_storage_quantity ?? 100,
+        general_storage_unit: lineItem.general_storage_unit ?? 'gb',
+        general_storage_tier1_operations_thousands:
+          lineItem.general_storage_tier1_operations_thousands ?? 0,
+        general_storage_tier2_operations_thousands:
+          lineItem.general_storage_tier2_operations_thousands ?? 0,
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
@@ -945,6 +955,10 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       agent_evaluation_synthetic_data_enabled: false,
       agent_evaluation_synthetic_questions: 0,
       ai_runtime_accelerator_type: 'GPU_1xA10',
+      general_storage_quantity: 100,
+      general_storage_unit: 'gb',
+      general_storage_tier1_operations_thousands: 0,
+      general_storage_tier2_operations_thousands: 0,
       lakeflow_connect_pipeline_mode: 'serverless',
       lakeflow_connect_gateway_enabled: false,
       lakeflow_connect_gateway_instance: '',
@@ -1088,6 +1102,10 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     agent_evaluation_synthetic_data_enabled: false,
     agent_evaluation_synthetic_questions: 0,
     ai_runtime_accelerator_type: 'GPU_1xA10',
+    general_storage_quantity: 100,
+    general_storage_unit: 'gb',
+    general_storage_tier1_operations_thousands: 0,
+    general_storage_tier2_operations_thousands: 0,
     lakeflow_connect_pipeline_mode: 'serverless',
     lakeflow_connect_gateway_enabled: false,
     lakeflow_connect_gateway_instance: '',
@@ -1179,6 +1197,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         agent_evaluation_synthetic_data_enabled: lineItem.agent_evaluation_synthetic_data_enabled ?? false,
         agent_evaluation_synthetic_questions: lineItem.agent_evaluation_synthetic_questions ?? 0,
         ai_runtime_accelerator_type: lineItem.ai_runtime_accelerator_type ?? 'GPU_1xA10',
+        general_storage_quantity: lineItem.general_storage_quantity ?? 100,
+        general_storage_unit: lineItem.general_storage_unit ?? 'gb',
+        general_storage_tier1_operations_thousands:
+          lineItem.general_storage_tier1_operations_thousands ?? 0,
+        general_storage_tier2_operations_thousands:
+          lineItem.general_storage_tier2_operations_thousands ?? 0,
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
@@ -1416,6 +1440,12 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       agent_evaluation_synthetic_data_enabled: form.agent_evaluation_synthetic_data_enabled,
       agent_evaluation_synthetic_questions: form.agent_evaluation_synthetic_questions,
       ai_runtime_accelerator_type: form.ai_runtime_accelerator_type,
+      general_storage_quantity: form.general_storage_quantity,
+      general_storage_unit: form.general_storage_unit,
+      general_storage_tier1_operations_thousands:
+        form.general_storage_tier1_operations_thousands,
+      general_storage_tier2_operations_thousands:
+        form.general_storage_tier2_operations_thousands,
       lakeflow_connect_pipeline_mode: form.lakeflow_connect_pipeline_mode,
       lakeflow_connect_gateway_enabled: form.lakeflow_connect_gateway_enabled,
       lakeflow_connect_gateway_instance: form.lakeflow_connect_gateway_instance || undefined,
@@ -1543,6 +1573,17 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       !form.agent_evaluation_synthetic_data_enabled
     ) {
       toast.error('Enable Evaluation Labels or Synthetic Data')
+      return
+    }
+    if (
+      form.workload_type === 'GENERAL_STORAGE' &&
+      [
+        form.general_storage_quantity,
+        form.general_storage_tier1_operations_thousands,
+        form.general_storage_tier2_operations_thousands,
+      ].some(value => !Number.isFinite(value) || value < 0)
+    ) {
+      toast.error('Enter non-negative storage and operation quantities')
       return
     }
     if (form.workload_type === 'AGENT_EVALUATION' && form.agent_evaluation_labels_enabled) {
@@ -1771,6 +1812,20 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.ai_runtime_accelerator_type = null
       }
 
+      if (form.workload_type === 'GENERAL_STORAGE') {
+        data.general_storage_quantity = form.general_storage_quantity
+        data.general_storage_unit = form.general_storage_unit
+        data.general_storage_tier1_operations_thousands =
+          form.general_storage_tier1_operations_thousands
+        data.general_storage_tier2_operations_thousands =
+          form.general_storage_tier2_operations_thousands
+      } else {
+        data.general_storage_quantity = null
+        data.general_storage_unit = null
+        data.general_storage_tier1_operations_thousands = null
+        data.general_storage_tier2_operations_thousands = null
+      }
+
       // Lakebase config
       if (selectedWorkloadType?.show_lakebase_config) {
         const isFixedLakebase = form.lakebase_compute_mode === 'fixed'
@@ -1855,6 +1910,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         form.workload_type === 'AI_CLASSIFY' ||
         form.workload_type === 'AI_GATEWAY' ||
         form.workload_type === 'AGENT_EVALUATION' ||
+        form.workload_type === 'GENERAL_STORAGE' ||
         form.workload_type === 'SHUTTERSTOCK_IMAGEAI'
       ) {
         // Quantity-based workloads - no hours, runs, or days needed
@@ -2606,7 +2662,9 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
                 placeholder="e.g., 100"
               />
               <p className="text-xs text-[var(--text-muted)] mt-1">
-                The first 30 GB is free. Additional storage is charged at $0.023/GB/mo.
+                The first 30 GB is free. Billable storage uses 10 DSU/GB for
+                Standard or 2 DSU/GB for Storage Optimized at the exact regional
+                DSU rate.
               </p>
             </div>
             <div className="lg:col-span-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3">
@@ -2727,6 +2785,89 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
             </div>
             <div className="col-span-full text-[11px] leading-relaxed text-[var(--text-muted)]">
               AI Runtime is available on AWS and Azure where an exact MODEL_TRAINING price is published. Billing origin AI_RUNTIME is charged on that SKU.
+            </div>
+          </>
+        )}
+
+        {/* Databricks Default Storage Config */}
+        {form.workload_type === 'GENERAL_STORAGE' && (
+          <>
+            <div className="col-span-full md:col-span-2">
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
+                Average Stored Capacity / Month
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={form.general_storage_quantity}
+                onChange={(e) => setForm(f => ({
+                  ...f,
+                  general_storage_quantity: Number(e.target.value),
+                }))}
+                className="w-full text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
+                Unit
+              </label>
+              <select
+                value={form.general_storage_unit}
+                onChange={(e) => setForm(f => ({
+                  ...f,
+                  general_storage_unit: e.target.value,
+                }))}
+                className="w-full text-sm"
+              >
+                <option value="gb">GB</option>
+                <option value="tb">TB (1,024 GB)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
+                Tier 1 Operations / Month (K)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={form.general_storage_tier1_operations_thousands}
+                onChange={(e) => setForm(f => ({
+                  ...f,
+                  general_storage_tier1_operations_thousands:
+                    Number(e.target.value),
+                }))}
+                className="w-full text-sm"
+              />
+              <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                PUT, COPY, POST, and LIST operations, in thousands.
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
+                Tier 2 Operations / Month (K)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={form.general_storage_tier2_operations_thousands}
+                onChange={(e) => setForm(f => ({
+                  ...f,
+                  general_storage_tier2_operations_thousands:
+                    Number(e.target.value),
+                }))}
+                className="w-full text-sm"
+              />
+              <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                GET, SELECT, and other operations, in thousands.
+              </p>
+            </div>
+            <div className="col-span-full text-[11px] leading-relaxed text-[var(--text-muted)]">
+              Databricks-managed Default Storage is billed in DSUs for stored
+              data and API operations. Customer-managed object storage,
+              backups, and data transfer are not included.
             </div>
           </>
         )}
@@ -3539,7 +3680,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
             )}
             
             {/* Days per month - hide for workloads that use hours or quantity directly */}
-            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'AI_EXTRACT' && form.workload_type !== 'AI_CLASSIFY' && form.workload_type !== 'AI_GATEWAY' && form.workload_type !== 'AGENT_EVALUATION' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
+            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'AI_EXTRACT' && form.workload_type !== 'AI_CLASSIFY' && form.workload_type !== 'AI_GATEWAY' && form.workload_type !== 'AGENT_EVALUATION' && form.workload_type !== 'GENERAL_STORAGE' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
               <div>
                 <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Days/Month</label>
                 <input

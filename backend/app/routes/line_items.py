@@ -20,6 +20,7 @@ from app.schemas.line_item import (
     validate_ai_runtime_workload_config,
     validate_ai_search_workload_config,
     validate_compute_workload_config,
+    validate_general_storage_workload_config,
 )
 from app.auth import get_current_user
 
@@ -55,6 +56,10 @@ def _validate_ai_config_or_422(workload_type: str, workload_config: dict) -> Non
         )
         validate_ai_search_workload_config(workload_type, workload_config)
         validate_ai_runtime_workload_config(workload_type, workload_config)
+        validate_general_storage_workload_config(
+            workload_type,
+            workload_config,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
