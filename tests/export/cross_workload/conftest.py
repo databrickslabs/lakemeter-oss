@@ -51,6 +51,7 @@ def make_jobs_serverless():
     return make_line_item(
         workload_type="JOBS",
         workload_name="Jobs Serverless Perf",
+        driver_node_type="r6g.large",
         serverless_enabled=True,
         serverless_mode="performance",
         hours_per_month=200,
@@ -63,6 +64,8 @@ def make_all_purpose_classic_photon():
     return make_line_item(
         workload_type="ALL_PURPOSE",
         workload_name="All-Purpose Classic Photon",
+        driver_node_type="r6g.large",
+        worker_node_type="r6g.large",
         photon_enabled=True,
         num_workers=2,
         hours_per_month=730,
@@ -75,6 +78,7 @@ def make_dlt_pro_serverless():
     return make_line_item(
         workload_type="DLT",
         workload_name="DLT Pro Serverless",
+        driver_node_type="r6g.large",
         dlt_edition="PRO",
         serverless_enabled=True,
         serverless_mode="standard",

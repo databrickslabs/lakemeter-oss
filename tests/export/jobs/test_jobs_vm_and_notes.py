@@ -271,26 +271,24 @@ class TestNoNaNOrZeroCosts:
 # ============================================================
 
 class TestLakebaseDBUFormula:
-    """Lakebase DBU/hr = CU × HA nodes.
-    BUG-S1-6 fixed: backend previously used cu×nodes×2, now aligned with frontend.
-    """
+    """Lakebase equivalent DBU/hr includes regional rate and discount."""
 
     def test_lakebase_backend_formula(self):
-        """Backend: DBU/hr = CU × nodes (fixed — was cu×nodes×2)."""
+        """AWS Premium always-on usage applies its 25% baseline discount."""
         item = make_line_item(
             workload_type="LAKEBASE",
             lakebase_cu=4, lakebase_ha_nodes=2, lakebase_storage_gb=100,
         )
         dbu_hr, _ = _calculate_dbu_per_hour(item, "aws")
-        # Correct formula: 4 × 2 = 8
-        assert dbu_hr == pytest.approx(8.0), \
-            f"Backend Lakebase DBU/hr should be cu×nodes = 8, got {dbu_hr}"
+        expected = 4 * 2 * 0.230 * 0.75
+        assert dbu_hr == pytest.approx(expected)
 
     def test_lakebase_single_node(self):
-        """0.5 CU × 1 node = 0.5 DBU/hr."""
+        """Half-CU single-node usage applies the regional effective rate."""
         item = make_line_item(
             workload_type="LAKEBASE",
             lakebase_cu=0.5, lakebase_ha_nodes=1,
         )
         dbu_hr, _ = _calculate_dbu_per_hour(item, "aws")
-        assert dbu_hr == pytest.approx(0.5)
+        expected = 0.5 * 1 * 0.230 * 0.75
+        assert dbu_hr == pytest.approx(expected)

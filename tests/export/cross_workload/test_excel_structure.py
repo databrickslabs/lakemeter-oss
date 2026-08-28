@@ -134,7 +134,7 @@ class TestDbuPerHour:
     def test_jobs_dbu_hr(self, ws):
         row = find_row_by_name(ws, 'Jobs Serverless Perf')
         val = ws.cell(row=row, column=COL_DBU_HR).value
-        # base=0.5 (driver fallback), photon 2.9 from JSON, performance *2 = 2.9
+        # base=0.5 driver, photon 2.9 from JSON, performance *2 = 2.9
         assert val == pytest.approx(2.9, abs=0.01)
 
     def test_all_purpose_dbu_hr(self, ws):
@@ -151,7 +151,7 @@ class TestDbuPerHour:
     def test_lakebase_dbu_hr(self, ws):
         row = find_row_by_name(ws, 'Lakebase 4CU 2HA')
         val = ws.cell(row=row, column=COL_DBU_HR).value
-        assert val == pytest.approx(8.0, abs=0.01)
+        assert val == pytest.approx(1.38, abs=0.01)
 
     def test_model_serving_dbu_hr(self, ws):
         """Model Serving GPU (A10G x1) should show 20.0 DBU/hr."""

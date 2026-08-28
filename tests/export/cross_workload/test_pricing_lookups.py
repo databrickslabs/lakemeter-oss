@@ -78,7 +78,13 @@ class TestMultiCloudPricing:
 
     def test_jobs_all_clouds_no_warnings(self):
         item = make_jobs_serverless()
-        for cloud in ('aws', 'azure', 'gcp'):
+        node_types = {
+            'aws': 'r6g.large',
+            'azure': 'Standard_E2_v3',
+            'gcp': 'n2-highmem-2',
+        }
+        for cloud, node_type in node_types.items():
+            item.driver_node_type = node_type
             _, warnings = _calculate_dbu_per_hour(item, cloud)
             assert len(warnings) == 0, f"Jobs {cloud}: {warnings}"
 

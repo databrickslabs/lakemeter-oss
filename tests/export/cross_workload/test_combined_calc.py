@@ -18,7 +18,7 @@ class TestJobsServerlessCalc:
     def test_dbu_per_hour(self):
         item = make_jobs_serverless()
         dbu, warnings = _calculate_dbu_per_hour(item, 'aws')
-        # base_dbu = 0.5 (driver fallback, matching frontend) + 0 (no workers) = 0.5
+        # base_dbu = 0.5 (r6g.large driver) + 0 (no workers) = 0.5
         # serverless photon multiplier from JSON: *2.9 = 1.45
         # performance: *2 = 2.9
         assert dbu == pytest.approx(2.9, abs=0.01)
@@ -41,7 +41,7 @@ class TestAllPurposeClassicPhotonCalc:
     def test_dbu_per_hour(self):
         item = make_all_purpose_classic_photon()
         dbu, warnings = _calculate_dbu_per_hour(item, 'aws')
-        # base = 0.5 (driver fallback) + 0.5*2 = 1.5, photon *2 = 3.0
+        # base = 0.5 driver + 0.5*2 workers = 1.5, photon *2 = 3.0
         assert dbu == pytest.approx(3.0, abs=0.01)
 
     def test_sku(self):
@@ -61,7 +61,7 @@ class TestDltProServerlessCalc:
     def test_dbu_per_hour(self):
         item = make_dlt_pro_serverless()
         dbu, warnings = _calculate_dbu_per_hour(item, 'aws')
-        # base = 0.5 (driver fallback) + 0 = 0.5, serverless photon from JSON: *2.9 = 1.45, standard *1 = 1.45
+        # base = 0.5 driver, serverless photon *2.9, standard mode *1
         assert dbu == pytest.approx(1.45, abs=0.01)
 
     def test_sku(self):
@@ -164,8 +164,8 @@ class TestLakebaseCalc:
     def test_dbu_per_hour(self):
         item = make_lakebase()
         dbu, warnings = _calculate_dbu_per_hour(item, 'aws')
-        # 4 CU * 2 nodes = 8 DBU/hr
-        assert dbu == pytest.approx(8.0, abs=0.01)
+        # 4 CU × 2 nodes × 0.230 DBU/CU-hour × 75% always-on factor
+        assert dbu == pytest.approx(1.38, abs=0.01)
 
     def test_sku(self):
         item = make_lakebase()
