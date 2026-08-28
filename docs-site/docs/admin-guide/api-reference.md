@@ -258,6 +258,9 @@ All calculation endpoints accept workload parameters and return cost breakdowns.
 | `POST /api/v1/calculate/ai-parse` | AI Parse (Document AI) |
 | `POST /api/v1/calculate/ai-extract` | AI Extract (raw `STRING` or parsed document input) |
 | `POST /api/v1/calculate/ai-classify` | AI Classify (raw `STRING` or parsed document input) |
+| `POST /api/v1/calculate/ai-gateway` | Unity AI Gateway (additive, excludes underlying inference) |
+| `POST /api/v1/calculate/agent-evaluation` | Agent Evaluation (additive, excludes evaluated app inference) |
+| `POST /api/v1/calculate/ai-runtime` | AI Runtime serverless GPU training (`MODEL_TRAINING` SKU, AWS and Azure) |
 | `POST /api/v1/calculate/shutterstock-imageai` | Shutterstock ImageAI |
 
 ### Example: Jobs Classic

@@ -115,6 +115,9 @@ Use the [Workload Sizing Guides](./workloads) for the canonical calculation beha
 - [FMAPI — Databricks](./fmapi-databricks) — token or provisioned quantities
 - [FMAPI — Proprietary](./fmapi-proprietary) — model, geography, context, and token quantities
 - [Lakebase](./lakebase) — minimum and scale-up compute, nodes, storage, PITR, and snapshots
+- [Unity AI Gateway](./ai-gateway) — independent components, request or direct payload input, DBUs per GB
+- [Agent Evaluation](./agent-evaluation) — independent components, evaluation tokens and synthetic questions
+- [AI Runtime](./ai-runtime) — accelerator GPU count, GPU-hours, and the `MODEL_TRAINING` SKU
 
 ## Validate an estimate
 
