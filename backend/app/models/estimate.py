@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -24,6 +24,7 @@ class Estimate(Base):
     version = Column(Integer, default=1)
     template_id = Column(UUID(as_uuid=True), ForeignKey("lakemeter.templates.template_id"))
     original_prompt = Column(Text)
+    discount_config = Column(JSONB)
     display_order = Column(Integer, default=0)
     is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)

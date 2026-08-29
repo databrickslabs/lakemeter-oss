@@ -487,6 +487,24 @@ class GeneralStorageCalculationRequest(BaseModel):
     model_config = ConfigDict(allow_inf_nan=False)
 
 
+class ZerobusCalculationRequest(BaseModel):
+    cloud: str = Field(...)
+    region: str = Field(...)
+    tier: str = Field(...)
+    mode: str = Field(
+        default="standard",
+        description="standard or otel",
+    )
+    monthly_ingested_gb: float = Field(
+        default=0,
+        ge=0,
+        allow_inf_nan=False,
+    )
+    discount_config: Optional[DiscountConfig] = Field(None)
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+
 class ShutterstockImageAICalculationRequest(BaseModel):
     cloud: str = Field(...)
     region: str = Field(...)

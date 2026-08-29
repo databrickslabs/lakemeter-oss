@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "as_of_date": "2026-08-28",
+  "source_url": "https://www.databricks.com/product/pricing/platform-addons",
+  "basis": "product_spend_at_list",
+  "addons": {
+    "ENHANCED_SECURITY_COMPLIANCE": {
+      "display_name": "Enhanced Security and Compliance",
+      "sku": "ENHANCED_SECURITY_AND_COMPLIANCE",
+      "description": "Enhanced security controls for regulated and compliance-sensitive workloads.",
+      "clouds": {
+        "AWS": {
+          "eligible_tiers": [
+            "ENTERPRISE"
+          ],
+          "standard_rate_pct": 15
+        },
+        "AZURE": {
+          "eligible_tiers": [
+            "PREMIUM"
+          ],
+          "standard_rate_pct": 10
+        },
+        "GCP": {
+          "eligible_tiers": [
+            "ENTERPRISE"
+          ],
+          "standard_rate_pct": 15
+        }
+      }
+    },
+    "MISSION_CRITICAL": {
+      "display_name": "Mission Critical",
+      "sku": "MISSION_CRITICAL",
+      "description": "Managed Disaster Recovery plus Enhanced Security and Compliance.",
+      "includes": [
+        "ENHANCED_SECURITY_COMPLIANCE"
+      ],
+      "clouds": {
+        "AWS": {
+          "eligible_tiers": [
+            "ENTERPRISE"
+          ],
+          "standard_rate_pct": 30,
+          "promotion": {
+            "rate_pct": 15,
+            "end_date": "2027-06-30",
+            "label": "Promotional 15% uplift through June 30, 2027"
+          }
+        },
+        "AZURE": {
+          "eligible_tiers": [
+            "PREMIUM"
+          ],
+          "standard_rate_pct": 30,
+          "promotion": {
+            "rate_pct": 15,
+            "end_date": "2027-06-30",
+            "label": "Promotional 15% uplift through June 30, 2027"
+          }
+        }
+      }
+    }
+  }
+}

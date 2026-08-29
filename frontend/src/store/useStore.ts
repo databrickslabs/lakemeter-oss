@@ -398,6 +398,7 @@ export const useStore = create<Store>((set, get) => ({
     { workload_type: 'AGENT_EVALUATION', display_name: 'Agent Evaluation', description: 'Evaluation labels and synthetic evaluation data', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
     { workload_type: 'AI_RUNTIME', display_name: 'AI Runtime', description: 'Serverless GPU model training', sku_product_type_standard: 'MODEL_TRAINING' },
     { workload_type: 'GENERAL_STORAGE', display_name: 'Databricks Default Storage', description: 'Managed storage for Unity Catalog data and workspace assets', sku_product_type_standard: 'DATABRICKS_STORAGE' },
+    { workload_type: 'ZEROBUS', display_name: 'Zerobus Ingest', description: 'Direct standard or OpenTelemetry ingestion into Delta tables', sku_product_type_standard: 'JOBS_SERVERLESS_COMPUTE' },
     { workload_type: 'SHUTTERSTOCK_IMAGEAI', display_name: 'Shutterstock ImageAI', description: 'AI image generation', sku_product_type_standard: 'SERVERLESS_REAL_TIME_INFERENCE' },
   ] as WorkloadType[],
   // Use static data as defaults - instant display, no waiting for API
@@ -1625,6 +1626,16 @@ export const useStore = create<Store>((set, get) => ({
               lineItem.general_storage_tier1_operations_thousands ?? 0,
             tier_2_operations_thousands:
               lineItem.general_storage_tier2_operations_thousands ?? 0,
+            discount_config: (lineItem.workload_config?.discount_config as Record<string, unknown> | undefined) ?? {},
+          })
+          break
+
+        case 'ZEROBUS':
+          result = await api.calculateZerobus({
+            ...baseParams,
+            mode: lineItem.zerobus_mode ?? 'standard',
+            monthly_ingested_gb:
+              lineItem.zerobus_monthly_ingested_gb ?? 0,
             discount_config: (lineItem.workload_config?.discount_config as Record<string, unknown> | undefined) ?? {},
           })
           break

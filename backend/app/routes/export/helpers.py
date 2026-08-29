@@ -59,6 +59,7 @@ def _get_workload_display_name(workload_type: str) -> str:
         'AI_CLASSIFY': 'AI Classify',
         'AI_GATEWAY': 'Unity AI Gateway',
         'AGENT_EVALUATION': 'Agent Evaluation',
+        'ZEROBUS': 'Zerobus Ingest',
         'LAKEFLOW_CONNECT': 'Lakeflow Connect',
     }
     return names.get(workload_type, workload_type)
@@ -181,6 +182,15 @@ def _get_workload_config_details(item) -> str:
                 f"{component['quantity_unit'].replace('_', ' ')}, "
                 f"{component['monthly_dbus']:g} DBUs"
             )
+    elif wt == 'ZEROBUS':
+        from .excel_item_helpers import get_zerobus_usage
+
+        usage = get_zerobus_usage(item)
+        details.append(f"Type: {usage['mode_display_name']}")
+        details.append(
+            f"Ingested data: {usage['monthly_ingested_gb']:g} GB/mo"
+        )
+        details.append(f"Metering: {usage['dbu_per_gb']:g} DBU/GB")
     elif wt == 'LAKEFLOW_CONNECT':
         details.extend(_lakeflow_connect_details(item))
 

@@ -1045,6 +1045,23 @@ I can assist you with:
                                 </span>
                               </>
                             )}
+                            {proposal.workload_type === 'ZEROBUS' && (
+                              <>
+                                <span className="px-1.5 py-0.5 bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 rounded">
+                                  {proposal.zerobus_mode === 'otel'
+                                    ? 'Zerobus OTel'
+                                    : 'Zerobus'}
+                                </span>
+                                <span>
+                                  {(proposal.zerobus_monthly_ingested_gb ?? 100).toLocaleString()} GB/mo
+                                </span>
+                                <span>
+                                  {proposal.zerobus_mode === 'otel'
+                                    ? '0.222 DBU/GB'
+                                    : '0.143 DBU/GB'}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">

@@ -125,6 +125,8 @@ def _get_sku_type(item, cloud: str = 'aws') -> str:
         return 'MODEL_TRAINING'
     elif wt == 'GENERAL_STORAGE':
         return 'DATABRICKS_STORAGE'
+    elif wt == 'ZEROBUS':
+        return 'JOBS_SERVERLESS_COMPUTE'
     elif wt == 'FMAPI_DATABRICKS':
         return _get_fmapi_sku(item, cloud)
     elif wt == 'FMAPI_PROPRIETARY':

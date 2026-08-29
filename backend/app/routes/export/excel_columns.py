@@ -3,7 +3,7 @@
 # 34-column layout constants
 NUM_COLS = 34
 COLUMN_WIDTHS = [
-    4,   # 0: #
+    34,  # 0: # / summary labels
     22,  # 1: Name
     18,  # 2: Type
     12,  # 3: Mode

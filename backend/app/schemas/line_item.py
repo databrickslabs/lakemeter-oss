@@ -56,6 +56,11 @@ GENERAL_STORAGE_CONFIG_FIELDS = (
     "general_storage_tier2_operations_thousands",
 )
 
+ZEROBUS_CONFIG_FIELDS = (
+    "zerobus_mode",
+    "zerobus_monthly_ingested_gb",
+)
+
 JSON_BACKED_CONFIG_FIELDS = (
     *AI_FUNCTION_CONFIG_FIELDS,
     *AI_GATEWAY_CONFIG_FIELDS,
@@ -63,6 +68,7 @@ JSON_BACKED_CONFIG_FIELDS = (
     *AI_SEARCH_CONFIG_FIELDS,
     *AI_RUNTIME_CONFIG_FIELDS,
     *GENERAL_STORAGE_CONFIG_FIELDS,
+    *ZEROBUS_CONFIG_FIELDS,
 )
 
 
@@ -134,6 +140,8 @@ def map_ai_parse_api_fields(
             fields_to_remove.extend(AI_RUNTIME_CONFIG_FIELDS)
         if workload_type != "GENERAL_STORAGE":
             fields_to_remove.extend(GENERAL_STORAGE_CONFIG_FIELDS)
+        if workload_type != "ZEROBUS":
+            fields_to_remove.extend(ZEROBUS_CONFIG_FIELDS)
         original_config = dict(config)
         for field in fields_to_remove:
             config.pop(field, None)
@@ -430,6 +438,26 @@ def validate_general_storage_workload_config(
     )
 
 
+def validate_zerobus_workload_config(
+    workload_type: Optional[str],
+    workload_config: Optional[Dict[str, Any]],
+) -> None:
+    """Validate JSON-backed Zerobus mode and monthly ingress volume."""
+    if (workload_type or "").upper() != "ZEROBUS":
+        return
+    from app.services.zerobus_pricing import calculate_zerobus_usage
+
+    config = workload_config or {}
+    if "zerobus_mode" not in config:
+        raise ValueError("zerobus_mode is required")
+    if "zerobus_monthly_ingested_gb" not in config:
+        raise ValueError("zerobus_monthly_ingested_gb is required")
+    calculate_zerobus_usage(
+        config["zerobus_monthly_ingested_gb"],
+        config["zerobus_mode"],
+    )
+
+
 def validate_compute_workload_config(
     workload_type: Optional[str],
     driver_node_type: Optional[str],
@@ -510,6 +538,12 @@ class LineItemBase(BaseModel):
         default=None, ge=0, allow_inf_nan=False
     )
     general_storage_tier2_operations_thousands: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+
+    # Zerobus Ingest Configuration (stored in workload_config)
+    zerobus_mode: Optional[Literal["standard", "otel"]] = None
+    zerobus_monthly_ingested_gb: Optional[float] = Field(
         default=None, ge=0, allow_inf_nan=False
     )
 
@@ -725,6 +759,12 @@ class LineItemUpdate(BaseModel):
         default=None, ge=0, allow_inf_nan=False
     )
     general_storage_tier2_operations_thousands: Optional[float] = Field(
+        default=None, ge=0, allow_inf_nan=False
+    )
+
+    # Zerobus Ingest Configuration (stored in workload_config)
+    zerobus_mode: Optional[Literal["standard", "otel"]] = None
+    zerobus_monthly_ingested_gb: Optional[float] = Field(
         default=None, ge=0, allow_inf_nan=False
     )
 

@@ -1,6 +1,6 @@
 """Estimate schemas."""
 from datetime import datetime
-from typing import Optional, List
+from typing import Any, Optional, List
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
@@ -12,6 +12,7 @@ class EstimateBase(BaseModel):
     region: Optional[str] = None
     tier: Optional[str] = None
     status: Optional[str] = "draft"
+    discount_config: Optional[dict[str, Any]] = None
 
 
 class EstimateCreate(EstimateBase):
@@ -27,6 +28,7 @@ class EstimateUpdate(BaseModel):
     region: Optional[str] = None
     tier: Optional[str] = None
     status: Optional[str] = None
+    discount_config: Optional[dict[str, Any]] = None
 
 
 class LineItemSummary(BaseModel):

@@ -1166,6 +1166,18 @@ export const calculateGeneralStorage = async (request: GeneralStorageRequest): P
   return data
 }
 
+// Zerobus Ingest
+export interface ZerobusRequest extends BaseCalculationRequest {
+  mode: 'standard' | 'otel'
+  monthly_ingested_gb: number
+  discount_config?: Record<string, unknown>
+}
+
+export const calculateZerobus = async (request: ZerobusRequest): Promise<CostCalculationResponse> => {
+  const { data } = await api.post('/calculate/zerobus', request)
+  return data
+}
+
 // Shutterstock ImageAI
 export interface ShutterstockImageAIRequest extends BaseCalculationRequest {
   images_per_month: number
@@ -1285,6 +1297,9 @@ export const calculateWorkloadCost = async (
 
     case 'AI_RUNTIME':
       return calculateAIRuntime(params as unknown as AIRuntimeRequest)
+
+    case 'ZEROBUS':
+      return calculateZerobus(params as unknown as ZerobusRequest)
 
     case 'SHUTTERSTOCK_IMAGEAI':
       return calculateShutterstockImageAI(params as unknown as ShutterstockImageAIRequest)

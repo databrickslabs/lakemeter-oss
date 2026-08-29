@@ -5,7 +5,7 @@ from .excel_columns import NUM_COLS, COLUMN_WIDTHS, get_headers  # noqa: F401
 
 
 def write_data_row(sheet, row, row_data, is_fmapi_token, is_serverless, fmt,
-                   is_storage_row=False):
+                   is_storage_row=False, cost_accumulator=None):
     """Write a single export row with formulas for all computed cells."""
     r = row + 1  # 1-indexed for Excel formulas
 
@@ -59,6 +59,17 @@ def write_data_row(sheet, row, row_data, is_fmapi_token, is_serverless, fmt,
 
     # Col 33: Notes
     sheet.write(row, 33, row_data.get('notes', ''), fmt['cell'])
+
+    if cost_accumulator is not None:
+        dbu_list = (
+            row_data.get('total_dbus_month', 0)
+            * row_data.get('dbu_rate', 0)
+        )
+        dsu_list = (
+            row_data.get('monthly_dsus', 0)
+            * row_data.get('dsu_rate', 0)
+        )
+        cost_accumulator['product_spend_at_list'] += dbu_list + dsu_list
 
 
 def _write_hours(sheet, row, row_data, is_fmapi_token, is_storage_row, fmt):

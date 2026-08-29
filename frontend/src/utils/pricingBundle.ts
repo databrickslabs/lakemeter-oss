@@ -72,6 +72,34 @@ export interface FMAPIRate {
   batch_status?: 'coming_soon'
 }
 
+export interface PlatformAddonPromotion {
+  rate_pct: number
+  end_date: string
+  label: string
+}
+
+export interface PlatformAddonCloudConfig {
+  eligible_tiers: string[]
+  standard_rate_pct: number
+  promotion?: PlatformAddonPromotion
+}
+
+export interface PlatformAddonDefinition {
+  display_name: string
+  sku: string
+  description: string
+  includes?: string[]
+  clouds: Record<string, PlatformAddonCloudConfig>
+}
+
+export interface PlatformAddonCatalog {
+  version: number
+  as_of_date: string
+  source_url: string
+  basis: 'product_spend_at_list'
+  addons: Record<string, PlatformAddonDefinition>
+}
+
 export interface PricingBundle {
   instanceDBURates: Record<string, Record<string, InstanceDBURate>>  // cloud -> instance_type -> rate
   dbuMultipliers: Record<string, DBUMultiplier>                       // "cloud:sku_type:feature" -> multiplier (photon, serverless, lakebase)
@@ -83,6 +111,7 @@ export interface PricingBundle {
   modelServingRates: Record<string, ModelServingRate>                // "cloud:gpu_type" -> rate
   fmapiDatabricksRates: Record<string, FMAPIRate>                    // "cloud:model:rate_type" -> rate
   fmapiProprietaryRates: Record<string, FMAPIRate>                   // "cloud:provider:model:endpoint:context:rate_type" -> rate
+  platformAddons: PlatformAddonCatalog
   loadedAt: Date | null
   isLoaded: boolean
 }
@@ -120,7 +149,8 @@ export async function loadPricingBundle(): Promise<PricingBundle> {
       vectorSearchRates,
       modelServingRates,
       fmapiDatabricksRates,
-      fmapiProprietaryRates
+      fmapiProprietaryRates,
+      platformAddons
     ] = await Promise.all([
       loadJSON<Record<string, Record<string, InstanceDBURate>>>('instance-dbu-rates.json'),
       loadJSON<Record<string, DBUMultiplier>>('dbu-multipliers.json'),
@@ -130,7 +160,8 @@ export async function loadPricingBundle(): Promise<PricingBundle> {
       loadJSON<Record<string, VectorSearchRate>>('vector-search-rates.json'),
       loadJSON<Record<string, ModelServingRate>>('model-serving-rates.json'),
       loadJSON<Record<string, FMAPIRate>>('fmapi-databricks-rates.json'),
-      loadJSON<Record<string, FMAPIRate>>('fmapi-proprietary-rates.json')
+      loadJSON<Record<string, FMAPIRate>>('fmapi-proprietary-rates.json'),
+      loadJSON<PlatformAddonCatalog>('platform-addons.json')
     ])
     
     const loadTime = Date.now() - startTime
@@ -146,6 +177,7 @@ export async function loadPricingBundle(): Promise<PricingBundle> {
       modelServingRates,
       fmapiDatabricksRates,
       fmapiProprietaryRates,
+      platformAddons,
       loadedAt: new Date(),
       isLoaded: true
     }
@@ -170,6 +202,13 @@ export function createEmptyBundle(): PricingBundle {
     modelServingRates: {},
     fmapiDatabricksRates: {},
     fmapiProprietaryRates: {},
+    platformAddons: {
+      version: 1,
+      as_of_date: '',
+      source_url: '',
+      basis: 'product_spend_at_list',
+      addons: {},
+    },
     loadedAt: null,
     isLoaded: false
   }
@@ -555,7 +594,7 @@ const SKU_TO_WORKLOAD_MAP: Record<string, string> = {
 const ALL_WORKLOAD_TYPES = [
   'JOBS', 'ALL_PURPOSE', 'DLT', 'DBSQL',
   'VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE',
-  'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'AGENT_EVALUATION', 'AI_RUNTIME', 'GENERAL_STORAGE', 'SHUTTERSTOCK_IMAGEAI'
+  'DATABRICKS_APPS', 'AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'AGENT_EVALUATION', 'AI_RUNTIME', 'GENERAL_STORAGE', 'ZEROBUS', 'SHUTTERSTOCK_IMAGEAI'
 ]
 
 /**
@@ -650,6 +689,17 @@ export function getAvailableWorkloadTypesForRegion(
   // Databricks Apps: uses ALL_PURPOSE_SERVERLESS_COMPUTE — available wherever ALL_PURPOSE is
   if (availableWorkloads.has('ALL_PURPOSE')) {
     availableWorkloads.add('DATABRICKS_APPS')
+  }
+
+  const normalizedTier = tier.toUpperCase()
+  const zerobusTierAvailable = cloudLower === 'azure'
+    ? normalizedTier === 'PREMIUM'
+    : ['PREMIUM', 'ENTERPRISE'].includes(normalizedTier)
+  if (
+    zerobusTierAvailable
+    && productTypes.JOBS_SERVERLESS_COMPUTE !== undefined
+  ) {
+    availableWorkloads.add('ZEROBUS')
   }
 
   // AI Functions require an exact regional SERVERLESS_REAL_TIME_INFERENCE price.

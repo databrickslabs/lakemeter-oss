@@ -49,7 +49,6 @@ from tests.regression.excel_helpers import (
     COL_NOTES,
     COL_TOKEN_QTY,
     COL_TOTAL_L,
-    find_dbu_summary_row,
     find_row_by_name,
     find_totals_row,
     make_estimate,
@@ -688,7 +687,7 @@ class TestExcelExport:
                 expected_cost
             )
             assert formulas.cell(row, COL_TOTAL_L).value == (
-                f"=U{row}+AA{row}"
+                f"=U{row}+Y{row}+AE{row}"
             )
             assert cached.cell(row, COL_TOTAL_L).value == pytest.approx(
                 expected_cost
@@ -704,15 +703,11 @@ class TestExcelExport:
         assert rows == list(range(rows[0], rows[0] + 3))
         assert find_row_by_name(formulas, "Evaluation") is None
         totals_row = find_totals_row(formulas)
-        summary_row = find_dbu_summary_row(formulas)
         assert formulas.cell(totals_row, COL_DBUS_MO).value == (
             f"=SUM(Q{rows[0]}:Q{rows[-1]})"
         )
         assert formulas.cell(totals_row, COL_TOTAL_L).value == (
-            f"=SUM(AB{rows[0]}:AB{rows[-1]})"
-        )
-        assert formulas.cell(summary_row, 3).value == (
-            f"=SUM(Q{rows[0]}:Q{rows[-1]})"
+            f"=SUM(AF{rows[0]}:AF{rows[-1]})"
         )
         assert sum(
             cached.cell(row, COL_DBUS_MO).value for row in rows

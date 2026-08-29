@@ -1343,6 +1343,7 @@ export default function TestCalculations() {
           monthlyDSUs,
           dsuCost,
           vmCost,
+          databricksListCost: dbuCost + dsuCost,
           totalCost,
         }
         

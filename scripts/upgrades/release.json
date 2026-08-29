@@ -38,8 +38,13 @@
       "id": "026-general-storage",
       "path": "scripts/upgrades/data_updates/026_general_storage.sql",
       "sha256": "4b70bb9543b19dd4224cc86f73029fa02c1d4e99bc57a1c16962b4506bf24481"
+    },
+    {
+      "id": "027-zerobus",
+      "path": "scripts/upgrades/data_updates/027_zerobus.sql",
+      "sha256": "8c6066e5688ec484717857aae4f7d92ae1533ec2fed6b85a1c13df23cbef4642"
     }
   ],
   "migrations": [],
-  "runtime_sha256": "228d97f884580662c52b6aa7a091633d870e90cddb27738179ae30eb1217fe44"
+  "runtime_sha256": "40fd290b58098e4c026640d3112d829d605cf3ad531329312701ab6be5545809"
 }

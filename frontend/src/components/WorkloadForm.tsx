@@ -20,7 +20,7 @@ const WORKLOAD_TYPE_GROUPS: ReadonlyArray<{
 }> = [
   {
     label: 'Data Engineering',
-    workloadTypes: ['JOBS', 'DLT', 'LAKEFLOW_CONNECT'],
+    workloadTypes: ['JOBS', 'DLT', 'LAKEFLOW_CONNECT', 'ZEROBUS'],
   },
   {
     label: 'Data Warehousing',
@@ -417,6 +417,7 @@ const PREMIUM_ONLY_WORKLOAD_TYPES = new Set([
   'AGENT_EVALUATION',
   'AI_RUNTIME',
   'SHUTTERSTOCK_IMAGEAI',
+  'ZEROBUS',
 ])
 
 import {
@@ -867,6 +868,9 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           lineItem.general_storage_tier1_operations_thousands ?? 0,
         general_storage_tier2_operations_thousands:
           lineItem.general_storage_tier2_operations_thousands ?? 0,
+        zerobus_mode: lineItem.zerobus_mode ?? 'standard',
+        zerobus_monthly_ingested_gb:
+          lineItem.zerobus_monthly_ingested_gb ?? 100,
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
@@ -959,6 +963,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       general_storage_unit: 'gb',
       general_storage_tier1_operations_thousands: 0,
       general_storage_tier2_operations_thousands: 0,
+      zerobus_mode: 'standard',
+      zerobus_monthly_ingested_gb: 100,
       lakeflow_connect_pipeline_mode: 'serverless',
       lakeflow_connect_gateway_enabled: false,
       lakeflow_connect_gateway_instance: '',
@@ -1106,6 +1112,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     general_storage_unit: 'gb',
     general_storage_tier1_operations_thousands: 0,
     general_storage_tier2_operations_thousands: 0,
+    zerobus_mode: 'standard',
+    zerobus_monthly_ingested_gb: 100,
     lakeflow_connect_pipeline_mode: 'serverless',
     lakeflow_connect_gateway_enabled: false,
     lakeflow_connect_gateway_instance: '',
@@ -1203,6 +1211,9 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
           lineItem.general_storage_tier1_operations_thousands ?? 0,
         general_storage_tier2_operations_thousands:
           lineItem.general_storage_tier2_operations_thousands ?? 0,
+        zerobus_mode: lineItem.zerobus_mode ?? 'standard',
+        zerobus_monthly_ingested_gb:
+          lineItem.zerobus_monthly_ingested_gb ?? 100,
         lakeflow_connect_pipeline_mode: lineItem.lakeflow_connect_pipeline_mode || 'serverless',
         lakeflow_connect_gateway_enabled: lineItem.lakeflow_connect_gateway_enabled || false,
         lakeflow_connect_gateway_instance: lineItem.lakeflow_connect_gateway_instance || '',
@@ -1446,6 +1457,8 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         form.general_storage_tier1_operations_thousands,
       general_storage_tier2_operations_thousands:
         form.general_storage_tier2_operations_thousands,
+      zerobus_mode: form.zerobus_mode,
+      zerobus_monthly_ingested_gb: form.zerobus_monthly_ingested_gb,
       lakeflow_connect_pipeline_mode: form.lakeflow_connect_pipeline_mode,
       lakeflow_connect_gateway_enabled: form.lakeflow_connect_gateway_enabled,
       lakeflow_connect_gateway_instance: form.lakeflow_connect_gateway_instance || undefined,
@@ -1584,6 +1597,31 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       ].some(value => !Number.isFinite(value) || value < 0)
     ) {
       toast.error('Enter non-negative storage and operation quantities')
+      return
+    }
+    if (
+      form.workload_type === 'ZEROBUS' &&
+      (!Number.isFinite(form.zerobus_monthly_ingested_gb) ||
+        form.zerobus_monthly_ingested_gb < 0)
+    ) {
+      toast.error('Enter a non-negative monthly Zerobus ingestion volume')
+      return
+    }
+    if (
+      form.workload_type === 'ZEROBUS' &&
+      (
+        selectedTier?.toUpperCase() === 'STANDARD' ||
+        (
+          selectedCloud?.toUpperCase() === 'AZURE' &&
+          selectedTier?.toUpperCase() !== 'PREMIUM'
+        )
+      )
+    ) {
+      toast.error(
+        selectedCloud?.toUpperCase() === 'AZURE'
+          ? 'Zerobus pricing on Azure requires Premium tier'
+          : 'Zerobus requires Premium or Enterprise tier',
+      )
       return
     }
     if (form.workload_type === 'AGENT_EVALUATION' && form.agent_evaluation_labels_enabled) {
@@ -1826,6 +1864,15 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         data.general_storage_tier2_operations_thousands = null
       }
 
+      if (form.workload_type === 'ZEROBUS') {
+        data.zerobus_mode = form.zerobus_mode
+        data.zerobus_monthly_ingested_gb =
+          form.zerobus_monthly_ingested_gb
+      } else {
+        data.zerobus_mode = null
+        data.zerobus_monthly_ingested_gb = null
+      }
+
       // Lakebase config
       if (selectedWorkloadType?.show_lakebase_config) {
         const isFixedLakebase = form.lakebase_compute_mode === 'fixed'
@@ -1911,6 +1958,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         form.workload_type === 'AI_GATEWAY' ||
         form.workload_type === 'AGENT_EVALUATION' ||
         form.workload_type === 'GENERAL_STORAGE' ||
+        form.workload_type === 'ZEROBUS' ||
         form.workload_type === 'SHUTTERSTOCK_IMAGEAI'
       ) {
         // Quantity-based workloads - no hours, runs, or days needed
@@ -2871,6 +2919,53 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
             </div>
           </>
         )}
+
+        {/* Zerobus Ingest Config */}
+        {form.workload_type === 'ZEROBUS' && (
+          <>
+            <div className="col-span-full md:col-span-2">
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
+                Ingestion Type
+              </label>
+              <select
+                value={form.zerobus_mode}
+                onChange={(e) => setForm(f => ({
+                  ...f,
+                  zerobus_mode: e.target.value,
+                }))}
+                className="w-full text-sm"
+              >
+                <option value="standard">
+                  Zerobus Ingest (0.143 DBU/GB)
+                </option>
+                <option value="otel">
+                  Zerobus OTel Ingest (0.222 DBU/GB)
+                </option>
+              </select>
+            </div>
+            <div className="col-span-full md:col-span-2">
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
+                Data Ingested / Month (GB)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={form.zerobus_monthly_ingested_gb}
+                onChange={(e) => setForm(f => ({
+                  ...f,
+                  zerobus_monthly_ingested_gb: Number(e.target.value),
+                }))}
+                className="w-full text-sm"
+              />
+            </div>
+            <div className="col-span-full text-[11px] leading-relaxed text-[var(--text-muted)]">
+              Billed through the regional Jobs Serverless SKU. Producer
+              compute, target Delta storage, downstream processing, and data
+              transfer are not included.
+            </div>
+          </>
+        )}
         
         {/* FMAPI Config - Foundation Models (Databricks) */}
         {selectedWorkloadType?.show_fmapi_config && form.workload_type === 'FMAPI_DATABRICKS' && (
@@ -3680,7 +3775,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
             )}
             
             {/* Days per month - hide for workloads that use hours or quantity directly */}
-            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'AI_EXTRACT' && form.workload_type !== 'AI_CLASSIFY' && form.workload_type !== 'AI_GATEWAY' && form.workload_type !== 'AGENT_EVALUATION' && form.workload_type !== 'GENERAL_STORAGE' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
+            {!selectedWorkloadType?.show_fmapi_config && !selectedWorkloadType?.show_vector_search_mode && !selectedWorkloadType?.show_lakebase_config && form.workload_type !== 'MODEL_SERVING' && form.workload_type !== 'DATABRICKS_APPS' && form.workload_type !== 'AI_PARSE' && form.workload_type !== 'AI_EXTRACT' && form.workload_type !== 'AI_CLASSIFY' && form.workload_type !== 'AI_GATEWAY' && form.workload_type !== 'AGENT_EVALUATION' && form.workload_type !== 'GENERAL_STORAGE' && form.workload_type !== 'ZEROBUS' && form.workload_type !== 'SHUTTERSTOCK_IMAGEAI' && (
               <div>
                 <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Days/Month</label>
                 <input

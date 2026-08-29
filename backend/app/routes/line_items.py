@@ -21,6 +21,7 @@ from app.schemas.line_item import (
     validate_ai_search_workload_config,
     validate_compute_workload_config,
     validate_general_storage_workload_config,
+    validate_zerobus_workload_config,
 )
 from app.auth import get_current_user
 
@@ -31,6 +32,7 @@ _LOWERCASE_FIELDS = {
     'fmapi_rate_type', 'fmapi_endpoint_type', 'fmapi_context_length',
     'model_serving_gpu_type', 'driver_pricing_tier', 'worker_pricing_tier',
     'dbsql_vm_pricing_tier', 'ai_parse_complexity',
+    'zerobus_mode',
 }
 
 
@@ -60,6 +62,7 @@ def _validate_ai_config_or_422(workload_type: str, workload_config: dict) -> Non
             workload_type,
             workload_config,
         )
+        validate_zerobus_workload_config(workload_type, workload_config)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
