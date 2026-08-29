@@ -83,6 +83,20 @@ def get_agent_evaluation_usage(item):
     )
 
 
+def get_zerobus_usage(item):
+    """Calculate Zerobus DBUs from JSON-backed monthly ingestion fields."""
+    from app.services.zerobus_pricing import calculate_zerobus_usage
+
+    return calculate_zerobus_usage(
+        _get_json_backed_value(
+            item,
+            "zerobus_monthly_ingested_gb",
+            0,
+        ),
+        _get_json_backed_value(item, "zerobus_mode", "standard"),
+    )
+
+
 def get_ai_search_reranker_usage(item):
     """Calculate optional AI Search Reranker usage from one line item."""
     from app.routes.calculate.vector_search_calc import (
@@ -122,6 +136,7 @@ def write_general_storage_row(
     idx,
     cloud,
     dsu_price,
+    cost_accumulator=None,
 ):
     """Write stored-data and operation components as separate DSU rows."""
     from app.services.general_storage_pricing import (
@@ -229,6 +244,7 @@ def write_general_storage_row(
             True,
             fmt,
             is_storage_row=True,
+            cost_accumulator=cost_accumulator,
         )
         row += 1
     return row
@@ -323,6 +339,10 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
         if wt == 'AGENT_EVALUATION':
             usage = get_agent_evaluation_usage(item)
             return 0, 0, 0, usage['monthly_dbus'], ''
+        # Zerobus: quantity-based monthly ingested GB
+        if wt == 'ZEROBUS':
+            usage = get_zerobus_usage(item)
+            return 0, 0, 0, usage['monthly_dbus'], ''
         # Shutterstock ImageAI: quantity-based (images × 0.857 DBU)
         if wt == 'SHUTTERSTOCK_IMAGEAI':
             images = getattr(item, 'shutterstock_images', None)
@@ -336,7 +356,7 @@ def calc_item_values(item, is_fmapi_token, is_fmapi_provisioned,
 
 
 def write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
-                         type_display, size_attr):
+                         type_display, size_attr, cost_accumulator=None):
     """Write a storage sub-row for Lakebase or AI Search.
 
     Lakebase uses DSU pricing with different multipliers per feature:
@@ -424,5 +444,14 @@ def write_storage_subrow(sheet, fmt, row, item, idx, cloud, region, tier,
         'driver_vm_cost_per_hour': 0, 'worker_vm_cost_per_hour': 0,
         'notes': notes,
     }
-    write_data_row(sheet, row, storage_row, False, True, fmt, is_storage_row=True)
+    write_data_row(
+        sheet,
+        row,
+        storage_row,
+        False,
+        True,
+        fmt,
+        is_storage_row=True,
+        cost_accumulator=cost_accumulator,
+    )
     return row + 1

@@ -264,6 +264,9 @@ BEGIN
         WHEN 'GENERAL_STORAGE' THEN
             v_product_type := 'DATABRICKS_STORAGE';
 
+        WHEN 'ZEROBUS' THEN
+            v_product_type := 'JOBS_SERVERLESS_COMPUTE';
+
         WHEN 'SHUTTERSTOCK_IMAGEAI' THEN
             v_product_type := 'SERVERLESS_REAL_TIME_INFERENCE';
 

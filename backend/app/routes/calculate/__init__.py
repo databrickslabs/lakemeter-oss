@@ -21,6 +21,10 @@ from app.routes.calculate.ai_runtime_calc import router as ai_runtime_router
 from app.routes.calculate.general_storage_calc import (
     router as general_storage_router,
 )
+from app.routes.calculate.zerobus_calc import router as zerobus_router
+from app.routes.calculate.platform_addon_calc import (
+    router as platform_addon_router,
+)
 from app.routes.calculate.shutterstock_calc import router as shutterstock_router
 from app.routes.calculate.lakeflow_connect_calc import router as lakeflow_connect_router
 
@@ -41,5 +45,7 @@ router.include_router(ai_gateway_router)
 router.include_router(agent_evaluation_router)
 router.include_router(ai_runtime_router)
 router.include_router(general_storage_router)
+router.include_router(zerobus_router)
+router.include_router(platform_addon_router)
 router.include_router(shutterstock_router)
 router.include_router(lakeflow_connect_router)

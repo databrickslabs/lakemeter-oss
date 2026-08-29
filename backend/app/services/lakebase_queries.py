@@ -168,6 +168,8 @@ def get_sku_type(
         return "MODEL_TRAINING"
     if wt == "GENERAL_STORAGE":
         return "DATABRICKS_STORAGE"
+    if wt == "ZEROBUS":
+        return "JOBS_SERVERLESS_COMPUTE"
     if wt == "FMAPI_DATABRICKS":
         return "SERVERLESS_REAL_TIME_INFERENCE"
     if wt == "FMAPI_PROPRIETARY":

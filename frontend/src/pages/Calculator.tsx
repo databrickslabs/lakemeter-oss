@@ -47,7 +47,7 @@ import {
 } from '../api/client'
 import { saveAs } from 'file-saver'
 import WorkloadForm from '../components/WorkloadForm'
-import type { LineItem } from '../types'
+import type { LineItem, PlatformAddonType } from '../types'
 import {
   getInstanceDBURate as getBundleInstanceDBURate,
   getPhotonMultiplier as getBundlePhotonMultiplier,
@@ -71,12 +71,20 @@ import {
   calculateAIGatewayUsage,
   calculateGeneralStorageDSU,
   calculateModelServingDBUPerHour,
+  calculateZerobusUsage,
   getAISearchStorageDSUPerGB,
   getGeneralStorageGB,
   getModelServingBillingCapacityUnits,
   isModelServingGPUType,
 } from '../utils/costCalculation'
 import { calculateAIRuntimeUsage } from '../utils/aiRuntime'
+import {
+  PLATFORM_ADDON_TYPES,
+  calculatePlatformAddonCost,
+  getPlatformAddonAvailabilityError,
+  getPlatformAddonDefinition,
+  getPlatformAddonDiscountPct,
+} from '../utils/platformAddons'
 
 // Error Boundary for catching render errors
 interface ErrorBoundaryState {
@@ -282,6 +290,12 @@ const WORKLOAD_TYPE_CONFIG: Record<string, {
     color: 'text-emerald-500',
     bgColor: 'bg-emerald-500/10',
     label: 'Storage'
+  },
+  'ZEROBUS': {
+    icon: ArrowsRightLeftIcon,
+    color: 'text-sky-500',
+    bgColor: 'bg-sky-500/10',
+    label: 'Zerobus'
   }
 }
 
@@ -342,6 +356,7 @@ interface CostBreakdown {
   dbuCost: number
   dsuCost: number
   vmCost: number
+  databricksListCost: number
   monthlyDBUs: number
   monthlyDSUs: number
   unitsUsed?: number
@@ -550,6 +565,7 @@ interface CostBreakdown {
   monthlyDSUs: number
   dsuCost: number
   vmCost: number
+  databricksListCost: number
   totalCost: number
   // Optional fields for specific workload types
   unitsUsed?: number  // AI Search units
@@ -861,6 +877,46 @@ function GeneralStorageCostFormula({
   )
 }
 
+function ZerobusCostFormula({
+  item,
+  costs,
+  dbuPriceDisplay,
+}: {
+  item: Partial<LineItem>
+  costs: CostBreakdown
+  dbuPriceDisplay: string
+}) {
+  const usage = calculateZerobusUsage(item)
+  const modeName = usage.mode === 'otel'
+    ? 'Zerobus OTel Ingest'
+    : 'Zerobus Ingest'
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span className="text-blue-600 font-semibold">{modeName}:</span>
+        <span>{formatNumber(usage.monthlyIngestedGB, 3)} GB/mo</span>
+        <span>×</span>
+        <span>{usage.dbuPerGB.toFixed(3)} DBU/GB</span>
+        <span>=</span>
+        <span className="font-medium">
+          {formatNumber(usage.monthlyDBUs, 3)} DBUs/mo
+        </span>
+      </div>
+      <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
+        <span>{formatNumber(usage.monthlyDBUs, 3)} DBUs/mo</span>
+        <span>×</span>
+        <span>${dbuPriceDisplay}/DBU</span>
+        <span>=</span>
+        <span className="font-semibold">{formatCurrency(costs.dbuCost)}</span>
+      </div>
+      <p className="text-[10px] text-[var(--text-muted)]">
+        Uses the regional Jobs Serverless list price. Producer compute,
+        target storage, downstream processing, and transfer are excluded.
+      </p>
+    </div>
+  )
+}
+
 function AISearchCostFormula({
   item,
   costs,
@@ -1059,7 +1115,8 @@ export default function Calculator() {
     customer_name: '',
     cloud: 'aws',
     region: '',
-    tier: ''  // No default - must be selected
+    tier: '',  // No default - must be selected
+    platform_addons: [] as PlatformAddonType[],
   })
   
   // Configuration panel collapsed state - auto-collapse for saved estimates
@@ -1265,7 +1322,8 @@ export default function Calculator() {
     customer_name: '',
     cloud: 'aws',
     region: '',
-    tier: ''
+    tier: '',
+    platform_addons: [] as PlatformAddonType[],
   }
 
   useEffect(() => {
@@ -1277,7 +1335,8 @@ export default function Calculator() {
         // Convert to lowercase for UI matching (DB stores uppercase)
         cloud: (currentEstimate.cloud || 'aws').toLowerCase(),
         region: currentEstimate.region || '',
-        tier: (currentEstimate.tier || '').toLowerCase()
+        tier: (currentEstimate.tier || '').toLowerCase(),
+        platform_addons: currentEstimate.discount_config?.platform_addons || [],
       })
       if (currentEstimate.cloud) {
         setSelectedCloud(currentEstimate.cloud.toLowerCase())
@@ -1337,6 +1396,7 @@ export default function Calculator() {
         monthlyDSUs: 0,
         dsuCost: 0,
         vmCost: 0,
+        databricksListCost: 0,
         totalCost: 0,
       }
     }
@@ -1423,6 +1483,10 @@ export default function Calculator() {
       case 'GENERAL_STORAGE':
         productType = 'DATABRICKS_STORAGE'
         break
+
+      case 'ZEROBUS':
+        productType = 'JOBS_SERVERLESS_COMPUTE'
+        break
       
       case 'FMAPI_DATABRICKS':
         productType = 'SERVERLESS_REAL_TIME_INFERENCE'
@@ -1475,12 +1539,15 @@ export default function Calculator() {
       || effectiveItem.workload_type === 'AGENT_EVALUATION'
       || effectiveItem.workload_type === 'AI_RUNTIME'
       || effectiveItem.workload_type === 'GENERAL_STORAGE'
+      || effectiveItem.workload_type === 'ZEROBUS'
     ) {
       const exactSku = effectiveItem.workload_type === 'AI_RUNTIME'
         ? 'MODEL_TRAINING'
         : effectiveItem.workload_type === 'GENERAL_STORAGE'
           ? 'DATABRICKS_STORAGE'
-          : 'SERVERLESS_REAL_TIME_INFERENCE'
+          : effectiveItem.workload_type === 'ZEROBUS'
+            ? 'JOBS_SERVERLESS_COMPUTE'
+            : 'SERVERLESS_REAL_TIME_INFERENCE'
       const exactBundlePrice = isPricingBundleLoaded && formData.tier
         ? getExactRegionalDBUPrice(
             pricingBundle,
@@ -2068,6 +2135,11 @@ export default function Calculator() {
         break
       }
 
+      case 'ZEROBUS': {
+        monthlyDBUs = calculateZerobusUsage(effectiveItem).monthlyDBUs
+        break
+      }
+
       case 'SHUTTERSTOCK_IMAGEAI': {
         // 0.857 DBU per image
         const imageCount = effectiveItem.shutterstock_images || 0
@@ -2098,6 +2170,7 @@ export default function Calculator() {
       monthlyDSUs: safeMonthlyDSUs,
       dsuCost: safeDSUCost,
       vmCost: safeVmCost, 
+      databricksListCost: dbuCost + safeDSUCost,
       totalCost: isNaN(totalCost) ? 0 : totalCost,
       unitsUsed,  // For AI Search
       dbuPerHour, // For display
@@ -2115,7 +2188,8 @@ export default function Calculator() {
     let totalDSUs = 0
     let totalDSUCost = 0
     let totalVMCost = 0
-    let totalCost = 0
+    let workloadTotalCost = 0
+    let productSpendAtList = 0
     
     lineItems.forEach(item => {
       const costs = calculateItemCost(item)
@@ -2125,8 +2199,25 @@ export default function Calculator() {
       totalDSUs += isNaN(costs.monthlyDSUs) ? 0 : costs.monthlyDSUs
       totalDSUCost += isNaN(costs.dsuCost) ? 0 : costs.dsuCost
       totalVMCost += isNaN(costs.vmCost) ? 0 : costs.vmCost
-      totalCost += isNaN(costs.totalCost) ? 0 : costs.totalCost
+      workloadTotalCost += isNaN(costs.totalCost) ? 0 : costs.totalCost
+      productSpendAtList += isNaN(costs.databricksListCost)
+        ? 0
+        : costs.databricksListCost
     })
+
+    const selectedAddon = formData.platform_addons[0] ?? null
+    const platformAddonDiscountPct = getPlatformAddonDiscountPct(
+      currentEstimate?.discount_config,
+    )
+    const platformAddon = calculatePlatformAddonCost(
+      pricingBundle.platformAddons,
+      selectedAddon,
+      formData.cloud,
+      formData.tier,
+      productSpendAtList,
+      platformAddonDiscountPct,
+    )
+    const totalPlatformAddonCost = platformAddon?.cost ?? 0
     
     return {
       totalDBUs,
@@ -2134,9 +2225,13 @@ export default function Calculator() {
       totalDSUs,
       totalDSUCost,
       totalVMCost,
-      totalCost,
+      productSpendAtList,
+      workloadTotalCost,
+      platformAddon,
+      totalPlatformAddonCost,
+      totalCost: workloadTotalCost + totalPlatformAddonCost,
     }
-  }, [lineItems, formData.cloud, formData.region, formData.tier, workloadTypes, getVMPrice, vmPricingMap, getInstanceDbuRate, instanceDbuRateMap, instanceTypes, photonMultipliers, dbuRatesMap, dbsqlSizes, modelServingGPUTypes, vectorSearchModes, getVectorSearchRate, getFMAPIDatabricksRate, getFMAPIProprietaryRate, pricingBundle, isPricingBundleLoaded])
+  }, [lineItems, formData.cloud, formData.region, formData.tier, formData.platform_addons, currentEstimate?.discount_config, workloadTypes, getVMPrice, vmPricingMap, getInstanceDbuRate, instanceDbuRateMap, instanceTypes, photonMultipliers, dbuRatesMap, dbsqlSizes, modelServingGPUTypes, vectorSearchModes, getVectorSearchRate, getFMAPIDatabricksRate, getFMAPIProprietaryRate, pricingBundle, isPricingBundleLoaded])
   
   // Sync local calculated costs to the store for AI Assistant
   useEffect(() => {
@@ -2237,10 +2332,15 @@ export default function Calculator() {
     setIsSaving(true)
     try {
       // Convert cloud and tier to uppercase for database constraints
+      const { platform_addons, ...estimateFields } = formData
       const dataToSave = {
-        ...formData,
+        ...estimateFields,
         cloud: formData.cloud.toUpperCase(),
-        tier: formData.tier.toUpperCase()
+        tier: formData.tier.toUpperCase(),
+        discount_config: {
+          ...(currentEstimate?.discount_config || {}),
+          platform_addons,
+        },
       }
       
       if (id && currentEstimate) {
@@ -2432,7 +2532,7 @@ export default function Calculator() {
   const getUsageSummary = (item: LineItem) => {
     // Quantity-based workloads don't use run/hour usage
     const wt = item.workload_type || ''
-    if (['AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'AGENT_EVALUATION', 'GENERAL_STORAGE', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
+    if (['AI_PARSE', 'AI_EXTRACT', 'AI_CLASSIFY', 'AI_GATEWAY', 'AGENT_EVALUATION', 'GENERAL_STORAGE', 'ZEROBUS', 'SHUTTERSTOCK_IMAGEAI', 'DATABRICKS_APPS'].includes(wt)) return null
     if (item.hours_per_month) {
       return `${item.hours_per_month}h/month`
     }
@@ -2523,6 +2623,25 @@ export default function Calculator() {
         details.push({
           label: 'Tier 2 Operations',
           value: `${(item.general_storage_tier2_operations_thousands ?? 0).toLocaleString()}K/month`,
+        })
+        break
+      }
+
+      case 'ZEROBUS': {
+        const usage = calculateZerobusUsage(item)
+        details.push({
+          label: 'Type',
+          value: usage.mode === 'otel'
+            ? 'Zerobus OTel Ingest'
+            : 'Zerobus Ingest',
+        })
+        details.push({
+          label: 'Ingested Data',
+          value: `${formatNumber(usage.monthlyIngestedGB, 3)} GB/month`,
+        })
+        details.push({
+          label: 'Metering',
+          value: `${usage.dbuPerGB.toFixed(3)} DBU/GB`,
         })
         break
       }
@@ -2927,7 +3046,8 @@ export default function Calculator() {
                                     ...prev, 
                                     cloud: cloud.id, 
                                     region: '',
-                                    tier: (cloud.id === 'azure' && prev.tier === 'enterprise') ? '' : prev.tier
+                                    tier: (cloud.id === 'azure' && prev.tier === 'enterprise') ? '' : prev.tier,
+                                    platform_addons: [],
                                   }))
                                   setSelectedCloud(cloud.id)
                                   markAsChanged()
@@ -3008,7 +3128,24 @@ export default function Calculator() {
                         <select
                           value={formData.tier}
                           onChange={(e) => {
-                            setFormData(prev => ({ ...prev, tier: e.target.value }))
+                            const nextTier = e.target.value
+                            const selectedAddon = formData.platform_addons[0]
+                            const isUnavailable = selectedAddon
+                              ? Boolean(getPlatformAddonAvailabilityError(
+                                  pricingBundle.platformAddons,
+                                  selectedAddon,
+                                  formData.cloud,
+                                  nextTier,
+                                ))
+                              : false
+                            setFormData(prev => ({
+                              ...prev,
+                              tier: nextTier,
+                              platform_addons: isUnavailable ? [] : prev.platform_addons,
+                            }))
+                            if (isUnavailable) {
+                              toast('Platform add-on cleared because it is unavailable for this tier')
+                            }
                             markAsChanged()
                           }}
                           className={clsx(
@@ -3025,6 +3162,84 @@ export default function Calculator() {
                       </div>
                     </div>
                   )}
+
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <label className="block text-xs font-medium mb-1.5 text-[var(--text-secondary)]">
+                      Platform Add-on
+                    </label>
+                    <select
+                      value={formData.platform_addons[0] || ''}
+                      onChange={(e) => {
+                        const selection = e.target.value as PlatformAddonType | ''
+                        setFormData(prev => ({
+                          ...prev,
+                          platform_addons: selection ? [selection] : [],
+                        }))
+                        markAsChanged()
+                      }}
+                      disabled={!formData.tier || !isPricingBundleLoaded}
+                      className="w-full text-sm"
+                    >
+                      <option value="">None</option>
+                      {PLATFORM_ADDON_TYPES.map(addonType => {
+                        const definition = getPlatformAddonDefinition(
+                          pricingBundle.platformAddons,
+                          addonType,
+                        )
+                        const error = getPlatformAddonAvailabilityError(
+                          pricingBundle.platformAddons,
+                          addonType,
+                          formData.cloud,
+                          formData.tier,
+                        )
+                        return (
+                          <option
+                            key={addonType}
+                            value={addonType}
+                            disabled={Boolean(error)}
+                          >
+                            {definition?.display_name || addonType}
+                            {error ? ` — ${error}` : ''}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    {totalCosts.platformAddon && (
+                      <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-[var(--text-secondary)]">
+                        <div className="flex items-center justify-between gap-3">
+                          <span>Product Spend at List</span>
+                          <span className="font-semibold tabular-nums text-[var(--text-primary)]">
+                            {formatCurrency(totalCosts.productSpendAtList)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 mt-1">
+                          <span>
+                            {totalCosts.platformAddon.displayName}
+                            {' '}({totalCosts.platformAddon.appliedRatePct}%)
+                          </span>
+                          <span className="font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+                            {formatCurrency(totalCosts.totalPlatformAddonCost)}
+                          </span>
+                        </div>
+                        {totalCosts.platformAddon.promotionLabel && (
+                          <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                            Regular uplift {totalCosts.platformAddon.standardRatePct}%.{' '}
+                            {totalCosts.platformAddon.promotionLabel}.
+                          </p>
+                        )}
+                        {totalCosts.platformAddon.discountPct > 0 && (
+                          <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                            Add-on charge before negotiated discount:{' '}
+                            {formatCurrency(totalCosts.platformAddon.costBeforeDiscount)}.
+                            {' '}{totalCosts.platformAddon.discountPct}% discount applied.
+                          </p>
+                        )}
+                        <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                          Based on Databricks product spend before discounts; cloud VM costs are excluded.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Save Button */}
@@ -3367,6 +3582,14 @@ export default function Calculator() {
                               `${evaluationUsage.syntheticQuestions.toLocaleString()} questions / ${formatNumber(evaluationUsage.syntheticQuestionDBUs, 3)} DBUs`,
                             )
                           }
+                        } else if (wType === 'ZEROBUS') {
+                          const zerobusUsage = calculateZerobusUsage(effectiveItem)
+                          config.badges.push({
+                            text: zerobusUsage.mode === 'otel' ? 'OTel' : 'Standard',
+                          })
+                          config.details.push(
+                            `${formatNumber(zerobusUsage.monthlyIngestedGB, 3)} GB / ${formatNumber(zerobusUsage.monthlyDBUs, 3)} DBUs`,
+                          )
                         }
                         
                         return config
@@ -3592,7 +3815,7 @@ export default function Calculator() {
                                   </div>
                                 )}
                                 {/* Hide VM Cost for serverless workloads */}
-                                {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY', 'AGENT_EVALUATION'].includes(wType) && (
+                                {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY', 'AGENT_EVALUATION', 'ZEROBUS'].includes(wType) && (
                                   <div>
                                     <span className="text-[var(--text-muted)]">VM Cost</span>
                                     <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.vmCost)}</p>
@@ -3714,6 +3937,16 @@ export default function Calculator() {
                                           costs={costs}
                                           cloud={formData.cloud || 'aws'}
                                           unitPrice={costs.dsuPrice || 0}
+                                        />
+                                      )
+                                    }
+
+                                    if (wType === 'ZEROBUS') {
+                                      return (
+                                        <ZerobusCostFormula
+                                          item={effectiveItem}
+                                          costs={costs}
+                                          dbuPriceDisplay={dbuPriceDisplay}
                                         />
                                       )
                                     }
@@ -4580,7 +4813,7 @@ export default function Calculator() {
                               </div>
                             )}
                               {/* Hide VM Cost for serverless workloads */}
-                              {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY', 'AGENT_EVALUATION'].includes(item.workload_type || '') && (
+                              {!['VECTOR_SEARCH', 'MODEL_SERVING', 'FMAPI_DATABRICKS', 'FMAPI_PROPRIETARY', 'LAKEBASE', 'AI_GATEWAY', 'AGENT_EVALUATION', 'ZEROBUS'].includes(item.workload_type || '') && (
                                 <div>
                                   <span className="text-[var(--text-muted)]">VM Cost</span>
                                   <p className="font-semibold text-[var(--text-primary)]">{formatCurrency(costs.vmCost)}</p>
@@ -4714,6 +4947,16 @@ export default function Calculator() {
                                       costs={costs}
                                       cloud={formData.cloud || 'aws'}
                                       unitPrice={costs.dsuPrice || 0}
+                                    />
+                                  )
+                                }
+
+                                if (wType === 'ZEROBUS') {
+                                  return (
+                                    <ZerobusCostFormula
+                                      item={effectiveItem}
+                                      costs={costs}
+                                      dbuPriceDisplay={dbuPriceDisplay}
                                     />
                                   )
                                 }
@@ -5466,7 +5709,7 @@ export default function Calculator() {
                   </div>
                   
                   {/* Cost Breakdown Grid */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div className="text-center p-2 sm:p-3 rounded-xl bg-gradient-to-br from-blue-500/5 to-blue-500/10 border border-blue-500/20 min-w-0">
                       <p className="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-wider font-medium mb-1">DBU Cost</p>
                       <p className="text-xs font-bold text-[var(--text-primary)] tabular-nums truncate" title={formatCurrency(totalCosts.totalDBUCost)}>{formatCurrencyCompact(totalCosts.totalDBUCost)}</p>
@@ -5479,6 +5722,10 @@ export default function Calculator() {
                       <p className="text-[10px] text-teal-600 dark:text-teal-400 uppercase tracking-wider font-medium mb-1">VM Cost</p>
                       <p className="text-xs font-bold text-[var(--text-primary)] tabular-nums truncate" title={isLoadingVMCosts ? 'Loading...' : formatCurrency(totalCosts.totalVMCost)}>{isLoadingVMCosts ? '...' : formatCurrencyCompact(totalCosts.totalVMCost)}</p>
                     </div>
+                    <div className="text-center p-2 sm:p-3 rounded-xl bg-gradient-to-br from-amber-500/5 to-amber-500/10 border border-amber-500/20 min-w-0">
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 uppercase tracking-wider font-medium mb-1">Add-on</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)] tabular-nums truncate" title={formatCurrency(totalCosts.totalPlatformAddonCost)}>{formatCurrencyCompact(totalCosts.totalPlatformAddonCost)}</p>
+                    </div>
                   </div>
                   
                   {/* Workload Breakdown - Click to navigate */}
@@ -5488,6 +5735,25 @@ export default function Calculator() {
                       <span className="text-[10px] italic">Click to view</span>
                     </p>
                     <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {totalCosts.platformAddon && (
+                        <div className="w-full p-2 rounded-lg bg-amber-500/5 border border-amber-500/15">
+                          <div className="flex items-center justify-between text-xs gap-2">
+                            <span className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-medium truncate">
+                              <ShieldCheckIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                              {totalCosts.platformAddon.displayName}
+                            </span>
+                            <span className="font-semibold text-[var(--text-primary)] tabular-nums text-[11px]">
+                              {formatCurrency(totalCosts.totalPlatformAddonCost)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                            {totalCosts.platformAddon.appliedRatePct}% of {formatCurrency(totalCosts.productSpendAtList)} product spend at list
+                            {totalCosts.platformAddon.discountPct > 0
+                              ? `, less ${totalCosts.platformAddon.discountPct}% add-on discount`
+                              : ''}
+                          </p>
+                        </div>
+                      )}
                       {(() => {
                         const sortedItems = [...lineItems]
                           .map(item => ({ item, costs: calculateItemCost(item) }))
@@ -5661,6 +5927,13 @@ export default function Calculator() {
                     <span className="text-teal-600 dark:text-teal-400 font-semibold text-xs sm:text-sm flex-shrink-0">VM:</span>
                     <span className="font-bold text-[var(--text-primary)] text-xs sm:text-sm md:text-base truncate">{formatCurrency(totalCosts.totalVMCost)}</span>
                   </div>
+
+                  {totalCosts.totalPlatformAddonCost > 0 && (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs sm:text-sm flex-shrink-0">Add-on:</span>
+                      <span className="font-bold text-[var(--text-primary)] text-xs sm:text-sm md:text-base truncate">{formatCurrency(totalCosts.totalPlatformAddonCost)}</span>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Right side - Total cost */}

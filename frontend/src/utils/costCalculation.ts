@@ -32,6 +32,10 @@ export const GENERAL_STORAGE_OPERATION_DSU_RATES = {
   azure: { tier1: 0.3535, tier2: 0.0226 },
   gcp: { tier1: 0.2174, tier2: 0.0174 },
 } as const
+export const ZEROBUS_DBU_PER_GB = {
+  standard: 0.143,
+  otel: 0.222,
+} as const
 
 export function getGeneralStorageGB(item: Partial<LineItem>): number {
   const quantity = item.general_storage_quantity ?? 0
@@ -70,6 +74,18 @@ export function calculateGeneralStorageDSU(
     tier1OperationsDSU,
     tier2OperationsDSU,
     totalDSU: storedDataDSU + tier1OperationsDSU + tier2OperationsDSU,
+  }
+}
+
+export function calculateZerobusUsage(item: Partial<LineItem>) {
+  const mode = item.zerobus_mode ?? 'standard'
+  const monthlyIngestedGB = item.zerobus_monthly_ingested_gb ?? 0
+  const dbuPerGB = ZEROBUS_DBU_PER_GB[mode]
+  return {
+    mode,
+    monthlyIngestedGB,
+    dbuPerGB,
+    monthlyDBUs: monthlyIngestedGB * dbuPerGB,
   }
 }
 
@@ -270,6 +286,7 @@ export interface CostBreakdown {
   monthlyDSUs: number
   dsuCost: number
   vmCost: number
+  databricksListCost: number
   totalCost: number
   // Optional fields for specific workload types
   unitsUsed?: number  // AI Search units
@@ -345,6 +362,7 @@ export function calculateWorkloadCost(
       monthlyDSUs: 0,
       dsuCost: 0,
       vmCost: 0,
+      databricksListCost: 0,
       totalCost: 0,
     }
   }
@@ -433,6 +451,10 @@ export function calculateWorkloadCost(
     case 'GENERAL_STORAGE':
       productType = 'DATABRICKS_STORAGE'
       break
+
+    case 'ZEROBUS':
+      productType = 'JOBS_SERVERLESS_COMPUTE'
+      break
     
     case 'FMAPI_DATABRICKS':
       // FMAPI uses SERVERLESS_REAL_TIME_INFERENCE pricing
@@ -483,6 +505,7 @@ export function calculateWorkloadCost(
     || item.workload_type === 'AGENT_EVALUATION'
     || item.workload_type === 'AI_RUNTIME'
     || item.workload_type === 'GENERAL_STORAGE'
+    || item.workload_type === 'ZEROBUS'
   ) {
     dbuPrice = getExactDBUPrice?.(productType) ?? dbuRatesMap[productType] ?? 0
   } else if (getDBUPrice) {
@@ -937,6 +960,11 @@ export function calculateWorkloadCost(
       break
     }
 
+    case 'ZEROBUS': {
+      monthlyDBUs = calculateZerobusUsage(item).monthlyDBUs
+      break
+    }
+
     case 'SHUTTERSTOCK_IMAGEAI': {
       const ssImages = item.shutterstock_images || 0
       monthlyDBUs = ssImages * 0.857
@@ -969,6 +997,7 @@ export function calculateWorkloadCost(
     monthlyDSUs: isNaN(monthlyDSUs) ? 0 : monthlyDSUs,
     dsuCost: safeDSUCost,
     vmCost: safeVmCost, 
+    databricksListCost: safeDbuCost + safeDSUCost,
     totalCost: safeTotalCost,
     unitsUsed,  // For AI Search
     dbuPerHour: safeDbuPerHour, // For display

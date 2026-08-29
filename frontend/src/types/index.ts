@@ -1,4 +1,13 @@
 // API Types
+export type PlatformAddonType =
+  | 'ENHANCED_SECURITY_COMPLIANCE'
+  | 'MISSION_CRITICAL'
+
+export interface EstimateDiscountConfig {
+  platform_addons?: PlatformAddonType[]
+  [key: string]: unknown
+}
+
 export interface User {
   user_id: string
   email: string
@@ -22,6 +31,7 @@ export interface Estimate {
   version: number
   template_id?: string
   original_prompt?: string
+  discount_config?: EstimateDiscountConfig | null
   is_deleted: boolean
   created_at: string
   updated_at: string
@@ -102,6 +112,10 @@ export interface LineItem {
   general_storage_unit?: 'gb' | 'tb' | null
   general_storage_tier1_operations_thousands?: number | null
   general_storage_tier2_operations_thousands?: number | null
+
+  // Zerobus Ingest Configuration
+  zerobus_mode?: 'standard' | 'otel' | null
+  zerobus_monthly_ingested_gb?: number | null
 
   // Databricks Apps Configuration
   databricks_apps_size?: string | null  // medium, large

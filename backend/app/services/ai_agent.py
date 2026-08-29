@@ -16,6 +16,11 @@ from datetime import datetime
 
 from app.services.ai_client import ClaudeAIClient, get_claude_client
 from app.config import log_info, log_warning, log_error
+from app.services.platform_addons import (
+    calculate_platform_addon_cost,
+    get_platform_addon_discount,
+    get_selected_platform_addon,
+)
 
 
 # System prompt for the AI assistant
@@ -50,7 +55,15 @@ When presenting workload types to users, ALWAYS use these names:
 - **AGENT_EVALUATION**: Additive Agent Evaluation label scoring and synthetic data generation. Labels use separate monthly input/output token quantities; synthetic data uses generated question count. The evaluated app/model inference is excluded and must be modeled separately.
 - **AI_RUNTIME**: Serverless GPU model training. Billing-origin product AI_RUNTIME is charged on the MODEL_TRAINING SKU. Available on AWS and Azure with 1x A10, 1x H100, or 8x H100 accelerators.
 - **GENERAL_STORAGE**: Databricks Default Storage for Unity Catalog data and workspace assets. Estimate monthly capacity in GB or TB plus Tier 1 (PUT, COPY, POST, LIST) and Tier 2 API operations in thousands. Convert each component to DSUs and use exact regional DATABRICKS_STORAGE pricing. Customer-managed object storage, backups, and data transfer are excluded.
+- **ZEROBUS**: Direct ingestion into Unity Catalog Delta tables. Choose standard Zerobus Ingest at 0.143 DBU/GB or Zerobus OTel Ingest at 0.222 DBU/GB, enter monthly ingested GB, and use the exact regional JOBS_SERVERLESS_COMPUTE price. Available on AWS/GCP Premium or Enterprise and Azure Premium. Producer compute, target storage, downstream processing, and data transfer are excluded.
 - **SHUTTERSTOCK_IMAGEAI**: AI image generation (per-image pricing)
+
+## Platform Add-ons
+Platform add-ons are estimate-level uplifts, not workloads. When one is selected,
+use the calculated add-on details supplied in the estimate context. The uplift
+is based on Databricks Product Spend at List (DBU + DSU charges before
+discounts); cloud-provider VM costs are excluded. Users select or remove an
+add-on in the estimate Configuration panel.
 
 ## Key Questions to Ask Users
 
@@ -754,7 +767,7 @@ The user will review and confirm before it's added to the estimate.""",
                 # === Common Fields ===
                 "workload_type": {
                     "type": "string",
-                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "AI_GATEWAY", "AGENT_EVALUATION", "AI_RUNTIME", "GENERAL_STORAGE", "SHUTTERSTOCK_IMAGEAI"],
+                    "enum": ["JOBS", "ALL_PURPOSE", "DLT", "DBSQL", "MODEL_SERVING", "VECTOR_SEARCH", "FMAPI_DATABRICKS", "FMAPI_PROPRIETARY", "LAKEBASE", "DATABRICKS_APPS", "AI_PARSE", "AI_EXTRACT", "AI_CLASSIFY", "AI_GATEWAY", "AGENT_EVALUATION", "AI_RUNTIME", "GENERAL_STORAGE", "ZEROBUS", "SHUTTERSTOCK_IMAGEAI"],
                     "description": "Type of Databricks workload. Note: Use DLT for SDP (Spark Declarative Pipelines) workloads - present as 'SDP' to users but use 'DLT' as the enum value."
                 },
                 "workload_name": {
@@ -1196,6 +1209,21 @@ The user will review and confirm before it's added to the estimate.""",
                         "Monthly GET, SELECT, and other API operations in "
                         "thousands"
                     ),
+                },
+
+                # === Zerobus Ingest Specific ===
+                "zerobus_mode": {
+                    "type": "string",
+                    "enum": ["standard", "otel"],
+                    "description": (
+                        "standard for SDK/REST/Kafka ingestion or otel for "
+                        "OpenTelemetry/OTLP ingestion"
+                    ),
+                },
+                "zerobus_monthly_ingested_gb": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Monthly data ingested through Zerobus in GB",
                 },
 
                 # === Shutterstock ImageAI Specific ===
@@ -1973,10 +2001,40 @@ class EstimateAgent:
         """Helper to handle proposal tracking - doesn't yield, just for side effects."""
         # This is called for side effects only (tracking in proposed_workloads happens in _execute_tool)
         pass
+
+    def _get_platform_addon_summary(self) -> Optional[Dict[str, Any]]:
+        """Calculate the saved estimate-level add-on from supplied costs."""
+        if not self.current_estimate:
+            return None
+        estimate = self.current_estimate
+        try:
+            selected = get_selected_platform_addon(
+                estimate.get("discount_config")
+            )
+            if not selected:
+                return None
+            product_spend_at_list = sum(
+                float(workload.get("dbu_cost") or 0)
+                + float(workload.get("dsu_cost") or 0)
+                for workload in self.current_workloads
+            )
+            return calculate_platform_addon_cost(
+                product_spend_at_list,
+                selected,
+                estimate.get("cloud", ""),
+                estimate.get("tier", ""),
+                discount_pct=get_platform_addon_discount(
+                    estimate.get("discount_config")
+                ),
+            )
+        except (TypeError, ValueError) as exc:
+            log_warning(f"Unable to resolve Platform add-on context: {exc}")
+            return None
     
     def _build_context(self) -> str:
         """Build context string with current estimate state and actual costs."""
         context = "\n\n## Current Session Context"
+        platform_addon = self._get_platform_addon_summary()
         
         if self.current_estimate:
             est = self.current_estimate
@@ -2016,6 +2074,24 @@ The following fields MUST be set before workloads can be added:
                 context += f"\n- **Customer**: {est.get('customer_name')}"
             if est.get('description'):
                 context += f"\n- **Description**: {est.get('description')}"
+            if platform_addon:
+                context += (
+                    f"\n- **Platform Add-on**: "
+                    f"{platform_addon['display_name']} "
+                    f"({platform_addon['applied_rate_pct']:g}% of "
+                    "Product Spend at List)"
+                )
+                if platform_addon['promotion']:
+                    context += (
+                        f"\n  - Promotional rate; regular uplift "
+                        f"{platform_addon['standard_rate_pct']:g}%, ends "
+                        f"{platform_addon['promotion']['end_date']}"
+                    )
+                if platform_addon['discount_pct']:
+                    context += (
+                        f"\n  - Negotiated add-on discount: "
+                        f"{platform_addon['discount_pct']:g}%"
+                    )
         else:
             context += "\n\nNo estimate loaded. User may be creating a new one."
         
@@ -2053,6 +2129,15 @@ The following fields MUST be set before workloads can be added:
                 if w.get('dlt_edition'):
                     context += f"\n- SDP Edition: {w.get('dlt_edition')}"
             
+            if platform_addon:
+                context += (
+                    f"\n\n### Workload Subtotal: ${total_cost:.2f}"
+                    f"\n### Product Spend at List: "
+                    f"${platform_addon['product_spend_at_list']:.2f}"
+                    f"\n### Platform Add-on Cost: "
+                    f"${platform_addon['cost']:.2f}"
+                )
+                total_cost += platform_addon['cost']
             context += f"\n\n### Total Monthly Cost: ${total_cost:.2f}"
         else:
             context += "\n\n### Workloads: None yet"
@@ -2524,7 +2609,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
         default_driver = driver_instances.get(cloud, "m6i.xlarge")
         
         # Common defaults
-        if wtype in ("AI_RUNTIME", "GENERAL_STORAGE"):
+        if wtype in ("AI_RUNTIME", "GENERAL_STORAGE", "ZEROBUS"):
             workload.setdefault("hours_per_month", None)
         else:
             workload.setdefault("hours_per_month", 730)
@@ -3282,6 +3367,10 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 0,
             )
 
+        if wtype == "ZEROBUS":
+            workload.setdefault("zerobus_mode", "standard")
+            workload.setdefault("zerobus_monthly_ingested_gb", 100)
+
         if wtype == "SHUTTERSTOCK_IMAGEAI":
             workload.setdefault("shutterstock_images", 1000)
 
@@ -3421,6 +3510,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
         
         total_cost = 0
         workload_summaries = []
+        platform_addon = self._get_platform_addon_summary()
         
         for w in self.current_workloads:
             cost = w.get('total_cost') or w.get('monthly_cost') or 0
@@ -3435,14 +3525,20 @@ Each workload needs to be confirmed individually. Review the configurations and 
                 "monthly_cost": f"${cost:.2f}"
             })
         
+        workload_subtotal = total_cost
+        if platform_addon:
+            total_cost += platform_addon["cost"]
+
         return {
             "estimate": {
                 "name": self.current_estimate.get("estimate_name") or self.current_estimate.get("name"),
                 "cloud": self.current_estimate.get("cloud", "").upper(),
-                "region": self.current_estimate.get("region")
+                "region": self.current_estimate.get("region"),
+                "platform_addon": platform_addon,
             },
             "workload_count": len(self.current_workloads),
             "workloads": workload_summaries,
+            "workload_subtotal": f"${workload_subtotal:.2f}",
             "total_monthly_cost": f"${total_cost:.2f}",
             "total_annual_cost": f"${total_cost * 12:.2f}",
             "pending_proposals": len(self.proposed_workloads)
@@ -3701,6 +3797,11 @@ Each workload needs to be confirmed individually. Review the configurations and 
                             "impact": "Faster job completion, potentially lower cost"
                         })
         
+        platform_addon = self._get_platform_addon_summary()
+        if platform_addon:
+            total_cost += platform_addon["cost"]
+            cost_by_type["Platform Add-on"] = platform_addon["cost"]
+
         # ============================================
         # SUMMARY INSIGHTS
         # ============================================
@@ -3710,7 +3811,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
         sorted_costs = sorted(cost_by_type.items(), key=lambda x: x[1], reverse=True)
         if sorted_costs:
             top_type = sorted_costs[0]
-            insights.append(f"**Top cost driver**: {top_type[0]} workloads account for ${top_type[1]:.2f}/month ({top_type[1]/total_cost*100:.1f}% of total)")
+            insights.append(f"**Top cost driver**: {top_type[0]} accounts for ${top_type[1]:.2f}/month ({top_type[1]/total_cost*100:.1f}% of total)")
         
         # High-cost workloads
         high_cost_workloads = [w for w in workload_details if w["cost"] > 1000]

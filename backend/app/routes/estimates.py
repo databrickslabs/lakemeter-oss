@@ -21,6 +21,7 @@ from app.schemas import (
     LineItemResponse
 )
 from app.auth import get_current_user
+from app.services.platform_addons import validate_platform_addon_selection
 
 # ---- Case normalization for estimate-level enum fields ----
 _ESTIMATE_UPPER_FIELDS = {'cloud', 'tier'}
@@ -32,6 +33,36 @@ def _normalize_estimate_case(data: dict) -> dict:
         if field in data and isinstance(data[field], str):
             data[field] = data[field].upper()
     return data
+
+
+def _validate_platform_addons(
+    data: dict,
+    current_estimate: Estimate | None = None,
+) -> None:
+    """Validate estimate-wide add-ons after merging partial updates."""
+    cloud = data.get(
+        "cloud",
+        getattr(current_estimate, "cloud", None),
+    )
+    tier = data.get(
+        "tier",
+        getattr(current_estimate, "tier", None),
+    )
+    discount_config = data.get(
+        "discount_config",
+        getattr(current_estimate, "discount_config", None),
+    )
+    if not discount_config or not discount_config.get("platform_addons"):
+        return
+    if not cloud or not tier:
+        raise HTTPException(
+            status_code=400,
+            detail="Select a cloud and tier before enabling a Platform add-on",
+        )
+    try:
+        validate_platform_addon_selection(discount_config, cloud, tier)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 class CloneRequest(BaseModel):
@@ -157,9 +188,10 @@ def create_estimate(
     
     try:
         log_info(f"Creating estimate '{estimate.estimate_name}' for user {current_user.user_id}")
-        
+        create_data = _normalize_estimate_case(estimate.model_dump())
+        _validate_platform_addons(create_data)
         db_estimate = Estimate(
-            **_normalize_estimate_case(estimate.model_dump()),
+            **create_data,
             owner_user_id=current_user.user_id  # Set the owner
         )
         db.add(db_estimate)
@@ -168,6 +200,8 @@ def create_estimate(
         
         log_info(f"Estimate created successfully: {db_estimate.estimate_id}")
         return db_estimate
+    except HTTPException:
+        raise
     except Exception as e:
         log_error(f"Failed to create estimate: {str(e)}")
         db.rollback()
@@ -309,6 +343,7 @@ def update_estimate(
     estimate = _get_estimate_for_user(estimate_id, current_user, db)
     
     update_data = _normalize_estimate_case(estimate_update.model_dump(exclude_unset=True))
+    _validate_platform_addons(update_data, estimate)
 
     # Check if cloud is being changed
     if 'cloud' in update_data and update_data['cloud'] != estimate.cloud:
@@ -367,7 +402,8 @@ def duplicate_estimate(
         tier=original.tier,
         status="draft",
         template_id=original.template_id,
-        original_prompt=original.original_prompt
+        original_prompt=original.original_prompt,
+        discount_config=deepcopy(original.discount_config),
     )
     db.add(new_estimate)
     db.flush()
@@ -410,7 +446,8 @@ def clone_estimate(
         tier=original.tier,
         status="draft",
         template_id=original.template_id,
-        original_prompt=original.original_prompt
+        original_prompt=original.original_prompt,
+        discount_config=deepcopy(original.discount_config),
     )
     db.add(new_estimate)
     db.flush()

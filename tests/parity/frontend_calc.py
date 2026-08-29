@@ -142,6 +142,12 @@ def fe_general_storage_cost(
     return total_dsu * float(price_per_dsu)
 
 
+def fe_zerobus_cost(*, monthly_ingested_gb, mode, dbu_price):
+    """Frontend Zerobus monthly DBUs times the regional serverless rate."""
+    dbu_per_gb = 0.222 if mode == "otel" else 0.143
+    return float(monthly_ingested_gb) * dbu_per_gb * float(dbu_price)
+
+
 def fe_monthly_dbu_cost(*, dbu_per_hour, hours_per_month, dbu_price):
     """Frontend standard monthly DBU cost."""
     monthly_dbus = dbu_per_hour * hours_per_month

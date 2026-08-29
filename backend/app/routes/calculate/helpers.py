@@ -59,6 +59,9 @@ def get_sku_type(
     elif workload_upper == "GENERAL_STORAGE":
         return "DATABRICKS_STORAGE"
 
+    elif workload_upper == "ZEROBUS":
+        return "JOBS_SERVERLESS_COMPUTE"
+
     elif workload_upper == "FMAPI_DATABRICKS":
         return "SERVERLESS_REAL_TIME_INFERENCE"
 

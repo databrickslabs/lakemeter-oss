@@ -364,6 +364,10 @@ workload_seeds = [
      "Managed storage for Unity Catalog data and workspace assets",
      False, False, False, False, False, False, False, False, False, False, False, False, False, False,
      "DATABRICKS_STORAGE", None, None, 18),
+    ("ZEROBUS", "Zerobus Ingest",
+     "Direct standard or OpenTelemetry ingestion into Delta tables",
+     False, False, False, False, False, False, False, False, False, False, False, False, False, False,
+     "JOBS_SERVERLESS_COMPUTE", None, None, 19),
 ]
 
 for wt in workload_seeds:

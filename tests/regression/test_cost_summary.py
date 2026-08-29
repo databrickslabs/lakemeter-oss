@@ -8,7 +8,7 @@ from xlsxwriter.utility import xl_col_to_name as _col
 
 from tests.regression.excel_helpers import (
     generate_xlsx, find_all_data_rows, find_totals_row,
-    find_cost_summary_header, find_dbu_summary_row, find_rows_by_sku,
+    find_cost_summary_header, find_rows_by_sku,
     COL_DBUS_MO, COL_DBU_COST_L, COL_DBU_COST_D,
     COL_DRIVER_VM_COST, COL_WORKER_VM_COST, COL_TOTAL_VM,
     COL_TOTAL_L, COL_TOTAL_D,
@@ -105,36 +105,19 @@ class TestCostSummarySection:
                     f"Annual col {c}: formula {cell_val} doesn't ref monthly row"
 
 
-class TestDbuSummary:
-    """DBU summary total matches the totals row DBUs/Mo."""
+class TestRedundantUsageSummary:
+    """The duplicate DBU/DSU detail lines are omitted."""
 
-    def test_dbu_summary_exists(self, ws):
-        assert find_dbu_summary_row(ws) is not None
+    def test_column_a_has_room_for_summary_labels(self, ws):
+        assert ws.column_dimensions["A"].width >= 30
 
-    def test_dbu_summary_formula(self, ws):
-        """DBU summary uses SUM over the same data range as totals."""
-        dbu_row = find_dbu_summary_row(ws)
-        # The summary value is in column 3 (C)
-        cell = ws.cell(row=dbu_row, column=3)
-        val = cell.value
-        assert isinstance(val, str) and val.startswith('=SUM('), \
-            f"DBU summary: expected SUM formula, got {val}"
-        data_rows = find_all_data_rows(ws)
-        first = min(data_rows)
-        last = max(data_rows)
-        col_letter = _col(COL_DBUS_MO - 1)
-        expected = f'{col_letter}{first}:{col_letter}{last}'
-        assert expected in val, \
-            f"DBU summary: expected range {expected} in {val}"
-
-    def test_dsu_summary_uses_dsu_column(self, ws):
-        for row in range(1, ws.max_row + 1):
-            if ws.cell(row=row, column=1).value == "Total DSUs/Month:":
-                value = ws.cell(row=row, column=3).value
-                assert isinstance(value, str)
-                assert value.startswith("=SUM(W")
-                return
-        pytest.fail("DSU summary not found")
+    def test_redundant_usage_lines_are_absent(self, ws):
+        labels = {
+            ws.cell(row=row, column=1).value
+            for row in range(1, ws.max_row + 1)
+        }
+        assert "Total DBUs/Month:" not in labels
+        assert "Total DSUs/Month:" not in labels
 
 
 class TestCrossCloudExcelGeneration:

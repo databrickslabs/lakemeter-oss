@@ -43,7 +43,6 @@ from tests.regression.excel_helpers import (
     COL_DBUS_MO,
     COL_NOTES,
     COL_TOTAL_L,
-    find_dbu_summary_row,
     find_row_by_name,
     find_totals_row,
     make_estimate,
@@ -622,7 +621,7 @@ class TestExportAndInstaller:
                 expected_cost
             )
             assert formulas.cell(row, COL_TOTAL_L).value == (
-                f"=U{row}+AA{row}"
+                f"=U{row}+Y{row}+AE{row}"
             )
             config = formulas.cell(row, COL_CONFIG).value
             assert f"Monthly payload: {payload_gb} GB" in config
@@ -632,7 +631,6 @@ class TestExportAndInstaller:
             assert "guardrail evaluator costs are excluded" in notes
 
         totals_row = find_totals_row(formulas)
-        dbu_summary_row = find_dbu_summary_row(formulas)
         assert formulas.cell(totals_row, COL_DBUS_MO).value == (
             f"=SUM(Q{inference_row}:Q{usage_row})"
         )
@@ -641,10 +639,7 @@ class TestExportAndInstaller:
             for row in (inference_row, usage_row)
         ) == pytest.approx(10.003)
         assert formulas.cell(totals_row, COL_TOTAL_L).value == (
-            f"=SUM(AB{inference_row}:AB{usage_row})"
-        )
-        assert formulas.cell(dbu_summary_row, 3).value == (
-            f"=SUM(Q{inference_row}:Q{usage_row})"
+            f"=SUM(AF{inference_row}:AF{usage_row})"
         )
 
     @pytest.mark.parametrize(
