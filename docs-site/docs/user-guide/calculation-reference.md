@@ -47,6 +47,11 @@ Use run-based inputs when the workload executes a predictable number of times.
 
 Enter the expected billable hours for the month. Use representative operating time rather than the total hours in a month unless the workload is intentionally modeled as always on.
 
+When hours are omitted, AI Search, Model Serving, Lakebase, Databricks Apps,
+and the Lakeflow Connect calculation path default to 730 hours. Run-based
+usage takes precedence over direct hours; an explicitly stored value of zero
+is preserved.
+
 ### Quantity-based usage
 
 Some workloads are sized by tokens, pages, images, storage, vectors, or another billing quantity:

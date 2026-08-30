@@ -253,7 +253,7 @@ All calculation endpoints accept workload parameters and return cost breakdowns.
 | `POST /api/v1/calculate/model-serving` | Model Serving |
 | `POST /api/v1/calculate/fmapi-databricks` | FMAPI (Databricks-hosted) |
 | `POST /api/v1/calculate/fmapi-proprietary` | FMAPI (Proprietary) |
-| `POST /api/v1/calculate/vector-search` | AI Search (legacy route retained for compatibility) |
+| `POST /api/v1/calculate/vector-search` | AI Search (the route key remains `vector-search`) |
 | `POST /api/v1/calculate/lakebase` | Lakebase |
 | `POST /api/v1/calculate/databricks-apps` | Databricks Apps |
 | `POST /api/v1/calculate/general-storage` | Databricks Default Storage (DSU-based) |

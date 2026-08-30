@@ -79,4 +79,4 @@ Common things to verify:
 2. **Number of workers** — Each worker multiplies both DBU and VM costs.
 3. **Acceleration and mode options** — Enable them only when they match the planned workload, then inspect the resulting DBU quantity.
 4. **Serverless vs Classic** — Serverless has no VM costs but higher DBU rates. Classic has both.
-5. **Discount** — The export shows list prices by default. Apply your discount in the Excel file.
+5. **Discount** — Configure the intended discount in the estimate. The Excel discount cells remain editable for additional what-if analysis.

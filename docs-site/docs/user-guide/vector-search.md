@@ -48,6 +48,8 @@ Leave this field at zero when storage should not be included in the estimate.
 
 Enter the number of hours the endpoint is expected to be active during the month.
 
+If hours are omitted, Lakemeter models the endpoint as always on for 730 hours per month.
+
 ## How compute cost is calculated
 
 ```text

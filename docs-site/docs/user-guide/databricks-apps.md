@@ -28,6 +28,8 @@ Create separate workload entries when apps use different sizes or operating sche
 
 Enter the expected billed uptime per app for one month.
 
+If hours are omitted, Lakemeter models the apps as always on for 730 hours per month.
+
 For a schedule-based estimate:
 
 ```text

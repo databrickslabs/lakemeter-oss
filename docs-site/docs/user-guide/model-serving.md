@@ -38,6 +38,8 @@ Concurrency is a cost multiplier in the estimate; it is not informational metada
 
 Enter the number of hours the endpoint is expected to be active during the month. This is a direct monthly input, so derive it from the planned endpoint schedule rather than request count alone.
 
+If hours are omitted, Lakemeter models the endpoint as always on for 730 hours per month.
+
 ## How cost is calculated
 
 Lakemeter resolves the endpoint's base DBU-per-hour rate, the selected concurrency, and the regional DBU price:

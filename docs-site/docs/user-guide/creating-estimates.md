@@ -20,7 +20,6 @@ An estimate is the top-level container for your Databricks cost analysis. Each e
 | **Cloud** | Yes | Deployment provider selected from the options shown |
 | **Region** | Yes | Deployment region (options depend on selected cloud) |
 | **Tier** | Yes | Pricing tier selected from the available options |
-| **Platform Add-on** | No | Estimate-level Enhanced Security and Compliance or Mission Critical uplift, when available for the selected cloud and tier |
 
 ## Creating a New Estimate
 
@@ -76,7 +75,7 @@ To create a copy of an existing estimate:
 1. Open the estimate
 2. Click **Duplicate**
 
-The copy includes all workloads and their configurations. The new estimate is named with a "(Copy)" suffix.
+The copy includes all workloads, discount configuration, and any Platform Add-on selection. The new estimate is named with a "(Copy)" suffix.
 
 ### Deleting an Estimate
 

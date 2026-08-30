@@ -4,7 +4,7 @@ sidebar_position: 10
 
 # Lakeflow Spark Declarative Pipelines (SDP) Sizing
 
-> **Lakemeter UI name:** Lakeflow Spark Declarative Pipelines (SDP)
+> **Lakemeter UI name:** Lakeflow Spark Declarative Pipelines
 
 Use this guide to model Lakeflow Spark Declarative Pipelines (SDP) compute consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not pipeline design, edition features, performance tuning, or product limits.
 

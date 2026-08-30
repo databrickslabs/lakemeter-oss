@@ -22,11 +22,11 @@ Stored-data DSUs = Stored GB-months × 1 DSU/GB-month
 
 ### Tier 1 operations
 
-Enter the monthly number of Tier 1 operations in thousands. Examples include higher-cost write, list, and metadata operations as classified by the applicable cloud pricing.
+Enter the monthly number of Tier 1 operations in thousands. Lakemeter uses this field for PUT, COPY, POST, and LIST operations.
 
 ### Tier 2 operations
 
-Enter the monthly number of Tier 2 operations in thousands. Examples include lower-cost read and retrieval operations as classified by the applicable cloud pricing.
+Enter the monthly number of other storage API operations in thousands.
 
 Use the operation tier shown by the current Databricks pricing source. Cloud providers can classify operations differently.
 

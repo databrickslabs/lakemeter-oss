@@ -23,7 +23,11 @@ const sidebars: SidebarsConfig = {
         'user-guide/jobs-compute',
         'user-guide/all-purpose-compute',
         'user-guide/dlt-pipelines',
-        'user-guide/lakeflow-connect',
+        {
+          type: 'doc',
+          id: 'user-guide/lakeflow-connect',
+          label: 'Lakeflow Connect (API)',
+        },
         'user-guide/zerobus',
         'user-guide/dbsql-warehouses',
       ],
