@@ -20,8 +20,8 @@ def _calculate_hours_per_month(item) -> float:
     calculate from those. Only fall back to hours_per_month if no run-based data.
     This prevents hours_per_month=730 default from overriding user's run config.
 
-    Always-on workloads (AI Search, Model Serving, Lakebase, Databricks Apps)
-    default to 730 hours/month when no usage data is provided.
+    Always-on workloads (AI Search, Model Serving, Lakebase, Databricks Apps,
+    Lakeflow Connect) default to 730 hours/month when no usage data is provided.
     """
     wt = (getattr(item, 'workload_type', '') or '').upper()
     if wt == 'LAKEBASE':
@@ -37,7 +37,7 @@ def _calculate_hours_per_month(item) -> float:
         runtime = float(item.avg_runtime_minutes)
         days = float(item.days_per_month or 22)
         return (runs * runtime / 60) * days
-    if item.hours_per_month:
+    if item.hours_per_month is not None:
         return float(item.hours_per_month)
     # Always-on workloads default to 730 hours/month (24/7)
     if wt in ('VECTOR_SEARCH', 'MODEL_SERVING', 'LAKEBASE', 'DATABRICKS_APPS', 'LAKEFLOW_CONNECT'):
