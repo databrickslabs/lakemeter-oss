@@ -4,7 +4,10 @@ sidebar_position: 1
 
 # Test Suite Overview
 
-Lakemeter includes a comprehensive end-to-end test harness that validates the AI assistant's ability to interpret natural language requests and produce correct workload configurations for all 14 supported workload types.
+Lakemeter includes end-to-end, regression, parity, and export tests for its
+supported workload types. Coverage expands as workloads are added, so the test
+suite and current workload catalog are the source of truth rather than a fixed
+workload count.
 
 ## Purpose
 

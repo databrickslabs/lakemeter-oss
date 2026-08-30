@@ -68,24 +68,27 @@ Costs update in real-time as you adjust parameters.
 
 The Calculator page displays:
 
-- **Per-workload costs** -- Monthly cost for each workload, broken down into DBU costs and VM infrastructure costs (where applicable).
-- **Total estimate** -- Sum of all workloads displayed at the top.
-- **DBU consumption** -- Total Databricks Units consumed per month by each workload.
+- **Per-workload costs** -- Monthly DBU, DSU, and VM infrastructure costs where applicable.
+- **Platform Add-on** -- Estimate-level uplift on DBU and DSU Product Spend at List, excluding VM cost.
+- **Total estimate** -- Workloads after discounts plus the selected Platform Add-on.
+- **DBU and DSU consumption** -- Monthly Databricks compute and storage units.
 
 **Understanding the cost components:**
 
 | Component | What to verify |
 |-----------|----------------|
 | **DBU cost** | Monthly DBU quantity, selected SKU, and list rate |
+| **DSU cost** | Monthly DSU quantity, component multiplier, and regional `DATABRICKS_STORAGE` rate |
 | **VM cost** | Instance choice, scale-out count, purchasing assumption, and active hours |
 | **Quantity-based cost** | Token, page, image, or other monthly billing quantity |
-| **Storage cost** | Storage quantity and any separately modeled protection or overflow component |
+| **Platform Add-on** | Product Spend at List, eligibility, active uplift, promotion, and separate add-on discount |
+| **Grand total** | Workloads after discounts plus the add-on after discount |
 
-Use each workload's sizing guide for its calculation details. Use the official Databricks documentation for product optimization guidance.
+Use each workload's sizing guide for its calculation details. See [Platform Add-ons](./platform-addons) for estimate-level uplift behavior. Use the official Databricks documentation for product optimization guidance.
 
 ## 5. Export to Excel
 
-1. Click the **Export** button (download icon) at the top of the Calculator page.
+1. Click the **Excel** button (download icon) at the top of the Calculator page.
 2. The file downloads as `Databricks_Estimate_{name}_{date}.xlsx`.
 
 You can also export all your estimates at once from the home page using the bulk export option.

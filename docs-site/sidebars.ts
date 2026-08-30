@@ -23,6 +23,12 @@ const sidebars: SidebarsConfig = {
         'user-guide/jobs-compute',
         'user-guide/all-purpose-compute',
         'user-guide/dlt-pipelines',
+        {
+          type: 'doc',
+          id: 'user-guide/lakeflow-connect',
+          label: 'Lakeflow Connect (API)',
+        },
+        'user-guide/zerobus',
         'user-guide/dbsql-warehouses',
       ],
     },
@@ -44,6 +50,15 @@ const sidebars: SidebarsConfig = {
         'user-guide/agent-evaluation',
         'user-guide/ai-runtime',
         'user-guide/shutterstock-imageai',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Storage & Platform',
+      collapsed: false,
+      items: [
+        'user-guide/general-storage',
+        'user-guide/platform-addons',
       ],
     },
     {

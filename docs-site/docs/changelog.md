@@ -12,6 +12,44 @@ Lakemeter follows [Semantic Versioning](https://semver.org/):
 
 ---
 
+## v0.3.0
+
+*Unreleased*
+
+Data and application release expanding workload coverage, DSU accounting, estimate-level add-ons, and cross-surface calculation parity. The release includes reference-data updates but no Lakebase schema migration.
+
+### New workload coverage
+
+- Added AI Extract and AI Classify quantity-based estimates
+- Added Unity AI Gateway inference-table and usage-tracking estimates
+- Added Agent Evaluation labels, token, and synthetic-question estimates
+- Added AI Runtime serverless GPU training for AWS and Azure
+- Added Databricks Default Storage with stored-data and Tier 1 and Tier 2 operation DSUs
+- Added standard and OpenTelemetry Zerobus ingestion using Jobs Serverless DBUs
+- Refreshed Databricks and proprietary Foundation Model API catalogs
+
+### Platform and export enhancements
+
+- Added Enhanced Security and Compliance and Mission Critical Platform Add-ons, calculated from DBU and DSU Product Spend at List
+- Added first-class DSU totals and regional `DATABRICKS_STORAGE` pricing
+- Expanded Excel exports to 34 columns with DSU costs, a pre-add-on workload summary, a Platform Add-on section, and a final estimate summary
+- Added AI Search reranker pricing and aligned AI Search and Lakebase storage with DSU-based calculations
+
+### Calculation fixes
+
+- Fixed All-Purpose Serverless rate parity
+- Fixed saved always-on workloads so the UI, calculation APIs, and Excel consistently resolve missing usage to 730 hours
+- Fixed Databricks Apps counts so multiple apps multiply DBUs and cost across the API, UI, and Excel
+- Preserved explicit zero hours and run-based usage precedence
+
+### Upgrade notes
+
+- Applies data updates `020` through `027` for the new workload reference entries
+- Does not add or alter Lakebase columns
+- Use the [Upgrade Guide](./admin-guide/upgrading.md) to validate and apply the release from a clean checkout
+
+---
+
 ## v0.1.2
 
 *2026-08-08*

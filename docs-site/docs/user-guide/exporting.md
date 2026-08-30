@@ -6,15 +6,15 @@ sidebar_position: 6
 
 Lakemeter exports your estimates to professionally formatted Excel spreadsheets — ready for RFP responses, procurement reviews, internal planning, or vendor comparisons.
 
-![Exporting an estimate to Excel — click Export, download completes](/img/gifs/export-excel.gif)
-*Animated: exporting an estimate — click the Export button and the Excel file downloads automatically.*
+![Exporting an estimate to Excel — click Excel, download completes](/img/gifs/export-excel.gif)
+*Animated: exporting an estimate — click the Excel button and the file downloads automatically.*
 
 ## How to Export
 
 ### Single Estimate
 
 1. Open the estimate you want to export
-2. Click the **Export** button (download arrow icon) in the top bar
+2. Click the **Excel** button (download arrow icon) in the top bar
 3. An `.xlsx` file downloads automatically
 
 **File name format:** `Databricks_Estimate_{estimate_name}_{YYYYMMDD}.xlsx`
@@ -34,19 +34,20 @@ The top rows display your estimate metadata:
 - Status and version number
 - Created and last-updated dates
 
-### 2. Workloads Table (30 Columns)
+### 2. Workloads Table (34 Columns)
 
 Each workload in your estimate produces a primary row. Workloads with separately priced components can add sub-rows. The columns are grouped by purpose:
 
 | Group | Columns | What's there |
 |-------|---------|-------------|
-| **Identity** | Workload Name, Type, Mode, Configuration, SKU | What this workload is and how it's configured |
-| **VM Configuration** | Driver Instance, Worker Instance, # Workers, Pricing Tiers | Instance types and cluster shape (Classic only) |
-| **Usage** | Hours/Month | How much this workload runs — calculated from runs/day or entered directly |
-| **Token Configuration** | Rate Type, Tokens/Month (M), DBU per 1M Tokens | For FMAPI workloads: token volumes and rates |
-| **DBU Costs** | DBU/Hour, Monthly DBUs, List Rate, Discount %, Discounted Rate, List Cost, Discounted Cost | The core Databricks billing — all formula-based |
-| **VM Costs** | Driver $/hr, Worker $/hr, Driver VM Cost, Worker VM Cost, Total VM Cost | Infrastructure costs for Classic compute (zero for Serverless) |
-| **Totals** | Total Cost (List), Total Cost (Discounted) | Combined DBU + VM costs at list and discounted rates |
+| **Identity** | #, Workload Name, Type, Mode, Configuration, SKU | What this workload is and how it's configured |
+| **VM Configuration** | Driver Node, Worker Node, Workers, Driver Tier, Worker Tier | Instance types and cluster shape (Classic only) |
+| **Usage** | Hours/Mo | How much this workload runs — calculated from runs/day or entered directly |
+| **Token Configuration** | Token Type, Tokens/Mo (M), DBU/1M Tokens | For FMAPI workloads: token volumes and rates |
+| **DBU Costs** | DBU/Hr, DBUs/Mo, DBU Rate (List), Discount %, DBU Rate (Disc.), DBU Cost (List), DBU Cost (Disc.) | The core Databricks billing — all formula-based |
+| **DSU Costs** | DSUs/Mo, DSU Rate (List), DSU Cost (List), DSU Cost (Disc.) | Databricks-managed storage charges using the exact regional `DATABRICKS_STORAGE` rate |
+| **VM Costs** | Driver VM $/Hr, Worker VM $/Hr, Driver VM Cost, Worker VM Cost, Total VM Cost | Infrastructure costs for Classic compute (zero for Serverless) |
+| **Totals** | Total Cost (List), Total Cost (Disc.) | Combined DBU + DSU + VM costs at list and discounted rates |
 | **Notes** | Notes | Workload-specific details (e.g., "Photon enabled", "Storage Optimized") |
 
 :::info Key Detail
@@ -59,27 +60,50 @@ Some workloads can produce additional rows:
 
 - **Lakebase** — Compute, plus optional database storage, point-in-time restore, and snapshot rows
 - **AI Search** — Row 1: compute costs, optional reranker row, then storage costs (if storage GB > 0)
+- **Databricks Default Storage** — Stored data, Tier 1 operations, and Tier 2 operations
+- **Unity AI Gateway** — One row for each enabled Inference Tables or Usage Tracking component
+- **Agent Evaluation** — Separate rows for evaluation input tokens, output tokens, and synthetic-data questions when enabled
 
-Only configured components are emitted. The totals row at the bottom uses `SUM` formulas that include every primary row and sub-row.
+Lakebase, Unity AI Gateway, and Agent Evaluation emit only configured or
+enabled components. Databricks Default Storage always emits all three
+component rows, including zero-quantity rows. AI Search emits a storage row
+when configured storage is greater than zero. The totals row uses `SUM`
+formulas that include every primary row and sub-row.
 
-### 4. Cost Summary
+### 4. Workload Cost Summary
 
-Below the workloads table, a summary section shows:
-- Monthly and annual totals for DBU costs, VM costs, and combined total
+Below the workloads table, a pre-add-on summary shows:
+- Monthly and annual totals for DBU costs, DSU costs, VM costs, and combined workload cost
 - Totals at both list price and discounted price
 
-### 5. Legend
+### 5. Platform Add-on
+
+This section shows:
+
+- The selected add-on, if any
+- Product Spend at List, calculated from DBU and DSU list cost
+- The applied uplift and active promotion
+- Add-on list cost, negotiated discount, and final add-on cost
+
+VM infrastructure cost is excluded from the add-on calculation base.
+
+### 6. Final Estimate Summary
+
+The final summary combines workload and Platform Add-on costs. It shows monthly and annual values for workloads and add-ons at list and discounted prices, followed by the final estimate.
+
+### 7. Legend
 
 A color-coded legend explaining the column groups:
 - **Blue** — DBU-related costs (Databricks compute units)
+- **Violet** — DSU-related costs (Databricks storage units)
 - **Cyan** — Token-based pricing (FMAPI workloads)
 - **Pink** — Discount pricing (discounted DBU rate and cost)
 - **Green** — VM infrastructure costs (cloud provider)
-- **Purple** — Total cost (DBU + VM combined)
+- **Purple** — Workload total cost (DBU + DSU + VM combined)
 
 Orange headers are used for general workload identity columns (name, type, configuration, SKU, notes) but are not listed in the legend section.
 
-### 6. Assumptions & Notes
+### 8. Assumptions & Notes
 
 The bottom section documents:
 - That all pricing uses Databricks list rates
@@ -118,3 +142,4 @@ Since all cells use formulas, you can build additional analysis on top of the ex
 - The **discount percentage** column is editable in Excel. Set it to your negotiated rate and all costs recalculate
 - For FMAPI workloads, the token configuration columns show your volume assumptions — adjust these for different usage scenarios
 - Lakebase and AI Search storage-related costs can appear on separate rows. Include every emitted sub-row when referencing total costs
+- Review the Platform Add-on and Final Estimate sections rather than treating workload totals as the final estimate

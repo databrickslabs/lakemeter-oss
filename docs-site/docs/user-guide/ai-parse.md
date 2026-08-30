@@ -4,7 +4,7 @@ sidebar_position: 17
 
 # AI Parse Sizing
 
-> **Lakemeter UI name:** AI Parse
+> **Lakemeter UI name:** AI Parse (Document AI)
 
 Use this guide to model monthly AI Parse page-processing consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not document-processing capabilities, supported formats, or product limits.
 

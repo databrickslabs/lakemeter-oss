@@ -52,15 +52,15 @@ The assistant can propose **new** workloads and can analyze your existing ones, 
 
 ### What format does the export use?
 
-Lakemeter exports to `.xlsx` (Excel) format. The file includes formula-based cells, color-coded headers, frozen panes, and a cost summary section. You can open it in Excel, Google Sheets, or any spreadsheet application. See the [Exporting guide](./exporting) for full details.
+Lakemeter exports to `.xlsx` (Excel) format. The file includes formula-based cells, color-coded headers, frozen panes, a workload summary, a Platform Add-on section, and a final estimate summary. You can open it in Excel, Google Sheets, or any spreadsheet application. See the [Exporting guide](./exporting) for full details.
 
 ### Can I apply my negotiated discount?
 
-Yes. Each workload row in the Excel export has a **Discount %** column. Enter your negotiated discount rate and all cost cells recalculate automatically using Excel formulas. You can also set different discounts per workload.
+Yes. Configure global, category, or SKU-specific discounts in the estimate. The Excel export shows list and discounted DBU and DSU costs. Platform Add-ons use a separate negotiated add-on discount that is applied after the published uplift.
 
 ### Why do some workloads show multiple rows in the export?
 
-Some workloads contain separately priced components. AI Search can add reranker and storage rows. Lakebase can include compute, storage, PITR, and snapshot rows when those quantities are configured. All emitted rows are included in the totals. See the [Exporting guide](./exporting#3-multi-row-workloads).
+Some workloads contain separately priced components. AI Search can add reranker and storage rows. Lakebase can include compute, storage, PITR, and snapshot rows. Databricks Default Storage emits stored-data and operation rows. All emitted rows are included in the totals. See the [Exporting guide](./exporting#3-multi-row-workloads).
 
 ### How are DBU rates determined?
 
@@ -79,4 +79,4 @@ Common things to verify:
 2. **Number of workers** — Each worker multiplies both DBU and VM costs.
 3. **Acceleration and mode options** — Enable them only when they match the planned workload, then inspect the resulting DBU quantity.
 4. **Serverless vs Classic** — Serverless has no VM costs but higher DBU rates. Classic has both.
-5. **Discount** — The export shows list prices by default. Apply your discount in the Excel file.
+5. **Discount** — Configure the intended discount in the estimate. The Excel discount cells remain editable for additional what-if analysis.

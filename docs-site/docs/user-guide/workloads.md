@@ -18,16 +18,17 @@ For current Databricks product capabilities and availability, refer to the [offi
 | Scheduled or triggered processing | [Lakeflow Jobs](./jobs-compute) | Compute shape, workers, runs, runtime |
 | Interactive notebook compute | [All-Purpose Compute](./all-purpose-compute) | Compute shape, workers, active hours |
 | Declarative data pipelines | [Lakeflow Spark Declarative Pipelines](./dlt-pipelines) | Compute mode, edition, workers, usage |
+| Managed connector pipelines through the API | [Lakeflow Connect API](./lakeflow-connect) | Pipeline usage, edition, optional gateway |
 | SQL warehouses | [Databricks SQL](./dbsql-warehouses) | Warehouse type, size, clusters, hours |
 
 ## AI, ML, and data services
 
 | What you need to size | Lakemeter guide | Main sizing inputs |
 |---|---|---|
-| Model inference endpoints | [Model Serving](./model-serving) | Endpoint type, endpoint count, hours |
+| Model inference endpoints | [Model Serving](./model-serving) | Endpoint type, scale-out concurrency, hours |
 | Vector indexing and search | [AI Search](./vector-search) | Endpoint mode, vector capacity, storage, reranker requests, hours |
-| Databricks-hosted foundation models | [FMAPI — Databricks](./fmapi-databricks) | Model, rate type, token volume or hours |
-| Proprietary foundation models | [FMAPI — Proprietary](./fmapi-proprietary) | Provider, model, geography, context, token volume |
+| Databricks-hosted foundation models | [Foundation Models — Databricks](./fmapi-databricks) | Model, rate type, token volume or hours |
+| Proprietary foundation models | [Foundation Models — Proprietary](./fmapi-proprietary) | Provider, model, geography, context, token volume |
 | Transactional database capacity | [Lakebase](./lakebase) | Compute range, usage, nodes, storage protection |
 | Databricks-hosted applications | [Databricks Apps](./databricks-apps) | App size, app count, active hours |
 | Document parsing | [AI Parse](./ai-parse) | Estimation mode, document complexity, page volume |
@@ -37,6 +38,14 @@ For current Databricks product capabilities and availability, refer to the [offi
 | Agent evaluation service usage | [Agent Evaluation](./agent-evaluation) | Features enabled, evaluation token volume, synthetic questions |
 | Serverless GPU model training | [AI Runtime](./ai-runtime) | Accelerator, monthly runtime |
 | Image generation | [Shutterstock ImageAI](./shutterstock-imageai) | Monthly image volume |
+
+## Ingestion, storage, and platform
+
+| What you need to size | Lakemeter guide | Main sizing inputs |
+|---|---|---|
+| Direct or OpenTelemetry ingestion | [Zerobus Ingest](./zerobus) | Mode, monthly ingested GB |
+| Databricks-managed default storage | [Databricks Default Storage](./general-storage) | Stored data, Tier 1 operations, Tier 2 operations |
+| Security and mission-critical packages | [Platform Add-ons](./platform-addons) | Add-on selection, cloud, tier, Product Spend at List |
 
 ## Shared sizing principles
 

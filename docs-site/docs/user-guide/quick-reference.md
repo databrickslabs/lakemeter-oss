@@ -30,11 +30,13 @@ Use this page when reviewing an estimate. Workload-specific fields and formulas 
 | Term | Meaning in Lakemeter |
 |---|---|
 | **DBU** | A Databricks billing unit. Lakemeter multiplies estimated DBU consumption by the selected SKU's list rate. |
+| **DSU** | A Databricks Storage Unit. Lakemeter multiplies DSU consumption by the exact regional `DATABRICKS_STORAGE` list rate. |
 | **SKU** | The priced Databricks product entry used for a calculation. |
 | **List rate** | The rate loaded for the selected SKU, cloud, region, and tier. |
 | **Discount** | A planning adjustment applied to eligible list-rate costs. Confirm actual commercial terms separately. |
 | **VM cost** | Cloud infrastructure cost shown separately for calculations where Lakemeter models it independently. |
-| **Direct cost** | A cost calculated from a non-DBU billing quantity, such as an item quantity or a storage charge. |
+| **Direct cost** | A cost entered or calculated directly rather than derived from DBUs, DSUs, or separately modeled VMs. |
+| **Product Spend at List** | DBU and DSU list cost before discounts; the basis for Platform Add-ons. VM cost is excluded. |
 
 ## Review checklist
 

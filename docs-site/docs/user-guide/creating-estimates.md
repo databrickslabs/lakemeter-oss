@@ -33,6 +33,11 @@ You'll be redirected to the calculator page where you can start adding workloads
 ![Calculator page with workloads and cost summary](/img/calculator-overview.png)
 *After creating an estimate, the calculator page is where you add and configure workloads.*
 
+Select a Platform Add-on on the calculator page after choosing the cloud and
+tier. The selection applies to the whole estimate rather than an individual
+workload. See [Platform Add-ons](./platform-addons) for eligibility and cost
+calculation details.
+
 ## Managing Estimates
 
 ### Viewing Estimates
@@ -51,12 +56,16 @@ Click on any estimate to open it in the calculator. You can:
 - Update the estimate name, region, or tier
 - Add, edit, or remove workloads
 - Reorder workloads by dragging
+- Select or clear an eligible Platform Add-on
 
 ![Drag and drop to reorder workloads in the estimate](/img/gifs/drag-and-drop.gif)
 *Animated: drag workloads to reorder them — the display order updates instantly.*
 
 :::caution
 Changing the **cloud provider** is blocked if the estimate already has workloads, since pricing and available instance types differ between clouds.
+
+Changing cloud or tier clears a Platform Add-on selection when it is no longer
+eligible for the updated estimate.
 :::
 
 ### Duplicating an Estimate
@@ -66,7 +75,7 @@ To create a copy of an existing estimate:
 1. Open the estimate
 2. Click **Duplicate**
 
-The copy includes all workloads and their configurations. The new estimate is named with a "(Copy)" suffix.
+The copy includes all workloads, discount configuration, and any Platform Add-on selection. The new estimate is named with a "(Copy)" suffix.
 
 ### Deleting an Estimate
 

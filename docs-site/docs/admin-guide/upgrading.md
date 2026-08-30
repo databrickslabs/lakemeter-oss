@@ -27,11 +27,13 @@ Lakemeter uses the following release policy:
   migrations, optionally followed by data updates. The upgrader creates a
   Lakebase backup branch first.
 
-Database release lines cannot be skipped. For example, upgrade through a
-required `0.2.x` data release before moving to `0.3.0`.
+Whether a release can be installed directly is defined by its release
+manifest. Always review the `minimum_version` and the actions shown by
+`upgrade.sh plan`.
 
-The `v0.1.2` release supports direct code-only upgrades from both `v0.1.0` and
-`v0.1.1`.
+The `v0.3.0` manifest supports direct upgrades from `v0.1.0` and later. It
+creates a Lakebase backup branch, applies data updates `020` through `027`, and
+does not run a schema migration.
 
 ## Prerequisites
 

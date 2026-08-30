@@ -19,7 +19,7 @@ A Lakebase workload can include:
 - Point-in-time restore storage
 - Snapshot storage
 
-Compute is modeled through a Databricks compute SKU. Storage-related quantities are modeled separately and only appear when their input is greater than zero.
+Compute is modeled through a Databricks compute SKU. Storage-related quantities are converted to DSUs, priced with the exact regional `DATABRICKS_STORAGE` rate, and only appear when their input is greater than zero.
 
 ## Choose a compute type
 
@@ -182,7 +182,20 @@ Enter monthly quantities for the components included in the scenario:
 | **Point-in-Time Restore (GB)** | Expected PITR storage quantity |
 | **Snapshot Storage (GB)** | Expected snapshot storage quantity |
 
-Lakemeter converts each configured quantity to its corresponding storage billing units and applies the loaded storage rate. The expanded calculation shows the multiplier and rate used. This guide does not duplicate those values because they can change.
+Lakemeter applies these DSU multipliers:
+
+- Database storage: 15 DSU per GB
+- Point-in-time restore: 8.7 DSU per GB
+- Snapshot storage: 3.91 DSU per GB
+
+```text
+Storage component cost
+  = Configured GB
+  × Component DSU per GB
+  × Regional DATABRICKS_STORAGE price per DSU
+```
+
+The expanded calculation shows the multiplier, DSU quantity, and regional rate used.
 
 ## What to review before saving
 
@@ -203,7 +216,7 @@ Lakebase can emit these rows:
 3. Point-in-time restore, when configured
 4. Snapshot storage, when configured
 
-The compute row includes the configured CU range, scale-to-zero setting, scale-up hours, node count, DBU quantity, and selected SKU rate. Storage-related rows remain separate so each quantity and charge can be reviewed independently.
+The compute row includes the configured CU range, scale-to-zero setting, scale-up hours, node count, DBU quantity, and selected SKU rate. Storage-related rows remain separate and report their DSU quantity and rate so each charge can be reviewed independently.
 
 The total Lakebase estimate is the sum of every emitted row.
 

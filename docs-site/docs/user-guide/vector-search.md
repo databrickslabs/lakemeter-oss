@@ -18,7 +18,7 @@ An AI Search workload can include:
 - Storage above the first 30 GB included allowance
 - Optional AI Search Reranker requests
 
-Compute is modeled through a Databricks serverless compute SKU. Storage is calculated separately from DBU consumption.
+Compute and reranker requests are modeled through Databricks DBU SKUs. Storage is calculated separately in DSUs using the regional `DATABRICKS_STORAGE` rate.
 
 ## Configure the workload
 
@@ -47,6 +47,8 @@ Leave this field at zero when storage should not be included in the estimate.
 ### Hours/Month
 
 Enter the number of hours the endpoint is expected to be active during the month.
+
+If hours are omitted, Lakemeter models the endpoint as always on for 730 hours per month.
 
 ## How compute cost is calculated
 
@@ -78,8 +80,11 @@ Included storage
 Billable storage
   = MAX(0, Configured storage − Included storage)
 
+Storage DSUs
+  = Billable storage × DSU per GB for the selected type
+
 Storage cost
-  = Billable storage × Loaded storage rate
+  = Storage DSUs × Regional price per DSU
 
 Reranker DBUs
   = Reranker requests in thousands × 28.571 DBU
@@ -93,6 +98,8 @@ Total AI Search cost
 
 Configured storage can therefore produce a zero storage charge when it is within the included allowance.
 
+Standard AI Search uses 10 DSU per billable GB-month. Storage Optimized AI Search uses 2 DSU per billable GB-month.
+
 ## What to review before saving
 
 - Is the selected AI Search type the one being deployed?
@@ -100,6 +107,7 @@ Configured storage can therefore produce a zero storage charge when it is within
 - Does capacity include expected growth and duplicated or retained vectors?
 - Does the rounded capacity-unit count match the expanded calculation?
 - Is the storage value the total configured quantity, not only the expected billable excess?
+- Does the expanded calculation show the expected 10 or 2 DSU per billable GB and the regional DSU price?
 - Do hours represent the endpoint-active schedule?
 - Is the cloud, region, and pricing tier correct for the estimate?
 
@@ -123,7 +131,7 @@ AI Search emits:
 
 The storage sub-row is emitted whenever configured storage is greater than zero, even when the included allowance reduces billable storage and storage cost to zero. This matches the current export behavior.
 
-The compute row includes the selected type, capacity, hours, effective DBU per hour, monthly DBUs, and selected SKU rate. The reranker row shows requests, DBU per 1,000 requests, and regional SKU rate. The storage row keeps configured, included, and billable storage separate from compute. The total AI Search estimate is the sum of all emitted rows.
+The compute row includes the selected type, capacity, hours, effective DBU per hour, monthly DBUs, and selected SKU rate. The reranker row shows requests, DBU per 1,000 requests, and regional SKU rate. The storage row keeps configured, included, and billable storage separate from compute and reports its DSU quantity and rate. The total AI Search estimate is the sum of all emitted rows.
 
 ## Related
 

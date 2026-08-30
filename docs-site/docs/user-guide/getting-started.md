@@ -95,13 +95,15 @@ Click on a workload to expand or edit it. Costs recalculate instantly when you c
 
 ## Step 5: Export to Excel
 
-1. Click the **Export** button (download icon) at the top of the calculator page.
+1. Click the **Excel** button (download icon) at the top of the calculator page.
 2. An Excel file downloads named something like `Databricks_Estimate_Q4_Data_Platform_AWS_20260404.xlsx`.
 
 The spreadsheet includes:
 - **Header section** with your estimate details (cloud, region, tier)
-- **Workload table** with every configuration field, DBU rates, and costs per workload
-- **Summary section** with total monthly cost and DBU breakdown by SKU type
+- **Workload table** with DBU, DSU, VM, list, and discounted costs
+- **Workload summary** before Platform Add-ons
+- **Platform Add-on section** with Product Spend at List and the applied uplift
+- **Final estimate summary** with monthly and annual totals
 - **Assumptions and notes** explaining the pricing basis
 
 This file is ready to attach to an RFP response, share in a planning meeting, or use for internal budgeting.
