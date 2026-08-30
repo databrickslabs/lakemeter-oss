@@ -69,6 +69,7 @@ import {
   calculateAgentEvaluationUsage,
   calculateAISearchRerankerUsage,
   calculateAIGatewayUsage,
+  calculateDatabricksAppsUsage,
   calculateGeneralStorageDSU,
   calculateHoursPerMonth,
   calculateModelServingDBUPerHour,
@@ -2042,10 +2043,12 @@ export default function Calculator() {
         break
 
       case 'DATABRICKS_APPS': {
-        const appsSize = (effectiveItem.databricks_apps_size || 'medium').toLowerCase()
-        const appsDbuRates: Record<string, number> = { medium: 0.5, large: 1.0 }
-        dbuPerHour = appsDbuRates[appsSize] || 0.5
-        monthlyDBUs = dbuPerHour * hoursPerMonth
+        const usage = calculateDatabricksAppsUsage(
+          effectiveItem,
+          hoursPerMonth,
+        )
+        dbuPerHour = usage.dbuPerHour
+        monthlyDBUs = usage.monthlyDBUs
         break
       }
 
@@ -2722,6 +2725,7 @@ export default function Calculator() {
 
       case 'DATABRICKS_APPS':
         details.push({ label: 'Size', value: (item.databricks_apps_size || 'medium').charAt(0).toUpperCase() + (item.databricks_apps_size || 'medium').slice(1) })
+        details.push({ label: 'Apps', value: `${item.databricks_apps_num_apps ?? 1}` })
         break
 
       case 'AI_PARSE':
@@ -4341,12 +4345,15 @@ export default function Calculator() {
                                   if (wType === 'DATABRICKS_APPS') {
                                     const appsSize = (effectiveItem.databricks_apps_size || 'medium').toLowerCase()
                                     const appsDbuRate = appsSize === 'large' ? 1.0 : 0.5
+                                    const numApps = effectiveItem.databricks_apps_num_apps ?? 1
                                     return (
                                       <div className="space-y-1">
                                         <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                           <span className="text-blue-600 font-semibold">DBU:</span>
                                           <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{appsSize.charAt(0).toUpperCase() + appsSize.slice(1)}</span>
-                                          <span className="text-[var(--text-muted)]">({appsDbuRate} DBU/hr)</span>
+                                          <span className="text-[var(--text-muted)]">({appsDbuRate} DBU/app/hr)</span>
+                                          <span>×</span>
+                                          <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{numApps} {numApps === 1 ? 'app' : 'apps'}</span>
                                           <span>×</span>
                                           <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(0)}h</span>
                                           <span>=</span>
@@ -5306,12 +5313,15 @@ export default function Calculator() {
                                 if (wType === 'DATABRICKS_APPS') {
                                   const appsSize = (effectiveItem.databricks_apps_size || 'medium').toLowerCase()
                                   const appsDbuRate = appsSize === 'large' ? 1.0 : 0.5
+                                  const numApps = effectiveItem.databricks_apps_num_apps ?? 1
                                   return (
                                     <div className="space-y-1">
                                       <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--text-secondary)] flex-wrap">
                                         <span className="text-blue-600 font-semibold">DBU:</span>
                                         <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{appsSize.charAt(0).toUpperCase() + appsSize.slice(1)}</span>
-                                        <span className="text-[var(--text-muted)]">({appsDbuRate} DBU/hr)</span>
+                                        <span className="text-[var(--text-muted)]">({appsDbuRate} DBU/app/hr)</span>
+                                        <span>×</span>
+                                        <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{numApps} {numApps === 1 ? 'app' : 'apps'}</span>
                                         <span>×</span>
                                         <span className="font-medium bg-amber-50 dark:bg-amber-900/20 px-0.5 rounded">{hoursPerMonth.toFixed(0)}h</span>
                                         <span>=</span>

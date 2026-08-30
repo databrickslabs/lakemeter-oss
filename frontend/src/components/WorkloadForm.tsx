@@ -834,6 +834,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         model_serving_scale_out: lineItem.model_serving_scale_out || 'small',
         model_serving_concurrency: lineItem.model_serving_concurrency || 4,
         databricks_apps_size: lineItem.databricks_apps_size || 'medium',
+        databricks_apps_num_apps: lineItem.databricks_apps_num_apps ?? 1,
         ai_parse_mode: lineItem.ai_parse_mode || 'pages',
         ai_parse_complexity: lineItem.ai_parse_complexity || 'medium',
         ai_parse_pages_thousands: lineItem.ai_parse_pages_thousands || 0,
@@ -931,6 +932,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       model_serving_scale_out: 'small',
       model_serving_concurrency: 4,
       databricks_apps_size: 'medium',
+      databricks_apps_num_apps: 1,
       ai_parse_mode: 'pages',
       ai_parse_complexity: 'medium',
       ai_parse_pages_thousands: 0,
@@ -1080,6 +1082,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
     model_serving_scale_out: 'small',
     model_serving_concurrency: 4,
     databricks_apps_size: 'medium',
+    databricks_apps_num_apps: 1,
     ai_parse_mode: 'pages',
     ai_parse_complexity: 'medium',
     ai_parse_pages_thousands: 0,
@@ -1177,6 +1180,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         model_serving_scale_out: lineItem.model_serving_scale_out || 'small',
         model_serving_concurrency: lineItem.model_serving_concurrency || 4,
         databricks_apps_size: lineItem.databricks_apps_size || 'medium',
+        databricks_apps_num_apps: lineItem.databricks_apps_num_apps ?? 1,
         ai_parse_mode: lineItem.ai_parse_mode || 'pages',
         ai_parse_complexity: lineItem.ai_parse_complexity || 'medium',
         ai_parse_pages_thousands: lineItem.ai_parse_pages_thousands || 0,
@@ -1423,6 +1427,7 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       model_serving_concurrency: form.model_serving_concurrency,
       model_serving_scale_out: form.model_serving_scale_out,
       databricks_apps_size: form.databricks_apps_size,
+      databricks_apps_num_apps: form.databricks_apps_num_apps,
       ai_parse_mode: form.ai_parse_mode,
       ai_parse_complexity: form.ai_parse_complexity,
       ai_parse_pages_thousands: form.ai_parse_pages_thousands,
@@ -1547,6 +1552,16 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         form.ai_search_reranker_requests_thousands < 0)
     ) {
       toast.error('Enter a non-negative AI Search Reranker request volume')
+      return
+    }
+    if (
+      form.workload_type === 'DATABRICKS_APPS' &&
+      (
+        !Number.isInteger(form.databricks_apps_num_apps) ||
+        form.databricks_apps_num_apps < 1
+      )
+    ) {
+      toast.error('Enter at least one Databricks App')
       return
     }
     if (
@@ -1754,8 +1769,10 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
       // Databricks Apps config
       if (form.workload_type === 'DATABRICKS_APPS') {
         data.databricks_apps_size = form.databricks_apps_size
+        data.databricks_apps_num_apps = form.databricks_apps_num_apps
       } else {
         data.databricks_apps_size = null
+        data.databricks_apps_num_apps = null
       }
 
       // AI Parse config (pages-based only)
@@ -3506,17 +3523,34 @@ export default function WorkloadForm({ estimateId, lineItem, onClose, onSave, in
         
         {/* Databricks Apps Config */}
         {form.workload_type === 'DATABRICKS_APPS' && (
-          <div>
-            <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">App Size</label>
-            <select
-              value={form.databricks_apps_size || 'medium'}
-              onChange={(e) => setForm(f => ({ ...f, databricks_apps_size: e.target.value }))}
-              className="w-full text-sm"
-            >
-              <option value="medium">Medium (0.5 DBU/hr)</option>
-              <option value="large">Large (1.0 DBU/hr)</option>
-            </select>
-          </div>
+          <>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">App Size</label>
+              <select
+                value={form.databricks_apps_size || 'medium'}
+                onChange={(e) => setForm(f => ({ ...f, databricks_apps_size: e.target.value }))}
+                className="w-full text-sm"
+              >
+                <option value="medium">Medium (0.5 DBU/app/hr)</option>
+                <option value="large">Large (1.0 DBU/app/hr)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">Number of Apps</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={form.databricks_apps_num_apps}
+                onChange={(e) => setForm(f => ({
+                  ...f,
+                  databricks_apps_num_apps: parseInt(e.target.value, 10) || 1,
+                }))}
+                className="w-full text-sm"
+              />
+              <span className="text-[10px] text-[var(--text-tertiary)]">Each app is billed independently.</span>
+            </div>
+          </>
         )}
 
         {/* AI Parse Config */}

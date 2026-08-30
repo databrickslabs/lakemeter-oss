@@ -1006,6 +1006,11 @@ The user will review and confirm before it's added to the estimate.""",
                     "enum": ["medium", "large"],
                     "description": "App size: medium (default) or large"
                 },
+                "databricks_apps_num_apps": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of identically sized Databricks Apps"
+                },
 
                 # === AI Parse Specific ===
                 "ai_parse_mode": {
@@ -3299,6 +3304,7 @@ Each workload needs to be confirmed individually. Review the configurations and 
         
         if wtype == "DATABRICKS_APPS":
             workload.setdefault("databricks_apps_size", "medium")
+            workload.setdefault("databricks_apps_num_apps", 1)
             workload["hours_per_month"] = workload.get("hours_per_month", 730)
 
         if wtype == "AI_PARSE":

@@ -1055,6 +1055,7 @@ export const calculateFMAPIProprietary = async (request: FMAPIProprietaryRequest
 // Databricks Apps
 export interface DatabricksAppsRequest extends BaseCalculationRequest {
   size?: string
+  num_apps?: number
   hours_per_month?: number
 }
 

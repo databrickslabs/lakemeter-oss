@@ -37,6 +37,34 @@ export const ZEROBUS_DBU_PER_GB = {
   otel: 0.222,
 } as const
 
+export const DATABRICKS_APPS_DBU_PER_APP_HOUR = {
+  medium: 0.5,
+  large: 1.0,
+} as const
+
+export function calculateDatabricksAppsUsage(
+  item: Partial<LineItem>,
+  hoursPerMonth: number,
+) {
+  const size = (item.databricks_apps_size || 'medium').toLowerCase()
+  const requestedNumApps = item.databricks_apps_num_apps ?? 1
+  const numApps = Math.max(
+    1,
+    Number.isFinite(requestedNumApps) ? Math.trunc(requestedNumApps) : 1,
+  )
+  const dbuPerAppHour = size === 'large'
+    ? DATABRICKS_APPS_DBU_PER_APP_HOUR.large
+    : DATABRICKS_APPS_DBU_PER_APP_HOUR.medium
+  const dbuPerHour = dbuPerAppHour * numApps
+  return {
+    size,
+    numApps,
+    dbuPerAppHour,
+    dbuPerHour,
+    monthlyDBUs: dbuPerHour * hoursPerMonth,
+  }
+}
+
 export const ALWAYS_ON_WORKLOAD_TYPES = new Set([
   'VECTOR_SEARCH',
   'MODEL_SERVING',
@@ -897,12 +925,12 @@ export function calculateWorkloadCost(
       }
       break
     
-    case 'DATABRICKS_APPS':
-      const appsSize = (item.databricks_apps_size || 'medium').toLowerCase()
-      const appsDbuRates: Record<string, number> = { medium: 0.5, large: 1.0 }
-      dbuPerHour = appsDbuRates[appsSize] || 0.5
-      monthlyDBUs = dbuPerHour * hoursPerMonth
+    case 'DATABRICKS_APPS': {
+      const usage = calculateDatabricksAppsUsage(item, hoursPerMonth)
+      dbuPerHour = usage.dbuPerHour
+      monthlyDBUs = usage.monthlyDBUs
       break
+    }
 
     case 'AI_RUNTIME': {
       const usage = calculateAIRuntimeUsage(

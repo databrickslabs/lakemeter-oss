@@ -46,7 +46,8 @@ def calculate_databricks_apps_cost(
 
     try:
         hours_per_month = request.hours_per_month if request.hours_per_month is not None else 730
-        dbu_per_hour = APPS_DBU_RATES[size]
+        dbu_per_app_hour = APPS_DBU_RATES[size]
+        dbu_per_hour = dbu_per_app_hour * request.num_apps
         dbu_per_month = dbu_per_hour * hours_per_month
 
         sku_type = DATABRICKS_APPS_SKU
@@ -82,9 +83,11 @@ def calculate_databricks_apps_cost(
                 "configuration": {
                     "cloud": request.cloud.upper(), "region": request.region,
                     "tier": request.tier.upper(), "size": size,
+                    "num_apps": request.num_apps,
                 },
                 "usage": {"hours_per_month": hours_per_month},
                 "dbu_calculation": {
+                    "dbu_per_app_hour": dbu_per_app_hour,
                     "dbu_per_hour": dbu_per_hour,
                     "dbu_per_month": round(dbu_per_month, 2),
                     "dbu_price": dbu_price,

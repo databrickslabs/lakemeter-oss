@@ -133,6 +133,11 @@ def _get_workload_config_details(item) -> str:
     elif wt == 'DATABRICKS_APPS':
         size = (getattr(item, 'databricks_apps_size', None) or 'medium').capitalize()
         details.append(f"Size: {size}")
+        num_apps = max(
+            int(getattr(item, 'databricks_apps_num_apps', None) or 1),
+            1,
+        )
+        details.append(f"Apps: {num_apps}")
     elif wt == 'AI_PARSE':
         details.extend(_ai_parse_details(item))
     elif wt == 'SHUTTERSTOCK_IMAGEAI':

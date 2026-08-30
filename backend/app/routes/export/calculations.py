@@ -108,7 +108,11 @@ def _calculate_dbu_per_hour(item, cloud: str = 'aws', tier: str = 'PREMIUM') -> 
     elif wt == 'DATABRICKS_APPS':
         size = (getattr(item, 'databricks_apps_size', None) or 'medium').lower()
         rates = {'medium': 0.5, 'large': 1.0}
-        return rates.get(size, 0.5), warnings
+        num_apps = max(
+            int(getattr(item, 'databricks_apps_num_apps', None) or 1),
+            1,
+        )
+        return rates.get(size, 0.5) * num_apps, warnings
     elif wt == 'AI_PARSE':
         # AI Parse is quantity-based, not hour-based; return 0, handled separately
         return 0, warnings
