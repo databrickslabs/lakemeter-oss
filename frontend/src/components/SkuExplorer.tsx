@@ -13,6 +13,11 @@ import {
   formatRate,
   getSkuGroup,
 } from '../utils/skuGroups'
+import {
+  createRegionOptions,
+  createRegionOptionsFromCodes,
+  getRegionGeographyOrder,
+} from '../utils/regionGeography'
 
 const CLOUDS = ['AWS', 'AZURE', 'GCP']
 const LAKEBASE_DBU_PER_CU_HOUR = 0.213
@@ -165,12 +170,12 @@ export default function SkuExplorer({ fxRate = 1 }: { fxRate?: number }) {
   const regionOptions = useMemo(() => {
     const cloudRegions = regionsMap[cloud.toLowerCase()] || []
     if (cloudRegions.length > 0) {
-      return cloudRegions.map((item) => ({
-        value: item.region_code,
-        label: `${item.region_code}${item.sku_region && item.sku_region !== item.region_code ? ` (${item.sku_region})` : ''}`,
-      }))
+      return createRegionOptions(cloud, cloudRegions)
     }
-    return getAvailableRegionsFromBundle(pricingBundle, cloud).map((item) => ({ value: item, label: item }))
+    return createRegionOptionsFromCodes(
+      cloud,
+      getAvailableRegionsFromBundle(pricingBundle, cloud),
+    )
   }, [cloud, regionsMap, pricingBundle])
 
   const productTypes = useMemo(
@@ -341,6 +346,8 @@ export default function SkuExplorer({ fxRate = 1 }: { fxRate?: number }) {
               placeholder="Select region..."
               searchPlaceholder="Search regions..."
               isLoading={!isReferenceDataLoaded && !isPricingBundleLoaded}
+              grouped
+              groupOrder={getRegionGeographyOrder(cloud)}
             />
           </div>
           <div className="w-40">

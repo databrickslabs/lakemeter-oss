@@ -12,6 +12,11 @@ import {
   type RateType,
 } from '../utils/fmapiProprietary'
 import { getEffectiveFMAPIRate, type FMAPIRate } from '../utils/pricingBundle'
+import {
+  createRegionOptionsFromCodes,
+  groupRegionOptions,
+  type RegionOptionGroup,
+} from '../utils/regionGeography'
 
 const ALL = 'all'
 const TOKEN_RATE_TYPES: RateType[] = ['input_token', 'output_token', 'cache_write', 'cache_read']
@@ -109,12 +114,14 @@ function SelectFilter({
   label,
   value,
   options,
+  optionGroups,
   render,
   onChange,
 }: {
   label: string
   value: string
   options: string[]
+  optionGroups?: RegionOptionGroup[]
   render: (value: string) => string
   onChange: (value: string) => void
 }) {
@@ -123,11 +130,21 @@ function SelectFilter({
       <label className="text-xs font-medium text-[var(--text-muted)]">{label}</label>
       <select value={value} onChange={(event) => onChange(event.target.value)} className="text-sm">
         <option value={ALL}>All</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {render(option)}
-          </option>
-        ))}
+        {optionGroups
+          ? optionGroups.map((group) => (
+            <optgroup key={group.name} label={group.name}>
+              {group.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
+          ))
+          : options.map((option) => (
+            <option key={option} value={option}>
+              {render(option)}
+            </option>
+          ))}
       </select>
     </div>
   )
@@ -213,6 +230,13 @@ export default function FmapiTokenHelper({ fxRate = 1 }: { fxRate?: number }) {
     }
     return Array.from(regions).sort()
   }, [pricingBundle.dbuRates, dollarCloud])
+  const dollarRegionOptionGroups = useMemo(
+    () => groupRegionOptions(
+      dollarCloud,
+      createRegionOptionsFromCodes(dollarCloud, regionOptions),
+    ),
+    [dollarCloud, regionOptions],
+  )
 
   const tierOptions = useMemo(() => {
     const prefix = `${dollarCloud}:${dollarRegion}:`
@@ -276,7 +300,14 @@ export default function FmapiTokenHelper({ fxRate = 1 }: { fxRate?: number }) {
       {displayMode === 'dollars' && (
         <div className="mb-4 flex flex-wrap items-end gap-4 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3">
           <SelectFilter label="Cloud" value={dollarCloud} onChange={setDollarCloud} options={['aws', 'azure', 'gcp']} render={renderCloud} />
-          <SelectFilter label="Region" value={dollarRegion} onChange={setDollarRegion} options={regionOptions} render={(value) => value} />
+          <SelectFilter
+            label="Region"
+            value={dollarRegion}
+            onChange={setDollarRegion}
+            options={regionOptions}
+            optionGroups={dollarRegionOptionGroups}
+            render={(value) => value}
+          />
           <SelectFilter label="Tier" value={dollarTier} onChange={setDollarTier} options={tierOptions} render={(value) => value} />
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-[var(--text-muted)]">Discount %</label>

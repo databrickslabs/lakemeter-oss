@@ -1,0 +1,111 @@
+{
+  "aws": {
+    "group_order": [
+      "North America",
+      "South America",
+      "Europe",
+      "Middle East",
+      "Africa",
+      "Asia Pacific",
+      "Australia and New Zealand",
+      "Other Regions"
+    ],
+    "regions": {
+      "ap-northeast-1": "Asia Pacific",
+      "ap-northeast-2": "Asia Pacific",
+      "ap-south-1": "Asia Pacific",
+      "ap-southeast-1": "Asia Pacific",
+      "ap-southeast-2": "Australia and New Zealand",
+      "ap-southeast-3": "Asia Pacific",
+      "ca-central-1": "North America",
+      "eu-central-1": "Europe",
+      "eu-north-1": "Europe",
+      "eu-west-1": "Europe",
+      "eu-west-2": "Europe",
+      "eu-west-3": "Europe",
+      "sa-east-1": "South America",
+      "us-east-1": "North America",
+      "us-east-2": "North America",
+      "us-west-1": "North America",
+      "us-west-2": "North America"
+    }
+  },
+  "azure": {
+    "group_order": [
+      "Americas",
+      "Europe",
+      "Middle East",
+      "Africa",
+      "Asia Pacific",
+      "Other Regions"
+    ],
+    "regions": {
+      "australiacentral": "Asia Pacific",
+      "australiacentral2": "Asia Pacific",
+      "australiaeast": "Asia Pacific",
+      "australiasoutheast": "Asia Pacific",
+      "brazilsouth": "Americas",
+      "canadacentral": "Americas",
+      "canadaeast": "Americas",
+      "centralindia": "Asia Pacific",
+      "centralus": "Americas",
+      "eastasia": "Asia Pacific",
+      "eastus": "Americas",
+      "eastus2": "Americas",
+      "francecentral": "Europe",
+      "germanywestcentral": "Europe",
+      "japaneast": "Asia Pacific",
+      "japanwest": "Asia Pacific",
+      "koreacentral": "Asia Pacific",
+      "mexicocentral": "Americas",
+      "northcentralus": "Americas",
+      "northeurope": "Europe",
+      "norwayeast": "Europe",
+      "qatarcentral": "Middle East",
+      "southafricanorth": "Africa",
+      "southcentralus": "Americas",
+      "southeastasia": "Asia Pacific",
+      "southindia": "Asia Pacific",
+      "swedencentral": "Europe",
+      "switzerlandnorth": "Europe",
+      "switzerlandwest": "Europe",
+      "uaenorth": "Middle East",
+      "uksouth": "Europe",
+      "ukwest": "Europe",
+      "westcentralus": "Americas",
+      "westeurope": "Europe",
+      "westindia": "Asia Pacific",
+      "westus": "Americas",
+      "westus2": "Americas",
+      "westus3": "Americas"
+    }
+  },
+  "gcp": {
+    "group_order": [
+      "North America",
+      "South America",
+      "APAC",
+      "Europe",
+      "Middle East",
+      "Africa",
+      "Other Regions"
+    ],
+    "regions": {
+      "asia-northeast1": "APAC",
+      "asia-south1": "APAC",
+      "asia-southeast1": "APAC",
+      "australia-southeast1": "APAC",
+      "europe-west1": "Europe",
+      "europe-west2": "Europe",
+      "europe-west3": "Europe",
+      "me-central2": "Middle East",
+      "northamerica-northeast1": "North America",
+      "southamerica-east1": "South America",
+      "us-central1": "North America",
+      "us-east1": "North America",
+      "us-east4": "North America",
+      "us-west1": "North America",
+      "us-west4": "North America"
+    }
+  }
+}

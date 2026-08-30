@@ -21,6 +21,7 @@ interface SearchableSelectProps {
   required?: boolean
   className?: string
   grouped?: boolean  // Enable grouped display
+  groupOrder?: readonly string[]  // Optional explicit order for group headers
 }
 
 export default function SearchableSelect({
@@ -35,7 +36,8 @@ export default function SearchableSelect({
   disabled = false,
   required = false,
   className,
-  grouped = false
+  grouped = false,
+  groupOrder,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -66,8 +68,18 @@ export default function SearchableSelect({
       groups[groupName].push(option)
     })
     
-    // Sort groups alphabetically, but put "General Purpose" first if it exists
+    // Use an explicit order when supplied. Existing grouped selectors keep
+    // General Purpose first, then sort remaining groups alphabetically.
     const sortedGroupNames = Object.keys(groups).sort((a, b) => {
+      if (groupOrder) {
+        const aIndex = groupOrder.indexOf(a)
+        const bIndex = groupOrder.indexOf(b)
+        if (aIndex !== -1 || bIndex !== -1) {
+          if (aIndex === -1) return 1
+          if (bIndex === -1) return -1
+          return aIndex - bIndex
+        }
+      }
       if (a === 'General Purpose') return -1
       if (b === 'General Purpose') return 1
       return a.localeCompare(b)
@@ -77,7 +89,7 @@ export default function SearchableSelect({
       name,
       options: groups[name]
     }))
-  }, [filteredOptions, grouped])
+  }, [filteredOptions, grouped, groupOrder])
 
   // Close dropdown when clicking outside
   useEffect(() => {

@@ -87,6 +87,10 @@ import {
   getPlatformAddonDefinition,
   getPlatformAddonDiscountPct,
 } from '../utils/platformAddons'
+import {
+  createRegionOptions,
+  groupRegionOptions,
+} from '../utils/regionGeography'
 
 // Error Boundary for catching render errors
 interface ErrorBoundaryState {
@@ -1120,6 +1124,13 @@ export default function Calculator() {
     tier: '',  // No default - must be selected
     platform_addons: [] as PlatformAddonType[],
   })
+  const regionOptionGroups = useMemo(
+    () => groupRegionOptions(
+      formData.cloud,
+      createRegionOptions(formData.cloud, regions),
+    ),
+    [formData.cloud, regions],
+  )
   
   // Configuration panel collapsed state - auto-collapse for saved estimates
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(!!id)
@@ -3109,10 +3120,14 @@ export default function Calculator() {
                           )}
                         >
                           <option value="">{isLoadingRegions ? 'Loading regions...' : 'Select region'}</option>
-                          {regions.map(region => (
-                            <option key={region.region_code} value={region.region_code}>
-                              {region.region_code} ({region.sku_region})
-                            </option>
+                          {regionOptionGroups.map((group) => (
+                            <optgroup key={group.name} label={group.name}>
+                              {group.options.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </optgroup>
                           ))}
                         </select>
                       </div>
