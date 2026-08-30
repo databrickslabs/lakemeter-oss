@@ -295,6 +295,7 @@ class DatabricksAppsCalculationRequest(BaseModel):
     region: str = Field(...)
     tier: str = Field(...)
     size: str = Field(default="medium", description="medium or large")
+    num_apps: int = Field(default=1, ge=1)
     hours_per_month: Optional[float] = Field(None, ge=0)
     discount_config: Optional[DiscountConfig] = Field(None)
 

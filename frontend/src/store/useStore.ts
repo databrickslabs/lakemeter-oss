@@ -1545,6 +1545,7 @@ export const useStore = create<Store>((set, get) => ({
           result = await api.calculateDatabricksApps({
             ...baseParams,
             size: lineItem.databricks_apps_size || 'medium',
+            num_apps: lineItem.databricks_apps_num_apps ?? 1,
             hours_per_month: calculateHoursPerMonth(lineItem),
           })
           break

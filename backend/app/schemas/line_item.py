@@ -558,7 +558,7 @@ class LineItemBase(BaseModel):
     # Databricks Apps Configuration
     databricks_apps_size: Optional[str] = None
     databricks_apps_hours_per_month: Optional[float] = None
-    databricks_apps_num_apps: Optional[int] = None
+    databricks_apps_num_apps: Optional[int] = Field(default=None, ge=1)
 
     # AI Parse Configuration
     ai_parse_calculation_method: Optional[str] = None
@@ -779,7 +779,7 @@ class LineItemUpdate(BaseModel):
     # Databricks Apps Configuration
     databricks_apps_size: Optional[str] = None
     databricks_apps_hours_per_month: Optional[float] = None
-    databricks_apps_num_apps: Optional[int] = None
+    databricks_apps_num_apps: Optional[int] = Field(default=None, ge=1)
 
     # AI Parse Configuration
     ai_parse_calculation_method: Optional[str] = None

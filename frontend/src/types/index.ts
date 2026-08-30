@@ -119,6 +119,7 @@ export interface LineItem {
 
   // Databricks Apps Configuration
   databricks_apps_size?: string | null  // medium, large
+  databricks_apps_num_apps?: number | null
 
   // AI Parse Configuration
   ai_parse_mode?: string | null  // dbu, pages
