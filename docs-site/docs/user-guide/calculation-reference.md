@@ -15,7 +15,7 @@ Most estimates follow four steps:
 1. Convert the workload inputs into a monthly billing quantity.
 2. Resolve the applicable SKU and list rate for the estimate context.
 3. Multiply the billing quantity by the rate.
-4. Add any separately modeled VM, storage, or direct-cost components.
+4. Add any separately modeled VM, DSU, or direct-cost components.
 
 The expanded calculation in the Lakemeter UI shows the actual inputs, quantities, and rates used for a saved workload.
 
@@ -87,6 +87,20 @@ A workload can contain more than one billable component. For example, compute, s
 
 Review every subcomponent rather than treating the first row as the complete workload total.
 
+## DSU-based calculations
+
+Databricks-managed storage is represented in Databricks Storage Units:
+
+```text
+Monthly DSUs = Storage or operation quantity × Workload DSU multiplier
+
+DSU cost = Monthly DSUs × Regional DATABRICKS_STORAGE price per DSU
+```
+
+Databricks Default Storage uses DSUs for stored data and Tier 1 and Tier 2 operations. AI Search uses DSUs for billable storage above its included allowance. Lakebase uses separate DSU multipliers for database storage, point-in-time restore, and snapshots.
+
+DSU costs remain separate from DBU compute and cloud VM infrastructure in the expanded calculation and Excel export.
+
 ## Discounts
 
 Lakemeter starts with the list rate loaded for the selected estimate context. A standard percentage discount is modeled as:
@@ -100,6 +114,20 @@ Some workload calculations can include a workload-specific pricing adjustment be
 
 Discounts in Lakemeter are planning assumptions. Confirm eligibility and actual contract pricing separately.
 
+## Platform Add-ons
+
+Platform Add-ons are calculated after workload list costs are known:
+
+```text
+Product Spend at List = DBU list cost + DSU list cost
+
+Add-on cost = Product Spend at List × Active uplift percentage
+```
+
+VM infrastructure and the add-on itself are excluded from Product Spend at List. Workload discounts do not reduce the base. A separate negotiated add-on discount can be applied after the uplift.
+
+See [Platform Add-ons](./platform-addons) for eligibility, promotions, and Excel behavior.
+
 ## Rate lookup
 
 The estimate context identifies the cloud, region, and pricing tier. Lakemeter then resolves the applicable rate for the selected SKU from its pricing data.
@@ -112,12 +140,16 @@ Use the [Workload Sizing Guides](./workloads) for the canonical calculation beha
 
 - [Jobs Compute](./jobs-compute) — run-based compute, workers, DBUs, and VM costs
 - [Databricks SQL](./dbsql-warehouses) — warehouse size, clusters, hours, and mode
-- [FMAPI — Databricks](./fmapi-databricks) — token or provisioned quantities
-- [FMAPI — Proprietary](./fmapi-proprietary) — model, geography, context, and token quantities
+- [Foundation Models — Databricks](./fmapi-databricks) — token or provisioned quantities
+- [Foundation Models — Proprietary](./fmapi-proprietary) — model, geography, context, and token quantities
 - [Lakebase](./lakebase) — minimum and scale-up compute, nodes, storage, PITR, and snapshots
 - [Unity AI Gateway](./ai-gateway) — independent components, request or direct payload input, DBUs per GB
 - [Agent Evaluation](./agent-evaluation) — independent components, evaluation tokens and synthetic questions
 - [AI Runtime](./ai-runtime) — accelerator GPU count, GPU-hours, and the `MODEL_TRAINING` SKU
+- [Databricks Default Storage](./general-storage) — stored data and operation quantities converted to DSUs
+- [Zerobus Ingest](./zerobus) — standard or OTel ingestion volume converted to Jobs Serverless DBUs
+- [Databricks Apps](./databricks-apps) — app size, app count, and active hours
+- [Platform Add-ons](./platform-addons) — estimate-level uplift on DBU and DSU Product Spend at List
 
 ## Validate an estimate
 

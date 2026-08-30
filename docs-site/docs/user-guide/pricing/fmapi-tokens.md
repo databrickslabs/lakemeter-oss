@@ -96,7 +96,7 @@ Monthly DBUs
   × DBUs per hour
 ```
 
-Create separate FMAPI workload lines for separately billed rate types such as input tokens, output tokens, cache reads, or cache writes. The [FMAPI — Proprietary sizing guide](../fmapi-proprietary) explains how those quantities are entered in an estimate.
+Create separate FMAPI workload lines for separately billed rate types such as input tokens, output tokens, cache reads, or cache writes. The [Foundation Models — Proprietary sizing guide](../fmapi-proprietary) explains how those quantities are entered in an estimate.
 
 ## Review checklist
 
@@ -109,7 +109,7 @@ Create separate FMAPI workload lines for separately billed rate types such as in
 
 ## Related
 
-- [FMAPI — Proprietary sizing](../fmapi-proprietary)
+- [Foundation Models — Proprietary sizing](../fmapi-proprietary)
 - [SKU Explorer](./sku-explorer)
 - [Calculation Reference](../calculation-reference)
 - [Official Databricks documentation](https://docs.databricks.com/)

@@ -249,12 +249,16 @@ All calculation endpoints accept workload parameters and return cost breakdowns.
 | `POST /api/v1/calculate/dbsql-serverless` | DBSQL (Serverless) |
 | `POST /api/v1/calculate/dlt-classic` | DLT (Classic) |
 | `POST /api/v1/calculate/dlt-serverless` | DLT (Serverless) |
+| `POST /api/v1/calculate/lakeflow-connect` | Lakeflow Connect pipeline and optional gateway |
 | `POST /api/v1/calculate/model-serving` | Model Serving |
 | `POST /api/v1/calculate/fmapi-databricks` | FMAPI (Databricks-hosted) |
 | `POST /api/v1/calculate/fmapi-proprietary` | FMAPI (Proprietary) |
 | `POST /api/v1/calculate/vector-search` | AI Search (legacy route retained for compatibility) |
 | `POST /api/v1/calculate/lakebase` | Lakebase |
 | `POST /api/v1/calculate/databricks-apps` | Databricks Apps |
+| `POST /api/v1/calculate/general-storage` | Databricks Default Storage (DSU-based) |
+| `POST /api/v1/calculate/zerobus` | Standard or OTel Zerobus ingestion |
+| `POST /api/v1/calculate/platform-addon` | Estimate-level Platform Add-on uplift |
 | `POST /api/v1/calculate/ai-parse` | AI Parse (Document AI) |
 | `POST /api/v1/calculate/ai-extract` | AI Extract (raw `STRING` or parsed document input) |
 | `POST /api/v1/calculate/ai-classify` | AI Classify (raw `STRING` or parsed document input) |
@@ -302,7 +306,47 @@ All calculation endpoints accept workload parameters and return cost breakdowns.
   "region": "us-east-1",
   "tier": "PREMIUM",
   "size": "medium",
+  "num_apps": 3,
   "hours_per_month": 730
+}
+```
+
+### Example: Databricks Default Storage
+
+```json
+{
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "quantity": 1024,
+  "unit": "gb",
+  "tier_1_operations_thousands": 100,
+  "tier_2_operations_thousands": 500
+}
+```
+
+### Example: Zerobus
+
+```json
+{
+  "cloud": "AWS",
+  "region": "us-east-1",
+  "tier": "PREMIUM",
+  "mode": "otel",
+  "monthly_ingested_gb": 1000
+}
+```
+
+### Example: Platform Add-on
+
+```json
+{
+  "cloud": "AWS",
+  "tier": "ENTERPRISE",
+  "addon_type": "MISSION_CRITICAL",
+  "product_spend_at_list": 10000,
+  "pricing_date": "2026-08-30",
+  "discount_pct": 0
 }
 ```
 
@@ -491,7 +535,9 @@ PUT /api/v1/users/{user_id}
 GET /api/v1/workload-types
 ```
 
-Returns all 14 workload types with their UI configuration flags.
+Returns the workload types present in the installation's reference data with
+their UI configuration flags. The exact set depends on the installed release
+and completed data updates.
 
 ### Get Workload Type
 
@@ -804,7 +850,7 @@ Basic process health check:
 ```json
 {
   "status": "healthy",
-  "version": "0.1.2"
+  "version": "0.3.0"
 }
 ```
 
@@ -820,7 +866,7 @@ Version response:
 
 ```json
 {
-  "app_version": "0.1.2",
+  "app_version": "0.3.0",
   "upgrade_policy": {
     "patch": "code_only",
     "minor": "data_update",
@@ -834,7 +880,7 @@ System health response:
 ```json
 {
   "status": "healthy",
-  "app_version": "0.1.2",
+  "app_version": "0.3.0",
   "database": "connected"
 }
 ```

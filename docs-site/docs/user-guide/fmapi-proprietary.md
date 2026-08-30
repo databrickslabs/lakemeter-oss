@@ -2,9 +2,9 @@
 sidebar_position: 15
 ---
 
-# FMAPI — Proprietary Models Sizing
+# Foundation Models — Proprietary Sizing
 
-> **Lakemeter UI name:** FMAPI - Proprietary
+> **Lakemeter UI name:** Foundation Models (Proprietary)
 
 Use this guide to model proprietary FMAPI token consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not provider capabilities, model selection, endpoint routing, or context-window limits.
 
@@ -12,7 +12,7 @@ For current FMAPI capabilities and availability, start from the [official Databr
 
 ## What Lakemeter estimates
 
-Each FMAPI - Proprietary workload represents one selected provider, model, endpoint type, context length, rate type, and monthly token quantity.
+Each Foundation Models (Proprietary) workload represents one selected provider, model, endpoint type, context length, rate type, and monthly token quantity.
 
 Each rate type is a separate line item. Add one workload entry for every usage category that applies, such as input, output, cache read, or cache write when those choices are available for the selected configuration.
 
@@ -98,7 +98,7 @@ Use [FMAPI Token Pricing](./pricing/fmapi-tokens) to inspect the loaded rate com
 
 ## Excel export
 
-Each FMAPI - Proprietary workload emits one row. The row includes the model, rate type, token quantity in millions, DBU per million tokens, monthly DBUs, provider-specific SKU rate, and list and discounted DBU costs. The selected endpoint type and context length participate in the rate lookup but are not repeated as dedicated export columns.
+Each Foundation Models (Proprietary) workload emits one row. The row includes the model, rate type, token quantity in millions, DBU per million tokens, monthly DBUs, provider-specific SKU rate, and list and discounted DBU costs. The selected endpoint type and context length participate in the rate lookup but are not repeated as dedicated export columns.
 
 The export formula is:
 

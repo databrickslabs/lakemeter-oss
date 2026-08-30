@@ -18,9 +18,15 @@ Select the app size that represents the workload. The selected size determines t
 
 Use the options shown in Lakemeter rather than copying an option inventory or conversion values from this guide. Confirm the appropriate size using current Databricks guidance and your own workload testing.
 
+### Number of Apps
+
+Enter the number of identically sized apps that use the same monthly schedule. Each app is billed independently, so this value multiplies the DBU consumption.
+
+Create separate workload entries when apps use different sizes or operating schedules.
+
 ### Hours Per Month
 
-Enter the expected billed uptime for one app for one month.
+Enter the expected billed uptime per app for one month.
 
 For a schedule-based estimate:
 
@@ -30,13 +36,15 @@ Hours per month
   × Active days per month
 ```
 
-A workload entry models one app. Create a separate workload entry for each additional app, including apps that share the same size or schedule.
-
 ## Expected monthly quantity
 
-The monthly quantity is **app-hours for one app**. Base it on the expected operating schedule rather than request count or user count.
+The monthly quantity is aggregate app-hours. Base it on the expected operating schedule rather than request count or user count.
 
-Include every period that should be represented as billed uptime. Estimate each app separately so its size and schedule remain reviewable.
+```text
+Aggregate app-hours = Number of apps × Hours per app
+```
+
+Include every period that should be represented as billed uptime. Group apps only when their size and schedule are the same.
 
 ## How Lakemeter calculates cost
 
@@ -44,7 +52,8 @@ Lakemeter resolves the DBU-per-hour conversion for the selected app size and the
 
 ```text
 Monthly DBUs
-  = App hours per month
+  = Number of apps
+  × App hours per month
   × DBU per app-hour for the selected size
 
 Monthly cost
@@ -59,15 +68,15 @@ This Lakemeter workload model does not add a separate VM infrastructure charge.
 ## What to review before saving
 
 - Does the selected app size match the option intended for the workload?
+- Does the app count include every identically configured app?
 - Do monthly hours represent billed uptime rather than only periods of user activity?
-- Does this workload entry represent only one app?
-- Are additional apps and environments modeled as separate workload entries?
+- Are apps with different sizes or schedules modeled as separate workload entries?
 - Does the estimate use the intended cloud, region, and pricing tier?
 - Do the conversion and DBU price shown in Lakemeter match the current pricing source?
 
 ## Excel export
 
-Each Databricks Apps workload is exported as one row for one app. The row includes the selected size, monthly hours, DBU conversion, monthly DBUs, applicable DBU rates, and calculated list and discounted costs.
+Each Databricks Apps workload is exported as one row. The configuration includes the selected size and app count. The row's DBU-per-hour value is the aggregate rate across all apps and is multiplied by monthly hours to calculate monthly DBUs.
 
 Use the exported configuration and hours to trace the cost back to the workload assumptions. The VM cost fields remain zero because this Lakemeter workload model calculates the entry from DBU consumption only.
 

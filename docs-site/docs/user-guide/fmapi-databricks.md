@@ -2,9 +2,9 @@
 sidebar_position: 13
 ---
 
-# FMAPI — Databricks Models Sizing
+# Foundation Models — Databricks Sizing
 
-> **Lakemeter UI name:** FMAPI - Databricks
+> **Lakemeter UI name:** Foundation Models (Databricks)
 
 Use this guide to model Databricks-hosted FMAPI consumption in Lakemeter. It explains the estimator inputs and calculation behavior, not model capabilities, model selection, or serving architecture.
 
@@ -12,7 +12,7 @@ For current FMAPI capabilities and availability, start from the [official Databr
 
 ## What Lakemeter estimates
 
-Each FMAPI - Databricks workload represents one model and one rate type. Lakemeter supports two calculation units:
+Each Foundation Models (Databricks) workload represents one model and one rate type. Lakemeter supports two calculation units:
 
 - Millions of tokens per month for token-based rate types
 - Hours per month for provisioned rate types
@@ -91,7 +91,7 @@ Lakemeter resolves the usage conversion and DBU price for the selected model, ra
 
 ## Excel export
 
-Each FMAPI - Databricks workload emits one row.
+Each Foundation Models (Databricks) workload emits one row.
 
 For token-based rows, the export records the model, rate type, token quantity in millions, DBU per million tokens, monthly DBUs, and DBU cost. For provisioned rows, it records hours, DBU per hour, monthly DBUs, and DBU cost instead.
 
