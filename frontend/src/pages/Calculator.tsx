@@ -70,6 +70,7 @@ import {
   calculateAISearchRerankerUsage,
   calculateAIGatewayUsage,
   calculateGeneralStorageDSU,
+  calculateHoursPerMonth,
   calculateModelServingDBUPerHour,
   calculateZerobusUsage,
   getAISearchStorageDSUPerGB,
@@ -930,7 +931,7 @@ function AISearchCostFormula({
   const mode = item.vector_search_mode || 'standard'
   const divisor = mode === 'storage_optimized' ? 64 : 2
   const unitsUsed = Math.ceil(capacity / divisor)
-  const hoursPerMonth = item.hours_per_month || 730
+  const hoursPerMonth = calculateHoursPerMonth(item)
   const dbuPerUnit = unitsUsed > 0
     ? (costs.dbuPerHour || (mode === 'storage_optimized' ? 18.29 : 4)) / unitsUsed
     : 0
@@ -1405,16 +1406,7 @@ export default function Calculator() {
     // Step 1: Calculate hours per month
     // Formula: runs_per_day * (avg_runtime_minutes / 60) * days_per_month
     // ========================================
-    let hoursPerMonth = 0
-    if (effectiveItem.workload_type !== 'FMAPI_DATABRICKS' && effectiveItem.workload_type !== 'FMAPI_PROPRIETARY') {
-      if (effectiveItem.hours_per_month) {
-        // Direct hours input
-        hoursPerMonth = effectiveItem.hours_per_month
-      } else if (effectiveItem.runs_per_day && effectiveItem.avg_runtime_minutes) {
-        // Calculate from runs: runs_per_day * (avg_runtime_minutes / 60) * days_per_month
-        hoursPerMonth = (effectiveItem.runs_per_day * (effectiveItem.avg_runtime_minutes / 60)) * (effectiveItem.days_per_month || 30)
-      }
-    }
+    const hoursPerMonth = calculateHoursPerMonth(effectiveItem)
     
     // ========================================
     // Step 2: Determine product_type_for_pricing (SKU)
@@ -3885,16 +3877,14 @@ export default function Calculator() {
                                 <div className="mt-2">
                                 {(() => {
                                   // Determine if using run-based or direct hours
-                                  const isRunBased = effectiveItem.runs_per_day && effectiveItem.avg_runtime_minutes && !effectiveItem.hours_per_month
+                                  const isRunBased = Boolean(
+                                    effectiveItem.runs_per_day
+                                    && effectiveItem.avg_runtime_minutes,
+                                  )
                                   const runsPerDay = effectiveItem.runs_per_day || 0
                                   const avgRuntimeMin = effectiveItem.avg_runtime_minutes || 30
-                                  const daysPerMonth = effectiveItem.days_per_month || 30
-                                  const directHours = effectiveItem.hours_per_month || 730
-                                  
-                                  // Calculate hours - prefer run-based calculation when available
-                                  const hoursPerMonth = isRunBased 
-                                    ? runsPerDay * (avgRuntimeMin / 60) * daysPerMonth
-                                    : directHours
+                                  const daysPerMonth = effectiveItem.days_per_month || 22
+                                  const hoursPerMonth = calculateHoursPerMonth(effectiveItem)
                                   
                                   const dbuPrice = costs.dbuPrice || 0
                                   const dbuPriceDisplay = formatDbuPrice(wType, dbuPrice)

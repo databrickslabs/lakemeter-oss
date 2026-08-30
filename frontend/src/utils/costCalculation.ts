@@ -37,6 +37,35 @@ export const ZEROBUS_DBU_PER_GB = {
   otel: 0.222,
 } as const
 
+export const ALWAYS_ON_WORKLOAD_TYPES = new Set([
+  'VECTOR_SEARCH',
+  'MODEL_SERVING',
+  'LAKEBASE',
+  'DATABRICKS_APPS',
+  'LAKEFLOW_CONNECT',
+])
+
+export function calculateHoursPerMonth(item: Partial<LineItem>): number {
+  const workloadType = (item.workload_type || '').toUpperCase()
+  if (
+    workloadType === 'FMAPI_DATABRICKS'
+    || workloadType === 'FMAPI_PROPRIETARY'
+  ) {
+    return 0
+  }
+  if (item.runs_per_day && item.avg_runtime_minutes) {
+    return (
+      item.runs_per_day
+      * (item.avg_runtime_minutes / 60)
+      * (item.days_per_month || 22)
+    )
+  }
+  if (item.hours_per_month != null) {
+    return item.hours_per_month
+  }
+  return ALWAYS_ON_WORKLOAD_TYPES.has(workloadType) ? 730 : 0
+}
+
 export function getGeneralStorageGB(item: Partial<LineItem>): number {
   const quantity = item.general_storage_quantity ?? 0
   return (item.general_storage_unit ?? 'gb') === 'tb'
@@ -374,16 +403,7 @@ export function calculateWorkloadCost(
   // ========================================
   // Step 1: Calculate hours per month
   // ========================================
-  let hoursPerMonth = 0
-  if (item.workload_type !== 'FMAPI_DATABRICKS' && item.workload_type !== 'FMAPI_PROPRIETARY') {
-    // Priority: run-based fields take precedence over hours_per_month
-    // This prevents hours_per_month=730 default from overriding run-based config
-    if (item.runs_per_day && item.avg_runtime_minutes) {
-      hoursPerMonth = (item.runs_per_day * (item.avg_runtime_minutes / 60)) * (item.days_per_month || 22)
-    } else if (item.hours_per_month) {
-      hoursPerMonth = item.hours_per_month
-    }
-  }
+  const hoursPerMonth = calculateHoursPerMonth(item)
   
   // ========================================
   // Step 2: Determine product_type_for_pricing (SKU)

@@ -29,6 +29,7 @@ import type {
   FMAPIDatabricksModel,
   FMAPIProprietaryModel
 } from '../api/client'
+import { calculateHoursPerMonth } from '../utils/costCalculation'
 import { 
   loadPricingBundle, 
   createEmptyBundle,
@@ -1485,7 +1486,7 @@ export const useStore = create<Store>((set, get) => ({
             storage_gb: lineItem.vector_search_storage_gb || 0,
             reranker_enabled: lineItem.ai_search_reranker_enabled || false,
             reranker_requests_thousands: lineItem.ai_search_reranker_requests_thousands || 0,
-            hours_per_month: lineItem.hours_per_month || 730
+            hours_per_month: calculateHoursPerMonth(lineItem)
           })
           break
           
@@ -1495,7 +1496,7 @@ export const useStore = create<Store>((set, get) => ({
             gpu_type: lineItem.model_serving_gpu_type || 'cpu',
             scale_out: lineItem.model_serving_scale_out || 'small',
             ...(lineItem.model_serving_scale_out === 'custom' ? { custom_concurrency: lineItem.model_serving_concurrency || 4 } : {}),
-            hours_per_month: lineItem.hours_per_month || 730
+            hours_per_month: calculateHoursPerMonth(lineItem)
           })
           break
           
@@ -1533,7 +1534,7 @@ export const useStore = create<Store>((set, get) => ({
             scale_up_hours_per_month: lakebaseConfig.lakebase_scale_up_hours_per_month ?? 0,
             always_on_discount_pct: lakebaseConfig.lakebase_always_on_discount_pct ?? 25,
             num_nodes: lineItem.lakebase_ha_nodes || 1,
-            hours_per_month: lineItem.hours_per_month || 730,
+            hours_per_month: calculateHoursPerMonth(lineItem),
             storage_gb: lineItem.lakebase_storage_gb || 0,
             pitr_gb: lineItem.lakebase_pitr_gb || 0,
             snapshot_gb: lineItem.lakebase_snapshot_gb || 0,
@@ -1544,7 +1545,7 @@ export const useStore = create<Store>((set, get) => ({
           result = await api.calculateDatabricksApps({
             ...baseParams,
             size: lineItem.databricks_apps_size || 'medium',
-            hours_per_month: lineItem.hours_per_month || 730,
+            hours_per_month: calculateHoursPerMonth(lineItem),
           })
           break
 

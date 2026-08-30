@@ -7,13 +7,22 @@ import math
 
 
 def fe_hours_per_month(*, runs_per_day=None, avg_runtime_minutes=None,
-                       days_per_month=None, hours_per_month=None):
+                       days_per_month=None, hours_per_month=None,
+                       workload_type=""):
     """Frontend hours-per-month calculation (matches costCalculation.ts)."""
     if runs_per_day and avg_runtime_minutes:
         days = days_per_month or 22
         return (float(runs_per_day) * float(avg_runtime_minutes) / 60) * float(days)
-    if hours_per_month:
+    if hours_per_month is not None:
         return float(hours_per_month)
+    if workload_type.upper() in {
+        "VECTOR_SEARCH",
+        "MODEL_SERVING",
+        "LAKEBASE",
+        "DATABRICKS_APPS",
+        "LAKEFLOW_CONNECT",
+    }:
+        return 730
     return 0
 
 
