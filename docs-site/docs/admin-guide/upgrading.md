@@ -234,6 +234,19 @@ Expected response:
 }
 ```
 
+Rollback restores the previous application source and installation metadata
+and leaves the original production branch unchanged. To return to the newer
+release, keep its clean checkout and run the supported upgrade flow again:
+
+```bash
+./scripts/upgrade.sh plan --profile <profile>
+./scripts/upgrade.sh doctor --profile <profile>
+./scripts/upgrade.sh apply --profile <profile>
+```
+
+The upgrader creates a new recovery point from the active rollback branch and
+applies the updates required by the restored installation version.
+
 ## Troubleshooting
 
 ### Repository has uncommitted changes

@@ -68,7 +68,7 @@ reviewed and edited by hand.
 
 6. Run the release-candidate workflow against `main`. Set `publish_tag=true`
    only when the workflow should create the final tag after all installation,
-   upgrade, end-to-end, and rollback gates pass:
+   upgrade, end-to-end, rollback, and re-upgrade gates pass:
 
    ```bash
    gh workflow run release-candidate.yml \

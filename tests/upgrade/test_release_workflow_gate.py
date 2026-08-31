@@ -24,9 +24,21 @@ def test_candidate_runs_cross_version_integration_before_tagging():
     artifact_position = CANDIDATE_WORKFLOW.index(
         "Upload tested release assets"
     )
+    rollback_position = CANDIDATE_WORKFLOW.index(
+        "Verify manual rollback"
+    )
+    reupgrade_position = CANDIDATE_WORKFLOW.index(
+        "Verify upgrade after rollback"
+    )
     tag_position = CANDIDATE_WORKFLOW.index(
         "Create immutable release tag"
     )
+    reupgrade_block = CANDIDATE_WORKFLOW[
+        reupgrade_position:artifact_position
+    ]
+    assert "./scripts/upgrade.sh apply" in reupgrade_block
+    assert "scripts/release_integration.py verify" in reupgrade_block
+    assert rollback_position < reupgrade_position < artifact_position
     assert artifact_position < tag_position
 
 
