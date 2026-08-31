@@ -227,4 +227,4 @@ def test_frontend_only_falls_back_for_selected_instances():
         "let workerDBURate = effectiveItem.worker_node_type ? 0.5 : 0"
         in calculator_source
     )
-    assert calculator_source.count("Single node — driver only") == 2
+    assert calculator_source.count("Single node — driver only") == 3

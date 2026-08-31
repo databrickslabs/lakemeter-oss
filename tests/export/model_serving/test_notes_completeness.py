@@ -78,11 +78,12 @@ class TestExpectedEmptyNotes:
         notes = ws.cell(row=row, column=COL_NOTES).value
         assert notes is None or notes == ''
 
-    def test_all_purpose_has_no_notes_when_no_user_input(self, ws):
+    def test_all_purpose_reports_vm_pricing_fallback(self, ws):
         row = find_row_by_name(ws, 'All-Purpose Classic Photon')
         assert row is not None
         notes = ws.cell(row=row, column=COL_NOTES).value
-        assert notes is None or notes == ''
+        assert notes is not None
+        assert 'fallback' in notes.lower()
 
 
 class TestNotesOverallIntegrity:

@@ -50,14 +50,6 @@ def _database_backup_blockers(plan: UpgradePlan) -> list[str]:
             installation.database_host_secret_scope
             and installation.database_host_secret_key
         ),
-        "Lakebase branch secret binding": (
-            installation.lakebase_branch_secret_scope
-            and installation.lakebase_branch_secret_key
-        ),
-        "Lakebase endpoint secret binding": (
-            installation.lakebase_endpoint_secret_scope
-            and installation.lakebase_endpoint_secret_key
-        ),
     }
     return [name for name, value in required.items() if not value]
 
@@ -298,6 +290,16 @@ def apply_upgrade(
                 upload_summary=upload_summary,
             )
 
+        if app_was_stopped or state.get("app_stopped"):
+            set_app_running(
+                workspace_client,
+                installation.app_name,
+                running=True,
+            )
+            app_was_stopped = False
+            state["app_stopped"] = False
+            store.save_run(state)
+
         if "app_deployed" not in state.get("completed_phases", []):
             deployment_id = deploy_app(
                 workspace_client,
@@ -311,10 +313,6 @@ def apply_upgrade(
             )
         else:
             deployment_id = str(state.get("deployment_id", ""))
-
-        if app_was_stopped or state.get("app_stopped"):
-            set_app_running(workspace_client, installation.app_name, running=True)
-            app_was_stopped = False
 
         verification = verify_app(
             workspace_client,
@@ -354,6 +352,19 @@ def apply_upgrade(
                 rollback_errors.append(f"database: {rollback_exc}")
                 recovery_succeeded = False
 
+        if app_was_stopped or state.get("app_stopped"):
+            try:
+                set_app_running(
+                    workspace_client,
+                    installation.app_name,
+                    running=True,
+                )
+                app_was_stopped = False
+                state["app_stopped"] = False
+            except Exception as rollback_exc:
+                rollback_errors.append(f"app start: {rollback_exc}")
+                recovery_succeeded = False
+
         previous_source = state.get("previous_source_path")
         if previous_source:
             try:
@@ -364,17 +375,6 @@ def apply_upgrade(
                 )
             except Exception as rollback_exc:
                 rollback_errors.append(f"application: {rollback_exc}")
-                recovery_succeeded = False
-
-        if app_was_stopped or state.get("app_stopped"):
-            try:
-                set_app_running(
-                    workspace_client,
-                    installation.app_name,
-                    running=True,
-                )
-            except Exception as rollback_exc:
-                rollback_errors.append(f"app start: {rollback_exc}")
                 recovery_succeeded = False
 
         if recovery_succeeded:
@@ -423,12 +423,12 @@ def rollback_upgrade(
         backup = _backup_from_state(state.get("database_backup"))
         if backup:
             point_app_to_backup(workspace_client, installation, backup)
+        set_app_running(workspace_client, app_name, running=True)
         deployment_id = deploy_app(
             workspace_client,
             app_name,
             str(previous_source),
         )
-        set_app_running(workspace_client, app_name, running=True)
         state["status"] = "rolled_back"
         state["rollback_deployment_id"] = deployment_id
         _restore_installation_metadata(store, state)

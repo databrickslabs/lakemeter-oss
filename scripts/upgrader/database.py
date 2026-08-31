@@ -320,7 +320,12 @@ def execute_sql_actions(
                 )
             continue
 
-        connection.autocommit = not action.transactional
+        if action.transactional:
+            if connection.autocommit:
+                connection.autocommit = False
+        elif not connection.autocommit:
+            connection.commit()
+            connection.autocommit = True
         try:
             with connection.cursor() as cursor:
                 cursor.execute(sql)
@@ -340,7 +345,8 @@ def execute_sql_actions(
                 connection.rollback()
             raise
         finally:
-            connection.autocommit = False
+            if connection.autocommit:
+                connection.autocommit = False
         executed.append(action.action_id)
 
     return executed
@@ -371,15 +377,14 @@ def point_app_to_backup(
             backup.host,
         )
     ]
-    if installation.lakebase_endpoint:
-        if (
-            not backup.endpoint_name
-            or not installation.lakebase_endpoint_secret_scope
-            or not installation.lakebase_endpoint_secret_key
-        ):
+    if (
+        installation.lakebase_endpoint_secret_scope
+        and installation.lakebase_endpoint_secret_key
+    ):
+        if not backup.endpoint_name:
             raise DatabaseUpgradeError(
-                "Cannot rollback database connection: the endpoint secret "
-                "binding or backup endpoint is missing."
+                "Cannot rollback database connection: the backup endpoint is "
+                "missing."
             )
         secret_updates.append(
             (
@@ -388,15 +393,10 @@ def point_app_to_backup(
                 backup.endpoint_name,
             )
         )
-    if installation.lakebase_branch:
-        if (
-            not installation.lakebase_branch_secret_scope
-            or not installation.lakebase_branch_secret_key
-        ):
-            raise DatabaseUpgradeError(
-                "Cannot rollback database connection: the branch secret binding "
-                "is missing."
-            )
+    if (
+        installation.lakebase_branch_secret_scope
+        and installation.lakebase_branch_secret_key
+    ):
         secret_updates.append(
             (
                 installation.lakebase_branch_secret_scope,

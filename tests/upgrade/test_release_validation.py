@@ -28,7 +28,7 @@ def release(version, operation):
 
 
 def test_repository_version_sources_are_aligned():
-    assert validate_version_alignment() == "0.3.0"
+    assert validate_version_alignment() == "0.2.0"
 
 
 def test_patch_rejects_database_data_file():
@@ -45,7 +45,32 @@ def test_minor_rejects_schema_definition_change():
         validate_changed_paths(
             SemVer.parse("0.1.0"),
             release("0.2.0", "data_update"),
-            ["backend/app/models/line_item.py"],
+            ["scripts/upgrades/migrations/001-add-column.sql"],
+        )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "backend/app/models/estimate.py",
+        "etl/lakebase_setup/setup/01_Create_Tables.py",
+        "etl/lakebase_setup/release_2/00_Add_Missing_API_Columns.sql",
+    ],
+)
+def test_minor_allows_install_schema_alignment(path):
+    validate_changed_paths(
+        SemVer.parse("0.1.0"),
+        release("0.2.0", "data_update"),
+        [path],
+    )
+
+
+def test_patch_still_rejects_install_schema_alignment():
+    with pytest.raises(UpgradePolicyError, match="Patch releases"):
+        validate_changed_paths(
+            SemVer.parse("0.1.0"),
+            release("0.1.1", "code_only"),
+            ["backend/app/models/estimate.py"],
         )
 
 

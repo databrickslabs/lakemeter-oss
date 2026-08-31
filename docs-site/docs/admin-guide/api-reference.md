@@ -850,7 +850,7 @@ Basic process health check:
 ```json
 {
   "status": "healthy",
-  "version": "0.3.0"
+  "version": "0.2.0"
 }
 ```
 
@@ -866,7 +866,7 @@ Version response:
 
 ```json
 {
-  "app_version": "0.3.0",
+  "app_version": "0.2.0",
   "upgrade_policy": {
     "patch": "code_only",
     "minor": "data_update",
@@ -880,7 +880,7 @@ System health response:
 ```json
 {
   "status": "healthy",
-  "app_version": "0.3.0",
+  "app_version": "0.2.0",
   "database": "connected"
 }
 ```

@@ -23,9 +23,11 @@ from upgrader.models import (  # noqa: E402
 )
 
 
-SCHEMA_PATH_PREFIXES = (
-    "backend/app/models/",
+UPGRADE_SCHEMA_PATH_PREFIXES = (
     "scripts/upgrades/migrations/",
+)
+INSTALL_SCHEMA_PATH_PREFIXES = (
+    "backend/app/models/",
     "etl/lakebase_setup/setup/",
     "etl/lakebase_setup/release_",
 )
@@ -94,15 +96,22 @@ def validate_changed_paths(
     paths: list[str],
 ) -> None:
     kind = validate_release_policy(previous_version, manifest)
-    schema_changes = [
+    upgrade_schema_changes = [
         path
         for path in paths
-        if path.startswith(SCHEMA_PATH_PREFIXES)
+        if path.startswith(UPGRADE_SCHEMA_PATH_PREFIXES)
+    ]
+    install_schema_changes = [
+        path
+        for path in paths
+        if path.startswith(INSTALL_SCHEMA_PATH_PREFIXES)
         or (
             path.endswith(".sql")
             and not path.startswith("scripts/upgrades/data_updates/")
+            and not path.startswith(UPGRADE_SCHEMA_PATH_PREFIXES)
         )
     ]
+    schema_changes = upgrade_schema_changes + install_schema_changes
     data_changes = [
         path for path in paths if path.startswith(DATA_PATH_PREFIXES)
     ]
@@ -112,10 +121,10 @@ def validate_changed_paths(
             "Patch releases cannot change database schema or data files: "
             + ", ".join(schema_changes + data_changes)
         )
-    if kind == "minor" and schema_changes:
+    if kind == "minor" and upgrade_schema_changes:
         raise UpgradePolicyError(
             "Minor releases cannot change database schema files: "
-            + ", ".join(schema_changes)
+            + ", ".join(upgrade_schema_changes)
         )
     if manifest.operation == "code_only" and (
         manifest.changes_database or data_changes

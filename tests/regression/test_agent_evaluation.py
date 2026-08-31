@@ -842,7 +842,7 @@ class TestReleaseWiring:
                 encoding="utf-8"
             )
         )
-        assert manifest["version"] == "0.3.0"
+        assert manifest["version"] == "0.2.0"
         action = next(
             item
             for item in manifest["data_updates"]

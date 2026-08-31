@@ -1,7 +1,7 @@
 """Integration validation: SP OAuth flow and app health.
 
-Tests are skip-guarded — they only run when the Databricks host is reachable.
-This mirrors the guard pattern in test_lakebase_permissions.py.
+Tests are opt-in and require explicit connection settings for a disposable
+release-test installation.
 """
 import os
 import socket
@@ -14,26 +14,35 @@ BACKEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "backend")
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
-# Set required env vars before importing app modules
-_ENV_DEFAULTS = {
-    "DATABRICKS_HOST": "https://fe-vm-lakemeter.cloud.databricks.com",
-    "DATABRICKS_CONFIG_PROFILE": "lakemeter",
-    "DATABRICKS_SECRETS_SCOPE": "lakemeter-secrets",
-    "SP_CLIENT_ID_KEY": "sp_clientid",
-    "SP_SECRET_KEY": "sp_secret",
-    "LAKEBASE_PROJECT": "projects/lakemeter-customer",
-    "LAKEBASE_BRANCH": "projects/lakemeter-customer/branches/production",
-    "LAKEBASE_ENDPOINT": (
-        "projects/lakemeter-customer/branches/production/endpoints/primary"
-    ),
-    "DB_HOST": "ep-snowy-credit-d1wrian5.database.us-west-2.cloud.databricks.com",
-    "DB_USER": "0a1a2461-5013-4110-94ff-f7157e7b8b8e",
-    "DB_NAME": "lakemeter_pricing",
-    "DB_PORT": "5432",
-    "DB_SSLMODE": "require",
+_REQUIRED_ENV = (
+    "DATABRICKS_HOST",
+    "DATABRICKS_CONFIG_PROFILE",
+    "LAKEBASE_PROJECT",
+    "LAKEBASE_BRANCH",
+    "LAKEBASE_ENDPOINT",
+    "DB_HOST",
+    "DB_USER",
+    "DB_NAME",
+)
+
+EXPECTED_WORKLOAD_TYPES = {
+    "AGENT_EVALUATION",
+    "AI_CLASSIFY",
+    "AI_EXTRACT",
+    "AI_GATEWAY",
+    "AI_RUNTIME",
+    "ALL_PURPOSE",
+    "DBSQL",
+    "DLT",
+    "FMAPI_DATABRICKS",
+    "FMAPI_PROPRIETARY",
+    "GENERAL_STORAGE",
+    "JOBS",
+    "LAKEBASE",
+    "MODEL_SERVING",
+    "VECTOR_SEARCH",
+    "ZEROBUS",
 }
-for key, default in _ENV_DEFAULTS.items():
-    os.environ.setdefault(key, default)
 
 
 def _host_reachable() -> bool:
@@ -48,10 +57,16 @@ def _host_reachable() -> bool:
         return False
 
 
-_REACHABLE = _host_reachable()
+_LIVE_ENABLED = os.environ.get("LAKEMETER_RUN_LIVE_INTEGRATION") == "1"
+_CONFIGURED = all(os.environ.get(key) for key in _REQUIRED_ENV)
+_REACHABLE = _LIVE_ENABLED and _CONFIGURED and _host_reachable()
 
 pytestmark = pytest.mark.skipif(
-    not _REACHABLE, reason="Databricks host unreachable — skipping live integration tests"
+    not _REACHABLE,
+    reason=(
+        "Set LAKEMETER_RUN_LIVE_INTEGRATION=1 and explicit connection "
+        "settings to run live integration tests"
+    ),
 )
 
 
@@ -144,7 +159,9 @@ class TestPricingDataAccess:
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM lakemeter.ref_workload_types")
         count = cur.fetchone()[0]
-        assert count == 9, f"Expected 9 workload types, got {count}"
+        assert count == len(EXPECTED_WORKLOAD_TYPES), (
+            f"Expected {len(EXPECTED_WORKLOAD_TYPES)} workload types, got {count}"
+        )
         cur.close()
         conn.close()
 
@@ -158,13 +175,10 @@ class TestPricingDataAccess:
         cur.execute(
             "SELECT workload_type FROM lakemeter.ref_workload_types ORDER BY workload_type"
         )
-        types = sorted([row[0] for row in cur.fetchall()])
-        expected = sorted([
-            "ALL_PURPOSE", "DBSQL", "DLT", "FMAPI_DATABRICKS",
-            "FMAPI_PROPRIETARY", "JOBS", "LAKEBASE",
-            "MODEL_SERVING", "VECTOR_SEARCH",
-        ])
-        assert types == expected, f"Workload types mismatch: {types}"
+        types = {row[0] for row in cur.fetchall()}
+        assert types == EXPECTED_WORKLOAD_TYPES, (
+            f"Workload types mismatch: {sorted(types)}"
+        )
         cur.close()
         conn.close()
 

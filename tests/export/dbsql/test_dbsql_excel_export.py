@@ -16,6 +16,11 @@ sys.path.insert(0, BACKEND_DIR)
 
 import openpyxl
 from app.routes.export.excel_builder import build_estimate_excel
+from tests.export.cross_workload.excel_helpers import (
+    COL_DRIVER_VM_HR,
+    COL_TOTAL_L,
+    COL_TOTAL_VM,
+)
 from tests.export.dbsql.conftest import make_line_item
 
 
@@ -87,12 +92,12 @@ class TestDBSQLExcelFormulas:
             f"Col 20 should be formula, got: {cell.value}"
 
     def test_total_cost_is_formula(self):
-        """Col 27 (Total Cost List) should be a formula."""
+        """Total Cost List should be a formula."""
         sheet = self.wb.active
         rows = _find_data_rows(sheet, 'SERVERLESS_SQL')
-        cell = rows[0][27]
+        cell = rows[0][COL_TOTAL_L - 1]
         assert isinstance(cell.value, str) and cell.value.startswith('='), \
-            f"Col 27 should be formula, got: {cell.value}"
+            f"Total Cost List should be formula, got: {cell.value}"
 
 
 class TestDBSQLExcelServerlessModeColumn:
@@ -123,7 +128,7 @@ class TestDBSQLExcelServerlessModeColumn:
         row = rows[0]
         for c in range(6, 11):
             assert row[c].value == '-', f"Col {c} should be '-', got {row[c].value}"
-        for c in range(22, 27):
+        for c in range(COL_DRIVER_VM_HR - 1, COL_TOTAL_VM):
             val = row[c].value
             assert val == 0 or val is None, f"Col {c} should be 0, got {val}"
 
