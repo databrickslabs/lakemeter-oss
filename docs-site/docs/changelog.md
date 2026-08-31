@@ -21,43 +21,83 @@ Data and application release expanding workload coverage, DSU accounting, estima
 ### New workload coverage
 
 - Added AI Extract and AI Classify quantity-based estimates
+  ([PR #23](https://github.com/databrickslabs/lakemeter-oss/pull/23))
 - Added Unity AI Gateway inference-table and usage-tracking estimates
+  ([PR #28](https://github.com/databrickslabs/lakemeter-oss/pull/28))
 - Added Agent Evaluation labels, token, and synthetic-question estimates
+  ([PR #29](https://github.com/databrickslabs/lakemeter-oss/pull/29))
 - Added AI Runtime serverless GPU training for AWS and Azure
-- Added General Storage (Databricks Default Storage) with stored-data and Tier 1 and Tier 2 operation DSUs
+  ([PR #32](https://github.com/databrickslabs/lakemeter-oss/pull/32))
+- Added General Storage (Databricks Default Storage) with stored-data and
+  Tier 1 and Tier 2 operation DSUs
+  ([PR #45](https://github.com/databrickslabs/lakemeter-oss/pull/45))
 - Added standard and OpenTelemetry Zerobus ingestion using Jobs Serverless DBUs
+  ([PR #57](https://github.com/databrickslabs/lakemeter-oss/pull/57))
 - Refreshed Databricks and proprietary Foundation Model API catalogs
+  ([PR #43](https://github.com/databrickslabs/lakemeter-oss/pull/43))
 
 ### Platform and export enhancements
 
-- Added Enhanced Security and Compliance and Mission Critical Platform Add-ons, calculated from DBU and DSU Product Spend at List
+- Added Enhanced Security and Compliance and Mission Critical Platform Add-ons,
+  calculated from DBU and DSU Product Spend at List
+  ([PR #57](https://github.com/databrickslabs/lakemeter-oss/pull/57))
 - Added first-class DSU totals and regional `DATABRICKS_STORAGE` pricing
-- Expanded Excel exports to 34 columns with DSU costs, a pre-add-on workload summary, a Platform Add-on section, and a final estimate summary
-- Added AI Search reranker pricing and aligned AI Search and Lakebase storage with DSU-based calculations
-- Grouped region selectors into geographic areas while preserving each cloud provider's region codes
-- Fixed quantity-based Excel formulas so recalculated workbooks retain the correct totals
+  ([PR #45](https://github.com/databrickslabs/lakemeter-oss/pull/45))
+- Expanded Excel exports to 34 columns with DSU costs, a pre-add-on workload
+  summary, a Platform Add-on section, and a final estimate summary
+  ([PR #45](https://github.com/databrickslabs/lakemeter-oss/pull/45),
+  [PR #57](https://github.com/databrickslabs/lakemeter-oss/pull/57))
+- Added AI Search reranker pricing and aligned AI Search and Lakebase storage
+  with DSU-based calculations
+  ([PR #31](https://github.com/databrickslabs/lakemeter-oss/pull/31))
+- Grouped region selectors into geographic areas while preserving each cloud
+  provider's region codes
+  ([PR #61](https://github.com/databrickslabs/lakemeter-oss/pull/61))
+- Fixed quantity-based Excel formulas so recalculated workbooks retain the
+  correct totals
+  ([PR #25](https://github.com/databrickslabs/lakemeter-oss/pull/25))
 
 ### Calculation fixes
 
 - Fixed single-node cluster pricing so only the driver VM is charged
-- Fixed Model Serving GPU estimates so replica counts multiply both DBUs and VM costs
+  ([PR #38](https://github.com/databrickslabs/lakemeter-oss/pull/38))
+- Fixed Model Serving GPU estimates so replica counts multiply both DBUs and
+  VM costs
+  ([PR #37](https://github.com/databrickslabs/lakemeter-oss/pull/37))
 - Fixed All-Purpose Serverless rate parity
-- Fixed saved always-on workloads so the UI, calculation APIs, and Excel consistently resolve missing usage to 730 hours
-- Fixed Databricks Apps counts so multiple apps multiply DBUs and cost across the API, UI, and Excel
+  ([PR #42](https://github.com/databrickslabs/lakemeter-oss/pull/42))
+- Fixed saved always-on workloads so the UI, calculation APIs, and Excel
+  consistently resolve missing usage to 730 hours
+  ([PR #58](https://github.com/databrickslabs/lakemeter-oss/pull/58))
+- Fixed Databricks Apps counts so multiple apps multiply DBUs and cost across
+  the API, UI, and Excel
+  ([PR #59](https://github.com/databrickslabs/lakemeter-oss/pull/59))
 - Preserved explicit zero hours and run-based usage precedence
+  ([PR #58](https://github.com/databrickslabs/lakemeter-oss/pull/58))
 
 ### Security and release reliability
 
-- Updated frontend and documentation dependencies to patched versions where compatible fixes are available
-- Hardened data upgrades for open PostgreSQL transactions, legacy Lakebase installations, stopped apps, and overlapping Databricks Apps deployments
-- Extended the release gate to verify a fresh installation, upgrade, manual rollback, and a second upgrade of the rolled-back installation
+- Updated frontend and documentation dependencies to patched versions where
+  compatible fixes are available
+  ([PR #62](https://github.com/databrickslabs/lakemeter-oss/pull/62))
+- Hardened data upgrades for open PostgreSQL transactions, legacy Lakebase
+  installations, stopped apps, and overlapping Databricks Apps deployments
+  ([PR #62](https://github.com/databrickslabs/lakemeter-oss/pull/62))
+- Extended the release gate to verify a fresh installation, upgrade, manual
+  rollback, and a second upgrade of the rolled-back installation
+  ([PR #62](https://github.com/databrickslabs/lakemeter-oss/pull/62))
 
 ### Upgrade notes
 
 - Supports direct upgrades from `v0.1.0`, `v0.1.1`, and `v0.1.2`
+  ([PR #62](https://github.com/databrickslabs/lakemeter-oss/pull/62))
 - Applies data updates `020` through `027` for the new workload reference entries
+  ([PR #62](https://github.com/databrickslabs/lakemeter-oss/pull/62))
 - Does not add or alter Lakebase columns
-- Use the [Upgrade Guide](./admin-guide/upgrading.md) to validate and apply the release from a clean checkout
+  ([PR #62](https://github.com/databrickslabs/lakemeter-oss/pull/62))
+- Use the [Upgrade Guide](./admin-guide/upgrading.md) to validate and apply the
+  release from a clean checkout
+  ([PR #63](https://github.com/databrickslabs/lakemeter-oss/pull/63))
 
 ---
 
