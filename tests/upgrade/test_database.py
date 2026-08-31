@@ -1,7 +1,12 @@
+import hashlib
 from types import SimpleNamespace
 
-from upgrader.database import create_database_backup, point_app_to_backup
-from upgrader.models import Installation, SemVer
+from upgrader.database import (
+    create_database_backup,
+    execute_sql_actions,
+    point_app_to_backup,
+)
+from upgrader.models import Installation, ReleaseAction, SemVer
 
 
 def installation():
@@ -137,4 +142,93 @@ def test_database_rollback_updates_custom_host_endpoint_and_branch_secrets():
         ),
         ("custom-branch", "projects/p/branches/backup"),
     }
+
+
+def test_legacy_database_rollback_only_requires_host_secret():
+    writes = []
+    client = SimpleNamespace(
+        secrets=SimpleNamespace(
+            put_secret=lambda **kwargs: writes.append(kwargs)
+        )
+    )
+    legacy = installation()
+    legacy = Installation(
+        **{
+            **legacy.__dict__,
+            "lakebase_branch_secret_scope": None,
+            "lakebase_branch_secret_key": None,
+            "lakebase_endpoint_secret_scope": None,
+            "lakebase_endpoint_secret_key": None,
+        }
+    )
+    backup = SimpleNamespace(
+        host="backup.example",
+        endpoint_name="projects/p/branches/backup/endpoints/primary",
+        resource_name="projects/p/branches/backup",
+    )
+
+    point_app_to_backup(client, legacy, backup)
+
+    assert [(item["key"], item["string_value"]) for item in writes] == [
+        ("custom-host", "backup.example")
+    ]
+
+
+def test_transactional_action_reuses_open_advisory_lock_transaction(tmp_path):
+    sql_path = tmp_path / "update.sql"
+    sql_path.write_text("SELECT 1;")
+
+    class Cursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def execute(self, statement, _params=None):
+            assert statement == "SELECT 1;"
+
+    class Connection:
+        def __init__(self):
+            self._autocommit = False
+            self.in_transaction = True
+            self.commits = 0
+
+        @property
+        def autocommit(self):
+            return self._autocommit
+
+        @autocommit.setter
+        def autocommit(self, value):
+            if self.in_transaction:
+                raise RuntimeError("set_session cannot be used inside a transaction")
+            self._autocommit = value
+
+        def cursor(self):
+            return Cursor()
+
+        def commit(self):
+            self.in_transaction = False
+            self.commits += 1
+
+        def rollback(self):
+            self.in_transaction = False
+
+    connection = Connection()
+    action = ReleaseAction(
+        action_id="update",
+        path="update.sql",
+        sha256=hashlib.sha256(sql_path.read_bytes()).hexdigest(),
+    )
+
+    executed = execute_sql_actions(
+        connection=connection,
+        repository_root=tmp_path,
+        actions=[action],
+        app_version="0.2.0",
+        record_migrations=False,
+    )
+
+    assert executed == ["update"]
+    assert connection.commits == 1
 

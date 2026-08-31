@@ -37,6 +37,27 @@ def _line_item_orm_columns() -> list[str]:
     return columns
 
 
+def _estimate_orm_columns() -> list[str]:
+    module = ast.parse((ROOT / "backend/app/models/estimate.py").read_text())
+    estimate = next(
+        node for node in module.body
+        if isinstance(node, ast.ClassDef) and node.name == "Estimate"
+    )
+
+    columns = []
+    for stmt in estimate.body:
+        if not (
+            isinstance(stmt, ast.Assign)
+            and len(stmt.targets) == 1
+            and isinstance(stmt.targets[0], ast.Name)
+        ):
+            continue
+        value = stmt.value
+        if isinstance(value, ast.Call) and getattr(value.func, "id", "") == "Column":
+            columns.append(stmt.targets[0].id)
+    return columns
+
+
 def _installer_columns(relative_path: str) -> set[str]:
     text = (ROOT / relative_path).read_text()
     create_match = re.search(
@@ -57,6 +78,33 @@ def _installer_columns(relative_path: str) -> set[str]:
     return columns
 
 
+def _estimate_installer_columns(relative_path: str) -> set[str]:
+    text = (ROOT / relative_path).read_text()
+    create_match = re.search(
+        r"CREATE TABLE IF NOT EXISTS (?:\{SCHEMA\}|lakemeter)\.estimates \((.*?)\)\"\"\"",
+        text,
+        re.S,
+    )
+
+    columns = set()
+    if create_match:
+        for raw in create_match.group(1).splitlines():
+            line = raw.strip().rstrip(",")
+            if not line or line.startswith(("FOREIGN", "PRIMARY")):
+                continue
+            columns.add(line.split()[0])
+
+    columns.update(
+        re.findall(
+            r"ALTER TABLE (?:\{SCHEMA\}|lakemeter)\.estimates\s+"
+            r"ADD COLUMN IF NOT EXISTS ([a-zA-Z0-9_]+)",
+            text,
+            re.S,
+        )
+    )
+    return columns
+
+
 def test_create_database_has_all_line_item_orm_columns():
     orm_columns = _line_item_orm_columns()
     installer_columns = _installer_columns("scripts/notebooks/02_create_database.py")
@@ -68,6 +116,16 @@ def test_create_database_has_all_line_item_orm_columns():
 def test_install_script_has_all_line_item_orm_columns():
     orm_columns = _line_item_orm_columns()
     installer_columns = _installer_columns("scripts/install_lakemeter.py")
+    missing = [column for column in orm_columns if column not in installer_columns]
+
+    assert missing == []
+
+
+def test_create_database_has_all_estimate_orm_columns():
+    orm_columns = _estimate_orm_columns()
+    installer_columns = _estimate_installer_columns(
+        "scripts/notebooks/02_create_database.py"
+    )
     missing = [column for column in orm_columns if column not in installer_columns]
 
     assert missing == []

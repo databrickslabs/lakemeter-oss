@@ -31,7 +31,7 @@ Whether a release can be installed directly is defined by its release
 manifest. Always review the `minimum_version` and the actions shown by
 `upgrade.sh plan`.
 
-The `v0.3.0` manifest supports direct upgrades from `v0.1.0` and later. It
+The `v0.2.0` manifest supports direct upgrades from `v0.1.0` and later. It
 creates a Lakebase backup branch, applies data updates `020` through `027`, and
 does not run a schema migration.
 
@@ -42,8 +42,8 @@ Before starting:
 1. Install the Databricks CLI and authenticate a workspace profile.
 2. Use a clean checkout of the release you want to install.
 3. Confirm the existing Databricks App is running.
-4. For minor or major releases, ensure the installation uses Lakebase
-   Autoscaling project, branch, and endpoint bindings.
+4. For minor or major releases, ensure the upgrader can resolve the Lakebase
+   Autoscaling project, production branch, endpoint, and host secret.
 
 Verify CLI access:
 
@@ -97,12 +97,12 @@ the backup prerequisites required by the current release.
 Do not apply a release while `doctor` reports `blocked`.
 
 :::note Older installations
-Installations created by the current installer already expose the Lakebase
-Autoscaling project, `production` branch, `primary` endpoint, and their secret
-bindings. If a future database-changing release reports missing branch or
-endpoint bindings for an older installation, update to the latest patch and
-run the current installer once. The installer reuses the existing project and
-app and adds the required bindings without deleting estimates.
+The upgrader resolves the underlying Lakebase Autoscaling resources used by
+legacy installations. A legacy installation can be backed up and rolled back
+with its existing host secret even when it has no separate branch or endpoint
+secret bindings. Review `upgrade.sh doctor` before applying the release; it
+will block if the project, branch, endpoint, or writable host secret cannot be
+resolved.
 :::
 
 ## Apply an upgrade
@@ -162,7 +162,8 @@ Before changing the database, the upgrader:
 4. Creates a copy-on-write branch from the production branch.
 5. Ensures the backup branch has a queryable endpoint.
 6. Executes each declared database action in manifest order.
-7. Restarts the app, deploys the new runtime, and verifies it.
+7. Restarts the app and waits for its startup deployment to settle.
+8. Deploys the new runtime and verifies it.
 
 Minor releases can execute only declared data updates. Major releases can
 execute schema migrations and data updates.
@@ -192,8 +193,8 @@ If an upgrade fails, the upgrader attempts to:
 
 1. Release the database advisory lock.
 2. Repoint database secrets to the pre-upgrade backup branch, when one exists.
-3. Redeploy the previous application source.
-4. Restart the app.
+3. Restart the app if the upgrade stopped it.
+4. Redeploy the previous application source.
 5. Restore the previous installation metadata.
 6. Record any rollback errors for operator review.
 
@@ -247,14 +248,18 @@ baseline version. Review the warning in `plan` before applying.
 
 ### Database backup capability is blocked
 
-Confirm the app has secret resources for:
+Current installations expose secret resources for:
 
 - `lakebase-project`
 - `lakebase-branch`
 - `lakebase-endpoint`
 - `lakebase-host`
 
-The current installer configures these automatically.
+The current installer configures these automatically. For a legacy
+installation, the branch and endpoint secrets are optional when the upgrader
+can resolve those resources and update the existing `lakebase-host` secret.
+Use `upgrade.sh status` to review the discovered resources before retrying
+`doctor`.
 
 ### Another upgrade holds the lock
 

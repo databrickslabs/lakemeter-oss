@@ -6,6 +6,7 @@ import pytest
 
 from upgrader.deployment import (
     DeploymentError,
+    deploy_app,
     set_app_running,
     stage_runtime,
     verify_app,
@@ -265,6 +266,79 @@ def test_versioned_release_path_rejects_different_runtime(tmp_path):
             app_yaml_content=b"live: bindings",
             release_fingerprint="b" * 64,
         )
+
+
+def test_deploy_waits_for_startup_deployment_to_clear(monkeypatch):
+    existing = SimpleNamespace(
+        status=SimpleNamespace(state="IN_PROGRESS"),
+        deployment_id="startup",
+    )
+    deployed = SimpleNamespace(
+        status=SimpleNamespace(state="SUCCEEDED"),
+        deployment_id="release",
+    )
+    app_states = iter(
+        [
+            SimpleNamespace(pending_deployment=existing),
+            SimpleNamespace(
+                pending_deployment=None,
+                active_deployment=existing,
+            ),
+            SimpleNamespace(
+                pending_deployment=None,
+                active_deployment=SimpleNamespace(
+                    status=SimpleNamespace(state="SUCCEEDED"),
+                    deployment_id="startup",
+                ),
+            ),
+            SimpleNamespace(
+                pending_deployment=None,
+                active_deployment=SimpleNamespace(
+                    status=SimpleNamespace(state="SUCCEEDED"),
+                    deployment_id="startup",
+                ),
+            ),
+            SimpleNamespace(
+                pending_deployment=None,
+                active_deployment=deployed,
+            ),
+        ]
+    )
+    client = SimpleNamespace(
+        config=SimpleNamespace(
+            host="https://workspace.example",
+            authenticate=lambda: {"Authorization": "Bearer token"},
+        ),
+        apps=SimpleNamespace(get=lambda _name: next(app_states)),
+    )
+    posts = []
+
+    class Response:
+        def __init__(self, status_code, text="", body=None):
+            self.status_code = status_code
+            self.text = text
+            self.body = body or {}
+
+        def json(self):
+            return self.body
+
+    responses = iter(
+        [
+            Response(400, "active deployment in progress"),
+            Response(200, body={"deployment_id": "release"}),
+        ]
+    )
+
+    monkeypatch.setattr(
+        "upgrader.deployment.requests.post",
+        lambda *args, **kwargs: posts.append((args, kwargs)) or next(responses),
+    )
+    monkeypatch.setattr("upgrader.deployment.time.sleep", lambda _seconds: None)
+
+    assert deploy_app(client, "lakemeter", "/Workspace/releases/v0.2.0") == (
+        "release"
+    )
+    assert len(posts) == 2
 
 
 @pytest.mark.parametrize(

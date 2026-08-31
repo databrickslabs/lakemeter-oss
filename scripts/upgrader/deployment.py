@@ -150,20 +150,47 @@ def deploy_app(
     timeout_seconds: int = 900,
 ) -> str:
     """Deploy an existing Databricks App from a versioned workspace path."""
-    host = workspace_client.config.host.rstrip("/")
-    response = requests.post(
-        f"{host}/api/2.0/apps/{app_name}/deployments",
-        headers=workspace_client.config.authenticate(),
-        json={"source_code_path": source_path},
-        timeout=30,
-    )
-    if response.status_code >= 300:
-        raise DeploymentError(
-            f"Deploy request failed: HTTP {response.status_code} "
-            f"{response.text[:300]}"
-        )
-    deployment_id = str(response.json().get("deployment_id", ""))
     deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        app = workspace_client.apps.get(app_name)
+        pending = getattr(app, "pending_deployment", None)
+        active = getattr(app, "active_deployment", None)
+        active_state = _state_value(
+            getattr(getattr(active, "status", None), "state", "")
+        )
+        active_in_progress = active is not None and active_state not in {
+            "SUCCEEDED",
+            "FAILED",
+            "CANCELLED",
+            "CANCELED",
+        }
+        if pending is None and not active_in_progress:
+            response = requests.post(
+                f"{workspace_client.config.host.rstrip('/')}"
+                f"/api/2.0/apps/{app_name}/deployments",
+                headers=workspace_client.config.authenticate(),
+                json={"source_code_path": source_path},
+                timeout=30,
+            )
+            if response.status_code < 300:
+                break
+            conflict = response.status_code == 400 and (
+                "deployment in progress" in response.text.lower()
+                or "pending deployment" in response.text.lower()
+            )
+            if not conflict:
+                raise DeploymentError(
+                    f"Deploy request failed: HTTP {response.status_code} "
+                    f"{response.text[:300]}"
+                )
+        time.sleep(10)
+    else:
+        raise DeploymentError(
+            "Existing app deployment did not clear within "
+            f"{timeout_seconds} seconds."
+        )
+
+    deployment_id = str(response.json().get("deployment_id", ""))
 
     while time.monotonic() < deadline:
         app = workspace_client.apps.get(app_name)

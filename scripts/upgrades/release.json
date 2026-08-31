@@ -1,5 +1,5 @@
 {
-  "version": "0.3.0",
+  "version": "0.2.0",
   "minimum_version": "0.1.0",
   "operation": "data_update",
   "pricing_refresh": false,
@@ -46,5 +46,5 @@
     }
   ],
   "migrations": [],
-  "runtime_sha256": "116f9d059725874d85535812bef1cb84bb4127255244185b2a3c72b8f0473321"
+  "runtime_sha256": "658250e338d6c96eaf23d0b2c0f951b6da3207ef6492c4e71263978e26268275"
 }

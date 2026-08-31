@@ -20,6 +20,10 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.database import get_db
 from app.auth import get_current_user
+from tests.export.cross_workload.excel_helpers import (
+    COL_DRIVER_VM_HR,
+    COL_TOTAL_VM,
+)
 from tests.export.dbsql.conftest import make_line_item
 
 
@@ -108,7 +112,7 @@ class TestDBSQLServerlessIntegration:
         wb = _download_excel(self.client)
         for row in wb.active.iter_rows(min_row=2, values_only=False):
             if len(row) > 3 and row[3].value == "Serverless":
-                for c in range(22, 27):
+                for c in range(COL_DRIVER_VM_HR - 1, COL_TOTAL_VM):
                     val = row[c].value
                     assert val == 0 or val is None, \
                         f"Col {c} should be 0 for serverless, got {val}"

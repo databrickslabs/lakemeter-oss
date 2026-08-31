@@ -259,6 +259,17 @@ jobs:
             --app-name "${LAKEMETER_E2E_APP}" \
             --state-file "${LAKEMETER_E2E_STATE}"
 
+      - name: Verify upgrade after rollback
+        working-directory: candidate
+        run: |
+          ./scripts/upgrade.sh apply \
+            --app-name "${LAKEMETER_E2E_APP}" \
+            --yes
+          python scripts/release_integration.py verify \
+            --app-name "${LAKEMETER_E2E_APP}" \
+            --expected-version "${{ steps.metadata.outputs.version }}" \
+            --state-file "${LAKEMETER_E2E_STATE}"
+
       - name: Record successful candidate
         working-directory: candidate
         env:

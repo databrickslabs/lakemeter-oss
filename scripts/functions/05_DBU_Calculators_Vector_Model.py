@@ -249,7 +249,7 @@ print("   • Cloud-specific GPU types (see pricing table for exact list)")
 print("   • AWS: A10G, A100 variants")
 print("   • AZURE: A100 variants (1x, 2x, 4x)")
 print("   • GCP: G2 standard")
-    print("   • CPU rate × concurrency; GPU rate × (concurrency / 4 replicas)")
+print("   • CPU rate × concurrency; GPU rate × (concurrency / 4 replicas)")
 
 print("\n📝 Next step: Run 06_DBU_Calculators_FMAPI.py")
 print("=" * 100)

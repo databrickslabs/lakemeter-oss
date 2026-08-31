@@ -12,9 +12,9 @@ Lakemeter follows [Semantic Versioning](https://semver.org/):
 
 ---
 
-## v0.3.0
+## v0.2.0
 
-*Unreleased*
+*2026-08-31*
 
 Data and application release expanding workload coverage, DSU accounting, estimate-level add-ons, and cross-surface calculation parity. The release includes reference-data updates but no Lakebase schema migration.
 
@@ -24,7 +24,7 @@ Data and application release expanding workload coverage, DSU accounting, estima
 - Added Unity AI Gateway inference-table and usage-tracking estimates
 - Added Agent Evaluation labels, token, and synthetic-question estimates
 - Added AI Runtime serverless GPU training for AWS and Azure
-- Added Databricks Default Storage with stored-data and Tier 1 and Tier 2 operation DSUs
+- Added General Storage (Databricks Default Storage) with stored-data and Tier 1 and Tier 2 operation DSUs
 - Added standard and OpenTelemetry Zerobus ingestion using Jobs Serverless DBUs
 - Refreshed Databricks and proprietary Foundation Model API catalogs
 
@@ -34,16 +34,27 @@ Data and application release expanding workload coverage, DSU accounting, estima
 - Added first-class DSU totals and regional `DATABRICKS_STORAGE` pricing
 - Expanded Excel exports to 34 columns with DSU costs, a pre-add-on workload summary, a Platform Add-on section, and a final estimate summary
 - Added AI Search reranker pricing and aligned AI Search and Lakebase storage with DSU-based calculations
+- Grouped region selectors into geographic areas while preserving each cloud provider's region codes
+- Fixed quantity-based Excel formulas so recalculated workbooks retain the correct totals
 
 ### Calculation fixes
 
+- Fixed single-node cluster pricing so only the driver VM is charged
+- Fixed Model Serving GPU estimates so replica counts multiply both DBUs and VM costs
 - Fixed All-Purpose Serverless rate parity
 - Fixed saved always-on workloads so the UI, calculation APIs, and Excel consistently resolve missing usage to 730 hours
 - Fixed Databricks Apps counts so multiple apps multiply DBUs and cost across the API, UI, and Excel
 - Preserved explicit zero hours and run-based usage precedence
 
+### Security and release reliability
+
+- Updated frontend and documentation dependencies to patched versions where compatible fixes are available
+- Hardened data upgrades for open PostgreSQL transactions, legacy Lakebase installations, stopped apps, and overlapping Databricks Apps deployments
+- Extended the release gate to verify a fresh installation, upgrade, manual rollback, and a second upgrade of the rolled-back installation
+
 ### Upgrade notes
 
+- Supports direct upgrades from `v0.1.0`, `v0.1.1`, and `v0.1.2`
 - Applies data updates `020` through `027` for the new workload reference entries
 - Does not add or alter Lakebase columns
 - Use the [Upgrade Guide](./admin-guide/upgrading.md) to validate and apply the release from a clean checkout
