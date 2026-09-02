@@ -58,11 +58,17 @@ class LakebaseTokenManager:
         self.lakebase_branch = os.getenv("LAKEBASE_BRANCH")
         self.lakebase_endpoint = os.getenv("LAKEBASE_ENDPOINT")
         self.lakebase_instance_name = os.getenv("LAKEBASE_INSTANCE_NAME")
-        self.db_user = os.getenv("DB_USER")
-        self.db_name = os.getenv("DB_NAME")
-        self.db_host = os.getenv("DB_HOST")
-        self.db_port = int(os.getenv("DB_PORT", "5432"))
-        self.db_sslmode = os.getenv("DB_SSLMODE", "require")
+        # A Marketplace postgres binding injects PG* variables. Keep DB_*
+        # aliases for existing installer-based and local deployments.
+        self.db_user = os.getenv("PGUSER") or os.getenv("DB_USER")
+        self.db_name = os.getenv("PGDATABASE") or os.getenv("DB_NAME")
+        self.db_host = os.getenv("PGHOST") or os.getenv("DB_HOST")
+        self.db_port = int(
+            os.getenv("PGPORT") or os.getenv("DB_PORT", "5432")
+        )
+        self.db_sslmode = (
+            os.getenv("PGSSLMODE") or os.getenv("DB_SSLMODE", "require")
+        )
 
         self._workspace_client: Optional[WorkspaceClient] = None
 
@@ -161,14 +167,18 @@ class LakebaseTokenManager:
                 )
             self._expires_at = expires_at - timedelta(minutes=5)
 
-            # Update db_user to match the app's SP identity
-            try:
-                current_user = self._workspace_client.current_user.me()
-                if current_user.user_name:
-                    self.db_user = current_user.user_name
-                    _log_info(f"DB_USER set to app identity: {self.db_user}")
-            except Exception:
-                pass
+            # Legacy deployments did not inject PGUSER. In that case the app
+            # identity remains the correct OAuth database role.
+            if not self.db_user:
+                try:
+                    current_user = self._workspace_client.current_user.me()
+                    if current_user.user_name:
+                        self.db_user = current_user.user_name
+                        _log_info(
+                            f"DB user set to app identity: {self.db_user}"
+                        )
+                except Exception:
+                    pass
 
             _log_info(f"Token refreshed. Expires at: {self._expires_at.strftime('%Y-%m-%d %H:%M:%S UTC')}")
         except Exception as e:

@@ -35,11 +35,6 @@ class Settings(BaseSettings):
     # Override with full DATABASE_URL if provided
     database_url: Optional[str] = None
     
-    # JWT Authentication
-    jwt_secret_key: str = "your-secret-key-change-in-production"
-    jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    
     # CORS
     cors_origins: str = "http://localhost:5173,http://localhost:3000,http://localhost:5175"
     

@@ -1,6 +1,8 @@
 """FastAPI main application entry point."""
+from contextlib import asynccontextmanager
+import os
 from pathlib import Path
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -24,6 +26,21 @@ from app.routes.chat import router as chat_router
 # Initialize logging based on environment
 setup_logging()
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Bootstrap a Marketplace-bound Lakebase database before serving."""
+    if os.getenv("LAKEMETER_BOOTSTRAP_DATABASE", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        from app.bootstrap import bootstrap_database
+
+        bootstrap_database()
+    yield
+
+
 # Create FastAPI application
 # redirect_slashes=False prevents automatic redirects that break CORS
 # Disable docs in production for cleaner deployment
@@ -31,9 +48,10 @@ app = FastAPI(
     title="Lakemeter API",
     description="Databricks Pricing Calculator API - Estimate and manage Databricks workload costs",
     version=APP_VERSION,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    redirect_slashes=False
+    docs_url=None if settings.is_production else "/api/docs",
+    redoc_url=None if settings.is_production else "/api/redoc",
+    redirect_slashes=False,
+    lifespan=lifespan,
 )
 
 # Log startup info
@@ -103,6 +121,8 @@ def system_health(db=Depends(get_db)):
 @app.get("/api/v1/debug/headers")
 def debug_headers(request: Request):
     """Debug endpoint to see what headers Databricks Apps sends."""
+    if settings.is_production:
+        raise HTTPException(status_code=404, detail="Not found")
     from app.auth.databricks_auth import debug_headers as get_debug_headers
     return get_debug_headers(request)
 
@@ -112,6 +132,8 @@ def debug_headers(request: Request):
 @app.get("/api/v1/debug/database")
 def debug_database():
     """Debug endpoint to check database connection status."""
+    if settings.is_production:
+        raise HTTPException(status_code=404, detail="Not found")
     import os
     import uuid
     from app.auth.token_manager import token_manager
@@ -185,6 +207,8 @@ def debug_database():
 @app.post("/api/v1/debug/database/refresh")
 def debug_database_refresh():
     """Force refresh the database token and reconnect."""
+    if settings.is_production:
+        raise HTTPException(status_code=404, detail="Not found")
     from app.database import refresh_engine
     from app.auth.token_manager import token_manager
     

@@ -25,6 +25,11 @@ def _get_database_url() -> str:
     """Build database URL from env var, token manager, or secrets fallback."""
     import os
 
+    auth_mode = os.getenv(
+        "LAKEMETER_DATABASE_AUTH_MODE",
+        "oauth_with_secrets_fallback",
+    ).lower()
+
     # Check for direct DATABASE_URL first (local dev)
     direct_url = os.getenv("DATABASE_URL")
     if direct_url:
@@ -36,7 +41,10 @@ def _get_database_url() -> str:
     # Try OAuth token manager if it has a valid token
     if token_manager and token_manager.get_token():
         params = token_manager.get_connection_params()
-        if params.get("password"):
+        if all(
+            params.get(key)
+            for key in ("host", "user", "password", "dbname")
+        ):
             # Test SP connection before committing — fast timeout to avoid blocking
             try:
                 encoded_user = quote_plus(params["user"])
@@ -58,9 +66,19 @@ def _get_database_url() -> str:
                 return test_url
             except Exception as e:
                 log_warning(f"SP OAuth connection test failed: {e}")
-                log_info("Falling back to password auth...")
+                if auth_mode != "oauth_only":
+                    log_info("Falling back to password auth...")
     else:
-        log_info("No SP OAuth credentials available, using password fallback...")
+        if auth_mode != "oauth_only":
+            log_info(
+                "No SP OAuth credentials available, using password fallback..."
+            )
+
+    if auth_mode == "oauth_only":
+        raise Exception(
+            "Lakebase OAuth authentication failed for the bound postgres "
+            "resource."
+        )
 
     # Fallback: use secrets-based password auth (lakebase-password from secrets scope)
     log_info("Attempting password-based auth via Databricks secrets...")

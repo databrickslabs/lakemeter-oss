@@ -605,6 +605,7 @@ def _create_tables_inline(cur):
             version INT DEFAULT 1,
             template_id UUID REFERENCES lakemeter.templates(template_id),
             original_prompt TEXT,
+            display_order INT DEFAULT 0,
             is_deleted BOOLEAN DEFAULT false,
             discount_config JSONB,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

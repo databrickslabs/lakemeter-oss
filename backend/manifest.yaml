@@ -1,0 +1,12 @@
+version: 1
+name: "lakemeter"
+description: "Build transparent Databricks cost estimates across compute, storage, AI, and platform add-ons."
+resource_specs:
+  - name: "postgres"
+    description: "Lakebase database for estimates, configuration, and pricing reference data."
+    postgres_spec:
+      permission: "CAN_CONNECT_AND_CREATE"
+  - name: "claude-endpoint"
+    description: "Databricks Model Serving endpoint for the AI-assisted estimator."
+    serving_endpoint_spec:
+      permission: "CAN_QUERY"

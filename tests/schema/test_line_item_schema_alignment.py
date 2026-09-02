@@ -131,6 +131,16 @@ def test_create_database_has_all_estimate_orm_columns():
     assert missing == []
 
 
+def test_install_script_has_all_estimate_orm_columns():
+    orm_columns = _estimate_orm_columns()
+    installer_columns = _estimate_installer_columns(
+        "scripts/install_lakemeter.py"
+    )
+    missing = [column for column in orm_columns if column not in installer_columns]
+
+    assert missing == []
+
+
 def test_ai_parse_create_fields_map_to_existing_storage_columns():
     line_item = LineItemCreate.model_validate({
         "estimate_id": uuid4(),

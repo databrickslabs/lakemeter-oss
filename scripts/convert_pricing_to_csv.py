@@ -338,7 +338,7 @@ def convert_fmapi_proprietary():
 
 
 def export_uc_vm_costs(profile: str):
-    """Export lakemeter_catalog.lakemeter.pricing_vm_costs -> vm-costs.csv"""
+    """Export VM prices into deployment-safe CSV parts."""
     from databricks.sdk import WorkspaceClient
 
     w = WorkspaceClient(profile=profile)
@@ -356,6 +356,7 @@ def export_uc_vm_costs(profile: str):
         "FROM lakemeter_catalog.lakemeter.pricing_vm_costs"
     )
     _write_csv(dst, cols, [dict(zip(cols, r)) for r in rows])
+    _split_csv_for_workspace(dst)
     return len(rows)
 
 
@@ -433,6 +434,49 @@ def _write_csv(path: Path, columns: list, rows: list):
         writer.writeheader()
         writer.writerows(rows)
     print(f"  Wrote {path.name}: {len(rows)} rows")
+
+
+def _split_csv_for_workspace(
+    path: Path,
+    max_bytes: int = 9 * 1024 * 1024,
+) -> None:
+    """Split a CSV that exceeds the Workspace Files import limit."""
+    for old_part in path.parent.glob(f"{path.stem}_part*.csv"):
+        old_part.unlink()
+
+    if path.stat().st_size <= max_bytes:
+        return
+
+    with path.open("r", encoding="utf-8", newline="") as source:
+        header = source.readline()
+        part_number = 1
+        part_path = path.with_name(f"{path.stem}_part{part_number}.csv")
+        target = part_path.open("w", encoding="utf-8", newline="")
+        try:
+            target.write(header)
+            current_size = len(header.encode("utf-8"))
+            for line in source:
+                line_size = len(line.encode("utf-8"))
+                if current_size + line_size > max_bytes:
+                    target.close()
+                    part_number += 1
+                    part_path = path.with_name(
+                        f"{path.stem}_part{part_number}.csv"
+                    )
+                    target = part_path.open(
+                        "w",
+                        encoding="utf-8",
+                        newline="",
+                    )
+                    target.write(header)
+                    current_size = len(header.encode("utf-8"))
+                target.write(line)
+                current_size += line_size
+        finally:
+            target.close()
+
+    path.unlink()
+    print(f"  Split {path.name} into {part_number} deployment-safe parts")
 
 
 def update_manifest(has_uc: bool):
