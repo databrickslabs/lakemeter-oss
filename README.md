@@ -1,26 +1,51 @@
 # Lakemeter
 
-A Databricks cost estimation tool that runs as a **Databricks App** with built-in SSO authentication.
+[![Databricks Labs](https://img.shields.io/badge/Databricks-Labs-FF3621?logo=databricks&logoColor=white)](https://www.databricks.com/learn/labs)
+[![CI](https://github.com/databrickslabs/lakemeter-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/databrickslabs/lakemeter-oss/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/databrickslabs/lakemeter-oss)](https://github.com/databrickslabs/lakemeter-oss/releases/latest)
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://databrickslabs.github.io/lakemeter-oss/)
+[![GitHub stars](https://img.shields.io/github/stars/databrickslabs/lakemeter-oss?style=social)](https://github.com/databrickslabs/lakemeter-oss/stargazers)
 
-Create, manage, and export transparent sizing estimates for supported Databricks workloads.
+**Estimate Databricks workload costs in minutes—with transparent assumptions you can review, share, and export.**
 
-![Lakemeter home page](docs-site/static/img/home-page.png)
+Lakemeter is an open-source cost estimation and workload sizing tool that runs as a **Databricks App** with built-in SSO. Configure expected usage, calculate regional costs, and export a detailed Excel estimate instead of maintaining sizing spreadsheets by hand.
 
-## Features
+![Lakemeter cost summary showing workload costs and detailed breakdowns](docs-site/static/img/gifs/cost-summary.gif)
 
-- **Workload-specific sizing** — Configure usage assumptions with forms tailored to each supported workload
-- **AI assistant** — Describe your workload in natural language, review the suggestion, and accept with one click
-- **Excel export** — Full cost breakdowns with SKU details, discount calculations, and VM pricing
-- **Pricing tools** — Use the [SKU Explorer](https://databrickslabs.github.io/lakemeter-oss/user-guide/pricing/sku-explorer) and [FMAPI Tokens](https://databrickslabs.github.io/lakemeter-oss/user-guide/pricing/fmapi-tokens) views
-- **Regional estimates** — Use the cloud, region, and pricing options available in the app
-- **One-command install** — Provisions Lakebase, loads pricing data, and deploys the app automatically
+## What you can estimate
 
-## Quick Start
+**Compute and SQL**
 
-> **Hosting requirement:** Install Lakemeter in an AWS or Azure Databricks
-> workspace in a
-> [Lakebase-supported region](https://docs.databricks.com/en/oltp/projects/manage-projects.html).
-> The installed app can still create workload estimates for AWS, Azure, and GCP.
+- [Lakeflow Jobs](https://databrickslabs.github.io/lakemeter-oss/user-guide/jobs-compute)
+- [All-Purpose Compute](https://databrickslabs.github.io/lakemeter-oss/user-guide/all-purpose-compute)
+- [Lakeflow Spark Declarative Pipelines](https://databrickslabs.github.io/lakemeter-oss/user-guide/dlt-pipelines)
+- [Databricks SQL warehouses](https://databrickslabs.github.io/lakemeter-oss/user-guide/dbsql-warehouses)
+
+**AI, ML, and data services**
+
+- [Model Serving](https://databrickslabs.github.io/lakemeter-oss/user-guide/model-serving)
+- [Vector Search](https://databrickslabs.github.io/lakemeter-oss/user-guide/vector-search)
+- [Databricks-hosted foundation models](https://databrickslabs.github.io/lakemeter-oss/user-guide/fmapi-databricks)
+- [Proprietary foundation models](https://databrickslabs.github.io/lakemeter-oss/user-guide/fmapi-proprietary)
+- [Lakebase](https://databrickslabs.github.io/lakemeter-oss/user-guide/lakebase)
+- [Databricks Apps](https://databrickslabs.github.io/lakemeter-oss/user-guide/databricks-apps)
+- [AI Parse](https://databrickslabs.github.io/lakemeter-oss/user-guide/ai-parse)
+- [Shutterstock ImageAI](https://databrickslabs.github.io/lakemeter-oss/user-guide/shutterstock-imageai)
+
+See the [workload sizing catalog](https://databrickslabs.github.io/lakemeter-oss/user-guide/workloads) for the inputs and calculation behavior of every workload.
+
+## Why Lakemeter
+
+- **Transparent calculations** — Review usage quantities, billing units, SKUs, rates, VM costs, storage, and discounts behind every total.
+- **Workload-specific sizing** — Use forms tailored to each supported Databricks workload rather than a generic calculator.
+- **AI-assisted estimates** — Describe a workload in natural language, review the suggested configuration, and accept it with one click.
+- **Excel export** — Generate a detailed workbook for customer conversations, procurement reviews, RFPs, and internal planning.
+- **Cloud and region awareness** — Model the cloud, region, tier, and pricing options available in the app.
+- **Built for teams** — Create, duplicate, share, and compare multi-workload estimates in a Databricks workspace.
+
+## Quick start
+
+You need a Databricks workspace and a configured [Databricks CLI profile](https://docs.databricks.com/aws/en/dev-tools/cli/profiles.html).
 
 ```bash
 git clone https://github.com/databrickslabs/lakemeter-oss.git
@@ -29,33 +54,41 @@ cd lakemeter-oss
 ./scripts/install.sh --profile <your-cli-profile>
 ```
 
-The installer provisions everything in ~15 minutes. You only need a [Databricks CLI](https://docs.databricks.com/aws/en/dev-tools/cli/profiles.html) configured with a workspace profile.
+The one-command installer provisions Lakebase, loads pricing data, deploys the app, and verifies the installation. It typically completes in **5–15 minutes**.
 
-Already running Lakemeter? Check out the desired release tag and follow the
-[Upgrade Guide](https://databrickslabs.github.io/lakemeter-oss/admin-guide/upgrading)
-instead of re-running the initial installation flow.
+For permissions, deployment inventory, non-interactive installation, and troubleshooting, see the [installation guide](https://databrickslabs.github.io/lakemeter-oss/admin-guide/installer).
+
+## See the workflow
+
+Add workload assumptions and calculate their estimated cost:
+
+![Adding and configuring a workload](docs-site/static/img/gifs/adding-workload.gif)
+
+Export the completed estimate to Excel:
+
+![Exporting a Lakemeter estimate to Excel](docs-site/static/img/gifs/export-excel.gif)
 
 ## Documentation
 
-Full documentation is available at **[databrickslabs.github.io/lakemeter-oss](https://databrickslabs.github.io/lakemeter-oss/)**.
+- [User guide](https://databrickslabs.github.io/lakemeter-oss/user-guide/overview) — Create estimates, inspect pricing, use AI assistance, and export
+- [Workload sizing guides](https://databrickslabs.github.io/lakemeter-oss/user-guide/workloads) — Inputs and calculation behavior for every supported workload
+- [Admin guide](https://databrickslabs.github.io/lakemeter-oss/admin-guide/deployment) — Installation, architecture, permissions, and API reference
+- [Changelog](https://databrickslabs.github.io/lakemeter-oss/changelog) — Releases and upgrade notes
 
-- [User Guide](https://databrickslabs.github.io/lakemeter-oss/user-guide/overview) — Create estimates, choose a sizing guide, inspect pricing, and export
-- [Workload Sizing Guides](https://databrickslabs.github.io/lakemeter-oss/user-guide/workloads) — Canonical sizing guidance for each supported workload
-- [Admin Guide](https://databrickslabs.github.io/lakemeter-oss/admin-guide/deployment) — Installation, deployment inventory, and API reference
-- [Changelog](https://databrickslabs.github.io/lakemeter-oss/changelog) — Release history
+## Contributing
 
-## Tech Stack
+Bug reports, feature requests, documentation improvements, and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing, or [open an issue](https://github.com/databrickslabs/lakemeter-oss/issues/new) to start a discussion.
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React, TypeScript, Tailwind CSS, Vite |
-| Backend | FastAPI, SQLAlchemy, Pydantic |
-| Database | Lakebase (managed PostgreSQL on Databricks) |
-| AI | Claude via Databricks Foundation Model APIs |
-| Hosting | Databricks Apps (SSO, managed compute) |
+If Lakemeter helps you size or explain a Databricks workload, consider [starring the repository](https://github.com/databrickslabs/lakemeter-oss) so others can discover it.
 
-## Licensing
+## Technology
 
-Copyright (2026) Databricks, Inc. This Software includes software developed at Databricks (https://www.databricks.com/) and its use is subject to the included [LICENSE.md](LICENSE.md) file.
+- **Frontend:** React, TypeScript, Tailwind CSS, Vite
+- **Backend:** FastAPI, SQLAlchemy, Pydantic
+- **Database:** Lakebase (managed PostgreSQL on Databricks)
+- **AI:** Claude through Databricks Foundation Model APIs
+- **Hosting:** Databricks Apps with SSO and managed compute
 
-Third-party dependency notices are provided in [NOTICE.md](NOTICE.md).
+## License
+
+Copyright (2026) Databricks, Inc. This software includes software developed at Databricks and is subject to [LICENSE.md](LICENSE.md). Third-party dependency notices are provided in [NOTICE.md](NOTICE.md).
