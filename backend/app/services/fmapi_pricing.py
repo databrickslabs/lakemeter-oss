@@ -83,7 +83,10 @@ def _get_rate(
         )
     result = dict(rate)
     result["list_dbu_rate"] = float(rate["dbu_rate"])
-    result["dbu_rate"] = get_effective_dbu_rate(rate)
+    effective_rate = get_effective_dbu_rate(rate)
+    result["dbu_rate"] = effective_rate
+    result["effective_dbu_rate"] = effective_rate
+    result["promotion_applied"] = effective_rate != result["list_dbu_rate"]
     return result
 
 

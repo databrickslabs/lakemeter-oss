@@ -671,7 +671,8 @@ export const fetchFMAPIProprietaryModels = async (params: {
   rate_type?: string
 }): Promise<FMAPIProprietaryModel[]> => {
   const { data } = await api.get('/fmapi/proprietary-models', { params })
-  return data
+  const result = unwrap<any>(data)
+  return Array.isArray(result) ? result : (result?.models || [])
 }
 
 // Fetch ALL FMAPI Proprietary rates for all providers (for pre-caching)

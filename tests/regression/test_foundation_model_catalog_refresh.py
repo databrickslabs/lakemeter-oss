@@ -250,6 +250,8 @@ def test_google_twenty_percent_promotion_is_applied():
     )
     assert rate["list_dbu_rate"] == pytest.approx(26.786)
     assert rate["dbu_rate"] == pytest.approx(21.4288)
+    assert rate["effective_dbu_rate"] == pytest.approx(21.4288)
+    assert rate["promotion_applied"] is True
     assert rate["promotion_end_date"] == "2027-01-31"
 
 
