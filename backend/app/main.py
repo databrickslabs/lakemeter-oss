@@ -35,9 +35,11 @@ async def lifespan(_app: FastAPI):
         "true",
         "yes",
     }:
+        from app import database
         from app.bootstrap import bootstrap_database
 
-        bootstrap_database()
+        database.initialize_database()
+        bootstrap_database(database.engine)
     yield
 
 
