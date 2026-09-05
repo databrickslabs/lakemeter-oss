@@ -54,6 +54,12 @@ def _get_database_url() -> str:
                     f"@{params['host']}:{params['port']}/{params['dbname']}"
                     f"?sslmode={params['sslmode']}"
                 )
+                # OAuth-only Marketplace deployments do not have a password
+                # fallback. Let the engine's connection probe below surface
+                # the original error so startup can distinguish a sleeping
+                # endpoint from invalid credentials.
+                if auth_mode == "oauth_only":
+                    return test_url
                 test_engine = create_engine(
                     test_url,
                     connect_args={"sslmode": "require", "connect_timeout": 5},
@@ -149,19 +155,73 @@ def _create_engine_with_token_refresh():
         raise
 
 
-# Initialize engine and session factory (fault-tolerant)
-try:
-    engine, SessionLocal = _create_engine_with_token_refresh()
-except Exception as e:
-    log_error(f"Database initialization failed (will retry on first request): {e}")
-    engine = None
-    SessionLocal = None
+# Database initialization is deliberately deferred to the application
+# lifespan. Marketplace can start an app shortly after its scale-to-zero
+# Lakebase endpoint begins waking, so connecting during module import creates
+# a noisy race and runs before application logging is configured.
+engine = None
+SessionLocal = None
 
 
 # Track last engine refresh time
-_last_engine_refresh = time.time()
+_last_engine_refresh = 0.0
 _ENGINE_REFRESH_INTERVAL = 30 * 60  # Refresh engine every 30 minutes (well before 1-hour token expiry)
 _refresh_lock = threading.Lock()
+
+_AUTH_FAILURE_MARKERS = (
+    "authentication failed",
+    "invalid authorization",
+    "password authentication failed",
+    "permission denied",
+)
+_TRANSIENT_CONNECTION_MARKERS = (
+    "timeout expired",
+    "connection refused",
+    "could not connect",
+    "network is unreachable",
+    "server closed the connection",
+    "temporary failure",
+)
+
+
+def _is_transient_connection_error(error: Exception) -> bool:
+    """Return whether a database failure is safe to retry during startup."""
+    message = str(error).lower()
+    if any(marker in message for marker in _AUTH_FAILURE_MARKERS):
+        return False
+    return isinstance(error, OperationalError) or any(
+        marker in message for marker in _TRANSIENT_CONNECTION_MARKERS
+    )
+
+
+def initialize_database(
+    max_attempts: int = 5,
+    initial_delay_seconds: float = 1.0,
+):
+    """Initialize the engine, retrying only transient Lakebase wake-up errors."""
+    global engine, SessionLocal, _last_engine_refresh
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            engine, SessionLocal = _create_engine_with_token_refresh()
+            _last_engine_refresh = time.time()
+            return engine
+        except Exception as error:
+            should_retry = (
+                attempt < max_attempts
+                and _is_transient_connection_error(error)
+            )
+            if not should_retry:
+                raise
+            delay = initial_delay_seconds * (2 ** (attempt - 1))
+            log_warning(
+                "Lakebase is not ready during startup "
+                f"(attempt {attempt}/{max_attempts}); retrying in "
+                f"{delay:g}s: {error}"
+            )
+            time.sleep(delay)
+
+    raise RuntimeError("Database initialization attempts were exhausted")
 
 
 def refresh_engine():
@@ -179,8 +239,7 @@ def refresh_engine():
             token_manager._expires_at = None
         
         try:
-            engine, SessionLocal = _create_engine_with_token_refresh()
-            _last_engine_refresh = time.time()
+            initialize_database(max_attempts=1)
             log_info("Database engine refreshed successfully")
             return True
         except Exception as e:

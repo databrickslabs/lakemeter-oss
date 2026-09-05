@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -227,3 +228,61 @@ def test_marketplace_bootstrap_initializes_empty_database(monkeypatch):
     assert applied == ["schema.sql", "functions.sql"]
     assert calls == ["seeds", "pricing", "derived"]
     assert engine.connection.rollbacks == 0
+
+
+def test_database_startup_retries_transient_lakebase_wakeup(monkeypatch):
+    from app import database
+
+    expected_engine = object()
+    expected_session_factory = object()
+    attempts = []
+    delays = []
+
+    def create_engine():
+        attempts.append(True)
+        if len(attempts) < 3:
+            raise Exception("connection to server failed: timeout expired")
+        return expected_engine, expected_session_factory
+
+    monkeypatch.setattr(database, "engine", None)
+    monkeypatch.setattr(database, "SessionLocal", None)
+    monkeypatch.setattr(
+        database,
+        "_create_engine_with_token_refresh",
+        create_engine,
+    )
+    monkeypatch.setattr(database.time, "sleep", delays.append)
+
+    result = database.initialize_database(
+        max_attempts=3,
+        initial_delay_seconds=0.5,
+    )
+
+    assert result is expected_engine
+    assert database.SessionLocal is expected_session_factory
+    assert len(attempts) == 3
+    assert delays == [0.5, 1.0]
+
+
+def test_database_startup_does_not_retry_authentication_failure(monkeypatch):
+    from app import database
+
+    attempts = []
+    delays = []
+
+    def create_engine():
+        attempts.append(True)
+        raise Exception("password authentication failed for user app-sp")
+
+    monkeypatch.setattr(
+        database,
+        "_create_engine_with_token_refresh",
+        create_engine,
+    )
+    monkeypatch.setattr(database.time, "sleep", delays.append)
+
+    with pytest.raises(Exception, match="password authentication failed"):
+        database.initialize_database(max_attempts=5)
+
+    assert len(attempts) == 1
+    assert delays == []
