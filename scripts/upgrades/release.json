@@ -1,50 +1,9 @@
 {
-  "version": "0.2.0",
+  "version": "0.2.1",
   "minimum_version": "0.1.0",
-  "operation": "data_update",
+  "operation": "code_only",
   "pricing_refresh": false,
-  "data_updates": [
-    {
-      "id": "020-ai-functions",
-      "path": "scripts/upgrades/data_updates/020_ai_functions.sql",
-      "sha256": "afc39bd1079d43eb3c4ba00f6282cc23fbf9fb985d97a5affb17e951a0eed9b2"
-    },
-    {
-      "id": "021-ai-gateway",
-      "path": "scripts/upgrades/data_updates/021_ai_gateway.sql",
-      "sha256": "c763441c9b3ade69e1f3efda4be61225607eb1e5f493e74cc92a9e8e1bcb023e"
-    },
-    {
-      "id": "022-agent-evaluation",
-      "path": "scripts/upgrades/data_updates/022_agent_evaluation.sql",
-      "sha256": "55ccc7a6849f8e0a9e5db6c481551903c2c3d12f770d6c57983f7fbd0b01d544"
-    },
-    {
-      "id": "023-ai-search-alignment",
-      "path": "scripts/upgrades/data_updates/023_ai_search_alignment.sql",
-      "sha256": "b3c035bc31df035145251bdd43440f301bc3e5be75a53d646c56f91a0303def3"
-    },
-    {
-      "id": "024-ai-runtime",
-      "path": "scripts/upgrades/data_updates/024_ai_runtime.sql",
-      "sha256": "383461791b2c74bb98bcfbf97fbdaa5ae972d33fcd50c3aff2201407edf15ef4"
-    },
-    {
-      "id": "025-all-purpose-serverless-parity",
-      "path": "scripts/upgrades/data_updates/025_all_purpose_serverless_parity.sql",
-      "sha256": "efd7df3c87df530f114d08b1a7a04e41bca094fa0148deab9eee7ad303e6d747"
-    },
-    {
-      "id": "026-general-storage",
-      "path": "scripts/upgrades/data_updates/026_general_storage.sql",
-      "sha256": "4b70bb9543b19dd4224cc86f73029fa02c1d4e99bc57a1c16962b4506bf24481"
-    },
-    {
-      "id": "027-zerobus",
-      "path": "scripts/upgrades/data_updates/027_zerobus.sql",
-      "sha256": "8c6066e5688ec484717857aae4f7d92ae1533ec2fed6b85a1c13df23cbef4642"
-    }
-  ],
+  "data_updates": [],
   "migrations": [],
   "runtime_sha256": "658250e338d6c96eaf23d0b2c0f951b6da3207ef6492c4e71263978e26268275"
 }
