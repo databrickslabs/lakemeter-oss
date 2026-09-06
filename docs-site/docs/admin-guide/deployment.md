@@ -6,7 +6,17 @@ sidebar_position: 1
 
 Lakemeter is a **Databricks App** — a managed web application with built-in SSO authentication that runs entirely on the Databricks platform.
 
+:::tip Installing from Databricks Marketplace?
+Marketplace installation does not require a local CLI, personal access token,
+installer notebook, or secret scope. See
+[Marketplace Installation and Security](./marketplace-installation) for the
+installation flow, declared resources, user scopes, egress, bootstrap, and
+updates.
+:::
+
 ## Prerequisites
+
+The following prerequisites apply to the open-source installer:
 
 You need:
 

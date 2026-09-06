@@ -97,6 +97,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'admin-guide/deployment',
+        'admin-guide/marketplace-installation',
         'admin-guide/installer',
         'admin-guide/upgrading',
         'admin-guide/deployment-inventory',
