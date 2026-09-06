@@ -11,47 +11,43 @@ token, or separate data upload is required.
 
 ## Prerequisites
 
-A Databricks workspace administrator must prepare the resources and perform
-the installation. The administrator needs permission to install Marketplace
-apps, create or select Lakebase resources, select a Model Serving endpoint,
-and grant those resources to the new app.
+Before starting:
 
-Prepare both resources before starting the Marketplace installation.
+- A **workspace administrator** must perform the installation. Workspace
+  administrators can install apps from Marketplace.
+- Create a **new, empty Lakebase database in the same Databricks workspace**
+  where Lakemeter will be installed. The default Lakebase configuration and
+  default `databricks_postgres` database are supported.
+- Have a **running Claude Model Serving endpoint** available in the same
+  workspace.
 
-### Empty Lakebase database
+The administrator does not need to grant the app permissions before starting.
+During installation, Databricks grants the new app identity access to the
+selected Lakebase database and Model Serving endpoint.
 
-Provision a dedicated Lakebase Autoscaling project and database for Lakemeter
-with the following configuration:
+### Lakebase database
 
-| Setting | Requirement |
-| --- | --- |
-| Cloud | AWS or Azure |
-| Region | A region that supports Lakebase Autoscaling |
-| Project | A new project dedicated to this Lakemeter installation |
-| Branch | `production`, or another dedicated writable branch |
-| Database | An empty database; the default `databricks_postgres` database is supported |
-| Compute | Default capacity is sufficient; enable scale-to-zero if desired |
-| App permission | `CAN_CONNECT_AND_CREATE` |
+Only an empty Lakebase database in the same workspace is required. Do not
+create tables or load pricing data manually. Lakemeter creates its tables,
+calculation functions, and reference data automatically when the app first
+starts.
 
-The database must not already contain a `lakemeter` schema created by another
-Lakemeter app. Each installation receives its own Databricks App service
-principal, which creates and owns the schema during first-start bootstrap.
-Reusing a schema owned by another app identity causes a permission error.
-
-Do not create tables or load pricing data manually. Lakemeter creates its
-schema, tables, calculation functions, and reference data automatically when
-the app first starts.
+:::note Use a database without an existing Lakemeter schema
+Each installation receives its own Databricks App service principal, which
+creates and owns the `lakemeter` schema. Do not select a database containing a
+`lakemeter` schema created by another app identity. Reusing that schema can
+cause a `permission denied for schema lakemeter` startup error.
+:::
 
 ### Claude Model Serving endpoint
 
-Prepare a running Databricks Model Serving endpoint backed by a Claude model.
-Any Claude endpoint available for the intended users' use can be selected,
-provided it supports the Databricks chat-completions request format.
+Any running Claude endpoint available for the intended users' use can be
+selected, provided it supports the Databricks chat-completions request format.
 
-During installation, Lakemeter binds the endpoint as `claude-endpoint` with
-`CAN_QUERY`. The app service principal uses that permission when an end user
-invokes the AI assistant. Users do not provide endpoint credentials to
-Lakemeter.
+During installation, Lakemeter binds the selected endpoint as
+`claude-endpoint` with `CAN_QUERY`. The app service principal uses this
+permission when a user invokes the AI assistant. Users do not provide endpoint
+credentials to Lakemeter.
 
 Check the endpoint's availability and rate limits before installation. A
 throttled endpoint affects the optional AI assistant but not manual estimates,
@@ -70,8 +66,8 @@ Select **Install** on the listing page.
 
 ### 2. Configure the app resources
 
-Under **Database**, select the dedicated Lakebase project, writable branch,
-and empty database prepared for this installation.
+Under **Database**, select the new Lakebase project, writable branch, and empty
+database prepared for this installation.
 
 Under **Serving endpoint**, select the prepared Claude endpoint. Keep the
 default app compute configuration unless your organization requires a
@@ -79,12 +75,10 @@ different size or instance count.
 
 ![Configure the Lakebase database and Claude endpoint](/img/guides/marketplace-configure-resources.png)
 
-The package requests these resource permissions:
+During installation, Databricks grants the app:
 
-| Resource key | Resource | Permission |
-| --- | --- | --- |
-| `postgres` | Selected Lakebase database | `CAN_CONNECT_AND_CREATE` |
-| `claude-endpoint` | Selected Model Serving endpoint | `CAN_QUERY` |
+- `CAN_CONNECT_AND_CREATE` on the selected Lakebase database.
+- `CAN_QUERY` on the selected Model Serving endpoint.
 
 Select **Next**.
 
@@ -117,3 +111,62 @@ automatically:
 Wait until the app status is **Running** and the active deployment is
 **Succeeded**, then select **Open app**. No additional bootstrap or pricing
 data step is required.
+
+### 6. Grant users access to Lakemeter
+
+After installation, open the Lakemeter app's **Permissions** page:
+
+1. Select **Add user, group, or service principal**.
+2. Select the users or workspace groups that should use Lakemeter.
+3. Grant **CAN USE**.
+
+Only users with permission to use the app can open its URL. Prefer granting
+access to a workspace group when Lakemeter will be used by a team.
+
+## Troubleshooting
+
+### App does not start
+
+Open the app's **Deployments** or **Logs** page and review the latest startup
+error. Confirm that the selected Lakebase database and Model Serving endpoint
+still exist in the same workspace and that the installation completed its
+resource grants.
+
+### Permission denied for schema `lakemeter`
+
+The selected database likely contains a schema owned by another Lakemeter app
+identity. Bind a new empty database to the app, or migrate the schema ownership
+and grants deliberately if existing data must be preserved.
+
+### Lakebase connection timeout
+
+A scale-to-zero Lakebase endpoint can take time to wake. Lakemeter retries
+transient connection timeouts during startup. If the retries continue to fail,
+confirm that the Lakebase endpoint is available and review the app deployment
+logs.
+
+### AI assistant is unavailable
+
+Confirm that the selected Claude endpoint is running and that the app retains
+`CAN_QUERY`. Model Serving rate limits can affect the AI assistant without
+affecting the core estimate workflow.
+
+### Another user cannot open the app
+
+On the app's **Permissions** page, grant the user or one of their workspace
+groups **CAN USE**. Installing Lakemeter does not automatically grant every
+workspace user access to it.
+
+## Upgrade a Marketplace installation
+
+When the provider publishes a new Lakemeter version, Databricks displays an
+update on the installed app's page. A workspace administrator reviews and
+applies the update from Databricks Marketplace.
+
+Marketplace upgrades preserve the existing app identity, resource bindings,
+permissions, and Lakebase data. Lakemeter runs its idempotent bootstrap after
+deployment to apply compatible packaged updates. Users do not need to
+reinstall the app or recreate their estimates.
+
+If a release changes its required resources or permissions, Databricks shows
+those changes for administrator review before the update is applied.
