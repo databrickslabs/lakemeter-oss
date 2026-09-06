@@ -85,7 +85,7 @@ Sprint 10 also fixed a critical infrastructure bug: the default `pytest` run was
 | `test_ai_conftest_has_fmapi_skip` | FMAPI skip fixture exists |
 | `test_default_pytest_collects_no_ai_tests` | Default run excludes AI tests |
 
-:::warning Important
+:::warning[Important]
 After Sprint 10, the default `pytest` command excludes AI tests. To run AI tests explicitly:
 ```bash
 pytest tests/ai_assistant/ --no-header --timeout=300

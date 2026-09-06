@@ -92,7 +92,7 @@ Sprint 8 iteration 2 also fixed a regression in Sprint 5's ETL negative tests:
 
 **Fix**: Updated `tests/ai_assistant/sprint_5/prompts.py` to explicitly specify "Lakeflow Jobs" workload type and added "I want the JOBS workload type, not DLT" to the final escalation prompt.
 
-:::tip Lesson Learned
+:::tip[Lesson Learned]
 When testing negative scenarios, prompts must be unambiguous about what workload type *should* be proposed. If the AI can reasonably ask a clarifying question, it will — and the fixture will fail.
 :::
 

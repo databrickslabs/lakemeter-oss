@@ -9,7 +9,7 @@ Databricks App. The Marketplace package includes the application and its
 pricing reference data, so no local CLI, installer notebook, personal access
 token, or separate data upload is required.
 
-:::tip Preferred installation method
+:::tip[Preferred installation method]
 Installing from Databricks Marketplace is the preferred way to install
 Lakemeter. Use the source installer only when Marketplace is unavailable in
 your workspace or you need to operate a customized source deployment.
@@ -38,7 +38,7 @@ create tables or load pricing data manually. Lakemeter creates its tables,
 calculation functions, and reference data automatically when the app first
 starts.
 
-:::note Use a database without an existing Lakemeter schema
+:::note[Use a database without an existing Lakemeter schema]
 Each installation receives its own Databricks App service principal, which
 creates and owns the `lakemeter` schema. Do not select a database containing a
 `lakemeter` schema created by another app identity. Reusing that schema can

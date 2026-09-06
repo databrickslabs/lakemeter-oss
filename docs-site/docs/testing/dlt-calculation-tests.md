@@ -98,7 +98,7 @@ tests/sprint_3/test_dlt_vm_costs.py::TestDLTVMCosts::test_m6i_xlarge_cost PASSED
 161 passed in ~2s
 ```
 
-:::tip Fast Execution
+:::tip[Fast Execution]
 Sprint 3 tests run in under 2 seconds because they don't make any AI API calls. They test calculation logic directly using imported Python functions.
 :::
 

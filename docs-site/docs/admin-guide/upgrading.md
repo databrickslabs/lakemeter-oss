@@ -9,14 +9,14 @@ discovers the existing installation, validates the checked-out release, applies
 the release's Semantic Versioning policy, and verifies the deployed app and its
 database connection.
 
-:::note Marketplace installations
+:::note[Marketplace installations]
 This guide applies only to installations created with the source installer.
 For a Marketplace installation, review and apply the new version from the
 installed app's Marketplace update flow. See
 [Upgrade a Marketplace installation](./marketplace-installation#upgrade-a-marketplace-installation).
 :::
 
-:::important Update the repository first
+:::important[Update the repository first]
 The upgrader applies the release that is present in your local checkout. It
 does not download a release automatically. Update the repository, check out the
 desired release tag, or download a fresh release archive before upgrading.
@@ -103,7 +103,7 @@ the backup prerequisites required by the current release.
 
 Do not apply a release while `doctor` reports `blocked`.
 
-:::note Older installations
+:::note[Older installations]
 The upgrader resolves the underlying Lakebase Autoscaling resources used by
 legacy installations. A legacy installation can be backed up and rolled back
 with its existing host secret even when it has no separate branch or endpoint
