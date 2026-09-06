@@ -1,0 +1,161 @@
+<!doctype html><html lang=en dir=ltr class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-admin-guide/marketplace-installation" data-has-hydrated=false><head><meta charset=UTF-8><meta name=generator content="Docusaurus v3.10.2"><title data-rh=true>Marketplace Installation and Security | Lakemeter</title><meta data-rh=true name=viewport content="width=device-width, initial-scale=1.0"/><meta data-rh=true name=twitter:card content=summary_large_image /><meta data-rh=true property=og:url content=https://databrickslabs.github.io/lakemeter-oss/admin-guide/marketplace-installation /><meta data-rh=true property=og:locale content=en /><meta data-rh=true name=docusaurus_locale content=en /><meta data-rh=true name=docsearch:language content=en /><meta data-rh=true name=docusaurus_version content=current /><meta data-rh=true name=docusaurus_tag content=docs-default-current /><meta data-rh=true name=docsearch:version content=current /><meta data-rh=true name=docsearch:docusaurus_tag content=docs-default-current /><meta data-rh=true property=og:title content="Marketplace Installation and Security | Lakemeter"/><meta data-rh=true name=description content="Lakemeter can be installed directly from Databricks Marketplace as a managed"/><meta data-rh=true property=og:description content="Lakemeter can be installed directly from Databricks Marketplace as a managed"/><link data-rh=true rel=icon href=/lakemeter-oss/img/favicon.ico /><link data-rh=true rel=canonical href=https://databrickslabs.github.io/lakemeter-oss/admin-guide/marketplace-installation /><link data-rh=true rel=alternate href=https://databrickslabs.github.io/lakemeter-oss/admin-guide/marketplace-installation hreflang=en /><link data-rh=true rel=alternate href=https://databrickslabs.github.io/lakemeter-oss/admin-guide/marketplace-installation hreflang=x-default /><script data-rh=true type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","item":"https://databrickslabs.github.io/lakemeter-oss/admin-guide/marketplace-installation","name":"Marketplace Installation and Security","position":1}]}</script><link rel=stylesheet href=/lakemeter-oss/assets/css/styles.6a142300.css /><script src=/lakemeter-oss/assets/js/runtime~main.2a2574c7.js defer></script><script src=/lakemeter-oss/assets/js/main.6e4d66b7.js defer></script></head><body><svg style="display: none;"><defs>
+<symbol id=theme-svg-external-link viewBox="0 0 24 24"><path fill=currentColor d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme-7f8")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"dark"),document.documentElement.setAttribute("data-theme-choice",t||"dark")}(),function(){try{for(var[t,e]of new URLSearchParams(window.location.search).entries())if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id=__docusaurus><div role=region aria-label="Skip to main content"><a class=skipToContent_fXgn href=#__docusaurus_skipToContent_fallback>Skip to main content</a></div><nav aria-label=Main class="theme-layout-navbar navbar navbar--fixed-top"><div class=navbar__inner><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded=false class="navbar__toggle clean-btn" type=button><svg width=30 height=30 viewBox="0 0 30 30" aria-hidden=true><path stroke=currentColor stroke-linecap=round stroke-miterlimit=10 stroke-width=2 d="M4 7h22M4 15h22M4 23h22"/></svg></button><a class=navbar__brand href=/lakemeter-oss/><b class="navbar__title text--truncate">Lakemeter</b></a><a class="navbar__item navbar__link" href=/lakemeter-oss/>User Guide</a><a aria-current=page class="navbar__item navbar__link navbar__link--active" href=/lakemeter-oss/admin-guide/deployment>Admin Guide</a><a class="navbar__item navbar__link" href=/lakemeter-oss/changelog>Changelog</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href=https://www.databricks.com/product/pricing target=_blank rel="noopener noreferrer" class="navbar__item navbar__link">Databricks Pricing<svg width=13.5 height=13.5 aria-label="(opens in new tab)" class=iconExternalLink_nPIU><use href=#theme-svg-external-link /></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type=button disabled title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width=24 height=24 aria-hidden=true class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill=currentColor d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"/></svg><svg viewBox="0 0 24 24" width=24 height=24 aria-hidden=true class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill=currentColor d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"/></svg><svg viewBox="0 0 24 24" width=24 height=24 aria-hidden=true class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill=currentColor d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"/></svg></button></div><div class=navbarSearchContainer_Bca1></div></div></div><div role=presentation class=navbar-sidebar__backdrop></div></nav><div id=__docusaurus_skipToContent_fallback class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class=docsWrapper_hBAB><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type=button></button><div class=docRoot_UBD9><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class=sidebarViewport_aRkj><div class=sidebar_njMd><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class=menu__list-item-collapsible><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret menu__link--active" role=button aria-expanded=true href=/lakemeter-oss/admin-guide/deployment><span class=categoryLinkLabel_W154>Admin Guide</span></a></div><ul class=menu__list><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/lakemeter-oss/admin-guide/deployment><span class=linkLabel_WmDU>Getting Started</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current=page tabindex=0 href=/lakemeter-oss/admin-guide/marketplace-installation><span class=linkLabel_WmDU>Marketplace Installation and Security</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/lakemeter-oss/admin-guide/installer><span class=linkLabel_WmDU>Installer Guide</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/lakemeter-oss/admin-guide/upgrading><span class=linkLabel_WmDU>Upgrade Guide</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/lakemeter-oss/admin-guide/deployment-inventory><span class=linkLabel_WmDU>Deployment Inventory</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/lakemeter-oss/admin-guide/api-reference><span class=linkLabel_WmDU>API Reference</span></a><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class=menu__link tabindex=0 href=/lakemeter-oss/admin-guide/dependencies-license><span class=linkLabel_WmDU>Dependencies & License</span></a></ul></ul></nav></div></div></aside><main class=docMainContainer_TBSr><div class="container padding-top--md padding-bottom--lg"><div class=row><div class="col docItemCol_VOVn"><div class=docItemContainer_Djhp><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label=Breadcrumbs><ul class=breadcrumbs><li class=breadcrumbs__item><a aria-label="Home page" class=breadcrumbs__link href=/lakemeter-oss/><svg viewBox="0 0 24 24" class=breadcrumbHomeIcon_YNFT><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill=currentColor /></svg></a><li class=breadcrumbs__item><span class=breadcrumbs__link>Admin Guide</span><li class="breadcrumbs__item breadcrumbs__item--active"><span class=breadcrumbs__link>Marketplace Installation and Security</span></ul></nav><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type=button class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Marketplace Installation and Security</h1></header>
+<p>Lakemeter can be installed directly from Databricks Marketplace as a managed
+Databricks App. The Marketplace package is self-contained: installation does
+not require a local CLI, an installer notebook, a personal access token, or a
+separate pricing-data upload.</p>
+<p>This page describes the resources, permissions, network access, bootstrap
+behavior, and upgrade lifecycle of the Marketplace distribution. For the
+open-source installer workflow, see the <a class="" href=/lakemeter-oss/admin-guide/installer>Installer Guide</a>.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id=installation-flow>Installation flow<a href=#installation-flow class=hash-link aria-label="Direct link to Installation flow" title="Direct link to Installation flow" translate=no>​</a></h2>
+<ol>
+<li class="">Open the Lakemeter listing in Databricks Marketplace and select <strong>Install</strong>.</li>
+<li class="">Review and bind the resources declared by the app package.</li>
+<li class="">Review the effective user API scopes and app settings.</li>
+<li class="">Choose the app name, description, compute size, and usage policy.</li>
+<li class="">Select <strong>Install</strong> and wait for the deployment to reach <strong>Running</strong>.</li>
+<li class="">Open Lakemeter and create an estimate. No post-install bootstrap step is
+required.</li>
+</ol>
+<p>Marketplace installs Lakemeter from an immutable Git release tag. The package
+root is the repository's <code>backend</code> directory and includes <code>app.yaml</code>,
+<code>manifest.yaml</code>, the backend application, pre-built frontend assets, schema
+definitions, and pricing reference data.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id=declared-app-resources>Declared app resources<a href=#declared-app-resources class=hash-link aria-label="Direct link to Declared app resources" title="Direct link to Declared app resources" translate=no>​</a></h2>
+<p>The current package declares two resources in <code>manifest.yaml</code>.</p>
+<table><thead><tr><th>Resource<th>Type<th>Permission<th>Purpose<tbody><tr><td><code>postgres</code><td>Lakebase Postgres database<td><code>CAN_CONNECT_AND_CREATE</code><td>Stores estimates, users, configuration, bootstrap state, and pricing reference data.<tr><td><code>claude-endpoint</code><td>Databricks Model Serving endpoint<td><code>CAN_QUERY</code><td>Powers the optional AI sizing assistant.</table>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id=lakebase>Lakebase<a href=#lakebase class=hash-link aria-label="Direct link to Lakebase" title="Direct link to Lakebase" translate=no>​</a></h3>
+<p>The Lakebase binding is required for the application. Use a dedicated,
+newly-created project or database for a new installation. The Databricks App
+service principal creates and owns the <code>lakemeter</code> schema.</p>
+<p>Do not reuse a schema created by a different Lakemeter app service principal
+unless ownership and grants have been migrated deliberately. A new app
+identity does not automatically inherit access to another identity's schema.</p>
+<p>Lakemeter authenticates to Lakebase with a short-lived OAuth database
+credential generated for the app service principal. The package does not use a
+stored database password.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id=model-serving>Model Serving<a href=#model-serving class=hash-link aria-label="Direct link to Model Serving" title="Direct link to Model Serving" translate=no>​</a></h3>
+<p>Bind a Databricks-hosted Claude endpoint with <code>CAN_QUERY</code>. The endpoint is used
+only when a user invokes the AI assistant. Estimate creation, manual workload
+configuration, calculations, and Excel export do not send prompts to Model
+Serving.</p>
+<p>The current Marketplace package expects the resource binding during
+installation even though the core calculator can operate without AI
+assistance.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id=user-api-scopes-and-identity>User API scopes and identity<a href=#user-api-scopes-and-identity class=hash-link aria-label="Direct link to User API scopes and identity" title="Direct link to User API scopes and identity" translate=no>​</a></h2>
+<p>Databricks Apps provides workspace SSO for interactive users. The installed
+app currently reports these effective user API scopes:</p>
+<table><thead><tr><th>Scope<th>Use<tbody><tr><td><code>iam.current-user:read</code><td>Identifies the signed-in workspace user.<tr><td><code>iam.access-control:read</code><td>Supports Databricks Apps access-control handling.</table>
+<p>Lakemeter does not request user access to Jobs, SQL warehouses, Unity Catalog
+data, workspace files, or Databricks Secrets. It does not ask users to paste a
+personal access token.</p>
+<p>The app service principal, rather than the interactive user, authenticates to
+the bound Lakebase database and Model Serving endpoint.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id=network-access-and-egress>Network access and egress<a href=#network-access-and-egress class=hash-link aria-label="Direct link to Network access and egress" title="Direct link to Network access and egress" translate=no>​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id=app-compute-connections>App-compute connections<a href=#app-compute-connections class=hash-link aria-label="Direct link to App-compute connections" title="Direct link to App-compute connections" translate=no>​</a></h3>
+<p>Lakemeter requires outbound connectivity only to Databricks-managed services:</p>
+<table><thead><tr><th>Destination<th>Protocol<th>Purpose<tbody><tr><td>The installation workspace host<td>HTTPS<td>Generates Lakebase OAuth credentials and invokes the bound Model Serving endpoint.<tr><td>The bound Lakebase endpoint host<td>PostgreSQL over TLS, port 5432<td>Reads and writes Lakemeter application data.</table>
+<p>No third-party server-side API or arbitrary internet egress is required for
+the Marketplace runtime. Documentation and Databricks pricing links are
+ordinary links opened by the user's browser.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id=browser-loaded-assets>Browser-loaded assets<a href=#browser-loaded-assets class=hash-link aria-label="Direct link to Browser-loaded assets" title="Direct link to Browser-loaded assets" translate=no>​</a></h3>
+<p>The current frontend downloads web fonts directly from:</p>
+<ul>
+<li class=""><code>https://fonts.googleapis.com</code></li>
+<li class=""><code>https://fonts.gstatic.com</code></li>
+</ul>
+<p>These requests originate from the user's browser, not from the Databricks App
+compute. No estimate contents are included in the font requests. Organizations
+that block these hosts still receive fallback system fonts; calculator
+functionality is unaffected.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id=first-start-bootstrap>First-start bootstrap<a href=#first-start-bootstrap class=hash-link aria-label="Direct link to First-start bootstrap" title="Direct link to First-start bootstrap" translate=no>​</a></h2>
+<p>On first start, Lakemeter:</p>
+<ol>
+<li class="">Generates a short-lived Lakebase OAuth credential for its app service
+principal.</li>
+<li class="">Connects to the bound database using TLS.</li>
+<li class="">Creates the <code>lakemeter</code> schema and application tables.</li>
+<li class="">Installs the packaged calculation functions and reference records.</li>
+<li class="">Loads the packaged pricing CSV files, including split cloud VM pricing
+files.</li>
+<li class="">Records the application version and pricing checksum.</li>
+<li class="">Starts serving traffic only after database initialization and bootstrap
+succeed.</li>
+</ol>
+<p>Bootstrap is idempotent. Later starts compare the recorded version and pricing
+checksum and skip work that is already current.</p>
+<p>Lakebase can be suspended by scale-to-zero. Startup retries transient wake-up
+timeouts with bounded exponential backoff. Authentication and permission
+errors are not retried as transient failures and cause startup to fail with an
+actionable deployment log.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id=data-handling>Data handling<a href=#data-handling class=hash-link aria-label="Direct link to Data handling" title="Direct link to Data handling" translate=no>​</a></h2>
+<ul>
+<li class="">Estimates, workload configuration, and application state remain in the
+customer's bound Lakebase database.</li>
+<li class="">Pricing reference data is packaged with the release and loaded locally into
+Lakebase.</li>
+<li class="">OAuth credentials are short-lived and are not persisted as application
+secrets.</li>
+<li class="">AI prompts are sent only to the bound Databricks Model Serving endpoint when
+a user invokes the assistant.</li>
+<li class="">Lakemeter does not send estimate data to a third-party analytics or
+telemetry service.</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id=marketplace-upgrades>Marketplace upgrades<a href=#marketplace-upgrades class=hash-link aria-label="Direct link to Marketplace upgrades" title="Direct link to Marketplace upgrades" translate=no>​</a></h2>
+<p>Marketplace installations do not silently follow a mutable branch. For each
+release, the provider publishes a new immutable Git tag and updates the
+Marketplace listing.</p>
+<p>When a new version is available:</p>
+<ol>
+<li class="">Databricks displays an update notice on the installed app's Databricks Apps
+page.</li>
+<li class="">An app administrator reviews the update and explicitly applies it.</li>
+<li class="">Existing app identity, resource bindings, and Lakebase data remain in
+place.</li>
+<li class="">Lakemeter runs its idempotent bootstrap against the existing database and
+applies compatible packaged updates.</li>
+</ol>
+<p>If a release adds or changes resources, permissions, scopes, or network
+requirements, Databricks asks the administrator to review those changes as
+part of the update.</p>
+<p>The <a class="" href=/lakemeter-oss/admin-guide/upgrading><code>scripts/upgrade.sh</code></a> workflow applies to installations
+created through the open-source installer. Marketplace-managed apps must use
+the Marketplace update flow.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id=verify-an-installation>Verify an installation<a href=#verify-an-installation class=hash-link aria-label="Direct link to Verify an installation" title="Direct link to Verify an installation" translate=no>​</a></h2>
+<p>Open:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style=--prism-color:#F8F8F2;--prism-background-color:#282A36><div class=codeBlockContent_QJqH><pre tabindex=0 class="prism-code language-text codeBlock_bY9V thin-scrollbar" style=color:#F8F8F2;background-color:#282A36><code class=codeBlockLines_e6Vv><div class=token-line style=color:#F8F8F2><span class="token plain">https://&lt;app-url>/api/v1/system/health</span><br/></div></code></pre></div></div>
+<p>A healthy installation returns:</p>
+<div class="language-json codeBlockContainer_Ckt0 theme-code-block" style=--prism-color:#F8F8F2;--prism-background-color:#282A36><div class=codeBlockContent_QJqH><pre tabindex=0 class="prism-code language-json codeBlock_bY9V thin-scrollbar" style=color:#F8F8F2;background-color:#282A36><code class=codeBlockLines_e6Vv><div class=token-line style=color:#F8F8F2><span class="token punctuation" style="color:rgb(248, 248, 242)">{</span><span class="token plain"></span><br/></div><div class=token-line style=color:#F8F8F2><span class="token plain">  </span><span class="token property">"status"</span><span class="token operator">:</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">"healthy"</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"></span><br/></div><div class=token-line style=color:#F8F8F2><span class="token plain">  </span><span class="token property">"app_version"</span><span class="token operator">:</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">"&lt;installed-version>"</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"></span><br/></div><div class=token-line style=color:#F8F8F2><span class="token plain">  </span><span class="token property">"database"</span><span class="token operator">:</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">"connected"</span><span class="token plain"></span><br/></div><div class=token-line style=color:#F8F8F2><span class="token plain"></span><span class="token punctuation" style="color:rgb(248, 248, 242)">}</span><br/></div></code></pre></div></div>
+<p>Also verify:</p>
+<ul>
+<li class="">The app status is <strong>Running</strong> and its active deployment is <strong>Succeeded</strong>.</li>
+<li class="">The <code>postgres</code> resource points to the intended dedicated Lakebase database.</li>
+<li class="">The <code>claude-endpoint</code> resource has <code>CAN_QUERY</code>.</li>
+<li class="">A user can create an estimate, add a workload, calculate a non-zero cost,
+and export Excel.</li>
+<li class="">The AI assistant responds when Model Serving is enabled.</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id=troubleshooting>Troubleshooting<a href=#troubleshooting class=hash-link aria-label="Direct link to Troubleshooting" title="Direct link to Troubleshooting" translate=no>​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id=lakebase-connection-timeout-during-startup>Lakebase connection timeout during startup<a href=#lakebase-connection-timeout-during-startup class=hash-link aria-label="Direct link to Lakebase connection timeout during startup" title="Direct link to Lakebase connection timeout during startup" translate=no>​</a></h3>
+<p>Review the app logs for retry messages. A transient timeout can occur while a
+scale-to-zero endpoint wakes. The app retries this condition before serving
+traffic. Persistent failures require checking the endpoint state and network
+connectivity.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id=permission-denied-for-schema-lakemeter>Permission denied for schema <code>lakemeter</code><a href=#permission-denied-for-schema-lakemeter class=hash-link aria-label="Direct link to permission-denied-for-schema-lakemeter" title="Direct link to permission-denied-for-schema-lakemeter" translate=no>​</a></h3>
+<p>The schema is likely owned by another app identity. For a new Marketplace
+installation, bind a fresh database so the new service principal creates and
+owns the schema. Do not drop an existing schema without first deciding how its
+data will be preserved.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id=password-authentication-failed>Password authentication failed<a href=#password-authentication-failed class=hash-link aria-label="Direct link to Password authentication failed" title="Direct link to Password authentication failed" translate=no>​</a></h3>
+<p>Confirm that the Lakebase binding grants <code>CAN_CONNECT_AND_CREATE</code> and points to
+the intended project, branch, and database. Marketplace installations use
+OAuth-only database authentication and do not fall back to a stored password.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id=ai-assistant-unavailable>AI assistant unavailable<a href=#ai-assistant-unavailable class=hash-link aria-label="Direct link to AI assistant unavailable" title="Direct link to AI assistant unavailable" translate=no>​</a></h3>
+<p>Confirm that <code>claude-endpoint</code> is bound to an available Databricks Model
+Serving endpoint with <code>CAN_QUERY</code>. Model Serving rate limits can affect the AI
+assistant without affecting the core estimate workflow.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id=restricted-browser-egress>Restricted browser egress<a href=#restricted-browser-egress class=hash-link aria-label="Direct link to Restricted browser egress" title="Direct link to Restricted browser egress" translate=no>​</a></h3>
+<p>If Google Fonts is blocked, Lakemeter uses fallback system fonts. No calculator
+or export capability depends on those domains.</div></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href=/lakemeter-oss/admin-guide/deployment><div class=pagination-nav__sublabel>Previous</div><div class=pagination-nav__label>Getting Started</div></a><a class="pagination-nav__link pagination-nav__link--next" href=/lakemeter-oss/admin-guide/installer><div class=pagination-nav__sublabel>Next</div><div class=pagination-nav__label>Installer Guide</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href=#installation-flow class="table-of-contents__link toc-highlight">Installation flow</a><li><a href=#declared-app-resources class="table-of-contents__link toc-highlight">Declared app resources</a><ul><li><a href=#lakebase class="table-of-contents__link toc-highlight">Lakebase</a><li><a href=#model-serving class="table-of-contents__link toc-highlight">Model Serving</a></ul><li><a href=#user-api-scopes-and-identity class="table-of-contents__link toc-highlight">User API scopes and identity</a><li><a href=#network-access-and-egress class="table-of-contents__link toc-highlight">Network access and egress</a><ul><li><a href=#app-compute-connections class="table-of-contents__link toc-highlight">App-compute connections</a><li><a href=#browser-loaded-assets class="table-of-contents__link toc-highlight">Browser-loaded assets</a></ul><li><a href=#first-start-bootstrap class="table-of-contents__link toc-highlight">First-start bootstrap</a><li><a href=#data-handling class="table-of-contents__link toc-highlight">Data handling</a><li><a href=#marketplace-upgrades class="table-of-contents__link toc-highlight">Marketplace upgrades</a><li><a href=#verify-an-installation class="table-of-contents__link toc-highlight">Verify an installation</a><li><a href=#troubleshooting class="table-of-contents__link toc-highlight">Troubleshooting</a><ul><li><a href=#lakebase-connection-timeout-during-startup class="table-of-contents__link toc-highlight">Lakebase connection timeout during startup</a><li><a href=#permission-denied-for-schema-lakemeter class="table-of-contents__link toc-highlight">Permission denied for schema <code>lakemeter</code></a><li><a href=#password-authentication-failed class="table-of-contents__link toc-highlight">Password authentication failed</a><li><a href=#ai-assistant-unavailable class="table-of-contents__link toc-highlight">AI assistant unavailable</a><li><a href=#restricted-browser-egress class="table-of-contents__link toc-highlight">Restricted browser egress</a></ul></ul></div></div></div></div></main></div></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class=footer__title>Documentation</div><ul class="footer__items clean-list"><li class=footer__item><a class=footer__link-item href=/lakemeter-oss/user-guide/overview>User Guide</a><li class=footer__item><a class=footer__link-item href=/lakemeter-oss/admin-guide/deployment>Admin Guide</a></ul></div><div class="theme-layout-footer-column col footer__col"><div class=footer__title>Databricks</div><ul class="footer__items clean-list"><li class=footer__item><a href=https://www.databricks.com/product/pricing target=_blank rel="noopener noreferrer" class=footer__link-item>Official Pricing<svg width=13.5 height=13.5 aria-label="(opens in new tab)" class=iconExternalLink_nPIU><use href=#theme-svg-external-link /></svg></a><li class=footer__item><a href=https://docs.databricks.com target=_blank rel="noopener noreferrer" class=footer__link-item>Databricks Documentation<svg width=13.5 height=13.5 aria-label="(opens in new tab)" class=iconExternalLink_nPIU><use href=#theme-svg-external-link /></svg></a></ul></div></div><div class="footer__bottom text--center"><div class=footer__copyright>Copyright © 2026 Databricks, Inc.</div></div></div></footer></div></body>
