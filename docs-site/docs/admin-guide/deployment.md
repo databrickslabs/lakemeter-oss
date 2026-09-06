@@ -2,91 +2,46 @@
 sidebar_position: 1
 ---
 
-# Getting Started
+# Installation Options
 
-Lakemeter is a **Databricks App** — a managed web application with built-in SSO authentication that runs entirely on the Databricks platform.
+Lakemeter is a Databricks App with built-in workspace SSO. There are two
+supported installation methods.
 
-:::tip Installing from Databricks Marketplace?
-Marketplace installation does not require a local CLI, personal access token,
-installer notebook, or secret scope. See
-[Marketplace Installation and Security](./marketplace-installation) for the
-installation flow, declared resources, user scopes, egress, bootstrap, and
-updates.
-:::
+## Preferred: Databricks Marketplace
 
-## Prerequisites
+Installing from Databricks Marketplace is the preferred method for most
+workspaces.
 
-The following prerequisites apply to the open-source installer:
+- Installation is performed in the Databricks UI.
+- No local CLI, installer notebook, or personal access token is required.
+- The application and pricing reference data are packaged together.
+- Databricks manages the app identity and grants its selected resources during
+  installation.
+- New releases are reviewed and applied through the Marketplace update flow.
 
-You need:
+A workspace administrator prepares an empty Lakebase database and a Claude
+Model Serving endpoint in the same workspace, then installs Lakemeter from its
+Marketplace listing.
 
-- An **AWS or Azure Databricks workspace** in a
-  [Lakebase-supported region](https://docs.databricks.com/en/oltp/projects/manage-projects.html)
-- A **Databricks CLI** configured with a
-  [workspace profile](https://docs.databricks.com/aws/en/dev-tools/cli/profiles.html)
+See [Marketplace Installation (Preferred)](./marketplace-installation) for the
+complete walkthrough.
 
-Lakemeter must be hosted on AWS or Azure because Lakebase Autoscaling is not
-available for this installer on GCP. Once installed, the app can still create
-workload estimates for AWS, Azure, and GCP. All other permissions (Lakebase,
-secret scopes, Apps, serverless compute) are granted to workspace users by
-default.
+## Alternative: install from source
 
-:::tip No local CLI? Use the notebook terminal
-If you can't install the Databricks CLI locally, you can run the installer directly from your workspace. Create any notebook on a serverless cluster, click the **terminal button** (bottom-right corner), and use the pre-installed CLI — no profile needed since it's already authenticated.
+Use the source installer when the Marketplace listing is unavailable in your
+workspace, or when you need to operate a customized source deployment.
 
-![Notebook with terminal button highlighted](/img/guides/notebook-terminal-button.png)
-*Click the terminal button in the bottom-right corner of any notebook.*
+The source installer requires a Databricks CLI workspace profile and runs a
+Databricks Asset Bundles workflow. It provisions Lakebase, creates the
+database, loads pricing data, configures the app, deploys it, and verifies the
+installation.
 
-![Terminal open with Databricks CLI available](/img/guides/notebook-terminal-cli.png)
-*The Databricks CLI is pre-installed and authenticated in the notebook terminal.*
+See [Install from Source](./installer) for installation and
+[Upgrade a Source Installation](./upgrading) for subsequent releases.
 
-```bash
-# In the notebook terminal — CLI is pre-installed and authenticated
-git clone <repository-url>
-cd lakemeter-oss
-./scripts/install.sh --non-interactive
-```
-:::
+## Deployment inventory
 
-## Install
-
-```bash
-git clone <repository-url>
-cd lakemeter-oss
-
-./scripts/install.sh --profile <your-cli-profile>
-```
-
-The installer provisions everything automatically: a direct Lakebase
-Autoscaling project, database schema, pricing data, app configuration, and
-deployment. See the [Installer Guide](./installer) for the full walkthrough.
-
-For a list of all resources created by the installer, see the [Deployment Inventory](./deployment-inventory).
-
-## After Installation
-
-Once the installer completes, your app is live at:
-
-```
-https://lakemeter-<workspace-id>.<cloud>.databricksapps.com
-```
-
-Users access the app through their Databricks workspace — authentication is handled automatically via SSO. No additional user setup is required.
-
-## Updating
-
-Use the version-aware upgrade utility from a clean checkout of the release you
-want to install:
-
-```bash
-git fetch --tags
-git checkout <release-tag>
-git status --short  # should return no output
-
-./scripts/upgrade.sh plan --profile <your-cli-profile>
-./scripts/upgrade.sh doctor --profile <your-cli-profile>
-./scripts/upgrade.sh apply --profile <your-cli-profile>
-```
-
-See the [Upgrade Guide](./upgrading) for release policy, database backups,
-idempotency, verification, and rollback.
+The source installer creates additional jobs, secrets, workspace files, and
+installation state that are not part of the Marketplace workflow. See the
+[Source Deployment Inventory](./deployment-inventory) when operating a source
+installation.

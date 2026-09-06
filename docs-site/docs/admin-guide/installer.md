@@ -2,9 +2,16 @@
 sidebar_position: 2
 ---
 
-# Installer Guide
+# Install from Source
 
 Lakemeter includes a one-command installer (`scripts/install.sh`) that provisions a complete environment on Databricks — from direct Lakebase Autoscaling project creation to app deployment and verification. All heavy lifting runs on Databricks serverless compute via a DABs (Databricks Asset Bundles) workflow. Installation typically takes **5-15 minutes**.
+
+:::note Marketplace is preferred
+For most workspaces, install Lakemeter from
+[Databricks Marketplace](./marketplace-installation). Use this source installer
+when Marketplace is unavailable or you need to operate a customized source
+deployment.
+:::
 
 ## Prerequisites
 

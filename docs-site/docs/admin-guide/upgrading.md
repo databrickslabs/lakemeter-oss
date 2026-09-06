@@ -2,12 +2,19 @@
 sidebar_position: 3
 ---
 
-# Upgrade Guide
+# Upgrade a Source Installation
 
 Lakemeter includes a version-aware upgrade utility at `scripts/upgrade.sh`. It
 discovers the existing installation, validates the checked-out release, applies
 the release's Semantic Versioning policy, and verifies the deployed app and its
 database connection.
+
+:::note Marketplace installations
+This guide applies only to installations created with the source installer.
+For a Marketplace installation, review and apply the new version from the
+installed app's Marketplace update flow. See
+[Upgrade a Marketplace installation](./marketplace-installation#upgrade-a-marketplace-installation).
+:::
 
 :::important Update the repository first
 The upgrader applies the release that is present in your local checkout. It

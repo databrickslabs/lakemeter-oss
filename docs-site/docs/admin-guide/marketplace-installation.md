@@ -9,6 +9,12 @@ Databricks App. The Marketplace package includes the application and its
 pricing reference data, so no local CLI, installer notebook, personal access
 token, or separate data upload is required.
 
+:::tip Preferred installation method
+Installing from Databricks Marketplace is the preferred way to install
+Lakemeter. Use the source installer only when Marketplace is unavailable in
+your workspace or you need to operate a customized source deployment.
+:::
+
 ## Prerequisites
 
 Before starting:

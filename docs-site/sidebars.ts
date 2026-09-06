@@ -96,11 +96,31 @@ const sidebars: SidebarsConfig = {
       label: 'Admin Guide',
       collapsed: false,
       items: [
-        'admin-guide/deployment',
-        'admin-guide/marketplace-installation',
-        'admin-guide/installer',
-        'admin-guide/upgrading',
-        'admin-guide/deployment-inventory',
+        {
+          type: 'doc',
+          id: 'admin-guide/deployment',
+          label: 'Installation Options',
+        },
+        {
+          type: 'doc',
+          id: 'admin-guide/marketplace-installation',
+          label: 'Marketplace Installation (Preferred)',
+        },
+        {
+          type: 'doc',
+          id: 'admin-guide/installer',
+          label: 'Install from Source',
+        },
+        {
+          type: 'doc',
+          id: 'admin-guide/upgrading',
+          label: 'Upgrade a Source Installation',
+        },
+        {
+          type: 'doc',
+          id: 'admin-guide/deployment-inventory',
+          label: 'Source Deployment Inventory',
+        },
         'admin-guide/api-reference',
         'admin-guide/dependencies-license',
       ],
