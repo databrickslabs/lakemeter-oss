@@ -13,7 +13,7 @@ database connection.
 This guide applies only to installations created with the source installer.
 For a Marketplace installation, review and apply the new version from the
 installed app's Marketplace update flow. See
-[Upgrade a Marketplace installation](./marketplace-installation#upgrade-a-marketplace-installation).
+[Upgrade a Marketplace installation](./marketplace-installation.md#upgrade-a-marketplace-installation).
 :::
 
 :::important[Update the repository first]

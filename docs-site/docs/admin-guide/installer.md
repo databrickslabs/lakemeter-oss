@@ -8,7 +8,7 @@ Lakemeter includes a one-command installer (`scripts/install.sh`) that provision
 
 :::note[Marketplace is preferred]
 For most workspaces, install Lakemeter from
-[Databricks Marketplace](./marketplace-installation). Use this source installer
+[Databricks Marketplace](./marketplace-installation.md). Use this source installer
 when Marketplace is unavailable or you need to operate a customized source
 deployment.
 :::
@@ -211,7 +211,7 @@ After a successful installation, your workspace will have:
 | **Databricks App** | `lakemeter` with 7 resources |
 | **App URL** | `https://lakemeter-<workspace-id>.<cloud>.databricksapps.com` |
 
-For a detailed breakdown of all resources created, see the [Deployment Inventory](./deployment-inventory).
+For a detailed breakdown of all resources created, see the [Deployment Inventory](./deployment-inventory.md).
 
 ## Re-running the Installer
 
@@ -231,4 +231,4 @@ Re-run the installer to:
 - Reconcile missing installation resources
 
 For normal release updates, use the version-aware
-[Upgrade Guide](./upgrading) instead.
+[Upgrade Guide](./upgrading.md) instead.

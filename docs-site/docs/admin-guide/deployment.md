@@ -23,7 +23,7 @@ A workspace administrator prepares an empty Lakebase database and a Claude
 Model Serving endpoint in the same workspace, then installs Lakemeter from its
 Marketplace listing.
 
-See [Marketplace Installation (Preferred)](./marketplace-installation) for the
+See [Marketplace Installation (Preferred)](./marketplace-installation.md) for the
 complete walkthrough.
 
 ## Alternative: install from source
@@ -36,12 +36,12 @@ Databricks Asset Bundles workflow. It provisions Lakebase, creates the
 database, loads pricing data, configures the app, deploys it, and verifies the
 installation.
 
-See [Install from Source](./installer) for installation and
-[Upgrade a Source Installation](./upgrading) for subsequent releases.
+See [Install from Source](./installer.md) for installation and
+[Upgrade a Source Installation](./upgrading.md) for subsequent releases.
 
 ## Deployment inventory
 
 The source installer creates additional jobs, secrets, workspace files, and
 installation state that are not part of the Marketplace workflow. See the
-[Source Deployment Inventory](./deployment-inventory) when operating a source
+[Source Deployment Inventory](./deployment-inventory.md) when operating a source
 installation.
