@@ -60,7 +60,8 @@ class LakebaseTokenManager:
         self.lakebase_instance_name = os.getenv("LAKEBASE_INSTANCE_NAME")
         # A Marketplace postgres binding injects PG* variables. Keep DB_*
         # aliases for existing installer-based and local deployments.
-        self.db_user = os.getenv("PGUSER") or os.getenv("DB_USER")
+        self._postgres_binding_user = os.getenv("PGUSER")
+        self.db_user = self._postgres_binding_user or os.getenv("DB_USER")
         self.db_name = os.getenv("PGDATABASE") or os.getenv("DB_NAME")
         self.db_host = os.getenv("PGHOST") or os.getenv("DB_HOST")
         self.db_port = int(
@@ -167,9 +168,10 @@ class LakebaseTokenManager:
                 )
             self._expires_at = expires_at - timedelta(minutes=5)
 
-            # Legacy deployments did not inject PGUSER. In that case the app
-            # identity remains the correct OAuth database role.
-            if not self.db_user:
+            # Marketplace postgres bindings provide the OAuth role via PGUSER.
+            # Source installations expose a password-fallback role through
+            # DB_USER, but OAuth credentials must use the app identity instead.
+            if not self._postgres_binding_user:
                 try:
                     current_user = self._workspace_client.current_user.me()
                     if current_user.user_name:
