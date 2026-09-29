@@ -1,9 +1,9 @@
 {
-  "version": "0.2.1",
+  "version": "0.2.2",
   "minimum_version": "0.1.0",
   "operation": "code_only",
   "pricing_refresh": false,
   "data_updates": [],
   "migrations": [],
-  "runtime_sha256": "658250e338d6c96eaf23d0b2c0f951b6da3207ef6492c4e71263978e26268275"
+  "runtime_sha256": "495aaa2fbde8122223bc91f018de82e2b1dcd97c79ceb090ac53fb15507b827f"
 }

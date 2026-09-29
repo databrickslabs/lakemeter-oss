@@ -28,7 +28,7 @@ def release(version, operation):
 
 
 def test_repository_version_sources_are_aligned():
-    assert validate_version_alignment() == "0.2.1"
+    assert validate_version_alignment() == "0.2.2"
 
 
 def test_patch_rejects_database_data_file():

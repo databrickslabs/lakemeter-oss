@@ -12,6 +12,47 @@ Lakemeter follows [Semantic Versioning](https://semver.org/):
 
 ---
 
+## v0.2.2
+
+*2026-09-29*
+
+Code-only patch release for source-installer Lakebase authentication and Marketplace packaging. No Lakebase schema change, data migration, or pricing refresh is required.
+
+### Bug fixes
+
+- [Issue #75](https://github.com/databrickslabs/lakemeter-oss/issues/75):
+  Fixed source installations so the app uses its service-principal identity for
+  OAuth Lakebase connections instead of `lakemeter_sync_role`, restoring cloud
+  region dropdowns
+  ([PR #78](https://github.com/databrickslabs/lakemeter-oss/pull/78))
+- Fixed the installer verifier so it authenticates to the Databricks App and
+  fails the job when region, pricing, or calculation checks fail
+  ([PR #78](https://github.com/databrickslabs/lakemeter-oss/pull/78))
+- Fixed Marketplace FMAPI proprietary effective DBU rates and aligned the
+  reported app version
+  ([PR #67](https://github.com/databrickslabs/lakemeter-oss/pull/67))
+- Retried transient Lakebase wake-up timeouts during app startup
+  ([PR #68](https://github.com/databrickslabs/lakemeter-oss/pull/68))
+
+### Marketplace and installer
+
+- Packaged the Databricks App for Marketplace with in-app Lakebase bootstrap
+  ([PR #65](https://github.com/databrickslabs/lakemeter-oss/pull/65))
+
+### Documentation updates
+
+- Added Marketplace installation as the preferred path and fixed admin-guide
+  links, callouts, and generated-site link checks
+  ([PR #69](https://github.com/databrickslabs/lakemeter-oss/pull/69),
+  [PR #70](https://github.com/databrickslabs/lakemeter-oss/pull/70),
+  [PR #71](https://github.com/databrickslabs/lakemeter-oss/pull/71),
+  [PR #72](https://github.com/databrickslabs/lakemeter-oss/pull/72),
+  [PR #73](https://github.com/databrickslabs/lakemeter-oss/pull/73),
+  [PR #76](https://github.com/databrickslabs/lakemeter-oss/pull/76),
+  [PR #77](https://github.com/databrickslabs/lakemeter-oss/pull/77))
+
+---
+
 ## v0.2.0
 
 *2026-08-31*
