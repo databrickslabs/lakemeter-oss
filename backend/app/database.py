@@ -50,7 +50,7 @@ def _get_database_url() -> str:
                 encoded_user = quote_plus(params["user"])
                 encoded_password = quote_plus(params["password"])
                 test_url = (
-                    f"postgresql://{encoded_user}:{encoded_password}"
+                    f"postgresql+psycopg://{encoded_user}:{encoded_password}"
                     f"@{params['host']}:{params['port']}/{params['dbname']}"
                     f"?sslmode={params['sslmode']}"
                 )
@@ -111,7 +111,7 @@ def _get_database_url() -> str:
         encoded_password = quote_plus(db_pass)
         log_info(f"Using password auth for user: {db_user}")
         return (
-            f"postgresql://{encoded_user}:{encoded_password}"
+            f"postgresql+psycopg://{encoded_user}:{encoded_password}"
             f"@{db_host}:{db_port}/{db_name}"
             f"?sslmode=require"
         )

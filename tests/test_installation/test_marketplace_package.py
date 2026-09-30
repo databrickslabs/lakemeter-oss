@@ -46,6 +46,19 @@ def test_marketplace_app_config_is_workspace_neutral():
     assert "../.venv" not in command
 
 
+def test_marketplace_requirements_include_psycopg3():
+    """SQLAlchemy 2.1 defaults to psycopg 3; Marketplace installs must ship it."""
+    required = "psycopg[binary]"
+    for path in (
+        ROOT / "requirements.txt",
+        BACKEND / "requirements.txt",
+        ROOT / "scripts/app_source/requirements.txt",
+    ):
+        text = path.read_text()
+        assert required in text, f"{path} must declare {required}"
+        assert "sqlalchemy>=" in text
+
+
 def test_marketplace_bootstrap_assets_are_self_contained():
     schema = (BACKEND / "app/bootstrap/sql/schema.sql").read_text()
     functions = (BACKEND / "app/bootstrap/sql/functions.sql").read_text()

@@ -12,6 +12,23 @@ Lakemeter follows [Semantic Versioning](https://semver.org/):
 
 ---
 
+## v0.2.3
+
+*2026-09-30*
+
+Code-only patch so Marketplace installs start on SQLAlchemy 2.1 without editing
+`requirements.txt`. No Lakebase schema change, data migration, or pricing
+refresh is required.
+
+### Bug fixes
+
+- [ES-2246460](https://databricks.atlassian.net/browse/ES-2246460):
+  Install `psycopg[binary]` and connect with `postgresql+psycopg://` so
+  SQLAlchemy 2.1 no longer crashes Marketplace deploys with
+  `ModuleNotFoundError: No module named 'psycopg'`
+
+---
+
 ## v0.2.2
 
 *2026-09-29*
