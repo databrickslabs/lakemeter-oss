@@ -196,6 +196,25 @@ def _seed_reference_data(cursor: Any) -> None:
     cursor.executemany(cloud_sql, seeds["cloud_tiers"])
 
 
+def _copy_csv(cursor: Any, copy_sql: str, handle: Any) -> None:
+    """Stream a CSV into PostgreSQL using psycopg2 or psycopg3 COPY APIs."""
+    copy_expert = getattr(cursor, "copy_expert", None)
+    if callable(copy_expert):
+        copy_expert(copy_sql, handle)
+        return
+
+    copy = getattr(cursor, "copy", None)
+    if not callable(copy):
+        raise RuntimeError("Database cursor does not support COPY")
+
+    with copy(copy_sql) as copy_op:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            copy_op.write(chunk)
+
+
 def _load_pricing(cursor: Any) -> None:
     for filename, table, columns in _PRICING_LOADS:
         cursor.execute(f"TRUNCATE TABLE lakemeter.{table}")
@@ -209,7 +228,7 @@ def _load_pricing(cursor: Any) -> None:
                 "r",
                 encoding="utf-8",
             ) as handle:
-                cursor.copy_expert(copy_sql, handle)
+                _copy_csv(cursor, copy_sql, handle)
 
 
 def _refresh_derived_reference_data(cursor: Any) -> None:
